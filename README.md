@@ -49,18 +49,24 @@
 | 工具 | 描述 |
 |------|------|
 | [文本 Diff](tools/text-diff.html) | 文本差异对比，高亮显示增删改内容 |
+| [Markdown 预览](tools/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
+| [字数统计](tools/word-counter.html) | 统计字符、单词、句子、段落数量，支持目标字数进度追踪 |
 
 ### 时间工具
 
 | 工具 | 描述 |
 |------|------|
 | [时间戳转换](tools/timestamp.html) | 时间戳与日期互转，支持多种格式和时区 |
+| [时间戳转换器](tools/timestamp-converter.html) | Unix 时间戳与日期时间互转，支持秒和毫秒格式 |
+| [时区转换器](tools/timezone-converter.html) | 在不同时区之间转换时间，方便跨时区协作 |
+| [日期计算器](tools/date-calculator.html) | 计算日期差异、日期推算、工作日统计 |
 
 ### 生成器
 
 | 工具 | 描述 |
 |------|------|
 | [UUID/ULID 生成器](tools/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
+| [二维码生成器](tools/qrcode-generator.html) | 生成自定义颜色和大小的二维码，支持下载 PNG |
 
 ### 隐私工具
 
@@ -73,6 +79,8 @@
 | 工具 | 描述 |
 |------|------|
 | [图片压缩](tools/image-compressor.html) | 本地图片压缩，支持调整质量、尺寸和格式转换 |
+| [图片压缩对比](tools/image-resize.html) | 比较不同质量设置下的图片压缩效果，找到最佳平衡点 |
+| [SVG 渲染器](tools/svg-render.html) | 将 SVG 代码渲染为 PNG/JPEG 图片，支持自定义尺寸和背景 |
 | [摄像头拍照](tools/camera-demo.html) | 调用摄像头拍照并保存到本地 |
 
 ## 使用方式
@@ -101,6 +109,19 @@ start index.html  # Windows
 3. Source 选择 "GitHub Actions"
 4. 等待 CI 运行完成后即可访问 `https://你的用户名.github.io/html-tools/`
 
+### 部署到其他平台
+
+本项目已配置支持多平台部署：
+
+- **Vercel**: 直接导入 GitHub 仓库即可
+- **Netlify**: 直接导入 GitHub 仓库即可
+- **Cloudflare Pages**: 直接连接 GitHub 仓库即可
+
+配置文件：
+- `vercel.json` - Vercel 配置
+- `netlify.toml` - Netlify 配置
+- `_headers` / `_redirects` - Cloudflare Pages 配置
+
 ## 通用功能
 
 每个工具都支持以下功能：
@@ -109,14 +130,17 @@ start index.html  # Windows
 - **复制输出**: 将处理结果复制到剪贴板
 - **分享链接**: 生成包含当前输入内容的 URL，方便分享
 - **清空**: 清空输入输出并重置状态
-- **自动保存**: 输入内容自动保存到 localStorage，防止意外丢失
+- **自动保存**: 输入内容自动保存到 URL hash，防止意外丢失
 
 ## 技术栈
 
 - 纯 HTML/CSS/JavaScript
-- CDN 依赖:
-  - [js-yaml](https://github.com/nodeca/js-yaml) - JSON-YAML 工具使用
-  - [jsdiff](https://github.com/kpdecker/jsdiff) - 文本 Diff 工具使用
+- CDN 依赖：
+  - [js-yaml](https://github.com/nodeca/js-yaml) - YAML 解析
+  - [jsdiff](https://github.com/kpdecker/jsdiff) - 文本 Diff
+  - [marked](https://github.com/markedjs/marked) - Markdown 渲染
+  - [DOMPurify](https://github.com/cure53/DOMPurify) - XSS 防护
+  - [QRCode.js](https://github.com/soldair/node-qrcode) - 二维码生成
 
 ## 开发
 
@@ -142,7 +166,7 @@ npm run lint:js    # ESLint
 
 ## 灵感来源
 
-本项目受 [Simon Willison](https://simonwillison.net/) 的 [Useful patterns for building HTML tools](https://simonwillison.net/2025/Jan/13/useful-patterns-for-html-tools/) 文章启发。
+本项目受 [Simon Willison](https://simonwillison.net/) 的 [tools.simonwillison.net](https://tools.simonwillison.net/) 和他的博客文章 [Useful patterns for building HTML tools](https://simonwillison.net/2025/Jan/13/useful-patterns-for-html-tools/) 启发。
 
 ## License
 

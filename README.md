@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
+[![Wiki](https://img.shields.io/badge/Wiki-docs-blue?logo=github)](https://github.com/chicogong/html-tools/wiki)
 
 > 纯前端工具集 - 单文件、零构建、可离线使用 | Pure frontend tools - Single file, Zero build, Offline-ready
 

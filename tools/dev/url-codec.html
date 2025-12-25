@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>日志脱敏 - HTML Tools</title>
+  <title>URL 编解码 - HTML Tools</title>
   <style>
     :root {
       --bg: #f8f9fa;
@@ -15,7 +15,6 @@
       --primary-hover: #0b5ed7;
       --success: #198754;
       --danger: #dc3545;
-      --warning: #ffc107;
       --shadow: 0 2px 8px rgba(0,0,0,0.08);
       --radius: 8px;
     }
@@ -119,7 +118,7 @@
     }
     textarea {
       width: 100%;
-      min-height: 350px;
+      min-height: 250px;
       padding: 12px;
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
       font-size: 0.9rem;
@@ -144,33 +143,46 @@
     .status.error {
       color: var(--danger);
     }
-    .stats {
+    .url-parser {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .url-parser h3 {
+      font-size: 1rem;
+      margin: 0 0 12px;
+    }
+    .parsed-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .parsed-table th,
+    .parsed-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .parsed-table th {
+      background: var(--bg);
+      font-weight: 600;
+      width: 120px;
+    }
+    .parsed-table td {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      word-break: break-all;
+    }
+    .parsed-table tr:last-child th,
+    .parsed-table tr:last-child td {
+      border-bottom: none;
+    }
+    .info {
       background: var(--bg);
       border-radius: var(--radius);
       padding: 12px 16px;
       margin-top: 16px;
-      font-size: 0.9rem;
-    }
-    .stats-title {
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .stats-list {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .stat-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .stat-count {
-      background: var(--primary);
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
     }
     footer {
       text-align: center;
@@ -191,52 +203,70 @@
 </head>
 <body>
   <div class="container">
-    <a href="../index.html" class="back-link">← 返回工具列表</a>
-    <h1>日志脱敏</h1>
-    <p class="desc">自动识别并脱敏日志中的 IP 地址、邮箱、手机号、身份证号等敏感信息</p>
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>URL 编解码</h1>
+    <p class="desc">URL 编码与解码，支持完整 URL 或组件编码，纯本地处理</p>
 
     <div class="card">
       <div class="btn-row">
         <button id="btnPaste">粘贴</button>
-        <button id="btnMask" class="primary">脱敏处理</button>
+        <button id="btnEncode" class="primary">编码</button>
+        <button id="btnDecode" class="primary">解码</button>
         <button id="btnCopy">复制输出</button>
         <button id="btnShare">分享链接</button>
         <button id="btnClear">清空</button>
       </div>
 
       <div class="options">
-        <label><input type="checkbox" id="maskIp" checked /> IPv4 地址</label>
-        <label><input type="checkbox" id="maskIpv6" checked /> IPv6 地址</label>
-        <label><input type="checkbox" id="maskEmail" checked /> 邮箱</label>
-        <label><input type="checkbox" id="maskPhone" checked /> 手机号</label>
-        <label><input type="checkbox" id="maskIdCard" checked /> 身份证号</label>
-        <label><input type="checkbox" id="maskBankCard" checked /> 银行卡号</label>
-        <label><input type="checkbox" id="maskMac" /> MAC 地址</label>
+        <label>
+          <input type="radio" name="mode" value="component" checked />
+          组件编码 (encodeURIComponent)
+        </label>
+        <label>
+          <input type="radio" name="mode" value="uri" />
+          完整 URI (encodeURI)
+        </label>
       </div>
 
       <div class="panels">
         <div class="panel">
-          <label for="input">输入日志</label>
-          <textarea id="input" placeholder="在此粘贴需要脱敏的日志内容..."></textarea>
+          <label for="input">输入</label>
+          <textarea id="input" placeholder="输入 URL 或文本..."></textarea>
         </div>
         <div class="panel">
-          <label for="output">脱敏结果</label>
-          <textarea id="output" readonly placeholder="脱敏后的内容将显示在这里..."></textarea>
+          <label for="output">输出</label>
+          <textarea id="output" readonly placeholder="结果将显示在这里..."></textarea>
         </div>
       </div>
 
       <div id="status" class="status"></div>
 
-      <div id="stats" class="stats" style="display: none;">
-        <div class="stats-title">脱敏统计</div>
-        <div id="statsList" class="stats-list"></div>
+      <div class="url-parser">
+        <h3>URL 解析</h3>
+        <button id="btnParse">解析 URL</button>
+        <table id="parsedTable" class="parsed-table" style="display: none; margin-top: 12px;">
+          <tbody>
+            <tr><th>协议</th><td id="urlProtocol"></td></tr>
+            <tr><th>主机</th><td id="urlHost"></td></tr>
+            <tr><th>端口</th><td id="urlPort"></td></tr>
+            <tr><th>路径</th><td id="urlPath"></td></tr>
+            <tr><th>查询参数</th><td id="urlSearch"></td></tr>
+            <tr><th>Hash</th><td id="urlHash"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info">
+        <strong>组件编码 vs 完整 URI：</strong><br/>
+        · encodeURIComponent: 编码所有特殊字符，适合编码查询参数值<br/>
+        · encodeURI: 保留 URL 结构字符 (: / ? # 等)，适合编码完整 URL
       </div>
     </div>
 
     <footer>
-      <a href="https://github.com/chicogong/html-tools/blob/main/tools/log-masker.html" target="_blank" rel="noreferrer">View source</a>
+      <a href="https://github.com/chicogong/html-tools/blob/main/tools/url-codec.html" target="_blank" rel="noreferrer">View source</a>
       · 纯前端工具 · 无服务器 · 
-      <a href="../index.html">HTML Tools</a>
+      <a href="../../index.html">HTML Tools</a>
     </footer>
   </div>
 
@@ -244,64 +274,13 @@
     const inputEl = document.getElementById('input');
     const outputEl = document.getElementById('output');
     const statusEl = document.getElementById('status');
-    const statsEl = document.getElementById('stats');
-    const statsListEl = document.getElementById('statsList');
+    const parsedTable = document.getElementById('parsedTable');
 
-    const LS_KEY = 'log_masker_input_v1';
+    const LS_KEY = 'url_codec_input_v1';
 
-    // 脱敏规则
-    const rules = {
-      ip: {
-        // IPv4
-        pattern: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
-        mask: (match) => match.replace(/\d+/g, (d, i) => i > 0 ? '***' : d),
-        label: 'IPv4 地址'
-      },
-      ipv6: {
-        // IPv6 (简化版)
-        pattern: /\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|\b(?:[0-9a-fA-F]{1,4}:){1,7}:|:(?::[0-9a-fA-F]{1,4}){1,7}\b/g,
-        mask: () => '****:****:****:****',
-        label: 'IPv6 地址'
-      },
-      email: {
-        pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-        mask: (match) => {
-          const [local, domain] = match.split('@');
-          const maskedLocal = local.length > 2 
-            ? local[0] + '***' + local.slice(-1) 
-            : '***';
-          return maskedLocal + '@' + domain;
-        },
-        label: '邮箱'
-      },
-      phone: {
-        // 中国手机号
-        pattern: /\b1[3-9]\d{9}\b/g,
-        mask: (match) => match.slice(0, 3) + '****' + match.slice(-4),
-        label: '手机号'
-      },
-      idCard: {
-        // 中国身份证号 (18位)
-        pattern: /\b[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b/g,
-        mask: (match) => match.slice(0, 6) + '********' + match.slice(-4),
-        label: '身份证号'
-      },
-      bankCard: {
-        // 银行卡号 (16-19位)
-        pattern: /\b\d{16,19}\b/g,
-        mask: (match) => match.slice(0, 4) + ' **** **** ' + match.slice(-4),
-        label: '银行卡号'
-      },
-      mac: {
-        // MAC 地址
-        pattern: /\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b/g,
-        mask: (match) => {
-          const sep = match.includes(':') ? ':' : '-';
-          return 'XX' + sep + 'XX' + sep + 'XX' + sep + 'XX' + sep + 'XX' + sep + 'XX';
-        },
-        label: 'MAC 地址'
-      }
-    };
+    function getMode() {
+      return document.querySelector('input[name="mode"]:checked').value;
+    }
 
     // URL state
     function loadFromUrl() {
@@ -334,61 +313,67 @@
       localStorage.setItem(LS_KEY, inputEl.value);
     }
 
-    // 脱敏处理
-    function maskLog() {
+    // 编码
+    function encode() {
       const text = inputEl.value;
-      if (!text.trim()) {
+      if (!text) {
         showStatus('请输入内容', 'error');
         return;
       }
 
-      let result = text;
-      const stats = {};
+      try {
+        const mode = getMode();
+        const encoded = mode === 'component' 
+          ? encodeURIComponent(text)
+          : encodeURI(text);
+        outputEl.value = encoded;
+        showStatus('编码成功', 'success');
+      } catch (e) {
+        showStatus('编码失败: ' + e.message, 'error');
+      }
+    }
 
-      // 按顺序应用规则
-      const ruleOrder = ['idCard', 'bankCard', 'ipv6', 'ip', 'email', 'phone', 'mac'];
+    // 解码
+    function decode() {
+      const text = inputEl.value;
+      if (!text) {
+        showStatus('请输入内容', 'error');
+        return;
+      }
 
-      ruleOrder.forEach(key => {
-        const checkbox = document.getElementById('mask' + key.charAt(0).toUpperCase() + key.slice(1));
-        if (!checkbox || !checkbox.checked) return;
+      try {
+        const mode = getMode();
+        const decoded = mode === 'component'
+          ? decodeURIComponent(text)
+          : decodeURI(text);
+        outputEl.value = decoded;
+        showStatus('解码成功', 'success');
+      } catch (e) {
+        showStatus('解码失败: 无效的编码字符串', 'error');
+      }
+    }
 
-        const rule = rules[key];
-        if (!rule) return;
+    // 解析 URL
+    function parseUrl() {
+      const text = inputEl.value.trim();
+      if (!text) {
+        showStatus('请输入 URL', 'error');
+        return;
+      }
 
-        let count = 0;
-        result = result.replace(rule.pattern, (match) => {
-          count++;
-          return rule.mask(match);
-        });
-
-        if (count > 0) {
-          stats[rule.label] = count;
-        }
-      });
-
-      outputEl.value = result;
-
-      // 显示统计
-      const entries = Object.entries(stats);
-      if (entries.length > 0) {
-        statsListEl.textContent = '';
-        entries.forEach(([label, count]) => {
-          const item = document.createElement('span');
-          item.className = 'stat-item';
-          item.textContent = label + ': ';
-          const countSpan = document.createElement('span');
-          countSpan.className = 'stat-count';
-          countSpan.textContent = count;
-          item.appendChild(countSpan);
-          statsListEl.appendChild(item);
-        });
-        statsEl.style.display = 'block';
-        
-        const total = entries.reduce((sum, [, c]) => sum + c, 0);
-        showStatus('脱敏完成，共处理 ' + total + ' 处敏感信息', 'success');
-      } else {
-        statsEl.style.display = 'none';
-        showStatus('未发现需要脱敏的内容', 'success');
+      try {
+        const url = new URL(text);
+        document.getElementById('urlProtocol').textContent = url.protocol;
+        document.getElementById('urlHost').textContent = url.hostname;
+        document.getElementById('urlPort').textContent = url.port || '(default)';
+        document.getElementById('urlPath').textContent = url.pathname;
+        document.getElementById('urlSearch').textContent = url.search || '(none)';
+        document.getElementById('urlHash').textContent = url.hash || '(none)';
+        parsedTable.style.display = 'table';
+        showStatus('URL 解析成功', 'success');
+      } catch (e) {
+        parsedTable.style.display = 'none';
+        showStatus('无效的 URL 格式', 'error');
       }
     }
 
@@ -410,7 +395,9 @@
       }
     };
 
-    document.getElementById('btnMask').onclick = maskLog;
+    document.getElementById('btnEncode').onclick = encode;
+    document.getElementById('btnDecode').onclick = decode;
+    document.getElementById('btnParse').onclick = parseUrl;
 
     document.getElementById('btnCopy').onclick = async () => {
       if (!outputEl.value) {
@@ -438,7 +425,7 @@
     document.getElementById('btnClear').onclick = () => {
       inputEl.value = '';
       outputEl.value = '';
-      statsEl.style.display = 'none';
+      parsedTable.style.display = 'none';
       localStorage.removeItem(LS_KEY);
       history.replaceState(null, '', location.pathname);
       showStatus('已清空', 'success');

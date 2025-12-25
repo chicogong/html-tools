@@ -35,10 +35,34 @@ python3 -m http.server 8080  # For tools requiring HTTP
 ```
 html-tools/
 ├── index.html              # Tool directory with search and category filtering
-├── tools/                  # Individual tool pages
-│   ├── json-formatter.html
-│   ├── jwt-decoder.html
-│   └── ...
+├── tools/                  # Individual tool pages (organized by category)
+│   ├── dev/                # Developer tools (7 tools)
+│   │   ├── json-formatter.html
+│   │   ├── json-yaml.html
+│   │   ├── jwt-decoder.html
+│   │   ├── base64.html
+│   │   ├── url-codec.html
+│   │   ├── regex-tester.html
+│   │   └── clipboard-viewer.html
+│   ├── text/               # Text processing tools (3 tools)
+│   │   ├── text-diff.html
+│   │   ├── markdown-preview.html
+│   │   └── word-counter.html
+│   ├── time/               # Time & date tools (4 tools)
+│   │   ├── timestamp.html
+│   │   ├── timestamp-converter.html
+│   │   ├── timezone-converter.html
+│   │   └── date-calculator.html
+│   ├── generator/          # Generators (2 tools)
+│   │   ├── uuid-generator.html
+│   │   └── qrcode-generator.html
+│   ├── privacy/            # Privacy tools (1 tool)
+│   │   └── log-masker.html
+│   └── media/              # Media tools (4 tools)
+│       ├── image-compressor.html
+│       ├── image-resize.html
+│       ├── svg-render.html
+│       └── camera-demo.html
 ├── package.json            # Lint dependencies only
 ├── vercel.json             # Vercel deployment config
 ├── netlify.toml            # Netlify deployment config
@@ -73,7 +97,7 @@ Each tool in `tools/` follows this pattern:
   
   <div class="container">
     <!-- Back link to index -->
-    <a href="../index.html" class="back-link">← 返回</a>
+    <a href="../../index.html" class="back-link">← 返回</a>
     
     <!-- Tool UI -->
     
@@ -102,12 +126,14 @@ The project uses a **Neo-Brutalist Tech** dark theme:
 
 ## Adding a New Tool
 
-1. Create `tools/[tool-name].html` following the pattern above
+1. Create `tools/[category]/[tool-name].html` following the pattern above
+   - Categories: `dev`, `text`, `time`, `generator`, `privacy`, `media`
 2. Add tool card to `index.html` with:
    - `data-category` attribute (dev/text/time/generator/privacy/media)
    - `data-keywords` for search
    - Tool icon in `.tool-icon` element
-3. Update `README.md` tool list
+   - Link path: `tools/[category]/[tool-name].html`
+3. Update `README.md` tool list with correct category path
 
 ## Common Tool Features
 

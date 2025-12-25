@@ -21,6 +21,12 @@
 
 > 纯前端工具集 - 单文件、零构建、可离线使用 | Pure HTML Tools - Single file, Zero build, Offline-ready
 
+## 截图
+
+![首页](screenshots/homepage.png)
+
+![JSON 格式化工具](screenshots/json-formatter.png)
+
 ## 特点
 
 - **单文件**: 每个工具都是一个独立的 HTML 文件，JS/CSS 全部内联
@@ -52,6 +58,10 @@
 | [URL 编解码](tools/dev/url-codec.html) | URL 编码与解码，支持完整 URL 或组件编码 |
 | [正则测试器](tools/dev/regex-tester.html) | 正则表达式测试，匹配高亮，捕获组展示 |
 | [剪贴板查看器](tools/dev/clipboard-viewer.html) | 查看剪贴板中的各种格式数据 |
+| [Hash 生成器](tools/dev/hash-generator.html) | 计算 MD5、SHA-1、SHA-256、SHA-512 哈希值 |
+| [颜色转换器](tools/dev/color-converter.html) | HEX、RGB、HSL 颜色格式互转 |
+| [HTML 实体编解码](tools/dev/html-entity.html) | HTML 实体编码与解码，常用实体参考 |
+| [进制转换器](tools/dev/number-base.html) | 二进制、八进制、十进制、十六进制互转 |
 
 ### 文本工具
 
@@ -60,6 +70,7 @@
 | [文本 Diff](tools/text/text-diff.html) | 文本差异对比，高亮显示增删改内容 |
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [字数统计](tools/text/word-counter.html) | 统计字符、单词、句子、段落数量，支持目标字数进度追踪 |
+| [Lorem Ipsum 生成器](tools/text/lorem-ipsum.html) | 生成占位文本，支持段落、句子、单词模式 |
 
 ### 时间工具
 
@@ -69,6 +80,7 @@
 | [时间戳转换器](tools/time/timestamp-converter.html) | Unix 时间戳与日期时间互转，支持秒和毫秒格式 |
 | [时区转换器](tools/time/timezone-converter.html) | 在不同时区之间转换时间，方便跨时区协作 |
 | [日期计算器](tools/time/date-calculator.html) | 计算日期差异、日期推算、工作日统计 |
+| [Cron 表达式解析](tools/time/cron-parser.html) | 解析 Cron 表达式，展示可读描述和下次执行时间 |
 
 ### 生成器
 
@@ -76,6 +88,7 @@
 |------|------|
 | [UUID/ULID 生成器](tools/generator/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
 | [二维码生成器](tools/generator/qrcode-generator.html) | 生成自定义颜色和大小的二维码，支持下载 PNG |
+| [密码生成器](tools/generator/password-generator.html) | 生成安全随机密码，支持自定义长度和字符类型 |
 
 ### 隐私工具
 
@@ -153,11 +166,40 @@ start index.html  # Windows
 
 ## 开发
 
-```bash
-# 安装 lint 依赖
-npm install
+### 环境准备
 
-# 运行 lint 检查
+```bash
+# Clone 仓库
+git clone https://github.com/chicogong/html-tools.git
+cd html-tools
+
+# 安装依赖（仅用于 lint）
+npm install
+```
+
+### 本地预览
+
+无需任何构建步骤，直接用浏览器打开 HTML 文件即可：
+
+```bash
+# macOS
+open index.html
+
+# Windows
+start index.html
+
+# Linux
+xdg-open index.html
+
+# 或使用任意静态服务器
+npx serve .
+python -m http.server 8000
+```
+
+### Lint 检查
+
+```bash
+# 运行全部检查
 npm run lint
 
 # 单独检查
@@ -165,6 +207,118 @@ npm run lint:html  # HTMLHint
 npm run lint:css   # Stylelint
 npm run lint:js    # ESLint
 ```
+
+### 添加新工具
+
+1. 在 `tools/` 下选择合适的分类目录（dev/text/time/generator/privacy/media）
+2. 创建新的 HTML 文件，遵循单文件模式
+3. 更新 `index.html` 添加工具卡片
+4. 更新 `README.md` 工具列表
+5. 运行 `npm run lint` 确保代码规范
+
+### 工具模板
+
+每个工具应遵循以下模式：
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工具名称 - HTML Tools</title>
+  <style>
+    /* 内联 CSS */
+  </style>
+</head>
+<body>
+  <!-- HTML 结构 -->
+  
+  <script>
+    // 内联 JavaScript
+    
+    // URL 状态持久化
+    function saveState() {
+      const state = { /* 状态数据 */ };
+      history.replaceState(null, '', '#' + btoa(JSON.stringify(state)));
+    }
+    
+    function loadState() {
+      try {
+        const hash = location.hash.slice(1);
+        if (hash) return JSON.parse(atob(hash));
+      } catch (e) {}
+      return null;
+    }
+  </script>
+</body>
+</html>
+```
+
+关键原则：
+- **单文件**: JS/CSS 全部内联，不依赖外部文件
+- **CDN 依赖**: 如需第三方库，使用 CDN（推荐 cdnjs/unpkg/jsdelivr）
+- **URL 状态**: 支持通过 URL hash 保存和恢复状态
+- **纯前端**: 所有处理在浏览器完成，不上传数据
+- **响应式**: 支持移动端和桌面端
+- **深色模式**: 支持明暗主题切换
+
+## 贡献指南
+
+欢迎贡献新工具或改进现有工具！
+
+### 贡献方式
+
+1. **报告 Bug**: 在 [Issues](https://github.com/chicogong/html-tools/issues) 中描述问题
+2. **建议功能**: 在 Issues 中提出新工具或功能建议
+3. **提交代码**: Fork 仓库，创建分支，提交 PR
+
+### 提交 PR
+
+```bash
+# Fork 并 clone 你的仓库
+git clone https://github.com/你的用户名/html-tools.git
+cd html-tools
+
+# 创建功能分支
+git checkout -b feature/new-tool
+
+# 开发并测试
+# ...
+
+# 运行 lint 检查
+npm run lint
+
+# 提交代码
+git add .
+git commit -m "feat: add xxx tool"
+
+# 推送到你的仓库
+git push origin feature/new-tool
+
+# 在 GitHub 上创建 Pull Request
+```
+
+### Commit 规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式：
+
+- `feat: 新功能`
+- `fix: Bug 修复`
+- `docs: 文档更新`
+- `style: 代码格式（不影响功能）`
+- `refactor: 重构`
+- `perf: 性能优化`
+- `test: 测试相关`
+- `chore: 构建/工具链`
+
+### 代码规范
+
+- HTML: 遵循 HTMLHint 规则
+- CSS: 遵循 Stylelint 规则
+- JS: 遵循 ESLint 规则
+- 使用 2 空格缩进
+- 中文注释，英文代码
 
 ## CI/CD
 

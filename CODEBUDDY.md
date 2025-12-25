@@ -4,7 +4,7 @@ This file provides guidance to CodeBuddy Code when working with code in this rep
 
 ## Project Overview
 
-A collection of single-file HTML tools inspired by Simon Willison's approach. Each tool is a standalone HTML file with inline CSS and JavaScript - no build step required.
+**WebUtils** - A collection of single-file web tools inspired by Simon Willison's approach. Each tool is a standalone HTML file with inline CSS and JavaScript - no build step required.
 
 **Live site**: https://chicogong.github.io/html-tools/
 

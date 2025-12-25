@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>转换器工具 - WebUtils</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* 基础设计系统 */
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-card-hover: #22222e;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --border-strong: #3a3a4a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-blue: #4cc9f0;
+      --glow-cyan: rgba(0, 245, 212, 0.15);
+      --glow-green: rgba(16, 185, 129, 0.15);
+      --glow-red: rgba(244, 63, 94, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .title-section {
+      flex: 1;
+    }
+
+    .title-section h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--bg-deep);
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* 转换器特有的双栏布局 */
+    .converter-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .converter-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swap-btn {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      background: var(--bg-surface);
+      border: 2px solid var(--border-subtle);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+
+    .swap-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      transform: translate(-50%, -50%) rotate(180deg);
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+
+    textarea {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      padding: 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s ease;
+      width: 100%;
+      resize: vertical;
+      min-height: 250px;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    textarea:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--glow-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    button.primary:hover {
+      background: #00dfc4;
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .message.success {
+      background: var(--glow-green);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .message.error {
+      background: var(--glow-red);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .converter-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .swap-btn {
+        left: auto;
+        right: 24px;
+        top: auto;
+        bottom: calc(50% + 10px);
+        transform: rotate(90deg);
+      }
+
+      .swap-btn:hover {
+        transform: rotate(270deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <a href="../../index.html" class="back-link">← 返回</a>
+      <div class="title-section">
+        <h1>
+          <span class="title-icon">🔄</span>
+          转换器工具
+        </h1>
+        <p class="desc">格式A 与 格式B 互转</p>
+      </div>
+    </div>
+
+    <!-- Converter Layout -->
+    <div style="position: relative;">
+      <button id="swapBtn" class="swap-btn" title="交换输入输出">⇄</button>
+
+      <div class="converter-layout">
+        <!-- 输入面板 -->
+        <div class="converter-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              📥 输入 (格式A)
+            </div>
+          </div>
+          <textarea
+            id="input"
+            placeholder="在此输入格式A内容..."
+            spellcheck="false"
+          ></textarea>
+          <div class="toolbar">
+            <button id="pasteBtn">📋 粘贴</button>
+            <button id="clearBtn">🗑️ 清空</button>
+          </div>
+        </div>
+
+        <!-- 输出面板 -->
+        <div class="converter-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              📤 输出 (格式B)
+            </div>
+          </div>
+          <textarea
+            id="output"
+            placeholder="转换后的格式B将显示在这里..."
+            spellcheck="false"
+            readonly
+          ></textarea>
+          <div class="toolbar">
+            <button id="copyBtn" class="primary">📄 复制</button>
+            <button id="shareBtn">🔗 分享</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message -->
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    // DOM 元素
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const messageEl = document.getElementById('message');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const swapBtn = document.getElementById('swapBtn');
+
+    // 状态
+    let state = {
+      input: '',
+      output: ''
+    };
+
+    // ===================================
+    // 核心转换逻辑
+    // TODO: 根据具体工具实现此函数
+    // ===================================
+    function convert(input) {
+      try {
+        // 示例: 简单的格式转换
+        // 实际使用时替换为具体的转换逻辑
+        const result = input.toUpperCase(); // 占位符
+        return result;
+      } catch (error) {
+        throw new Error('转换失败: ' + error.message);
+      }
+    }
+
+    // ===================================
+    // UI 更新
+    // ===================================
+    function updateOutput() {
+      const input = inputEl.value;
+      state.input = input;
+
+      if (!input.trim()) {
+        outputEl.value = '';
+        state.output = '';
+        saveState();
+        return;
+      }
+
+      try {
+        const result = convert(input);
+        outputEl.value = result;
+        state.output = result;
+        saveState();
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    // ===================================
+    // URL 状态持久化
+    // ===================================
+    function saveState() {
+      try {
+        const stateStr = JSON.stringify({ input: state.input });
+        const encoded = btoa(encodeURIComponent(stateStr));
+        history.replaceState(null, '', '#' + encoded);
+      } catch (error) {
+        console.error('保存状态失败:', error);
+      }
+    }
+
+    function loadState() {
+      try {
+        const hash = location.hash.slice(1);
+        if (!hash) return null;
+        const decoded = decodeURIComponent(atob(hash));
+        return JSON.parse(decoded);
+      } catch (error) {
+        console.error('加载状态失败:', error);
+        return null;
+      }
+    }
+
+    function restoreState() {
+      const savedState = loadState();
+      if (savedState && savedState.input) {
+        inputEl.value = savedState.input;
+        updateOutput();
+      }
+    }
+
+    // ===================================
+    // 剪贴板操作
+    // ===================================
+    async function pasteFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        inputEl.value = text;
+        updateOutput();
+        showMessage('已粘贴', 'success');
+      } catch (error) {
+        showMessage('粘贴失败', 'error');
+      }
+    }
+
+    async function copyToClipboard() {
+      if (!state.output) {
+        showMessage('没有可复制的内容', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(state.output);
+        showMessage('已复制到剪贴板', 'success');
+      } catch (error) {
+        showMessage('复制失败', 'error');
+      }
+    }
+
+    // ===================================
+    // 交换输入输出
+    // ===================================
+    function swapInputOutput() {
+      if (!state.output) {
+        showMessage('输出为空,无法交换', 'error');
+        return;
+      }
+      const temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateOutput();
+      showMessage('已交换', 'success');
+    }
+
+    // ===================================
+    // 辅助函数
+    // ===================================
+    function showMessage(text, type = 'success') {
+      messageEl.textContent = text;
+      messageEl.className = 'message ' + type;
+      messageEl.style.display = 'block';
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, 3000);
+    }
+
+    function clearAll() {
+      inputEl.value = '';
+      outputEl.value = '';
+      state.input = '';
+      state.output = '';
+      history.replaceState(null, '', '#');
+      showMessage('已清空', 'success');
+    }
+
+    function generateShareLink() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        showMessage('分享链接已复制', 'success');
+      }).catch(() => {
+        showMessage('复制链接失败', 'error');
+      });
+    }
+
+    // ===================================
+    // 事件监听
+    // ===================================
+    inputEl.addEventListener('input', updateOutput);
+    pasteBtn.addEventListener('click', pasteFromClipboard);
+    clearBtn.addEventListener('click', clearAll);
+    copyBtn.addEventListener('click', copyToClipboard);
+    shareBtn.addEventListener('click', generateShareLink);
+    swapBtn.addEventListener('click', swapInputOutput);
+
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        clearAll();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'c') {
+        e.preventDefault();
+        copyToClipboard();
+      }
+    });
+
+    // ===================================
+    // 初始化
+    // ===================================
+    restoreState();
+  </script>
+</body>
+</html>

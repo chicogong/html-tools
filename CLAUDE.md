@@ -104,15 +104,21 @@ npm run lint:fix
 
 - **主题切换**: 通过 `data-theme="light"` 属性切换明暗主题,状态保存在 localStorage
 - **分类筛选**: 按工具类别筛选 (dev/text/time/generator/privacy/media)
-- **搜索功能**: 基于工具名称、描述和 keywords 的实时搜索
-- **收藏系统**: 收藏的工具 URL 保存在 localStorage (`html_tools_favorites_v1`)
-- **键盘快捷键**:
+- **搜索功能**: 基于工具名称、描述和 keywords 的实时搜索,显示结果数量
+- **收藏系统**:
+  - 收藏的工具 URL 保存在 localStorage (`html_tools_favorites_v1`)
+  - 空收藏状态显示友好提示和使用指引
+- **键盘导航支持**:
   - `/` 键聚焦搜索框
   - `Esc` 键失焦搜索框
+  - `Tab` 键导航到工具卡片和收藏按钮,支持 `:focus-visible` 焦点样式
+  - `Enter` 或 `Space` 键触发收藏操作
+- **搜索结果计数**: 搜索或筛选时实时显示匹配的工具数量
 
 主页的 DOM 操作逻辑:
 - 收藏按钮是通过 JavaScript 动态添加到每个工具卡片的 `.tool-card-header` 中
 - 使用 `.tool-title-group` 包裹图标和标题,收藏按钮单独放在 header 右侧
+- 收藏按钮支持键盘事件 (`Enter` 和 `Space` 键)
 
 ### 3. 通用功能模式
 
@@ -181,6 +187,10 @@ npm run lint:fix
 4. **隐私优先**: 所有数据处理必须在本地完成,不要向外部服务器发送用户数据
 5. **主题适配**: 新工具应支持明暗主题切换 (可选但推荐)
 6. **语义化**: 使用语义化的 CSS class 命名 (如 `.tool-card`, `.input-panel`)
+7. **键盘无障碍**: 确保交互元素支持键盘导航和焦点样式:
+   - 为按钮和可交互元素添加 `:focus-visible` 样式
+   - 支持 `Enter` 和 `Space` 键触发操作
+   - 使用 `tabindex="0"` 使元素可聚焦 (如果不是原生可聚焦元素)
 
 ## 相关文档
 

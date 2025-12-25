@@ -230,6 +230,15 @@
       box-shadow: 0 0 0 4px var(--glow-cyan), 0 4px 20px var(--glow-cyan);
     }
 
+    .search-results-count {
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
     .categories {
       display: flex;
       flex-wrap: wrap;
@@ -459,6 +468,31 @@
       box-shadow: 0 0 28px rgba(254, 228, 64, 0.6);
     }
 
+    /* 收藏按钮键盘焦点样式 */
+    .favorite-btn:focus-visible {
+      outline: none;
+      border-color: var(--accent-yellow);
+      box-shadow:
+        0 0 0 3px rgba(254, 228, 64, 0.3),
+        0 0 20px rgba(254, 228, 64, 0.4);
+    }
+
+    .favorite-btn.active:focus-visible {
+      box-shadow:
+        0 0 0 3px rgba(254, 228, 64, 0.5),
+        0 0 28px rgba(254, 228, 64, 0.6);
+    }
+
+    /* 工具卡片键盘焦点样式 */
+    .tool-card:focus-visible {
+      outline: none;
+      border-color: var(--card-accent, var(--accent-cyan));
+      box-shadow:
+        0 0 0 3px var(--glow-cyan),
+        0 10px 40px -10px rgba(0, 0, 0, 0.5);
+      transform: translateY(-4px);
+    }
+
     .no-results {
       text-align: center;
       padding: 60px 20px;
@@ -612,6 +646,7 @@
       <div class="search-box">
         <input type="text" id="search" placeholder="搜索工具... (按 / 聚焦)" autocomplete="off" spellcheck="false" />
       </div>
+      <div class="search-results-count" id="search-results-count"></div>
     </div>
 
     <div class="categories">
@@ -995,6 +1030,7 @@
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = themeToggle.querySelector('.theme-icon');
     const htmlElement = document.documentElement;
+    const searchResultsCount = document.getElementById('search-results-count');
 
     let currentCategory = 'all';
 
@@ -1115,7 +1151,37 @@
         }
       });
 
-      noResults.classList.toggle('show', visibleCount === 0);
+      // 改进空收藏状态提示
+      if (visibleCount === 0) {
+        const noResultsIcon = noResults.querySelector('.no-results-icon');
+        const noResultsText = noResults.querySelector('p');
+
+        if (currentCategory === 'favorites' && !query) {
+          // 空收藏状态 - 友好提示
+          noResultsIcon.textContent = '⭐';
+          noResultsText.innerHTML =
+            '还没有收藏的工具<br>' +
+            '<span style="font-size: 0.85em; color: var(--text-muted);">' +
+            '点击工具卡片上的星标按钮来收藏' +
+            '</span>';
+        } else {
+          // 搜索无结果
+          noResultsIcon.textContent = '∅';
+          noResultsText.textContent = '没有找到匹配的工具';
+        }
+        noResults.classList.add('show');
+      } else {
+        noResults.classList.remove('show');
+      }
+
+      // 更新结果统计
+      if (query || currentCategory !== 'all') {
+        searchResultsCount.textContent = visibleCount > 0
+          ? `找到 ${visibleCount} 个工具`
+          : '';
+      } else {
+        searchResultsCount.textContent = '';
+      }
     }
 
     searchInput.addEventListener('input', filterTools);
@@ -1170,6 +1236,16 @@
         }
 
         favoriteBtn.addEventListener('click', (e) => toggleFavorite(url, e));
+
+        // 支持Enter和Space键触发收藏
+        favoriteBtn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavorite(url, e);
+          }
+        });
+
         header.appendChild(favoriteBtn);
       }
     });

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>图片格式批量转换 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+    }
+
+    .desc {
+      color: var(--text-muted);
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--primary);
+      background: rgb(13,110,253,0.05);
+    }
+
+    .drop-zone p {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .drop-zone .hint {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .drop-zone input {
+      display: none;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .option-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .option-group select,
+    .option-group input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .option-group select:focus,
+    .option-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slider-group input[type="range"] {
+      flex: 1;
+      padding: 0;
+    }
+
+    .slider-value {
+      min-width: 50px;
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.warning {
+      color: var(--warning);
+    }
+
+    .preview-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .preview-section.show {
+      display: block;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .preview-item {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .preview-item h4 {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .preview-item .file-name {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-img {
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+    }
+
+    .preview-info {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .preview-info p {
+      margin: 2px 0;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .preview-actions button {
+      flex: 1;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .download-all {
+      text-align: center;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      margin-top: 16px;
+    }
+
+    .format-support {
+      background: var(--warning);
+      color: #000;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>图片格式批量转换</h1>
+    <p class="desc">批量转换图片格式，支持 PNG/JPG/WebP/AVIF，纯浏览器处理</p>
+
+    <div id="avifWarning" class="format-support" style="display: none;">
+      ⚠️ 您的浏览器不支持 AVIF 格式。请使用最新版 Chrome、Edge 或 Firefox。
+    </div>
+
+    <div class="card">
+      <div class="drop-zone" id="dropZone">
+        <p>点击或拖拽多张图片到此处</p>
+        <span class="hint">支持批量选择，PNG、JPG、WebP、AVIF 格式</span>
+        <input type="file" id="fileInput" accept="image/*" multiple />
+      </div>
+
+      <div class="options">
+        <div class="option-group">
+          <label>输出格式</label>
+          <select id="outputFormat">
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WebP</option>
+            <option value="avif">AVIF</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>质量 (JPEG/WebP/AVIF)</label>
+          <div class="slider-group">
+            <input type="range" id="quality" min="10" max="100" value="85" />
+            <span class="slider-value" id="qualityValue">85%</span>
+          </div>
+        </div>
+        <div class="option-group">
+          <label>最大宽度 (px，0为不限制)</label>
+          <input type="number" id="maxWidth" value="0" min="0" />
+        </div>
+        <div class="option-group">
+          <label>最大高度 (px，0为不限制)</label>
+          <input type="number" id="maxHeight" value="0" min="0" />
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="btnConvert" class="primary" disabled>批量转换</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div id="previewSection" class="preview-section">
+        <h3 style="margin: 0 0 16px;">转换结果</h3>
+        <div class="preview-grid" id="previewGrid"></div>
+        <div class="download-all">
+          <button id="btnDownloadAll" class="primary">下载全部 (ZIP)</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <!-- JSZip for creating ZIP archives -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    var dropZoneEl = document.getElementById('dropZone');
+    var fileInputEl = document.getElementById('fileInput');
+    var outputFormatEl = document.getElementById('outputFormat');
+    var qualityEl = document.getElementById('quality');
+    var qualityValueEl = document.getElementById('qualityValue');
+    var maxWidthEl = document.getElementById('maxWidth');
+    var maxHeightEl = document.getElementById('maxHeight');
+    var btnConvertEl = document.getElementById('btnConvert');
+    var btnDownloadAllEl = document.getElementById('btnDownloadAll');
+    var statusEl = document.getElementById('status');
+    var previewSectionEl = document.getElementById('previewSection');
+    var previewGridEl = document.getElementById('previewGrid');
+
+    var originalFiles = [];
+    var convertedBlobs = [];
+
+    // 检测 AVIF 支持
+    function checkAVIFSupport() {
+      var canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      return canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0;
+    }
+
+    var avifSupported = checkAVIFSupport();
+    if (!avifSupported) {
+      document.getElementById('avifWarning').style.display = 'block';
+    }
+
+    // 更新质量显示
+    qualityEl.addEventListener('input', function() {
+      qualityValueEl.textContent = qualityEl.value + '%';
+    });
+
+    // 拖放处理
+    dropZoneEl.addEventListener('click', function() {
+      fileInputEl.click();
+    });
+
+    dropZoneEl.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      dropZoneEl.classList.add('dragover');
+    });
+
+    dropZoneEl.addEventListener('dragleave', function() {
+      dropZoneEl.classList.remove('dragover');
+    });
+
+    dropZoneEl.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropZoneEl.classList.remove('dragover');
+      var files = Array.from(e.dataTransfer.files).filter(function(f) {
+        return f.type.startsWith('image/');
+      });
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    });
+
+    fileInputEl.addEventListener('change', function() {
+      var files = Array.from(fileInputEl.files).filter(function(f) {
+        return f.type.startsWith('image/');
+      });
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    });
+
+    // 格式化文件大小
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    // 处理文件
+    function handleFiles(files) {
+      originalFiles = files;
+      convertedBlobs = [];
+      previewGridEl.innerHTML = '';
+      previewSectionEl.classList.remove('show');
+
+      btnConvertEl.disabled = false;
+      showStatus('已选择 ' + files.length + ' 个文件', 'success');
+    }
+
+    // 批量转换
+    function convertAll() {
+      var format = outputFormatEl.value;
+      var quality = parseInt(qualityEl.value, 10) / 100;
+      var maxWidth = parseInt(maxWidthEl.value, 10) || 0;
+      var maxHeight = parseInt(maxHeightEl.value, 10) || 0;
+
+      // AVIF 支持检测
+      if (format === 'avif' && !avifSupported) {
+        showStatus('您的浏览器不支持 AVIF 格式', 'error');
+        return;
+      }
+
+      if (originalFiles.length === 0) {
+        showStatus('请先选择图片', 'error');
+        return;
+      }
+
+      btnConvertEl.disabled = true;
+      showStatus('正在转换...', '');
+      previewGridEl.innerHTML = '';
+      convertedBlobs = [];
+
+      var promises = originalFiles.map(function(file) {
+        return convertImage(file, format, quality, maxWidth, maxHeight);
+      });
+
+      Promise.all(promises).then(function(results) {
+        convertedBlobs = results;
+        previewSectionEl.classList.add('show');
+        showStatus('转换完成！共 ' + results.length + ' 个文件', 'success');
+        btnConvertEl.disabled = false;
+      }).catch(function(err) {
+        showStatus('转换失败: ' + err.message, 'error');
+        btnConvertEl.disabled = false;
+      });
+    }
+
+    // 转换单个图片
+    function convertImage(file, format, quality, maxWidth, maxHeight) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() {
+            var width = img.width;
+            var height = img.height;
+
+            // 调整尺寸
+            if (maxWidth > 0 || maxHeight > 0) {
+              var ratio = Math.min(
+                maxWidth > 0 ? maxWidth / width : Infinity,
+                maxHeight > 0 ? maxHeight / height : Infinity,
+                1
+              );
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+
+            // 创建 Canvas
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 导出
+            var mimeType = 'image/' + format;
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                reject(new Error('转换失败: ' + file.name));
+                return;
+              }
+
+              // 添加预览
+              addPreview(file, blob, format, width, height);
+              resolve(blob);
+            }, mimeType, format === 'png' ? undefined : quality);
+          };
+          img.onerror = function() {
+            reject(new Error('无法加载图片: ' + file.name));
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = function() {
+          reject(new Error('无法读取文件: ' + file.name));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 添加预览
+    function addPreview(originalFile, convertedBlob, format, width, height) {
+      var item = document.createElement('div');
+      item.className = 'preview-item';
+
+      var ext = format === 'jpeg' ? 'jpg' : format;
+      var fileName = originalFile.name.replace(/\.[^.]+$/, '') + '.' + ext;
+
+      var originalSize = originalFile.size;
+      var convertedSize = convertedBlob.size;
+      var savedPercent = ((originalSize - convertedSize) / originalSize * 100).toFixed(1);
+
+      item.innerHTML = '<h4>转换成功 <span style="font-size: 0.75rem; font-weight: normal; color: var(--success);">✓</span></h4>' +
+        '<div class="file-name" title="' + fileName + '">' + fileName + '</div>' +
+        '<img class="preview-img" alt="Preview" />' +
+        '<div class="preview-info">' +
+          '<p>尺寸: ' + width + ' × ' + height + '</p>' +
+          '<p>原始: ' + formatSize(originalSize) + ' → ' + formatSize(convertedSize) + '</p>' +
+          '<p>节省: <strong>' + (savedPercent > 0 ? savedPercent + '%' : '增大') + '</strong></p>' +
+        '</div>' +
+        '<div class="preview-actions">' +
+          '<button class="btn-download" data-filename="' + fileName + '">下载</button>' +
+        '</div>';
+
+      var imgEl = item.querySelector('.preview-img');
+      imgEl.src = URL.createObjectURL(convertedBlob);
+
+      var btnDownload = item.querySelector('.btn-download');
+      btnDownload.addEventListener('click', function() {
+        downloadBlob(convertedBlob, fileName);
+      });
+
+      previewGridEl.appendChild(item);
+    }
+
+    // 下载单个文件
+    function downloadBlob(blob, filename) {
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+    }
+
+    // 下载全部 (ZIP)
+    function downloadAllAsZip() {
+      if (convertedBlobs.length === 0) {
+        showStatus('没有可下载的文件', 'error');
+        return;
+      }
+
+      showStatus('正在打包 ZIP...', '');
+      btnDownloadAllEl.disabled = true;
+
+      var zip = new JSZip();
+      var format = outputFormatEl.value;
+      var ext = format === 'jpeg' ? 'jpg' : format;
+
+      convertedBlobs.forEach(function(blob, index) {
+        var fileName = originalFiles[index].name.replace(/\.[^.]+$/, '') + '.' + ext;
+        zip.file(fileName, blob);
+      });
+
+      zip.generateAsync({ type: 'blob' }).then(function(content) {
+        var timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        downloadBlob(content, 'converted-images-' + timestamp + '.zip');
+        showStatus('ZIP 下载完成', 'success');
+        btnDownloadAllEl.disabled = false;
+      }).catch(function(err) {
+        showStatus('打包失败: ' + err.message, 'error');
+        btnDownloadAllEl.disabled = false;
+      });
+    }
+
+    // 清空
+    function clearAll() {
+      originalFiles = [];
+      convertedBlobs = [];
+      fileInputEl.value = '';
+      previewGridEl.innerHTML = '';
+      previewSectionEl.classList.remove('show');
+      btnConvertEl.disabled = true;
+      showStatus('已清空', 'success');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    // 事件绑定
+    btnConvertEl.onclick = convertAll;
+    btnDownloadAllEl.onclick = downloadAllAsZip;
+    document.getElementById('btnClear').onclick = clearAll;
+  </script>
+</body>
+</html>

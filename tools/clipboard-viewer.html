@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>剪贴板查看器 - HTML Tools</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+    }
+    .desc {
+      color: var(--text-muted);
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .paste-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg);
+    }
+    .paste-zone:hover, .paste-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(13, 110, 253, 0.05);
+    }
+    .paste-zone h3 {
+      margin: 0 0 8px;
+      color: var(--text);
+    }
+    .paste-zone p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .result-item {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .result-item:last-child {
+      margin-bottom: 0;
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .result-type {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--primary);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+    .result-size {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .result-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow: auto;
+    }
+    .result-image {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    button {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 24px;
+    }
+    .card-title {
+      margin: 0 0 16px;
+      font-size: 1.1rem;
+    }
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回工具列表</a>
+    <h1>剪贴板查看器</h1>
+    <p class="desc">查看剪贴板中所有格式的数据，支持文本、HTML、图片、文件等</p>
+
+    <div class="card">
+      <div class="paste-zone" id="pasteZone" tabindex="0">
+        <h3>点击此处或按 Ctrl+V 粘贴</h3>
+        <p>支持粘贴文本、富文本、图片、文件等任何内容</p>
+      </div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display: none;">
+      <h3 class="card-title">剪贴板内容</h3>
+      <div id="results"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools/blob/main/tools/clipboard-viewer.html" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../index.html">HTML Tools</a>
+    </footer>
+  </div>
+
+  <script>
+    const pasteZone = document.getElementById('pasteZone');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsEl = document.getElementById('results');
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function createResultItem(type, content, isImage) {
+      const item = document.createElement('div');
+      item.className = 'result-item';
+
+      const header = document.createElement('div');
+      header.className = 'result-header';
+
+      const typeSpan = document.createElement('span');
+      typeSpan.className = 'result-type';
+      typeSpan.textContent = type;
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.className = 'result-size';
+      sizeSpan.textContent = isImage ? '' : formatSize(content.length);
+
+      header.appendChild(typeSpan);
+      header.appendChild(sizeSpan);
+      item.appendChild(header);
+
+      if (isImage) {
+        const img = document.createElement('img');
+        img.className = 'result-image';
+        img.src = content;
+        img.alt = '粘贴的图片';
+        item.appendChild(img);
+      } else {
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'result-content';
+        const displayContent = content.length > 5000 
+          ? content.substring(0, 5000) + '\n\n... (截断显示，共 ' + content.length + ' 字符)'
+          : content;
+        contentDiv.textContent = displayContent;
+        item.appendChild(contentDiv);
+      }
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.textContent = '复制';
+      copyBtn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(content);
+          copyBtn.textContent = '已复制';
+          setTimeout(() => {
+            copyBtn.textContent = '复制';
+          }, 1500);
+        } catch (e) {
+          alert('复制失败');
+        }
+      };
+
+      btnRow.appendChild(copyBtn);
+      item.appendChild(btnRow);
+
+      return item;
+    }
+
+    function showEmpty(msg) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = msg;
+      resultsEl.appendChild(empty);
+    }
+
+    async function handlePaste(e) {
+      e.preventDefault();
+      resultsEl.textContent = '';
+      
+      const clipboardData = e.clipboardData || window.clipboardData;
+      if (!clipboardData) {
+        showEmpty('无法访问剪贴板');
+        resultsCard.style.display = 'block';
+        return;
+      }
+
+      const types = clipboardData.types;
+      let hasContent = false;
+
+      for (const type of types) {
+        if (type === 'Files') {
+          const files = clipboardData.files;
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            hasContent = true;
+
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                resultsEl.appendChild(createResultItem(
+                  'File: ' + file.name + ' (' + file.type + ')',
+                  ev.target.result,
+                  true
+                ));
+              };
+              reader.readAsDataURL(file);
+            } else {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                resultsEl.appendChild(createResultItem(
+                  'File: ' + file.name + ' (' + file.type + ')',
+                  ev.target.result,
+                  false
+                ));
+              };
+              reader.readAsText(file);
+            }
+          }
+        } else {
+          const data = clipboardData.getData(type);
+          if (data) {
+            hasContent = true;
+            resultsEl.appendChild(createResultItem(type, data, false));
+          }
+        }
+      }
+
+      if (clipboardData.items) {
+        for (const item of clipboardData.items) {
+          if (item.type.startsWith('image/') && item.kind === 'file') {
+            const file = item.getAsFile();
+            if (file) {
+              hasContent = true;
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                const existing = resultsEl.querySelector('img');
+                if (!existing) {
+                  resultsEl.appendChild(createResultItem(
+                    'image (' + item.type + ')',
+                    ev.target.result,
+                    true
+                  ));
+                }
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        }
+      }
+
+      if (!hasContent) {
+        showEmpty('剪贴板为空或无法读取');
+      }
+
+      resultsCard.style.display = 'block';
+    }
+
+    pasteZone.onclick = () => {
+      pasteZone.focus();
+    };
+
+    pasteZone.ondragover = (e) => {
+      e.preventDefault();
+      pasteZone.classList.add('dragover');
+    };
+
+    pasteZone.ondragleave = () => {
+      pasteZone.classList.remove('dragover');
+    };
+
+    pasteZone.ondrop = (e) => {
+      e.preventDefault();
+      pasteZone.classList.remove('dragover');
+      
+      resultsEl.textContent = '';
+      const files = e.dataTransfer.files;
+      
+      if (files.length === 0) {
+        showEmpty('没有检测到文件');
+        resultsCard.style.display = 'block';
+        return;
+      }
+
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            resultsEl.appendChild(createResultItem(
+              'File: ' + file.name + ' (' + file.type + ')',
+              ev.target.result,
+              true
+            ));
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            resultsEl.appendChild(createResultItem(
+              'File: ' + file.name + ' (' + file.type + ')',
+              ev.target.result,
+              false
+            ));
+          };
+          reader.readAsText(file);
+        }
+      }
+
+      resultsCard.style.display = 'block';
+    };
+
+    document.addEventListener('paste', handlePaste);
+  </script>
+</body>
+</html>

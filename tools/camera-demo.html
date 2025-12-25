@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>摄像头拍照 - HTML Tools</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+    }
+    .desc {
+      color: var(--text-muted);
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .video-container {
+      text-align: center;
+    }
+    #video {
+      width: 100%;
+      max-width: 640px;
+      border-radius: var(--radius);
+      background: #000;
+    }
+    #canvas {
+      display: none;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      color: #fff;
+    }
+    .gallery-title {
+      font-size: 1.1rem;
+      margin: 0 0 16px;
+    }
+    #photoGallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .gallery-empty {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .photo-item {
+      position: relative;
+    }
+    .photo-item img {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .photo-item img:hover {
+      transform: scale(1.02);
+    }
+    .photo-item .download-btn {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    .photo-item .download-btn:hover {
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+    }
+    .status {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 12px;
+    }
+    .status.error {
+      color: #dc3545;
+    }
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回工具列表</a>
+    <h1>摄像头拍照</h1>
+    <p class="desc">调用摄像头拍照，照片保存到本地，不上传任何服务器</p>
+
+    <div class="card video-container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="btn-row">
+        <button id="startBtn" class="primary">启动摄像头</button>
+        <button id="captureBtn" disabled>拍照</button>
+        <button id="clearBtn">清空相册</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="gallery-title">照片相册</h3>
+      <div id="photoGallery">
+        <span id="emptyHint" class="gallery-empty">还没有拍摄照片</span>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools/blob/main/tools/camera-demo.html" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../index.html">HTML Tools</a>
+    </footer>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const startBtn = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const photoGallery = document.getElementById('photoGallery');
+    const emptyHint = document.getElementById('emptyHint');
+    const statusEl = document.getElementById('status');
+
+    let stream = null;
+    const LS_KEY = 'camera_demo_photos_v1';
+
+    function updateEmptyHint() {
+      const hasPhotos = photoGallery.querySelectorAll('.photo-item').length > 0;
+      emptyHint.style.display = hasPhotos ? 'none' : 'inline';
+    }
+
+    // 从 localStorage 加载照片
+    function loadPhotos() {
+      const saved = localStorage.getItem(LS_KEY);
+      if (!saved) return;
+      try {
+        const photos = JSON.parse(saved);
+        photos.forEach(photo => addPhotoToGallery(photo.data, photo.timestamp, false));
+      } catch (e) {}
+    }
+
+    // 保存照片到 localStorage
+    function savePhotos() {
+      const photos = [];
+      photoGallery.querySelectorAll('.photo-item').forEach(item => {
+        photos.push({
+          data: item.querySelector('img').src,
+          timestamp: item.dataset.timestamp
+        });
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify(photos));
+    }
+
+    // 添加照片到相册
+    function addPhotoToGallery(imageData, timestamp, save = true) {
+      const photoItem = document.createElement('div');
+      photoItem.className = 'photo-item';
+      photoItem.dataset.timestamp = timestamp;
+
+      const img = document.createElement('img');
+      img.src = imageData;
+      img.alt = '拍摄的照片';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'download-btn';
+      downloadBtn.textContent = '下载';
+      downloadBtn.onclick = (e) => {
+        e.stopPropagation();
+        downloadPhoto(imageData, timestamp);
+      };
+
+      photoItem.appendChild(img);
+      photoItem.appendChild(downloadBtn);
+      photoGallery.insertBefore(photoItem, photoGallery.firstChild);
+
+      updateEmptyHint();
+
+      if (save) {
+        savePhotos();
+      }
+    }
+
+    // 下载照片
+    function downloadPhoto(imageData, timestamp) {
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = 'photo_' + timestamp + '.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // 启动摄像头
+    async function startCamera() {
+      try {
+        statusEl.textContent = '正在请求摄像头权限...';
+        statusEl.className = 'status';
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }
+        });
+
+        video.srcObject = stream;
+        startBtn.textContent = '停止摄像头';
+        captureBtn.disabled = false;
+        statusEl.textContent = '摄像头已启动';
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        statusEl.textContent = '无法访问摄像头：' + err.message;
+        statusEl.className = 'status error';
+      }
+    }
+
+    // 停止摄像头
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.srcObject = null;
+      }
+      startBtn.textContent = '启动摄像头';
+      captureBtn.disabled = true;
+      statusEl.textContent = '摄像头已停止';
+    }
+
+    // 拍照
+    function capturePhoto() {
+      if (!stream) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      const timestamp = Date.now();
+
+      addPhotoToGallery(imageData, timestamp);
+      statusEl.textContent = '照片已保存到相册';
+    }
+
+    // 清空相册
+    function clearGallery() {
+      if (confirm('确定要清空所有照片吗？')) {
+        const items = photoGallery.querySelectorAll('.photo-item');
+        items.forEach(item => item.remove());
+        localStorage.removeItem(LS_KEY);
+        updateEmptyHint();
+        statusEl.textContent = '相册已清空';
+      }
+    }
+
+    // 事件绑定
+    startBtn.onclick = () => {
+      if (stream) {
+        stopCamera();
+      } else {
+        startCamera();
+      }
+    };
+
+    captureBtn.onclick = capturePhoto;
+    clearBtn.onclick = clearGallery;
+
+    // 页面加载时恢复照片
+    loadPhotos();
+    updateEmptyHint();
+
+    // 页面关闭时停止摄像头
+    window.addEventListener('beforeunload', stopCamera);
+  </script>
+</body>
+</html>

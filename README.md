@@ -36,9 +36,31 @@
 
 | 工具 | 描述 |
 |------|------|
+| [JSON 格式化](tools/json-formatter.html) | JSON 格式化、压缩、校验，支持错误定位和统计 |
 | [JSON-YAML 转换](tools/json-yaml.html) | JSON 与 YAML 格式互转，支持格式化输出 |
+| [JWT 解码器](tools/jwt-decoder.html) | 解码 JWT Token，查看 Header、Payload 和签名信息 |
 | [Base64 编解码](tools/base64.html) | Base64 编码与解码，支持文本和文件 |
 | [URL 编解码](tools/url-codec.html) | URL 编码与解码，支持完整 URL 或组件编码 |
+| [正则测试器](tools/regex-tester.html) | 正则表达式测试，匹配高亮，捕获组展示 |
+| [剪贴板查看器](tools/clipboard-viewer.html) | 查看剪贴板中的各种格式数据 |
+
+### 文本工具
+
+| 工具 | 描述 |
+|------|------|
+| [文本 Diff](tools/text-diff.html) | 文本差异对比，高亮显示增删改内容 |
+
+### 时间工具
+
+| 工具 | 描述 |
+|------|------|
+| [时间戳转换](tools/timestamp.html) | 时间戳与日期互转，支持多种格式和时区 |
+
+### 生成器
+
+| 工具 | 描述 |
+|------|------|
+| [UUID/ULID 生成器](tools/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
 
 ### 隐私工具
 
@@ -50,6 +72,7 @@
 
 | 工具 | 描述 |
 |------|------|
+| [图片压缩](tools/image-compressor.html) | 本地图片压缩，支持调整质量、尺寸和格式转换 |
 | [摄像头拍照](tools/camera-demo.html) | 调用摄像头拍照并保存到本地 |
 
 ## 使用方式
@@ -91,7 +114,9 @@ start index.html  # Windows
 ## 技术栈
 
 - 纯 HTML/CSS/JavaScript
-- 唯一的 CDN 依赖: [js-yaml](https://github.com/nodeca/js-yaml) (仅 JSON-YAML 工具使用)
+- CDN 依赖:
+  - [js-yaml](https://github.com/nodeca/js-yaml) - JSON-YAML 工具使用
+  - [jsdiff](https://github.com/kpdecker/jsdiff) - 文本 Diff 工具使用
 
 ## 开发
 

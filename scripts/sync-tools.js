@@ -15,6 +15,46 @@ const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
 const INDEX_HTML = path.join(ROOT_DIR, 'index.html');
 
+// 分类顺序
+const CATEGORY_ORDER = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
+
+// 分类中文注释
+const CATEGORY_COMMENTS = {
+  dev: '开发工具',
+  text: '文本工具',
+  time: '时间工具',
+  generator: '生成器',
+  media: '媒体工具',
+  privacy: '隐私安全',
+  security: '安全工具',
+  network: '网络工具',
+  calculator: '计算器',
+  converter: '转换器',
+  extractor: '提取器',
+  ai: 'AI 工具'
+};
+
+/**
+ * 转义特殊字符（反斜杠和单引号）
+ */
+function escapeString(str) {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+/**
+ * 生成单个工具的单行 JS 对象字符串
+ */
+function toolToJsLine(tool) {
+  const url = escapeString(tool.path);
+  const category = escapeString(tool.category);
+  const name = escapeString(tool.name);
+  const desc = escapeString(tool.description || tool.name);
+  const icon = escapeString(tool.icon || '🔧');
+  const keywords = escapeString(tool.keywords || tool.name);
+  
+  return `      { url: '${url}', category: '${category}', name: '${name}', desc: '${desc}', icon: '${icon}', keywords: '${keywords}' },`;
+}
+
 function main() {
   // 读取 tools.json
   if (!fs.existsSync(TOOLS_JSON)) {
@@ -27,29 +67,47 @@ function main() {
   
   console.log(`📦 Found ${tools.length} tools in tools.json`);
   
-  // 生成 CATEGORIES 数组
-  const categoryOrder = ['all', 'favorites', 'dev', 'text', 'time', 'generator', 'privacy', 'media', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
+  // 按分类分组
+  const groupedTools = {};
+  for (const tool of tools) {
+    if (!groupedTools[tool.category]) {
+      groupedTools[tool.category] = [];
+    }
+    groupedTools[tool.category].push(tool);
+  }
   
-  const categoriesArray = categoryOrder.map(id => {
-    if (id === 'all') return { id: 'all', name: '全部' };
-    if (id === 'favorites') return { id: 'favorites', name: '⭐ 收藏' };
-    const cat = categories[id];
-    return cat ? { id, name: cat.name } : null;
-  }).filter(Boolean);
+  // 生成 CATEGORIES 数组（单行格式）
+  const categoriesItems = [
+    "      { id: 'all', name: '全部' },",
+    "      { id: 'favorites', name: '⭐ 收藏' },"
+  ];
   
-  const categoriesJs = `const CATEGORIES = ${JSON.stringify(categoriesArray, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")};`;
+  for (const catId of CATEGORY_ORDER) {
+    const cat = categories[catId];
+    if (cat) {
+      categoriesItems.push(`      { id: '${catId}', name: '${escapeString(cat.name)}' },`);
+    }
+  }
   
-  // 生成 TOOLS 数组
-  const toolsArray = tools.map(tool => ({
-    url: tool.path,
-    category: tool.category,
-    name: tool.name,
-    desc: tool.description || tool.name,
-    icon: tool.icon || '🔧',
-    keywords: tool.keywords || tool.name
-  }));
+  const categoriesJs = `const CATEGORIES = [\n${categoriesItems.join('\n')}\n    ];`;
   
-  const toolsJs = `const TOOLS = ${JSON.stringify(toolsArray, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")};`;
+  // 生成 TOOLS 数组（按分类分组，每个工具一行）
+  const toolsLines = [];
+  
+  for (const catId of CATEGORY_ORDER) {
+    const catTools = groupedTools[catId];
+    if (catTools && catTools.length > 0) {
+      // 添加分类注释
+      toolsLines.push(`      // ${CATEGORY_COMMENTS[catId] || catId}`);
+      
+      // 添加该分类的所有工具
+      for (const tool of catTools) {
+        toolsLines.push(toolToJsLine(tool));
+      }
+    }
+  }
+  
+  const toolsJs = `const TOOLS = [\n${toolsLines.join('\n')}\n    ];`;
   
   // 读取 index.html
   if (!fs.existsSync(INDEX_HTML)) {
@@ -60,18 +118,22 @@ function main() {
   let indexHtml = fs.readFileSync(INDEX_HTML, 'utf8');
   
   // 替换 CATEGORIES 数组
-  const categoriesRegex = /const CATEGORIES = \[[\s\S]*?\];/;
+  // 匹配: const CATEGORIES = [...];
+  const categoriesRegex = /const CATEGORIES = \[\s*[\s\S]*?\n\s*\];/;
   if (categoriesRegex.test(indexHtml)) {
-    indexHtml = indexHtml.replace(categoriesRegex, categoriesJs);
+    // 使用函数作为替换参数，避免 $ 被解释为特殊字符
+    indexHtml = indexHtml.replace(categoriesRegex, () => categoriesJs);
     console.log('✅ Updated CATEGORIES array');
   } else {
     console.error('❌ Could not find CATEGORIES array in index.html');
   }
   
   // 替换 TOOLS 数组
-  const toolsRegex = /const TOOLS = \[[\s\S]*?\];(\s*\/\/ ={20,})/;
+  // 匹配: const TOOLS = [...]; (直到遇到 ];)
+  const toolsRegex = /const TOOLS = \[\s*[\s\S]*?\n\s*\];/;
   if (toolsRegex.test(indexHtml)) {
-    indexHtml = indexHtml.replace(toolsRegex, toolsJs + '\n\n    $1');
+    // 使用函数作为替换参数，避免 $ 被解释为特殊字符
+    indexHtml = indexHtml.replace(toolsRegex, () => toolsJs);
     console.log('✅ Updated TOOLS array');
   } else {
     console.error('❌ Could not find TOOLS array in index.html');
@@ -89,16 +151,8 @@ function main() {
   console.log(`\n✅ Updated index.html with ${tools.length} tools`);
   
   // 统计各分类数量
-  const groupedTools = {};
-  for (const tool of tools) {
-    if (!groupedTools[tool.category]) {
-      groupedTools[tool.category] = [];
-    }
-    groupedTools[tool.category].push(tool);
-  }
-  
   console.log('\n📊 Tools by category:');
-  for (const cat of categoryOrder) {
+  for (const cat of CATEGORY_ORDER) {
     if (categories[cat] && groupedTools[cat]) {
       console.log(`   ${categories[cat].icon || '📦'} ${categories[cat].name}: ${groupedTools[cat].length}`);
     }

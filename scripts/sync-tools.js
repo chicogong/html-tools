@@ -29,11 +29,18 @@ const COLOR_MAP = {
 function generateToolCard(tool, categories) {
   const category = categories[tool.category] || { icon: '🔧', color: 'cyan' };
   const color = COLOR_MAP[category.color] || COLOR_MAP.cyan;
+  const icon = tool.icon || category.icon;
+  const description = tool.description || tool.name;
   
   return `      <a href="${tool.path}" class="tool-card" data-category="${tool.category}" data-keywords="${tool.keywords}" style="--card-accent: ${color}">
         <div class="tool-card-header">
-          <span class="tool-icon">${category.icon}</span>
-          <span class="tool-name">${tool.name}</span>
+          <div class="tool-icon">${icon}</div>
+          <h3>${tool.name}</h3>
+        </div>
+        <p>${description}</p>
+        <div class="tool-card-footer">
+          <span class="tool-tag">${tool.category}</span>
+          <span class="tool-arrow">→</span>
         </div>
       </a>`;
 }
@@ -62,13 +69,13 @@ function main() {
   // 生成工具卡片 HTML
   const categoryOrder = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
   
-  let cardsHtml = '';
+  let cardsHtml = '\n';
   for (const cat of categoryOrder) {
     if (groupedTools[cat]) {
       const catInfo = categories[cat];
-      cardsHtml += `\n      <!-- ${catInfo.name} -->\n`;
+      cardsHtml += `      <!-- ${catInfo.name} -->\n`;
       for (const tool of groupedTools[cat]) {
-        cardsHtml += generateToolCard(tool, categories) + '\n';
+        cardsHtml += generateToolCard(tool, categories) + '\n\n';
       }
     }
   }

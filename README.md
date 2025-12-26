@@ -47,6 +47,16 @@
 | [颜色转换器](tools/dev/color-converter.html) | HEX、RGB、HSL 颜色格式互转 |
 | [HTML 实体编解码](tools/dev/html-entity.html) | HTML 实体编码与解码，常用实体参考 |
 | [进制转换器](tools/dev/number-base.html) | 二进制、八进制、十进制、十六进制互转 |
+| [JSON to Go](tools/dev/json-to-go.html) | 将 JSON 转换为 Go 结构体定义 |
+| [JSON to TypeScript](tools/dev/json-to-typescript.html) | 将 JSON 转换为 TypeScript 接口定义 |
+| [UserAgent 解析器](tools/dev/useragent-parser.html) | 解析浏览器 UserAgent 字符串，识别设备和浏览器信息 |
+| [ASCII 码表](tools/dev/ascii-table.html) | 完整 ASCII 字符表，支持搜索和分类浏览 |
+| [Unicode 查询](tools/dev/unicode-lookup.html) | 查询字符的 Unicode 编码信息，支持 UTF-8/UTF-16 |
+| [Semver 版本比较](tools/dev/semver-compare.html) | 语义化版本号比较和排序工具 |
+| [IP 地址转换](tools/dev/ip-converter.html) | IP 地址格式转换，支持点分十进制和整数格式 |
+| [cURL 转换器](tools/dev/curl-converter.html) | 将 cURL 命令转换为各种编程语言代码 |
+| [JSONPath 查询](tools/dev/jsonpath-query.html) | 使用 JSONPath 表达式查询 JSON 数据 |
+| [代码对比工具](tools/dev/code-diff.html) | 比较两段代码的差异，高亮显示新增和删除 |
 
 ### 文本工具
 
@@ -56,6 +66,12 @@
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [字数统计](tools/text/word-counter.html) | 统计字符、单词、句子、段落数量，支持目标字数进度追踪 |
 | [Lorem Ipsum 生成器](tools/text/lorem-ipsum.html) | 生成占位文本，支持段落、句子、单词模式 |
+| [大小写转换器](tools/text/case-converter.html) | 多种大小写格式转换：驼峰、下划线、全大写等 |
+| [文本去重排序](tools/text/text-dedup.html) | 按行去重、排序，支持多种排序方式 |
+| [字符串转义工具](tools/text/string-escape.html) | 多格式字符串转义和反转义 |
+| [CSV-JSON 转换](tools/text/csv-json.html) | CSV 与 JSON 格式双向转换 |
+| [盘古之白](tools/text/pangu-spacing.html) | 自动在中英文之间添加空格，优化排版 |
+| [文本随机化](tools/text/text-randomizer.html) | 随机打乱文本行、单词或字符顺序 |
 
 ### 时间工具
 
@@ -66,6 +82,9 @@
 | [时区转换器](tools/time/timezone-converter.html) | 在不同时区之间转换时间，方便跨时区协作 |
 | [日期计算器](tools/time/date-calculator.html) | 计算日期差异、日期推算、工作日统计 |
 | [Cron 表达式解析](tools/time/cron-parser.html) | 解析 Cron 表达式，展示可读描述和下次执行时间 |
+| [年龄计算器](tools/time/age-calculator.html) | 根据生日计算精确年龄，支持多种格式 |
+| [事件倒计时](tools/time/countdown.html) | 自定义事件倒计时，支持保存多个事件 |
+| [世界时钟](tools/time/world-clock.html) | 查看全球主要城市的当前时间 |
 
 ### 生成器
 
@@ -74,12 +93,20 @@
 | [UUID/ULID 生成器](tools/generator/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
 | [二维码生成器](tools/generator/qrcode-generator.html) | 生成自定义颜色和大小的二维码，支持下载 PNG |
 | [密码生成器](tools/generator/password-generator.html) | 生成安全随机密码，支持自定义长度和字符类型 |
+| [随机数生成器](tools/generator/random-number.html) | 生成指定范围内的随机数，支持批量生成 |
+| [假数据生成器](tools/generator/fake-data.html) | 生成姓名、邮箱、地址等测试数据 |
+| [占位图生成器](tools/generator/placeholder-image.html) | 生成指定尺寸的占位图片 |
+| [CSS 渐变生成器](tools/generator/css-gradient.html) | 可视化创建 CSS 渐变，支持多色停点 |
+| [Open Graph 预览](tools/generator/og-preview.html) | 预览社交媒体分享效果，生成 meta 标签 |
 
 ### 隐私工具
 
 | 工具 | 描述 |
 |------|------|
 | [日志脱敏](tools/privacy/log-masker.html) | 自动识别并脱敏 IP、邮箱、手机号等敏感信息 |
+| [HMAC 生成器](tools/privacy/hmac-generator.html) | 使用密钥生成 HMAC 签名 |
+| [RSA 加密解密](tools/privacy/rsa-tool.html) | RSA 密钥对生成、加密和解密 |
+| [随机密钥生成器](tools/privacy/random-key.html) | 生成安全的随机 API Key、Secret 等 |
 
 ### 媒体工具
 
@@ -89,6 +116,10 @@
 | [图片压缩对比](tools/media/image-resize.html) | 比较不同质量设置下的图片压缩效果，找到最佳平衡点 |
 | [SVG 渲染器](tools/media/svg-render.html) | 将 SVG 代码渲染为 PNG/JPEG 图片，支持自定义尺寸和背景 |
 | [摄像头拍照](tools/media/camera-demo.html) | 调用摄像头拍照并保存到本地 |
+| [图片格式批量转换](tools/media/image-format-converter.html) | 批量转换图片格式，支持 PNG/JPG/WebP/AVIF |
+| [EXIF 查看器](tools/media/exif-viewer.html) | 查看图片的 EXIF 元数据信息 |
+| [Favicon 生成器](tools/media/favicon-generator.html) | 快速生成网站图标，支持多种尺寸 |
+| [图片转 ASCII](tools/media/image-to-ascii.html) | 将图片转换为 ASCII 字符画 |
 
 ## 使用方式
 

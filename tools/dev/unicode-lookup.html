@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unicode 查询 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    input, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    textarea { resize: vertical; min-height: 80px; font-family: monospace; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .results { margin-top: 1.5rem; }
+    .char-card { display: inline-flex; flex-direction: column; align-items: center; padding: 1rem; margin: 0.5rem; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); min-width: 120px; cursor: pointer; transition: border-color 0.2s; }
+    .char-card:hover { border-color: var(--primary); }
+    .char-card .char { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .char-card .code { font-family: monospace; font-size: 0.85rem; color: var(--primary); }
+    .char-card .name { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.25rem; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail-panel { margin-top: 1.5rem; padding: 1rem; background: var(--bg); border-radius: var(--radius); display: none; }
+    .detail-panel.active { display: block; }
+    .detail-panel h3 { margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
+    .detail-panel .big-char { font-size: 4rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .detail-item { padding: 0.75rem; background: var(--card-bg); border-radius: var(--radius); }
+    .detail-item label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .detail-item .value { font-family: monospace; font-size: 0.95rem; word-break: break-all; }
+    .copy-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>Unicode 查询</h1>
+    <p class="desc">输入字符或 Unicode 码点，查看详细编码信息，支持批量查询</p>
+
+    <div class="card">
+      <div class="form-group">
+        <label>输入字符或码点 (如: 中, U+4E2D, 0x4E2D, 20013)</label>
+        <textarea id="input" placeholder="输入要查询的字符，每行一个或直接粘贴文本" oninput="lookup()"></textarea>
+      </div>
+
+      <div class="results" id="results"></div>
+
+      <div class="detail-panel" id="detailPanel">
+        <h3><span class="big-char" id="detailChar"></span><span id="detailName"></span></h3>
+        <div class="detail-grid" id="detailGrid"></div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function parseInput(str) {
+      str = str.trim();
+      if (str.match(/^U\+[0-9A-Fa-f]+$/i)) {
+        return parseInt(str.slice(2), 16);
+      }
+      if (str.match(/^0x[0-9A-Fa-f]+$/i)) {
+        return parseInt(str.slice(2), 16);
+      }
+      if (str.match(/^[0-9]+$/)) {
+        return parseInt(str, 10);
+      }
+      if (str.length === 1) {
+        return str.codePointAt(0);
+      }
+      return null;
+    }
+
+    function getCharInfo(codePoint) {
+      if (codePoint === null || codePoint < 0 || codePoint > 0x10FFFF) return null;
+
+      var char = String.fromCodePoint(codePoint);
+      var hex = codePoint.toString(16).toUpperCase().padStart(4, '0');
+
+      var utf8 = [];
+      if (codePoint < 0x80) {
+        utf8.push(codePoint);
+      } else if (codePoint < 0x800) {
+        utf8.push(0xC0 | (codePoint >> 6));
+        utf8.push(0x80 | (codePoint & 0x3F));
+      } else if (codePoint < 0x10000) {
+        utf8.push(0xE0 | (codePoint >> 12));
+        utf8.push(0x80 | ((codePoint >> 6) & 0x3F));
+        utf8.push(0x80 | (codePoint & 0x3F));
+      } else {
+        utf8.push(0xF0 | (codePoint >> 18));
+        utf8.push(0x80 | ((codePoint >> 12) & 0x3F));
+        utf8.push(0x80 | ((codePoint >> 6) & 0x3F));
+        utf8.push(0x80 | (codePoint & 0x3F));
+      }
+
+      var utf16 = [];
+      if (codePoint < 0x10000) {
+        utf16.push(codePoint);
+      } else {
+        var offset = codePoint - 0x10000;
+        utf16.push(0xD800 + (offset >> 10));
+        utf16.push(0xDC00 + (offset & 0x3FF));
+      }
+
+      return {
+        char: char,
+        codePoint: codePoint,
+        hex: 'U+' + hex,
+        decimal: codePoint.toString(),
+        utf8Hex: utf8.map(function(b) { return b.toString(16).toUpperCase().padStart(2, '0'); }).join(' '),
+        utf8Bytes: utf8.length + ' bytes',
+        utf16Hex: utf16.map(function(u) { return u.toString(16).toUpperCase().padStart(4, '0'); }).join(' '),
+        htmlEntity: '&#' + codePoint + ';',
+        htmlHex: '&#x' + hex + ';',
+        cssEscape: '\\' + hex,
+        jsEscape: codePoint < 0x10000 ? '\\u' + hex : '\\u{' + codePoint.toString(16).toUpperCase() + '}'
+      };
+    }
+
+    function lookup() {
+      var input = document.getElementById('input').value;
+      var results = document.getElementById('results');
+      while (results.firstChild) results.removeChild(results.firstChild);
+
+      var chars = [];
+      var lines = input.split(/[\n,]/);
+      lines.forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var cp = parseInput(line);
+        if (cp !== null) {
+          chars.push(cp);
+        } else {
+          for (var i = 0; i < line.length; ) {
+            var cp2 = line.codePointAt(i);
+            chars.push(cp2);
+            i += cp2 > 0xFFFF ? 2 : 1;
+          }
+        }
+      });
+
+      chars.slice(0, 100).forEach(function(cp) {
+        var info = getCharInfo(cp);
+        if (!info) return;
+
+        var card = document.createElement('div');
+        card.className = 'char-card';
+        card.onclick = function() { showDetail(cp); };
+
+        var charSpan = document.createElement('div');
+        charSpan.className = 'char';
+        charSpan.textContent = info.char;
+        card.appendChild(charSpan);
+
+        var codeSpan = document.createElement('div');
+        codeSpan.className = 'code';
+        codeSpan.textContent = info.hex;
+        card.appendChild(codeSpan);
+
+        results.appendChild(card);
+      });
+
+      if (chars.length > 0) {
+        showDetail(chars[0]);
+      }
+    }
+
+    function showDetail(codePoint) {
+      var info = getCharInfo(codePoint);
+      if (!info) return;
+
+      document.getElementById('detailChar').textContent = info.char;
+      document.getElementById('detailName').textContent = info.hex;
+      document.getElementById('detailPanel').className = 'detail-panel active';
+
+      var grid = document.getElementById('detailGrid');
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+      var items = [
+        { label: 'Unicode 码点', value: info.hex },
+        { label: '十进制', value: info.decimal },
+        { label: 'UTF-8', value: info.utf8Hex + ' (' + info.utf8Bytes + ')' },
+        { label: 'UTF-16', value: info.utf16Hex },
+        { label: 'HTML 实体 (十进制)', value: info.htmlEntity },
+        { label: 'HTML 实体 (十六进制)', value: info.htmlHex },
+        { label: 'CSS 转义', value: info.cssEscape },
+        { label: 'JavaScript 转义', value: info.jsEscape }
+      ];
+
+      items.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'detail-item';
+
+        var label = document.createElement('label');
+        label.textContent = item.label;
+        div.appendChild(label);
+
+        var valueDiv = document.createElement('div');
+        valueDiv.className = 'value';
+        valueDiv.textContent = item.value;
+
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-success copy-btn';
+        copyBtn.textContent = '复制';
+        copyBtn.onclick = function(e) {
+          e.stopPropagation();
+          navigator.clipboard.writeText(item.value).then(function() {
+            copyBtn.textContent = '已复制';
+            setTimeout(function() { copyBtn.textContent = '复制'; }, 1000);
+          });
+        };
+        valueDiv.appendChild(copyBtn);
+
+        div.appendChild(valueDiv);
+        grid.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>代码对比工具 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; --add-bg: #d4edda; --del-bg: #f8d7da; --add-color: #155724; --del-color: #721c24; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --danger: #ff6b6b; --shadow: 0 2px 8px rgb(0,0,0,0.3); --add-bg: #1e4620; --del-bg: #4a1c1c; --add-color: #98d89a; --del-color: #f5a5a5; } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .editors { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .editor-box label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .editor-box textarea { width: 100%; height: 250px; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-family: monospace; font-size: 0.9rem; resize: vertical; }
+    .toolbar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 0.9rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .stats { color: var(--text-muted); font-size: 0.9rem; }
+    .diff-output { max-height: 500px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    .diff-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 0.85rem; }
+    .diff-table td { padding: 0 0.5rem; vertical-align: top; white-space: pre-wrap; word-break: break-all; }
+    .diff-table .line-num { width: 50px; text-align: right; color: var(--text-muted); background: var(--bg); border-right: 1px solid var(--border); user-select: none; }
+    .diff-table .line-content { min-width: 200px; }
+    .diff-table .add { background: var(--add-bg); }
+    .diff-table .add .line-content { color: var(--add-color); }
+    .diff-table .del { background: var(--del-bg); }
+    .diff-table .del .line-content { color: var(--del-color); }
+    .diff-table .sep { background: var(--bg); color: var(--primary); font-weight: bold; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 768px) { .editors { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>代码对比工具</h1>
+    <p class="desc">比较两段代码或文本的差异，高亮显示新增和删除的行</p>
+
+    <div class="card">
+      <div class="editors">
+        <div class="editor-box">
+          <label>原始文本</label>
+          <textarea id="original" placeholder="粘贴原始代码或文本..." oninput="compare()"></textarea>
+        </div>
+        <div class="editor-box">
+          <label>修改后文本</label>
+          <textarea id="modified" placeholder="粘贴修改后的代码或文本..." oninput="compare()"></textarea>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="compare()">对比</button>
+        <button class="btn" onclick="swap()">交换</button>
+        <button class="btn" onclick="clearAll()">清空</button>
+        <span class="stats" id="stats"></span>
+      </div>
+
+      <div class="diff-output">
+        <table class="diff-table" id="diffTable"></table>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function compare() {
+      var original = document.getElementById('original').value;
+      var modified = document.getElementById('modified').value;
+
+      var oldLines = original.split('\n');
+      var newLines = modified.split('\n');
+
+      var diff = computeDiff(oldLines, newLines);
+      renderDiff(diff);
+    }
+
+    function computeDiff(oldLines, newLines) {
+      var m = oldLines.length;
+      var n = newLines.length;
+
+      var dp = [];
+      for (var i = 0; i <= m; i++) {
+        dp[i] = [];
+        for (var j = 0; j <= n; j++) {
+          dp[i][j] = 0;
+        }
+      }
+
+      for (var i = 1; i <= m; i++) {
+        for (var j = 1; j <= n; j++) {
+          if (oldLines[i-1] === newLines[j-1]) {
+            dp[i][j] = dp[i-1][j-1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+          }
+        }
+      }
+
+      var result = [];
+      var i = m, j = n;
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && oldLines[i-1] === newLines[j-1]) {
+          result.unshift({ type: 'same', oldNum: i, newNum: j, content: oldLines[i-1] });
+          i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+          result.unshift({ type: 'add', oldNum: null, newNum: j, content: newLines[j-1] });
+          j--;
+        } else {
+          result.unshift({ type: 'del', oldNum: i, newNum: null, content: oldLines[i-1] });
+          i--;
+        }
+      }
+
+      return result;
+    }
+
+    function renderDiff(diff) {
+      var table = document.getElementById('diffTable');
+      while (table.firstChild) table.removeChild(table.firstChild);
+
+      var additions = 0, deletions = 0;
+
+      diff.forEach(function(item) {
+        var tr = document.createElement('tr');
+        tr.className = item.type === 'add' ? 'add' : (item.type === 'del' ? 'del' : '');
+
+        var tdOldNum = document.createElement('td');
+        tdOldNum.className = 'line-num';
+        tdOldNum.textContent = item.oldNum || '';
+        tr.appendChild(tdOldNum);
+
+        var tdNewNum = document.createElement('td');
+        tdNewNum.className = 'line-num';
+        tdNewNum.textContent = item.newNum || '';
+        tr.appendChild(tdNewNum);
+
+        var tdSign = document.createElement('td');
+        tdSign.style.width = '20px';
+        tdSign.style.textAlign = 'center';
+        if (item.type === 'add') { tdSign.textContent = '+'; additions++; }
+        else if (item.type === 'del') { tdSign.textContent = '-'; deletions++; }
+        tr.appendChild(tdSign);
+
+        var tdContent = document.createElement('td');
+        tdContent.className = 'line-content';
+        tdContent.textContent = item.content;
+        tr.appendChild(tdContent);
+
+        table.appendChild(tr);
+      });
+
+      var stats = document.getElementById('stats');
+      stats.textContent = '共 ' + diff.length + ' 行，+' + additions + ' 新增，-' + deletions + ' 删除';
+    }
+
+    function swap() {
+      var orig = document.getElementById('original');
+      var mod = document.getElementById('modified');
+      var temp = orig.value;
+      orig.value = mod.value;
+      mod.value = temp;
+      compare();
+    }
+
+    function clearAll() {
+      document.getElementById('original').value = '';
+      document.getElementById('modified').value = '';
+      document.getElementById('diffTable').innerHTML = '';
+      document.getElementById('stats').textContent = '';
+    }
+  </script>
+</body>
+</html>

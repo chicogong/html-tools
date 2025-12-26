@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASCII 码表 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .search-box { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .search-box input { flex: 1; min-width: 200px; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); cursor: pointer; }
+    .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .ascii-table { width: 100%; border-collapse: collapse; font-family: monospace; }
+    .ascii-table th, .ascii-table td { padding: 0.5rem; text-align: center; border: 1px solid var(--border); }
+    .ascii-table th { background: var(--bg); font-weight: 600; position: sticky; top: 0; }
+    .ascii-table tr:hover { background: var(--bg); }
+    .char-display { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+    .ctrl-char { color: var(--text-muted); font-style: italic; }
+    .highlight { background: rgba(13, 110, 253, 0.2); }
+    .table-wrapper { max-height: 600px; overflow: auto; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>ASCII 码表</h1>
+    <p class="desc">完整 ASCII 字符表，支持按字符、十进制、十六进制搜索，显示控制字符名称</p>
+
+    <div class="card">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="搜索字符、十进制或十六进制 (如: A, 65, 0x41)" oninput="filterTable()">
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-range="all" onclick="setRange('all')">全部 (0-127)</button>
+        <button class="tab" data-range="ctrl" onclick="setRange('ctrl')">控制字符 (0-31)</button>
+        <button class="tab" data-range="print" onclick="setRange('print')">可打印 (32-126)</button>
+        <button class="tab" data-range="ext" onclick="setRange('ext')">扩展 (128-255)</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="ascii-table">
+          <thead>
+            <tr>
+              <th>Dec</th>
+              <th>Hex</th>
+              <th>Oct</th>
+              <th>Bin</th>
+              <th>字符</th>
+              <th>描述</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var ctrlNames = [
+      'NUL (空)', 'SOH (标题开始)', 'STX (正文开始)', 'ETX (正文结束)',
+      'EOT (传输结束)', 'ENQ (请求)', 'ACK (确认)', 'BEL (响铃)',
+      'BS (退格)', 'HT (水平制表)', 'LF (换行)', 'VT (垂直制表)',
+      'FF (换页)', 'CR (回车)', 'SO (移出)', 'SI (移入)',
+      'DLE (数据链路转义)', 'DC1 (设备控制1)', 'DC2 (设备控制2)', 'DC3 (设备控制3)',
+      'DC4 (设备控制4)', 'NAK (否认)', 'SYN (同步)', 'ETB (传输块结束)',
+      'CAN (取消)', 'EM (媒介结束)', 'SUB (替换)', 'ESC (转义)',
+      'FS (文件分隔)', 'GS (组分隔)', 'RS (记录分隔)', 'US (单元分隔)'
+    ];
+
+    var currentRange = 'all';
+    var searchTerm = '';
+
+    function getCharDisplay(code) {
+      if (code < 32) return ctrlNames[code].split(' ')[0];
+      if (code === 32) return 'SP';
+      if (code === 127) return 'DEL';
+      if (code > 127 && code < 160) return '·';
+      return String.fromCharCode(code);
+    }
+
+    function getDescription(code) {
+      if (code < 32) return ctrlNames[code];
+      if (code === 32) return 'Space (空格)';
+      if (code === 127) return 'DEL (删除)';
+      if (code >= 48 && code <= 57) return '数字 ' + String.fromCharCode(code);
+      if (code >= 65 && code <= 90) return '大写字母 ' + String.fromCharCode(code);
+      if (code >= 97 && code <= 122) return '小写字母 ' + String.fromCharCode(code);
+      if (code > 127) return '扩展 ASCII';
+      return '标点/符号';
+    }
+
+    function buildTable() {
+      var tbody = document.getElementById('tableBody');
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+
+      var start = 0, end = 127;
+      if (currentRange === 'ctrl') { start = 0; end = 31; }
+      else if (currentRange === 'print') { start = 32; end = 126; }
+      else if (currentRange === 'ext') { start = 128; end = 255; }
+
+      for (var i = start; i <= end; i++) {
+        var dec = i.toString();
+        var hex = '0x' + i.toString(16).toUpperCase().padStart(2, '0');
+        var oct = '0' + i.toString(8).padStart(3, '0');
+        var bin = i.toString(2).padStart(8, '0');
+        var char = getCharDisplay(i);
+        var desc = getDescription(i);
+
+        var match = !searchTerm;
+        if (searchTerm) {
+          var term = searchTerm.toLowerCase();
+          match = dec.includes(term) ||
+                  hex.toLowerCase().includes(term) ||
+                  char.toLowerCase().includes(term) ||
+                  desc.toLowerCase().includes(term);
+        }
+
+        if (match) {
+          var tr = document.createElement('tr');
+          if (searchTerm) tr.className = 'highlight';
+
+          var tdDec = document.createElement('td');
+          tdDec.textContent = dec;
+          tr.appendChild(tdDec);
+
+          var tdHex = document.createElement('td');
+          tdHex.textContent = hex;
+          tr.appendChild(tdHex);
+
+          var tdOct = document.createElement('td');
+          tdOct.textContent = oct;
+          tr.appendChild(tdOct);
+
+          var tdBin = document.createElement('td');
+          tdBin.textContent = bin;
+          tr.appendChild(tdBin);
+
+          var tdChar = document.createElement('td');
+          tdChar.className = i < 32 || i === 127 ? 'char-display ctrl-char' : 'char-display';
+          tdChar.textContent = char;
+          tr.appendChild(tdChar);
+
+          var tdDesc = document.createElement('td');
+          tdDesc.textContent = desc;
+          tr.appendChild(tdDesc);
+
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    function setRange(range) {
+      currentRange = range;
+      var tabs = document.querySelectorAll('.tab');
+      tabs.forEach(function(tab) {
+        tab.classList.toggle('active', tab.dataset.range === range);
+      });
+      buildTable();
+    }
+
+    function filterTable() {
+      searchTerm = document.getElementById('search').value.trim();
+      buildTable();
+    }
+
+    buildTable();
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HMAC 生成器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    input, textarea, select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    textarea { resize: vertical; min-height: 100px; font-family: monospace; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .output { margin-top: 1rem; padding: 1rem; background: var(--bg); border-radius: var(--radius); font-family: monospace; word-break: break-all; }
+    .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>HMAC 生成器</h1>
+    <p class="desc">使用密钥生成 HMAC (Hash-based Message Authentication Code)，支持多种哈希算法</p>
+
+    <div class="card">
+      <div class="row">
+        <div class="form-group">
+          <label>哈希算法</label>
+          <select id="algorithm" onchange="generate()">
+            <option value="SHA-256">HMAC-SHA256</option>
+            <option value="SHA-384">HMAC-SHA384</option>
+            <option value="SHA-512">HMAC-SHA512</option>
+            <option value="SHA-1">HMAC-SHA1</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>输出格式</label>
+          <select id="format" onchange="generate()">
+            <option value="hex">十六进制 (Hex)</option>
+            <option value="base64">Base64</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>密钥 (Secret Key)</label>
+        <input type="text" id="key" placeholder="输入用于签名的密钥" oninput="generate()">
+      </div>
+
+      <div class="form-group">
+        <label>消息 (Message)</label>
+        <textarea id="message" placeholder="输入要签名的消息" oninput="generate()"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>HMAC 签名</label>
+        <div class="output" id="output">-</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-success" onclick="copyOutput()">复制签名</button>
+        <button class="btn" onclick="clearAll()">清空</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    async function generate() {
+      var key = document.getElementById('key').value;
+      var message = document.getElementById('message').value;
+      var algorithm = document.getElementById('algorithm').value;
+      var format = document.getElementById('format').value;
+
+      if (!key || !message) {
+        document.getElementById('output').textContent = '-';
+        return;
+      }
+
+      try {
+        var encoder = new TextEncoder();
+        var keyData = encoder.encode(key);
+        var messageData = encoder.encode(message);
+
+        var cryptoKey = await crypto.subtle.importKey(
+          'raw',
+          keyData,
+          { name: 'HMAC', hash: algorithm },
+          false,
+          ['sign']
+        );
+
+        var signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+        var result;
+
+        if (format === 'hex') {
+          var bytes = new Uint8Array(signature);
+          result = Array.from(bytes).map(function(b) {
+            return b.toString(16).padStart(2, '0');
+          }).join('');
+        } else {
+          result = btoa(String.fromCharCode.apply(null, new Uint8Array(signature)));
+        }
+
+        document.getElementById('output').textContent = result;
+      } catch (e) {
+        document.getElementById('output').textContent = '错误: ' + e.message;
+      }
+    }
+
+    function copyOutput() {
+      var output = document.getElementById('output').textContent;
+      if (output && output !== '-') {
+        navigator.clipboard.writeText(output).then(function() {
+          event.target.textContent = '已复制!';
+          setTimeout(function() { event.target.textContent = '复制签名'; }, 1500);
+        });
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('key').value = '';
+      document.getElementById('message').value = '';
+      document.getElementById('output').textContent = '-';
+    }
+  </script>
+</body>
+</html>

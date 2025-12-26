@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IP 地址转换器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d;
+      --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+    input { width: 100%; padding: 12px; font-family: monospace; font-size: 1rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
+    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgb(13,110,253,0.15); }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .result-item { background: var(--bg); border-radius: var(--radius); padding: 16px; }
+    .result-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+    .result-value { font-family: monospace; font-size: 1rem; word-break: break-all; }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>IP 地址转换器</h1>
+    <p class="desc">IPv4 地址与十进制、十六进制、二进制格式互转</p>
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnConvert" class="primary">转换</button>
+        <button id="btnClear">清空</button>
+      </div>
+      <label for="input">输入 IP 地址或数值</label>
+      <input type="text" id="input" placeholder="192.168.1.1 或 3232235777 或 0xC0A80101">
+      <div id="status" class="status"></div>
+      <div class="result-grid">
+        <div class="result-item"><div class="result-label">点分十进制</div><div class="result-value" id="dotted">-</div></div>
+        <div class="result-item"><div class="result-label">十进制</div><div class="result-value" id="decimal">-</div></div>
+        <div class="result-item"><div class="result-label">十六进制</div><div class="result-value" id="hex">-</div></div>
+        <div class="result-item"><div class="result-label">二进制</div><div class="result-value" id="binary">-</div></div>
+        <div class="result-item"><div class="result-label">八进制</div><div class="result-value" id="octal">-</div></div>
+        <div class="result-item"><div class="result-label">分组二进制</div><div class="result-value" id="binaryGroup">-</div></div>
+      </div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const inputEl = document.getElementById('input');
+    const statusEl = document.getElementById('status');
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    function ipToInt(ip) {
+      const parts = ip.split('.').map(Number);
+      if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return null;
+      return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+    }
+    function intToIp(n) {
+      return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+    }
+    function convert() {
+      let input = inputEl.value.trim();
+      if (!input) { showStatus('请输入 IP 地址', 'error'); return; }
+      let num;
+      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(input)) {
+        num = ipToInt(input);
+        if (num === null) { showStatus('无效的 IP 地址', 'error'); return; }
+      } else if (input.toLowerCase().startsWith('0x')) {
+        num = parseInt(input, 16);
+      } else if (/^[01]{32}$/.test(input)) {
+        num = parseInt(input, 2);
+      } else {
+        num = parseInt(input, 10);
+      }
+      if (isNaN(num) || num < 0 || num > 0xFFFFFFFF) { showStatus('无效的输入', 'error'); return; }
+      num = num >>> 0;
+      document.getElementById('dotted').textContent = intToIp(num);
+      document.getElementById('decimal').textContent = num;
+      document.getElementById('hex').textContent = '0x' + num.toString(16).toUpperCase().padStart(8, '0');
+      document.getElementById('binary').textContent = num.toString(2).padStart(32, '0');
+      document.getElementById('octal').textContent = '0' + num.toString(8);
+      const bin = num.toString(2).padStart(32, '0');
+      document.getElementById('binaryGroup').textContent = [bin.slice(0,8), bin.slice(8,16), bin.slice(16,24), bin.slice(24,32)].join('.');
+      showStatus('转换成功', 'success');
+    }
+    document.getElementById('btnPaste').onclick = async () => { try { inputEl.value = await navigator.clipboard.readText(); convert(); } catch(e) { showStatus('无法访问剪贴板', 'error'); }};
+    document.getElementById('btnConvert').onclick = convert;
+    document.getElementById('btnClear').onclick = () => { inputEl.value = ''; ['dotted','decimal','hex','binary','octal','binaryGroup'].forEach(id => document.getElementById(id).textContent = '-'); showStatus('已清空', 'success'); };
+    inputEl.addEventListener('input', convert);
+  </script>
+</body>
+</html>

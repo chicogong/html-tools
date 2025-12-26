@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JSON 路径查询器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .query-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .query-row input { flex: 1; padding: 12px; font-family: monospace; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); }
+    .query-row input:focus { outline: none; border-color: var(--primary); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+    textarea { width: 100%; height: 350px; padding: 12px; font-family: monospace; font-size: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; line-height: 1.5; }
+    textarea:focus { outline: none; border-color: var(--primary); }
+    .examples { background: var(--bg); border-radius: var(--radius); padding: 12px; margin-bottom: 16px; }
+    .examples-title { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .example-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .example-chip { padding: 4px 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; font-family: monospace; font-size: 0.8rem; cursor: pointer; }
+    .example-chip:hover { border-color: var(--primary); color: var(--primary); }
+    .status { font-size: 0.85rem; margin-top: 12px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>JSON 路径查询器</h1>
+    <p class="desc">使用简化的 JSONPath 语法查询 JSON 数据</p>
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴 JSON</button>
+        <button id="btnQuery" class="primary">查询</button>
+        <button id="btnCopy">复制结果</button>
+        <button id="btnClear">清空</button>
+      </div>
+      <div class="examples">
+        <div class="examples-title">常用查询示例 (点击使用)</div>
+        <div class="example-chips">
+          <span class="example-chip" data-path="$.name">$.name</span>
+          <span class="example-chip" data-path="$.users[0]">$.users[0]</span>
+          <span class="example-chip" data-path="$.users[*].name">$.users[*].name</span>
+          <span class="example-chip" data-path="$.data.items[-1]">$.data.items[-1]</span>
+          <span class="example-chip" data-path="$..id">$..id</span>
+        </div>
+      </div>
+      <div class="query-row">
+        <input type="text" id="pathInput" placeholder="输入查询路径，如: $.store.book[0].title 或 $..author">
+        <button class="primary" id="btnQueryPath">查询</button>
+      </div>
+      <div class="grid">
+        <div><label>JSON 数据</label><textarea id="input" placeholder='{"name": "张三", "users": [{"id": 1, "name": "用户1"}, {"id": 2, "name": "用户2"}]}'></textarea></div>
+        <div><label>查询结果</label><textarea id="output" readonly placeholder="查询结果将显示在这里..."></textarea></div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const pathInputEl = document.getElementById('pathInput');
+    const statusEl = document.getElementById('status');
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    function queryJsonPath(obj, path) {
+      const results = [];
+      function traverse(current, pathParts, idx) {
+        if (idx >= pathParts.length) { results.push(current); return; }
+        const part = pathParts[idx];
+        if (part === '*') {
+          if (Array.isArray(current)) current.forEach(item => traverse(item, pathParts, idx + 1));
+          else if (typeof current === 'object' && current !== null) Object.values(current).forEach(v => traverse(v, pathParts, idx + 1));
+        } else if (part === '..') {
+          traverse(current, pathParts, idx + 1);
+          if (typeof current === 'object' && current !== null) {
+            const vals = Array.isArray(current) ? current : Object.values(current);
+            vals.forEach(v => traverse(v, pathParts, idx));
+          }
+        } else if (part.match(/^\[-?\d+\]$/)) {
+          const i = parseInt(part.slice(1, -1), 10);
+          if (Array.isArray(current)) {
+            const realIdx = i < 0 ? current.length + i : i;
+            if (current[realIdx] !== undefined) traverse(current[realIdx], pathParts, idx + 1);
+          }
+        } else if (part.match(/^\[\*\]$/)) {
+          if (Array.isArray(current)) current.forEach(item => traverse(item, pathParts, idx + 1));
+        } else {
+          if (current && typeof current === 'object' && part in current) traverse(current[part], pathParts, idx + 1);
+        }
+      }
+      // 解析路径
+      let p = path.replace(/^\$\.?/, '');
+      const parts = [];
+      let current = '';
+      let inBracket = false;
+      for (let i = 0; i < p.length; i++) {
+        const c = p[i];
+        if (c === '[') { if (current) parts.push(current); current = '['; inBracket = true; }
+        else if (c === ']') { current += ']'; parts.push(current); current = ''; inBracket = false; }
+        else if (c === '.' && !inBracket) {
+          if (current) parts.push(current);
+          current = '';
+          if (p[i+1] === '.') { parts.push('..'); i++; }
+        }
+        else current += c;
+      }
+      if (current) parts.push(current);
+      traverse(obj, parts, 0);
+      return results;
+    }
+    function query() {
+      const json = inputEl.value.trim();
+      const path = pathInputEl.value.trim();
+      if (!json) { showStatus('请输入 JSON 数据', 'error'); return; }
+      if (!path) { showStatus('请输入查询路径', 'error'); return; }
+      try {
+        const obj = JSON.parse(json);
+        const results = queryJsonPath(obj, path);
+        if (results.length === 0) { outputEl.value = '未找到匹配结果'; showStatus('查询完成，无结果', 'success'); }
+        else if (results.length === 1) { outputEl.value = JSON.stringify(results[0], null, 2); showStatus('找到 1 个结果', 'success'); }
+        else { outputEl.value = JSON.stringify(results, null, 2); showStatus(`找到 ${results.length} 个结果`, 'success'); }
+      } catch (e) { outputEl.value = ''; showStatus('错误: ' + e.message, 'error'); }
+    }
+    document.querySelectorAll('.example-chip').forEach(chip => { chip.onclick = () => { pathInputEl.value = chip.dataset.path; if (inputEl.value.trim()) query(); }; });
+    document.getElementById('btnPaste').onclick = async () => { try { inputEl.value = await navigator.clipboard.readText(); showStatus('已粘贴', 'success'); } catch(e) { showStatus('无法访问剪贴板', 'error'); }};
+    document.getElementById('btnQuery').onclick = query;
+    document.getElementById('btnQueryPath').onclick = query;
+    document.getElementById('btnCopy').onclick = async () => { if (!outputEl.value) { showStatus('没有可复制的内容', 'error'); return; } try { await navigator.clipboard.writeText(outputEl.value); showStatus('已复制', 'success'); } catch(e) { showStatus('复制失败', 'error'); }};
+    document.getElementById('btnClear').onclick = () => { inputEl.value = ''; outputEl.value = ''; pathInputEl.value = ''; showStatus('已清空', 'success'); };
+    pathInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') query(); });
+  </script>
+</body>
+</html>

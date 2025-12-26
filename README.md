@@ -49,17 +49,19 @@
 | [颜色对比度检查器](tools/dev/contrast-checker.html) | 检查颜色对比度是否符合 WCAG 2.1 无障碍标准 |
 | [颜色转换器](tools/dev/color-converter.html) | HEX、RGB、HSL 颜色格式互转，可视化调色 |
 | [正则测试器](tools/dev/regex-tester.html) | 正则表达式测试，匹配高亮，捕获组展示 |
+| [正则表达式速查](tools/dev/regex-cheatsheet.html) | 正则表达式语法速查表 |
 | [ASCII 码表](tools/dev/ascii-table.html) | ASCII 码表速查 |
 | [ASCII 艺术](tools/dev/ascii-art.html) | 将文字转换为 ASCII 艺术字体 |
 | [Base64 编解码](tools/dev/base64.html) | Base64 编码与解码，支持文本和文件 |
+| [Basic Auth 生成器](tools/dev/basic-auth-generator.html) | 生成 HTTP Basic Authentication 头部 |
 | [Box Shadow 生成器](tools/dev/box-shadow.html) | 可视化创建 CSS box-shadow，支持多层阴影和预设样式 |
 | [Chmod 计算器](tools/dev/chmod-calculator.html) | Linux 文件权限计算，支持数字和符号模式互转 |
 | [Cron 生成器](tools/dev/cron-generator.html) | 可视化生成 Cron 表达式 |
 | [CSS 格式化](tools/dev/css-formatter.html) | CSS 代码格式化和压缩 |
-| [CSS 渐变生成器](tools/dev/css-gradient.html) | CSS 渐变生成器，支持线性和径向渐变 |
 | [cURL 转换器](tools/dev/curl-converter.html) | 将 cURL 命令转换为各种编程语言代码 |
 | [Emoji 选择器](tools/dev/emoji-picker.html) | 浏览和复制各种 Emoji 表情符号 |
 | [Glob 模式测试](tools/dev/glob-tester.html) | Glob 模式匹配测试 |
+| [Git 命令速查](tools/dev/git-cheatsheet.html) | 常用 Git 命令速查表 |
 | [Hash 生成器](tools/dev/hash-generator.html) | 计算文本或文件的 MD5、SHA-1、SHA-256、SHA-512 哈希值 |
 | [Hex 查看器](tools/dev/hex-viewer.html) | 以十六进制查看文件或文本内容 |
 | [HMAC 生成器](tools/dev/hmac-generator.html) | 生成 HMAC 消息认证码，支持多种哈希算法 |
@@ -70,12 +72,11 @@
 | [JSON → TypeScript 类型生成](tools/dev/json-typescript.html) | JSON 转 TypeScript 类型 |
 | [JSON 格式化](tools/dev/json-formatter.html) | JSON 格式化、压缩、校验，支持错误定位和语法高亮 |
 | [JSON 转 Go Struct](tools/dev/json-to-go.html) | JSON 转 Go Struct |
-| [JSON 转 TypeScript](tools/dev/json-to-typescript.html) | JSON 转 TypeScript 类型 |
 | [JSON-YAML 转换](tools/dev/json-yaml.html) | JSON 与 YAML 格式互转，支持格式化输出 |
 | [JSONPath 查询](tools/dev/jsonpath-query.html) | 使用 JSONPath 表达式查询 JSON 数据 |
-| [JSONPath 查询器](tools/dev/jsonpath.html) | JSONPath 表达式查询 |
 | [JWT 解码器](tools/dev/jwt-decoder.html) | 解码 JWT Token，查看 Header、Payload 和签名信息 |
 | [Keycode 查看器](tools/dev/keycode.html) | 获取键盘按键的 KeyCode 值 |
+| [MIME 类型查询](tools/dev/mime-lookup.html) | 查询文件扩展名对应的 MIME 类型 |
 | [OTP 验证码生成器](tools/dev/otp-generator.html) | 生成一次性密码 (OTP/TOTP) |
 | [Protobuf 解码器](tools/dev/protobuf-decoder.html) | 解码 Protobuf 二进制数据，无需 schema 定义 |
 | [RSA 密钥对生成器](tools/dev/rsa-keygen.html) | 生成 RSA 公私钥对 |
@@ -83,12 +84,12 @@
 | [Slug 生成器](tools/dev/slug-generator.html) | 生成 URL 友好的 slug 字符串 |
 | [SQL 格式化](tools/dev/sql-formatter.html) | SQL 语句格式化和美化 |
 | [TOML/YAML/JSON 转换器](tools/dev/toml-yaml-json.html) | TOML、YAML、JSON 配置格式互相转换 |
-| [UA 解析器](tools/dev/ua-parser.html) | 解析 User-Agent 字符串，识别浏览器、操作系统和设备 |
 | [Unicode 查询](tools/dev/unicode-lookup.html) | Unicode 字符查询和信息 |
 | [Unicode 转换器](tools/dev/unicode-converter.html) | Unicode 编解码，支持 \uXXXX、HTML 实体等格式 |
 | [URL 编解码](tools/dev/url-codec.html) | URL 编码与解码，支持完整 URL 或组件 |
-| [UserAgent 解析器](tools/dev/useragent-parser.html) | 解析 User-Agent 字符串 |
+| [URL 解析器](tools/dev/url-parser.html) | 解析 URL 各组成部分，提取查询参数 |
 | [XML 格式化](tools/dev/xml-formatter.html) | XML 格式化和验证 |
+| [XML ⇄ JSON 转换](tools/dev/xml-json.html) | XML 与 JSON 格式互转 |
 
 ### 文本工具
 
@@ -109,7 +110,6 @@
 | [字符串转义](tools/text/string-escape.html) | 字符串转义和反转义 |
 | [字数统计](tools/text/word-counter.html) | 统计字符、单词、句子、段落数量 |
 | [CSV ⇄ JSON 转换](tools/text/csv-json.html) | CSV 与 JSON 互转 |
-| [Emoji 选择器](tools/text/emoji-picker.html) | 搜索并复制 Emoji 表情，按分类浏览 |
 | [Lorem Ipsum 生成器](tools/text/lorem-ipsum.html) | 生成占位文本，支持段落、句子、单词模式 |
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [NATO 字母表](tools/text/nato-alphabet.html) | NATO 音标字母表转换 |
@@ -124,7 +124,6 @@
 | [年龄计算器](tools/time/age-calculator.html) | 根据生日计算精确年龄、星座、生肖等信息 |
 | [日期计算器](tools/time/date-calculator.html) | 计算日期差异、日期推算、工作日统计 |
 | [时间戳转换](tools/time/timestamp.html) | 时间戳与日期互转，支持多种格式和时区 |
-| [时间戳转换器](tools/time/timestamp-converter.html) | Unix 时间戳与日期时间互转，支持秒和毫秒 |
 | [时区转换器](tools/time/timezone-converter.html) | 在不同时区之间转换时间 |
 | [世界时钟](tools/time/world-clock.html) | 世界时钟 |
 | [Cron 表达式解析](tools/time/cron-parser.html) | 解析 Cron 表达式，展示可读描述和下次执行时间 |
@@ -137,7 +136,6 @@
 | [假数据生成器](tools/generator/fake-data.html) | 生成测试用的假数据：姓名、邮箱、地址、电话等 |
 | [密码生成器](tools/generator/password-generator.html) | 生成安全随机密码，支持自定义长度和字符类型 |
 | [随机数生成器](tools/generator/random-number.html) | 随机数生成器 |
-| [条形码生成器](tools/generator/barcode-generator.html) | 生成 EAN-13、Code128 等多种格式条形码 |
 | [条形码生成器](tools/generator/barcode.html) | 生成多种格式条形码：Code128、EAN、UPC 等 |
 | [头像生成器](tools/generator/avatar.html) | 生成多种风格的头像：首字母、像素、Identicon 等 |
 | [占位图生成器](tools/generator/placeholder-image.html) | 生成自定义尺寸、颜色、文字的占位图片 |
@@ -161,7 +159,6 @@
 | [图片转 ASCII 艺术](tools/media/image-to-ascii.html) | 图片转 ASCII 字符画 |
 | [文字转语音](tools/media/text-to-speech.html) | 使用 Web Speech API 将文字转为语音朗读 |
 | [音频可视化器](tools/media/audio-visualizer.html) | 音频频谱可视化，支持波形、柱状等多种显示模式 |
-| [ASCII 艺术生成器](tools/media/ascii-art.html) | 图片转 ASCII 艺术 |
 | [Base64 图片转换](tools/media/base64-image.html) | 图片与 Base64 编码互转，支持多种格式 |
 | [EXIF 信息查看](tools/media/exif-viewer.html) | 查看图片的 EXIF 元数据和拍摄信息 |
 | [Favicon 生成器](tools/media/favicon-generator.html) | 从文字或图片生成多尺寸 Favicon 图标 |
@@ -186,7 +183,6 @@
 
 | 工具 | 描述 |
 |------|------|
-| [AES加解密](tools/security/aes-encrypt.html) | AES 加密解密 |
 | [URL安全化](tools/security/url-defang.html) | URL 脱敏处理 |
 
 ### 网络工具
@@ -199,6 +195,7 @@
 | [IP 子网计算器](tools/network/subnet-calculator.html) | 计算 CIDR 子网范围、可用 IP 数量和掩码转换 |
 | [MAC 地址查询](tools/network/mac-lookup.html) | 查询 MAC 地址对应的设备厂商信息 |
 | [User Agent 解析器](tools/network/user-agent.html) | User-Agent 检测 |
+| [设备信息](tools/network/device-info.html) | 查看设备、浏览器和系统的详细信息 |
 
 ### 计算器
 
@@ -209,6 +206,7 @@
 | [进度计算器](tools/calculator/progress.html) | 计算项目进度百分比和预计完成时间 |
 | [宽高比计算器](tools/calculator/aspect-ratio.html) | 计算屏幕/图片宽高比，支持常见比例换算 |
 | [位运算计算器](tools/calculator/bitwise-calculator.html) | 位运算计算器 |
+| [数学表达式计算器](tools/calculator/math-evaluator.html) | 计算复杂数学表达式，支持函数和常量 |
 
 ### 转换器
 
@@ -230,6 +228,7 @@
 |------|------|
 | [Prompt 模板库](tools/ai/prompt-templates.html) | AI 提示词模板库 |
 | [Token 计数器](tools/ai/token-counter.html) | 估算 AI 模型 Token 数量 |
+| [Claude Skills 精选](tools/ai/claude-skills.html) | Anthropic 官方 Skills 集合，提升 Claude 特定任务表现 |
 
 
 ## 使用方式

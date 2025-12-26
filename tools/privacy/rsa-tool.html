@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RSA 加密解密 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 0.9rem; font-family: monospace; resize: vertical; min-height: 100px; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 768px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>RSA 加密解密</h1>
+    <p class="desc">在浏览器中生成 RSA 密钥对，使用公钥加密和私钥解密</p>
+
+    <div class="card">
+      <h2>1. 生成密钥对</h2>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="generateKeys()">生成 RSA 密钥对</button>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>公钥 (用于加密)</label>
+          <textarea id="publicKey" placeholder="点击上方按钮生成密钥对"></textarea>
+        </div>
+        <div class="form-group">
+          <label>私钥 (用于解密)</label>
+          <textarea id="privateKey" placeholder="点击上方按钮生成密钥对"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. 加密</h2>
+      <div class="form-group">
+        <label>明文</label>
+        <textarea id="plaintext" placeholder="输入要加密的文本"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="encryptText()">加密</button>
+      </div>
+      <div class="form-group">
+        <label>密文 (Base64)</label>
+        <textarea id="ciphertext" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. 解密</h2>
+      <div class="form-group">
+        <label>密文 (Base64)</label>
+        <textarea id="encryptedInput" placeholder="粘贴要解密的密文"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="decryptText()">解密</button>
+      </div>
+      <div class="form-group">
+        <label>解密结果</label>
+        <textarea id="decryptedOutput" readonly></textarea>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var keyPair = null;
+
+    async function generateKeys() {
+      try {
+        keyPair = await crypto.subtle.generateKey(
+          {
+            name: 'RSA-OAEP',
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: 'SHA-256'
+          },
+          true,
+          ['encrypt', 'decrypt']
+        );
+
+        var publicKeyExport = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+        var privateKeyExport = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+
+        document.getElementById('publicKey').value = formatPEM(publicKeyExport, 'PUBLIC KEY');
+        document.getElementById('privateKey').value = formatPEM(privateKeyExport, 'PRIVATE KEY');
+      } catch (e) {
+        alert('生成密钥失败: ' + e.message);
+      }
+    }
+
+    function formatPEM(keyData, type) {
+      var base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(keyData)));
+      var lines = [];
+      lines.push('-----BEGIN ' + type + '-----');
+      for (var i = 0; i < base64.length; i += 64) {
+        lines.push(base64.substring(i, i + 64));
+      }
+      lines.push('-----END ' + type + '-----');
+      return lines.join('\n');
+    }
+
+    function parsePEM(pem) {
+      var lines = pem.trim().split('\n');
+      var base64 = '';
+      for (var i = 0; i < lines.length; i++) {
+        if (!lines[i].startsWith('-----')) {
+          base64 += lines[i];
+        }
+      }
+      var binaryString = atob(base64);
+      var bytes = new Uint8Array(binaryString.length);
+      for (var i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    async function encryptText() {
+      var plaintext = document.getElementById('plaintext').value;
+      var publicKeyPEM = document.getElementById('publicKey').value;
+
+      if (!plaintext || !publicKeyPEM) {
+        alert('请输入明文并确保已生成密钥');
+        return;
+      }
+
+      try {
+        var publicKeyData = parsePEM(publicKeyPEM);
+        var publicKey = await crypto.subtle.importKey(
+          'spki',
+          publicKeyData,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          false,
+          ['encrypt']
+        );
+
+        var encoder = new TextEncoder();
+        var data = encoder.encode(plaintext);
+        var encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, data);
+        var base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
+
+        document.getElementById('ciphertext').value = base64;
+      } catch (e) {
+        alert('加密失败: ' + e.message);
+      }
+    }
+
+    async function decryptText() {
+      var ciphertext = document.getElementById('encryptedInput').value;
+      var privateKeyPEM = document.getElementById('privateKey').value;
+
+      if (!ciphertext || !privateKeyPEM) {
+        alert('请输入密文并确保已生成密钥');
+        return;
+      }
+
+      try {
+        var privateKeyData = parsePEM(privateKeyPEM);
+        var privateKey = await crypto.subtle.importKey(
+          'pkcs8',
+          privateKeyData,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          false,
+          ['decrypt']
+        );
+
+        var binaryString = atob(ciphertext);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        var decrypted = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, bytes);
+        var decoder = new TextDecoder();
+        document.getElementById('decryptedOutput').value = decoder.decode(decrypted);
+      } catch (e) {
+        alert('解密失败: ' + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

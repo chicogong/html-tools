@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Token 计数器 - WebUtils</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-pink:#f472b6;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}[data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666666;--text-muted:#999999;--border-subtle:#e5e5e5}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(244,114,182,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(244,114,182,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}.container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}.back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;margin-bottom:2rem;padding:.5rem .75rem;border-radius:var(--radius-sm);transition:all .2s}.back-link:hover{color:var(--accent-pink);background:var(--bg-card)}.theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.subtitle{color:var(--text-secondary);margin-bottom:2rem}.card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}.form-group{margin-bottom:1rem}.form-group label{display:block;color:var(--text-secondary);font-size:.85rem;margin-bottom:.5rem}.form-group select{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary)}textarea{width:100%;height:200px;padding:1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:.9rem;resize:vertical}textarea:focus{outline:none;border-color:var(--accent-pink)}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1.5rem}.stat-item{background:var(--bg-surface);border-radius:var(--radius-md);padding:1rem;text-align:center}.stat-item .label{font-size:.75rem;color:var(--text-muted);margin-bottom:.25rem}.stat-item .value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;color:var(--accent-pink)}.cost-section{margin-top:1.5rem;padding:1rem;background:var(--bg-surface);border-radius:var(--radius-md)}.cost-section h3{font-size:.9rem;color:var(--text-secondary);margin-bottom:.75rem}.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}.cost-item{display:flex;justify-content:space-between;padding:.5rem;border-radius:var(--radius-sm);background:var(--bg-card)}.cost-item .model{color:var(--text-secondary);font-size:.85rem}.cost-item .price{color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:.85rem}footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}footer a{color:var(--accent-pink);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <h1>Token 计数器</h1>
+    <p class="subtitle">估算文本的 Token 数量和 API 调用成本</p>
+
+    <div class="card">
+      <div class="form-group">
+        <label>分词器</label>
+        <select id="tokenizer" onchange="count()">
+          <option value="gpt4">GPT-4 / GPT-3.5 (cl100k_base)</option>
+          <option value="claude">Claude (估算)</option>
+          <option value="simple">简单估算 (字符/4)</option>
+        </select>
+      </div>
+      <textarea id="input" placeholder="输入文本..." oninput="count()">Hello, world! 你好，世界！这是一个 Token 计数器。</textarea>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div class="label">Token 数</div>
+          <div class="value" id="tokenCount">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">字符数</div>
+          <div class="value" id="charCount">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">单词数</div>
+          <div class="value" id="wordCount">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="label">行数</div>
+          <div class="value" id="lineCount">0</div>
+        </div>
+      </div>
+
+      <div class="cost-section">
+        <h3>估算成本 (输入)</h3>
+        <div class="cost-grid" id="costGrid"></div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+  <script>
+    // Simple token estimation (real tokenization would require a library like tiktoken)
+    function estimateTokens(text, method) {
+      if (!text) return 0;
+      
+      switch (method) {
+        case 'gpt4':
+          // GPT-4 uses cl100k_base tokenizer
+          // English: ~1 token per 4 chars, Chinese: ~1-2 tokens per char
+          const englishChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
+          const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+          return Math.ceil(englishChars / 4 + chineseChars * 1.5);
+        
+        case 'claude':
+          // Claude uses a similar tokenizer
+          const engChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
+          const chnChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+          return Math.ceil(engChars / 3.5 + chnChars * 1.3);
+        
+        case 'simple':
+        default:
+          return Math.ceil(text.length / 4);
+      }
+    }
+
+    const PRICING = [
+      { model: 'GPT-4o', input: 2.50, output: 10.00 },
+      { model: 'GPT-4 Turbo', input: 10.00, output: 30.00 },
+      { model: 'GPT-3.5 Turbo', input: 0.50, output: 1.50 },
+      { model: 'Claude 3.5 Sonnet', input: 3.00, output: 15.00 },
+      { model: 'Claude 3 Haiku', input: 0.25, output: 1.25 },
+    ];
+
+    function count() {
+      const text = document.getElementById('input').value;
+      const method = document.getElementById('tokenizer').value;
+      
+      const tokens = estimateTokens(text, method);
+      const chars = text.length;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const lines = text ? text.split('\n').length : 0;
+
+      document.getElementById('tokenCount').textContent = tokens.toLocaleString();
+      document.getElementById('charCount').textContent = chars.toLocaleString();
+      document.getElementById('wordCount').textContent = words.toLocaleString();
+      document.getElementById('lineCount').textContent = lines.toLocaleString();
+
+      // Update cost estimates
+      const costGrid = document.getElementById('costGrid');
+      costGrid.innerHTML = PRICING.map(p => {
+        const cost = (tokens / 1000000) * p.input;
+        return `<div class="cost-item">
+          <span class="model">${p.model}</span>
+          <span class="price">$${cost < 0.01 ? cost.toFixed(6) : cost.toFixed(4)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    count();
+
+    function toggleTheme(){const html=document.documentElement;const btn=document.querySelector('.theme-toggle');const next=html.getAttribute('data-theme')==='light'?'dark':'light';html.setAttribute('data-theme',next);btn.textContent=next==='light'?'☀️':'🌙';localStorage.setItem('theme',next)}(function(){const saved=localStorage.getItem('theme');if(saved){document.documentElement.setAttribute('data-theme',saved);const btn=document.querySelector('.theme-toggle');if(btn)btn.textContent=saved==='light'?'☀️':'🌙'}})();
+  </script>
+</body>
+</html>

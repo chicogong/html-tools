@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HMAC 生成器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    [data-theme="dark"] {
+      --bg: #0a0a0f;
+      --card-bg: #1a1a24;
+      --text: #e8e8ed;
+      --text-muted: #999999;
+      --border: #2a2a36;
+      --shadow: 0 2px 8px rgb(0,0,0,0.3);
+    }
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+    textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+    .options { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .options label { display: inline; font-weight: normal; margin: 0; }
+
+    .result-box {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .result-box .label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
+
+    .result-box .value {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">☀️</button>
+    <h1>HMAC 生成器</h1>
+    <p class="desc">使用密钥生成 HMAC 签名（SHA-1、SHA-256、SHA-384、SHA-512）</p>
+
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnGenerate" class="primary">生成 HMAC</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="options">
+        <label>
+          算法:
+          <select id="algorithm">
+            <option value="SHA-256" selected>HMAC-SHA256</option>
+            <option value="SHA-1">HMAC-SHA1</option>
+            <option value="SHA-384">HMAC-SHA384</option>
+            <option value="SHA-512">HMAC-SHA512</option>
+          </select>
+        </label>
+        <label>
+          输出格式:
+          <select id="outputFormat">
+            <option value="hex">Hex (小写)</option>
+            <option value="HEX">Hex (大写)</option>
+            <option value="base64">Base64</option>
+          </select>
+        </label>
+      </div>
+
+      <label for="keyInput">密钥 (Secret Key)</label>
+      <input type="text" id="keyInput" placeholder="输入密钥..." />
+
+      <label for="msgInput">消息 (Message)</label>
+      <textarea id="msgInput" placeholder="输入要签名的消息..."></textarea>
+
+      <div class="result-box">
+        <div class="label">HMAC 签名</div>
+        <div class="value" id="result">-</div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 12px;">
+        <button id="btnCopy">复制结果</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var keyInput = document.getElementById('keyInput');
+    var msgInput = document.getElementById('msgInput');
+    var algorithmEl = document.getElementById('algorithm');
+    var outputFormatEl = document.getElementById('outputFormat');
+    var resultEl = document.getElementById('result');
+    var statusEl = document.getElementById('status');
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function arrayBufferToHex(buffer) {
+      var bytes = new Uint8Array(buffer);
+      var hex = '';
+      for (var i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return hex;
+    }
+
+    function arrayBufferToBase64(buffer) {
+      var bytes = new Uint8Array(buffer);
+      var binary = '';
+      for (var i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    async function generateHMAC() {
+      var key = keyInput.value;
+      var msg = msgInput.value;
+
+      if (!key) {
+        showStatus('请输入密钥', 'error');
+        return;
+      }
+
+      if (!msg) {
+        showStatus('请输入消息', 'error');
+        return;
+      }
+
+      try {
+        var algorithm = algorithmEl.value;
+        var encoder = new TextEncoder();
+        
+        var cryptoKey = await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(key),
+          { name: 'HMAC', hash: algorithm },
+          false,
+          ['sign']
+        );
+
+        var signature = await crypto.subtle.sign(
+          'HMAC',
+          cryptoKey,
+          encoder.encode(msg)
+        );
+
+        var format = outputFormatEl.value;
+        var output;
+        if (format === 'base64') {
+          output = arrayBufferToBase64(signature);
+        } else if (format === 'HEX') {
+          output = arrayBufferToHex(signature).toUpperCase();
+        } else {
+          output = arrayBufferToHex(signature);
+        }
+
+        resultEl.textContent = output;
+        showStatus('生成成功', 'success');
+      } catch (e) {
+        showStatus('生成失败: ' + e.message, 'error');
+      }
+    }
+
+    document.getElementById('btnGenerate').onclick = generateHMAC;
+
+    document.getElementById('btnClear').onclick = function() {
+      keyInput.value = '';
+      msgInput.value = '';
+      resultEl.textContent = '-';
+      showStatus('已清空', 'success');
+    };
+
+    document.getElementById('btnCopy').onclick = async function() {
+      var text = resultEl.textContent;
+      if (text && text !== '-') {
+        try {
+          await navigator.clipboard.writeText(text);
+          showStatus('已复制', 'success');
+        } catch (e) {
+          showStatus('复制失败', 'error');
+        }
+      }
+    };
+
+    keyInput.addEventListener('input', function() {
+      if (keyInput.value && msgInput.value) generateHMAC();
+    });
+
+    msgInput.addEventListener('input', function() {
+      if (keyInput.value && msgInput.value) generateHMAC();
+    });
+
+    algorithmEl.addEventListener('change', function() {
+      if (keyInput.value && msgInput.value) generateHMAC();
+    });
+
+    outputFormatEl.addEventListener('change', function() {
+      if (keyInput.value && msgInput.value) generateHMAC();
+    });
+
+    function toggleTheme(){const html=document.documentElement;const btn=document.querySelector('.theme-toggle');const next=html.getAttribute('data-theme')==='dark'?'':'dark';html.setAttribute('data-theme',next);btn.textContent=next==='dark'?'🌙':'☀️';localStorage.setItem('theme',next||'light')}(function(){const saved=localStorage.getItem('theme');if(saved==='dark'){document.documentElement.setAttribute('data-theme','dark');const btn=document.querySelector('.theme-toggle');if(btn)btn.textContent='🌙'}})();
+  </script>
+</body>
+</html>

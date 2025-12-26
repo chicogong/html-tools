@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Keycode 查看器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --success: #198754;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+      --bg-deep: #f8f9fa;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #f5f5f5;
+      --text-primary: #212529;
+      --text-secondary: #6c757d;
+      --border-subtle: #dee2e6;
+    }
+    [data-theme="dark"] {
+      --bg: #0a0a0f;
+      --card-bg: #1a1a24;
+      --text: #e8e8ed;
+      --text-muted: #9898a4;
+      --border: #2a2a36;
+      --primary: #00f5d4;
+      --success: #10b981;
+      --shadow: 0 2px 8px rgb(0,0,0,0.3);
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-hover: #22222e;
+      --text-primary: #e8e8ed;
+      --text-secondary: #9898a4;
+      --border-subtle: #2a2a36;
+    }
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .key-display {
+      text-align: center;
+      padding: 60px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+
+    .key-display .hint {
+      color: rgb(255,255,255,0.8);
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    .key-display .key {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 2px 10px rgb(0,0,0,0.2);
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .key-display .keycode {
+      font-size: 1.5rem;
+      color: rgb(255,255,255,0.9);
+      margin-top: 10px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .info-item {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .info-item .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .info-item .value {
+      font-size: 1.1rem;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .info-item .value.copy {
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .info-item .value.copy:hover {
+      color: var(--primary);
+    }
+
+    .modifiers {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    .modifier {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      background: var(--bg);
+      font-size: 0.9rem;
+      opacity: 0.4;
+      transition: all 0.2s;
+    }
+
+    .modifier.active {
+      opacity: 1;
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .history {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .history h3 {
+      font-size: 0.95rem;
+      margin: 0 0 12px;
+      color: var(--text-muted);
+    }
+
+    .history-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .history-item {
+      padding: 6px 12px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; color: var(--success); text-align: center; }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">☀️</button>
+    <h1>Keycode 查看器</h1>
+    <p class="desc">按下任意键查看对应的 keyCode、key、code 等信息</p>
+
+    <div class="card">
+      <div class="key-display">
+        <div class="hint">按下任意键</div>
+        <div class="key" id="keyName">-</div>
+        <div class="keycode" id="keyCodeValue">keyCode: -</div>
+      </div>
+
+      <div class="modifiers">
+        <div class="modifier" id="modShift">Shift</div>
+        <div class="modifier" id="modCtrl">Ctrl</div>
+        <div class="modifier" id="modAlt">Alt</div>
+        <div class="modifier" id="modMeta">Meta</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="label">event.key</div>
+          <div class="value copy" id="infoKey" title="点击复制">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">event.code</div>
+          <div class="value copy" id="infoCode" title="点击复制">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">event.keyCode</div>
+          <div class="value copy" id="infoKeyCode" title="点击复制">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">event.which</div>
+          <div class="value copy" id="infoWhich" title="点击复制">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">event.location</div>
+          <div class="value" id="infoLocation">-</div>
+        </div>
+        <div class="info-item">
+          <div class="label">event.repeat</div>
+          <div class="value" id="infoRepeat">-</div>
+        </div>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="history">
+        <h3>历史记录 (点击可复制)</h3>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var keyNameEl = document.getElementById('keyName');
+    var keyCodeValueEl = document.getElementById('keyCodeValue');
+    var statusEl = document.getElementById('status');
+    var historyListEl = document.getElementById('historyList');
+    var history = [];
+
+    var locationMap = {
+      0: 'Standard',
+      1: 'Left',
+      2: 'Right',
+      3: 'Numpad'
+    };
+
+    function getDisplayKey(key) {
+      var specialKeys = {
+        ' ': 'Space',
+        'ArrowUp': '↑',
+        'ArrowDown': '↓',
+        'ArrowLeft': '←',
+        'ArrowRight': '→',
+        'Enter': '↵ Enter',
+        'Backspace': '⌫ Backspace',
+        'Tab': '⇥ Tab',
+        'Escape': 'Esc',
+        'Delete': 'Del',
+        'Insert': 'Ins',
+        'Home': 'Home',
+        'End': 'End',
+        'PageUp': 'PgUp',
+        'PageDown': 'PgDn',
+        'CapsLock': 'Caps',
+        'Shift': '⇧ Shift',
+        'Control': '⌃ Ctrl',
+        'Alt': '⌥ Alt',
+        'Meta': '⌘ Meta'
+      };
+      return specialKeys[key] || key;
+    }
+
+    function showStatus(msg) {
+      statusEl.textContent = msg;
+      setTimeout(function() { statusEl.textContent = ''; }, 2000);
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showStatus('已复制: ' + text);
+      } catch (e) {
+        showStatus('复制失败');
+      }
+    }
+
+    function updateHistory(key, keyCode) {
+      var item = key + ' (' + keyCode + ')';
+      if (history.indexOf(item) === -1) {
+        history.unshift(item);
+        if (history.length > 20) history.pop();
+        renderHistory();
+      }
+    }
+
+    function renderHistory() {
+      while (historyListEl.firstChild) {
+        historyListEl.removeChild(historyListEl.firstChild);
+      }
+      history.forEach(function(item) {
+        var el = document.createElement('div');
+        el.className = 'history-item';
+        el.textContent = item;
+        el.onclick = function() {
+          copyToClipboard(item);
+        };
+        historyListEl.appendChild(el);
+      });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      e.preventDefault();
+
+      keyNameEl.textContent = getDisplayKey(e.key);
+      keyCodeValueEl.textContent = 'keyCode: ' + e.keyCode;
+
+      document.getElementById('infoKey').textContent = e.key;
+      document.getElementById('infoCode').textContent = e.code;
+      document.getElementById('infoKeyCode').textContent = e.keyCode;
+      document.getElementById('infoWhich').textContent = e.which;
+      document.getElementById('infoLocation').textContent = locationMap[e.location] || e.location;
+      document.getElementById('infoRepeat').textContent = e.repeat ? 'true' : 'false';
+
+      document.getElementById('modShift').className = 'modifier' + (e.shiftKey ? ' active' : '');
+      document.getElementById('modCtrl').className = 'modifier' + (e.ctrlKey ? ' active' : '');
+      document.getElementById('modAlt').className = 'modifier' + (e.altKey ? ' active' : '');
+      document.getElementById('modMeta').className = 'modifier' + (e.metaKey ? ' active' : '');
+
+      updateHistory(e.key, e.keyCode);
+    });
+
+    document.addEventListener('keyup', function(e) {
+      document.getElementById('modShift').className = 'modifier' + (e.shiftKey ? ' active' : '');
+      document.getElementById('modCtrl').className = 'modifier' + (e.ctrlKey ? ' active' : '');
+      document.getElementById('modAlt').className = 'modifier' + (e.altKey ? ' active' : '');
+      document.getElementById('modMeta').className = 'modifier' + (e.metaKey ? ' active' : '');
+    });
+
+    document.querySelectorAll('.value.copy').forEach(function(el) {
+      el.onclick = function() {
+        var text = el.textContent;
+        if (text !== '-') {
+          copyToClipboard(text);
+        }
+      };
+    });
+
+    function toggleTheme(){const html=document.documentElement;const btn=document.querySelector('.theme-toggle');const next=html.getAttribute('data-theme')==='dark'?'light':'dark';html.setAttribute('data-theme',next);btn.textContent=next==='dark'?'🌙':'☀️';localStorage.setItem('theme',next)}(function(){const saved=localStorage.getItem('theme');if(saved){document.documentElement.setAttribute('data-theme',saved);const btn=document.querySelector('.theme-toggle');if(btn)btn.textContent=saved==='dark'?'🌙':'☀️'}})();
+  </script>
+</body>
+</html>

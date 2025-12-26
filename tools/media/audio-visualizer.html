@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>音频可视化器 - WebUtils</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-red:#ff6b6b;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}[data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666666;--text-muted:#999999;--border-subtle:#e5e5e5}.theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(255,107,107,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,107,107,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}.container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}.back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;margin-bottom:2rem;padding:.5rem .75rem;border-radius:var(--radius-sm);transition:all .2s}.back-link:hover{color:var(--accent-red);background:var(--bg-card)}h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-red));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.subtitle{color:var(--text-secondary);margin-bottom:2rem}.card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}.canvas-container{background:var(--bg-surface);border-radius:var(--radius-md);overflow:hidden;margin-bottom:1.5rem}canvas{display:block;width:100%;height:300px}.controls{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem}.btn{padding:.75rem 1.5rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--accent-red);color:white;cursor:pointer;font-size:.9rem;transition:all .2s}.btn:hover{opacity:.9}.btn-secondary{background:var(--bg-hover);color:var(--text-primary)}.form-group{flex:1;min-width:150px}.form-group label{display:block;color:var(--text-secondary);font-size:.85rem;margin-bottom:.5rem}.form-group select{width:100%;padding:.5rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary)}.file-input{display:none}.status{padding:.75rem;border-radius:var(--radius-sm);background:var(--bg-surface);font-size:.85rem;color:var(--text-secondary)}footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}footer a{color:var(--accent-red);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <h1>音频可视化器</h1>
+    <p class="subtitle">实时音频频谱可视化</p>
+
+    <div class="card">
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <div class="controls">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">选择音频文件</button>
+        <button class="btn btn-secondary" onclick="useMicrophone()">使用麦克风</button>
+        <input type="file" id="fileInput" class="file-input" accept="audio/*" onchange="loadFile(event)">
+      </div>
+
+      <div class="controls">
+        <div class="form-group">
+          <label>可视化样式</label>
+          <select id="vizType" onchange="vizType=this.value">
+            <option value="bars">频谱柱状图</option>
+            <option value="wave">波形图</option>
+            <option value="circle">圆形频谱</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>颜色主题</label>
+          <select id="colorTheme" onchange="colorTheme=this.value">
+            <option value="gradient">渐变</option>
+            <option value="cyan">青色</option>
+            <option value="red">红色</option>
+            <option value="rainbow">彩虹</option>
+          </select>
+        </div>
+      </div>
+
+      <audio id="audio" controls style="width:100%;margin-bottom:1rem"></audio>
+      <div class="status" id="status">选择音频文件或使用麦克风开始</div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
+    
+    let audioContext, analyser, source, dataArray;
+    let vizType = 'bars';
+    let colorTheme = 'gradient';
+    let animationId;
+
+    function initCanvas() {
+      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    initCanvas();
+    window.addEventListener('resize', initCanvas);
+
+    function setupAudio(sourceNode) {
+      if (audioContext) audioContext.close();
+      
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      sourceNode.connect(analyser);
+      analyser.connect(audioContext.destination);
+      
+      draw();
+    }
+
+    function loadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      audio.src = URL.createObjectURL(file);
+      audio.play();
+      
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      // createMediaElementSource 只能对每个 audio 元素调用一次
+      if (!source) {
+        source = audioContext.createMediaElementSource(audio);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+      }
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      document.getElementById('status').textContent = '正在播放: ' + file.name;
+      draw();
+    }
+
+    async function useMicrophone() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        source.connect(analyser);
+        
+        document.getElementById('status').textContent = '正在使用麦克风...';
+        draw();
+      } catch (e) {
+        document.getElementById('status').textContent = '无法访问麦克风: ' + e.message;
+      }
+    }
+
+    function getColor(i, total) {
+      switch (colorTheme) {
+        case 'cyan': return '#00f5d4';
+        case 'red': return '#ff6b6b';
+        case 'rainbow': return `hsl(${(i / total) * 360}, 70%, 60%)`;
+        case 'gradient':
+        default: return `hsl(${180 + (i / total) * 60}, 70%, 60%)`;
+      }
+    }
+
+    function draw() {
+      if (!analyser) return;
+      
+      animationId = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+      
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
+      
+      ctx.fillStyle = '#12121a';
+      ctx.fillRect(0, 0, width, height);
+      
+      const bufferLength = dataArray.length;
+      
+      if (vizType === 'bars') {
+        const barWidth = width / bufferLength * 2;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = (dataArray[i] / 255) * height;
+          ctx.fillStyle = getColor(i, bufferLength);
+          ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+          x += barWidth;
+        }
+      } else if (vizType === 'wave') {
+        analyser.getByteTimeDomainData(dataArray);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = getColor(0, 1);
+        ctx.beginPath();
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * height) / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        ctx.stroke();
+      } else if (vizType === 'circle') {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(width, height) / 4;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const angle = (i / bufferLength) * Math.PI * 2;
+          const barHeight = (dataArray[i] / 255) * radius;
+          
+          ctx.strokeStyle = getColor(i, bufferLength);
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(
+            centerX + Math.cos(angle) * radius,
+            centerY + Math.sin(angle) * radius
+          );
+          ctx.lineTo(
+            centerX + Math.cos(angle) * (radius + barHeight),
+            centerY + Math.sin(angle) * (radius + barHeight)
+          );
+          ctx.stroke();
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    }
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        const btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

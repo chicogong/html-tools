@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSS 渐变生成器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    [data-theme="light"] {
+      --bg-deep: #fafafa;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #f5f5f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666666;
+      --text-muted: #999999;
+      --border-subtle: #e5e5e5;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 300px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 24px;
+      border: 2px solid var(--border-subtle);
+      transition: all 0.3s ease;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    select, input[type="number"], input[type="color"] {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      background: var(--bg-surface);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    input[type="color"] {
+      height: 44px;
+      cursor: pointer;
+    }
+
+    .color-stops {
+      margin-bottom: 20px;
+    }
+
+    .color-stops h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .color-stop {
+      display: grid;
+      grid-template-columns: 60px 1fr 80px 40px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-sm);
+    }
+
+    .color-stop button {
+      font-size: 0.9rem;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .color-stop button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .add-color-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 2px dashed var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .add-color-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .code-output {
+      margin-bottom: 20px;
+    }
+
+    .code-output label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: var(--bg-surface);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success {
+      color: var(--accent-green);
+    }
+
+    .status.success::before {
+      content: '✓ ';
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <h1>CSS 渐变生成器</h1>
+    <p class="desc">可视化生成 CSS 线性渐变、径向渐变、圆锥渐变</p>
+
+    <div class="card">
+      <div id="preview" class="preview-box"></div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>渐变类型</label>
+          <select id="type">
+            <option value="linear">线性渐变 (Linear)</option>
+            <option value="radial">径向渐变 (Radial)</option>
+            <option value="conic">圆锥渐变 (Conic)</option>
+          </select>
+        </div>
+        <div class="control-group" id="angleGroup">
+          <label>角度</label>
+          <input type="number" id="angle" value="90" min="0" max="360" />
+        </div>
+        <div class="control-group" id="shapeGroup" style="display: none;">
+          <label>形状</label>
+          <select id="shape">
+            <option value="circle">圆形 (Circle)</option>
+            <option value="ellipse">椭圆 (Ellipse)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="color-stops">
+        <h3>颜色节点</h3>
+        <div id="colorStops"></div>
+        <button class="add-color-btn" id="btnAddColor">+ 添加颜色</button>
+      </div>
+
+      <div class="code-output">
+        <label>CSS 代码</label>
+        <textarea id="output" readonly></textarea>
+      </div>
+
+      <div class="actions">
+        <button id="btnCopy">复制代码</button>
+        <button id="btnReset">重置</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const previewEl = document.getElementById('preview');
+    const typeEl = document.getElementById('type');
+    const angleEl = document.getElementById('angle');
+    const shapeEl = document.getElementById('shape');
+    const angleGroup = document.getElementById('angleGroup');
+    const shapeGroup = document.getElementById('shapeGroup');
+    const colorStopsEl = document.getElementById('colorStops');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+
+    let colorStops = [
+      { color: '#00f5d4', position: 0 },
+      { color: '#4cc9f0', position: 100 }
+    ];
+
+    function generateCSS() {
+      const type = typeEl.value;
+      const angle = angleEl.value;
+      const shape = shapeEl.value;
+
+      const colors = colorStops
+        .sort(function(a, b) { return a.position - b.position; })
+        .map(function(stop) {
+          return stop.color + ' ' + stop.position + '%';
+        })
+        .join(', ');
+
+      let css;
+      if (type === 'linear') {
+        css = 'linear-gradient(' + angle + 'deg, ' + colors + ')';
+      } else if (type === 'radial') {
+        css = 'radial-gradient(' + shape + ', ' + colors + ')';
+      } else {
+        css = 'conic-gradient(from ' + angle + 'deg, ' + colors + ')';
+      }
+
+      return css;
+    }
+
+    function updatePreview() {
+      const css = generateCSS();
+      previewEl.style.background = css;
+      outputEl.value = 'background: ' + css + ';';
+    }
+
+    function renderColorStops() {
+      colorStopsEl.innerHTML = '';
+      colorStops.forEach(function(stop, index) {
+        const div = document.createElement('div');
+        div.className = 'color-stop';
+        div.innerHTML =
+          '<input type="color" value="' + stop.color + '" data-index="' + index + '" class="color-input">' +
+          '<input type="range" min="0" max="100" value="' + stop.position + '" data-index="' + index + '" class="position-input">' +
+          '<input type="number" min="0" max="100" value="' + stop.position + '" data-index="' + index + '" class="position-number">%' +
+          (colorStops.length > 2 ? '<button data-index="' + index + '" class="remove-btn">×</button>' : '<span></span>');
+        colorStopsEl.appendChild(div);
+      });
+
+      document.querySelectorAll('.color-input').forEach(function(input) {
+        input.addEventListener('change', function() {
+          const idx = parseInt(input.getAttribute('data-index'));
+          colorStops[idx].color = input.value;
+          updatePreview();
+        });
+      });
+
+      document.querySelectorAll('.position-input, .position-number').forEach(function(input) {
+        input.addEventListener('input', function() {
+          const idx = parseInt(input.getAttribute('data-index'));
+          colorStops[idx].position = parseInt(input.value);
+          renderColorStops();
+          updatePreview();
+        });
+      });
+
+      document.querySelectorAll('.remove-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const idx = parseInt(btn.getAttribute('data-index'));
+          colorStops.splice(idx, 1);
+          renderColorStops();
+          updatePreview();
+        });
+      });
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    typeEl.addEventListener('change', function() {
+      const type = typeEl.value;
+      if (type === 'linear' || type === 'conic') {
+        angleGroup.style.display = 'flex';
+        shapeGroup.style.display = 'none';
+      } else {
+        angleGroup.style.display = 'none';
+        shapeGroup.style.display = 'flex';
+      }
+      updatePreview();
+    });
+
+    angleEl.addEventListener('input', updatePreview);
+    shapeEl.addEventListener('change', updatePreview);
+
+    document.getElementById('btnAddColor').onclick = function() {
+      colorStops.push({
+        color: '#ffffff',
+        position: 50
+      });
+      renderColorStops();
+      updatePreview();
+    };
+
+    document.getElementById('btnCopy').onclick = async function() {
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showStatus('已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败');
+      }
+    };
+
+    document.getElementById('btnReset').onclick = function() {
+      colorStops = [
+        { color: '#00f5d4', position: 0 },
+        { color: '#4cc9f0', position: 100 }
+      ];
+      typeEl.value = 'linear';
+      angleEl.value = 90;
+      angleGroup.style.display = 'flex';
+      shapeGroup.style.display = 'none';
+      renderColorStops();
+      updatePreview();
+      statusEl.textContent = '';
+    };
+
+    renderColorStops();
+    updatePreview();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        const btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

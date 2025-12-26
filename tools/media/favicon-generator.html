@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Favicon 生成器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    input, select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+    .color-picker { display: flex; gap: 0.5rem; }
+    .color-picker input[type="color"] { width: 50px; height: 38px; padding: 2px; }
+    .color-picker input[type="text"] { flex: 1; }
+    .preview-area { margin-top: 1.5rem; text-align: center; }
+    .preview-grid { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+    .preview-item { text-align: center; padding: 1rem; background: var(--bg); border-radius: var(--radius); }
+    .preview-item canvas { border: 1px solid var(--border); }
+    .preview-item p { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .actions { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>Favicon 生成器</h1>
+    <p class="desc">快速生成网站图标，支持文字、emoji 或上传图片，导出多种尺寸</p>
+
+    <div class="card">
+      <div class="row">
+        <div class="form-group">
+          <label>图标类型</label>
+          <select id="type" onchange="updateUI()">
+            <option value="text">文字/Emoji</option>
+            <option value="image">上传图片</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>形状</label>
+          <select id="shape" onchange="generate()">
+            <option value="square">正方形</option>
+            <option value="rounded">圆角</option>
+            <option value="circle">圆形</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="textOptions">
+        <div class="form-group">
+          <label>文字或 Emoji</label>
+          <input type="text" id="text" value="A" maxlength="4" oninput="generate()">
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>背景色</label>
+            <div class="color-picker">
+              <input type="color" id="bgColorPicker" value="#4dabf7" oninput="syncColor('bg')">
+              <input type="text" id="bgColor" value="#4dabf7" oninput="syncColor('bg', true)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>文字色</label>
+            <div class="color-picker">
+              <input type="color" id="textColorPicker" value="#ffffff" oninput="syncColor('text')">
+              <input type="text" id="textColor" value="#ffffff" oninput="syncColor('text', true)">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>字体</label>
+          <select id="font" onchange="generate()">
+            <option value="Arial Black">Arial Black</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Impact">Impact</option>
+            <option value="Verdana">Verdana</option>
+            <option value="system-ui">系统字体</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="imageOptions" style="display:none;">
+        <div class="form-group">
+          <label>上传图片</label>
+          <input type="file" id="imageInput" accept="image/*" onchange="loadImage()">
+        </div>
+      </div>
+
+      <div class="preview-area">
+        <h3>预览</h3>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-success" onclick="download(16)">下载 16×16</button>
+        <button class="btn btn-success" onclick="download(32)">下载 32×32</button>
+        <button class="btn btn-success" onclick="download(64)">下载 64×64</button>
+        <button class="btn btn-success" onclick="download(128)">下载 128×128</button>
+        <button class="btn btn-primary" onclick="downloadAll()">下载全部</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var uploadedImage = null;
+    var sizes = [16, 32, 48, 64, 128, 256];
+
+    function updateUI() {
+      var type = document.getElementById('type').value;
+      document.getElementById('textOptions').style.display = type === 'text' ? 'block' : 'none';
+      document.getElementById('imageOptions').style.display = type === 'image' ? 'block' : 'none';
+      generate();
+    }
+
+    function syncColor(type, fromText) {
+      if (type === 'bg') {
+        if (fromText) {
+          document.getElementById('bgColorPicker').value = document.getElementById('bgColor').value;
+        } else {
+          document.getElementById('bgColor').value = document.getElementById('bgColorPicker').value;
+        }
+      } else {
+        if (fromText) {
+          document.getElementById('textColorPicker').value = document.getElementById('textColor').value;
+        } else {
+          document.getElementById('textColor').value = document.getElementById('textColorPicker').value;
+        }
+      }
+      generate();
+    }
+
+    function loadImage() {
+      var file = document.getElementById('imageInput').files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          uploadedImage = img;
+          generate();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function generate() {
+      var grid = document.getElementById('previewGrid');
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+      var previewSizes = [16, 32, 64, 128];
+      previewSizes.forEach(function(size) {
+        var item = document.createElement('div');
+        item.className = 'preview-item';
+
+        var canvas = createFavicon(size);
+        item.appendChild(canvas);
+
+        var p = document.createElement('p');
+        p.textContent = size + '×' + size;
+        item.appendChild(p);
+
+        grid.appendChild(item);
+      });
+    }
+
+    function createFavicon(size) {
+      var canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      var ctx = canvas.getContext('2d');
+
+      var type = document.getElementById('type').value;
+      var shape = document.getElementById('shape').value;
+
+      if (type === 'image' && uploadedImage) {
+        drawShape(ctx, size, shape, '#ffffff');
+        ctx.save();
+        clipShape(ctx, size, shape);
+        var scale = Math.max(size / uploadedImage.width, size / uploadedImage.height);
+        var w = uploadedImage.width * scale;
+        var h = uploadedImage.height * scale;
+        ctx.drawImage(uploadedImage, (size - w) / 2, (size - h) / 2, w, h);
+        ctx.restore();
+      } else {
+        var bgColor = document.getElementById('bgColor').value;
+        var textColor = document.getElementById('textColor').value;
+        var text = document.getElementById('text').value || 'A';
+        var font = document.getElementById('font').value;
+
+        drawShape(ctx, size, shape, bgColor);
+
+        ctx.fillStyle = textColor;
+        var fontSize = size * 0.6;
+        ctx.font = 'bold ' + fontSize + 'px ' + font;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, size / 2, size / 2 + size * 0.05);
+      }
+
+      return canvas;
+    }
+
+    function drawShape(ctx, size, shape, color) {
+      ctx.fillStyle = color;
+      if (shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (shape === 'rounded') {
+        var r = size * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(size - r, 0);
+        ctx.quadraticCurveTo(size, 0, size, r);
+        ctx.lineTo(size, size - r);
+        ctx.quadraticCurveTo(size, size, size - r, size);
+        ctx.lineTo(r, size);
+        ctx.quadraticCurveTo(0, size, 0, size - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.fill();
+      } else {
+        ctx.fillRect(0, 0, size, size);
+      }
+    }
+
+    function clipShape(ctx, size, shape) {
+      if (shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.clip();
+      } else if (shape === 'rounded') {
+        var r = size * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(size - r, 0);
+        ctx.quadraticCurveTo(size, 0, size, r);
+        ctx.lineTo(size, size - r);
+        ctx.quadraticCurveTo(size, size, size - r, size);
+        ctx.lineTo(r, size);
+        ctx.quadraticCurveTo(0, size, 0, size - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.clip();
+      }
+    }
+
+    function download(size) {
+      var canvas = createFavicon(size);
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'favicon-' + size + 'x' + size + '.png';
+      a.click();
+    }
+
+    function downloadAll() {
+      sizes.forEach(function(size) {
+        setTimeout(function() { download(size); }, sizes.indexOf(size) * 200);
+      });
+    }
+
+    generate();
+  </script>
+</body>
+</html>

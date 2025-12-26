@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>条形码生成器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .preview-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 150px;
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+
+    #barcode {
+      max-width: 100%;
+    }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      padding: 12px 14px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .options-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 12px 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .format-info {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .format-info h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+      margin-bottom: 8px;
+    }
+
+    .format-info p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    .status.success { color: var(--accent-green); }
+    .status.error { color: var(--accent-red); }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>条形码生成器</h1>
+    <p class="desc">生成多种格式的条形码，支持 Code128、EAN-13、Code39 等</p>
+
+    <div class="card">
+      <div class="preview-container">
+        <svg id="barcode"></svg>
+      </div>
+
+      <div class="control-group">
+        <label>输入内容</label>
+        <input type="text" id="content" value="123456789012" placeholder="输入要编码的内容...">
+      </div>
+
+      <div class="options-row">
+        <div class="control-group">
+          <label>条形码格式</label>
+          <select id="format">
+            <option value="CODE128">Code 128 (通用)</option>
+            <option value="CODE128A">Code 128 A</option>
+            <option value="CODE128B">Code 128 B</option>
+            <option value="CODE128C">Code 128 C</option>
+            <option value="EAN13">EAN-13 (商品码)</option>
+            <option value="EAN8">EAN-8</option>
+            <option value="UPC">UPC</option>
+            <option value="CODE39">Code 39</option>
+            <option value="ITF14">ITF-14</option>
+            <option value="MSI">MSI</option>
+            <option value="pharmacode">Pharmacode</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>条形宽度</label>
+          <select id="width">
+            <option value="1">细 (1px)</option>
+            <option value="2" selected>标准 (2px)</option>
+            <option value="3">粗 (3px)</option>
+            <option value="4">特粗 (4px)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>高度</label>
+          <select id="height">
+            <option value="50">50px</option>
+            <option value="80">80px</option>
+            <option value="100" selected>100px</option>
+            <option value="150">150px</option>
+            <option value="200">200px</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="options-row">
+        <div class="control-group">
+          <label>显示文字</label>
+          <select id="displayValue">
+            <option value="true" selected>显示</option>
+            <option value="false">隐藏</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>文字位置</label>
+          <select id="textPosition">
+            <option value="bottom" selected>底部</option>
+            <option value="top">顶部</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>文字大小</label>
+          <select id="fontSize">
+            <option value="12">12px</option>
+            <option value="16">16px</option>
+            <option value="20" selected>20px</option>
+            <option value="24">24px</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btnGenerate">生成条形码</button>
+        <button id="btnDownloadSVG">下载 SVG</button>
+        <button id="btnDownloadPNG">下载 PNG</button>
+        <button id="btnCopy">复制 SVG</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="format-info" id="formatInfo">
+        <h4>Code 128</h4>
+        <p>最通用的条形码格式，支持所有 ASCII 字符（0-127）。适用于产品标识、物流跟踪等场景。</p>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script>
+    var contentEl = document.getElementById('content');
+    var formatEl = document.getElementById('format');
+    var widthEl = document.getElementById('width');
+    var heightEl = document.getElementById('height');
+    var displayValueEl = document.getElementById('displayValue');
+    var textPositionEl = document.getElementById('textPosition');
+    var fontSizeEl = document.getElementById('fontSize');
+    var statusEl = document.getElementById('status');
+    var formatInfoEl = document.getElementById('formatInfo');
+
+    var formatDescriptions = {
+      'CODE128': { name: 'Code 128', desc: '最通用的条形码格式，支持所有 ASCII 字符（0-127）。适用于产品标识、物流跟踪等场景。' },
+      'CODE128A': { name: 'Code 128 A', desc: '支持大写字母、数字和控制字符。适用于需要控制字符的场景。' },
+      'CODE128B': { name: 'Code 128 B', desc: '支持大小写字母和数字。最常用的 Code 128 子集。' },
+      'CODE128C': { name: 'Code 128 C', desc: '仅支持数字（成对编码），编码效率最高。适用于纯数字序列号。' },
+      'EAN13': { name: 'EAN-13', desc: '13位商品条码，国际通用。前3位为国家代码，接着是厂商代码和商品代码，最后1位为校验码。' },
+      'EAN8': { name: 'EAN-8', desc: '8位商品条码，用于小包装商品。比 EAN-13 更紧凑。' },
+      'UPC': { name: 'UPC', desc: '12位条码，主要在北美使用。是 EAN-13 的子集。' },
+      'CODE39': { name: 'Code 39', desc: '支持大写字母、数字和少量特殊字符。无需校验位，广泛用于工业和政府部门。' },
+      'ITF14': { name: 'ITF-14', desc: '14位交叉25码，用于物流外包装。必须是14位数字。' },
+      'MSI': { name: 'MSI', desc: '主要用于超市货架标签和库存管理。仅支持数字。' },
+      'pharmacode': { name: 'Pharmacode', desc: '用于制药行业的条码。数值范围 3-131070。' }
+    };
+
+    function generate() {
+      var content = contentEl.value.trim();
+      if (!content) {
+        showStatus('请输入内容', 'error');
+        return;
+      }
+
+      var format = formatEl.value;
+      var options = {
+        format: format,
+        width: parseInt(widthEl.value),
+        height: parseInt(heightEl.value),
+        displayValue: displayValueEl.value === 'true',
+        textPosition: textPositionEl.value,
+        fontSize: parseInt(fontSizeEl.value),
+        margin: 10,
+        background: '#ffffff',
+        lineColor: '#000000'
+      };
+
+      try {
+        JsBarcode('#barcode', content, options);
+        showStatus('生成成功', 'success');
+      } catch (e) {
+        showStatus('生成失败: ' + e.message, 'error');
+      }
+    }
+
+    function updateFormatInfo() {
+      var format = formatEl.value;
+      var info = formatDescriptions[format];
+      if (info) {
+        var h4 = formatInfoEl.querySelector('h4');
+        var p = formatInfoEl.querySelector('p');
+        h4.textContent = info.name;
+        p.textContent = info.desc;
+      }
+    }
+
+    function downloadSVG() {
+      var svg = document.getElementById('barcode');
+      var svgData = new XMLSerializer().serializeToString(svg);
+      var blob = new Blob([svgData], { type: 'image/svg+xml' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.download = 'barcode.svg';
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      showStatus('SVG 已下载', 'success');
+    }
+
+    function downloadPNG() {
+      var svg = document.getElementById('barcode');
+      var svgData = new XMLSerializer().serializeToString(svg);
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      var img = new Image();
+      
+      img.onload = function() {
+        canvas.width = img.width * 2;
+        canvas.height = img.height * 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        var link = document.createElement('a');
+        link.download = 'barcode.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showStatus('PNG 已下载', 'success');
+      };
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+
+    async function copySVG() {
+      var svg = document.getElementById('barcode');
+      var svgData = new XMLSerializer().serializeToString(svg);
+      try {
+        await navigator.clipboard.writeText(svgData);
+        showStatus('SVG 代码已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    formatEl.addEventListener('change', function() {
+      updateFormatInfo();
+      generate();
+    });
+
+    contentEl.addEventListener('input', generate);
+    widthEl.addEventListener('change', generate);
+    heightEl.addEventListener('change', generate);
+    displayValueEl.addEventListener('change', generate);
+    textPositionEl.addEventListener('change', generate);
+    fontSizeEl.addEventListener('change', generate);
+
+    document.getElementById('btnGenerate').addEventListener('click', generate);
+    document.getElementById('btnDownloadSVG').addEventListener('click', downloadSVG);
+    document.getElementById('btnDownloadPNG').addEventListener('click', downloadPNG);
+    document.getElementById('btnCopy').addEventListener('click', copySVG);
+
+    // Initialize
+    generate();
+  </script>
+</body>
+</html>

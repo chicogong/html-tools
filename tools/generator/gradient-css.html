@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSS 渐变生成器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 300px;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border-subtle);
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .type-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .type-tab {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .type-tab:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .type-tab.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-surface);
+      border-radius: 3px;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      width: 50px;
+      height: 36px;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      background: transparent;
+    }
+
+    input[type="number"],
+    select {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      width: 80px;
+    }
+
+    select {
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .color-stops {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .color-stop {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .color-stop input[type="color"] {
+      width: 40px;
+      height: 32px;
+    }
+
+    .color-stop input[type="number"] {
+      width: 60px;
+    }
+
+    .remove-stop {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .remove-stop:hover {
+      color: var(--accent-red);
+    }
+
+    .add-stop-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 16px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .add-stop-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .presets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .preset {
+      height: 40px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .preset:hover {
+      border-color: var(--accent-cyan);
+      transform: scale(1.05);
+    }
+
+    .code-output {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent-cyan);
+      word-break: break-all;
+      min-height: 80px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent-green);
+      margin-top: 10px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>CSS 渐变生成器</h1>
+    <p class="desc">可视化创建线性渐变、径向渐变，实时预览并生成 CSS 代码</p>
+
+    <div class="main-grid">
+      <div>
+        <div class="card">
+          <div class="preview-box" id="preview"></div>
+          
+          <div class="section-title">CSS 代码</div>
+          <div class="code-output" id="codeOutput"></div>
+          
+          <div class="actions">
+            <button id="btnCopy">复制代码</button>
+            <button id="btnRandom">随机渐变</button>
+          </div>
+          <div id="status" class="status"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">预设渐变</div>
+          <div class="presets" id="presets"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="section-title">渐变类型</div>
+          <div class="type-tabs">
+            <button class="type-tab active" data-type="linear">线性</button>
+            <button class="type-tab" data-type="radial">径向</button>
+            <button class="type-tab" data-type="conic">锥形</button>
+          </div>
+
+          <div id="linearControls">
+            <div class="control-group">
+              <label>角度: <span id="angleValue">90</span>°</label>
+              <input type="range" id="angle" min="0" max="360" value="90">
+            </div>
+          </div>
+
+          <div id="radialControls" style="display: none;">
+            <div class="control-group">
+              <label>形状</label>
+              <select id="radialShape">
+                <option value="circle">圆形 (circle)</option>
+                <option value="ellipse">椭圆 (ellipse)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>位置 X: <span id="posXValue">50</span>%</label>
+              <input type="range" id="posX" min="0" max="100" value="50">
+            </div>
+            <div class="control-group">
+              <label>位置 Y: <span id="posYValue">50</span>%</label>
+              <input type="range" id="posY" min="0" max="100" value="50">
+            </div>
+          </div>
+
+          <div id="conicControls" style="display: none;">
+            <div class="control-group">
+              <label>起始角度: <span id="conicAngleValue">0</span>°</label>
+              <input type="range" id="conicAngle" min="0" max="360" value="0">
+            </div>
+            <div class="control-group">
+              <label>位置 X: <span id="conicPosXValue">50</span>%</label>
+              <input type="range" id="conicPosX" min="0" max="100" value="50">
+            </div>
+            <div class="control-group">
+              <label>位置 Y: <span id="conicPosYValue">50</span>%</label>
+              <input type="range" id="conicPosY" min="0" max="100" value="50">
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top: 20px;">颜色节点</div>
+          <div class="color-stops" id="colorStops"></div>
+          <button class="add-stop-btn" id="btnAddStop">+ 添加颜色</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var previewEl = document.getElementById('preview');
+    var codeOutputEl = document.getElementById('codeOutput');
+    var colorStopsEl = document.getElementById('colorStops');
+    var statusEl = document.getElementById('status');
+
+    var gradientType = 'linear';
+    var colorStops = [
+      { color: '#00f5d4', position: 0 },
+      { color: '#4cc9f0', position: 100 }
+    ];
+
+    var presetGradients = [
+      ['#667eea', '#764ba2'],
+      ['#f093fb', '#f5576c'],
+      ['#4facfe', '#00f2fe'],
+      ['#43e97b', '#38f9d7'],
+      ['#fa709a', '#fee140'],
+      ['#a8edea', '#fed6e3'],
+      ['#d299c2', '#fef9d7'],
+      ['#89f7fe', '#66a6ff'],
+      ['#fddb92', '#d1fdff'],
+      ['#a1c4fd', '#c2e9fb'],
+      ['#ff9a9e', '#fecfef'],
+      ['#ffecd2', '#fcb69f']
+    ];
+
+    function renderColorStops() {
+      while (colorStopsEl.firstChild) {
+        colorStopsEl.removeChild(colorStopsEl.firstChild);
+      }
+      
+      colorStops.forEach(function(stop, index) {
+        var div = document.createElement('div');
+        div.className = 'color-stop';
+        
+        var colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = stop.color;
+        colorInput.addEventListener('input', function(e) {
+          colorStops[index].color = e.target.value;
+          updateGradient();
+        });
+        
+        var posInput = document.createElement('input');
+        posInput.type = 'number';
+        posInput.min = 0;
+        posInput.max = 100;
+        posInput.value = stop.position;
+        posInput.addEventListener('input', function(e) {
+          colorStops[index].position = parseInt(e.target.value) || 0;
+          updateGradient();
+        });
+        
+        var posLabel = document.createElement('span');
+        posLabel.style.cssText = 'color: var(--text-muted); font-size: 0.8rem;';
+        posLabel.textContent = '%';
+        
+        div.appendChild(colorInput);
+        div.appendChild(posInput);
+        div.appendChild(posLabel);
+        
+        if (colorStops.length > 2) {
+          var removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-stop';
+          removeBtn.textContent = '\u00D7';
+          removeBtn.addEventListener('click', function() {
+            colorStops.splice(index, 1);
+            renderColorStops();
+            updateGradient();
+          });
+          div.appendChild(removeBtn);
+        }
+        
+        colorStopsEl.appendChild(div);
+      });
+    }
+
+    function updateGradient() {
+      var stops = colorStops.map(function(s) {
+        return s.color + ' ' + s.position + '%';
+      }).join(', ');
+      
+      var gradient = '';
+      var css = '';
+      
+      if (gradientType === 'linear') {
+        var angle = document.getElementById('angle').value;
+        gradient = 'linear-gradient(' + angle + 'deg, ' + stops + ')';
+        css = 'background: ' + gradient + ';';
+      } else if (gradientType === 'radial') {
+        var shape = document.getElementById('radialShape').value;
+        var posX = document.getElementById('posX').value;
+        var posY = document.getElementById('posY').value;
+        gradient = 'radial-gradient(' + shape + ' at ' + posX + '% ' + posY + '%, ' + stops + ')';
+        css = 'background: ' + gradient + ';';
+      } else if (gradientType === 'conic') {
+        var conicAngle = document.getElementById('conicAngle').value;
+        var conicPosX = document.getElementById('conicPosX').value;
+        var conicPosY = document.getElementById('conicPosY').value;
+        gradient = 'conic-gradient(from ' + conicAngle + 'deg at ' + conicPosX + '% ' + conicPosY + '%, ' + stops + ')';
+        css = 'background: ' + gradient + ';';
+      }
+      
+      previewEl.style.background = gradient;
+      codeOutputEl.textContent = css;
+    }
+
+    function renderPresets() {
+      var presetsEl = document.getElementById('presets');
+      while (presetsEl.firstChild) {
+        presetsEl.removeChild(presetsEl.firstChild);
+      }
+      
+      presetGradients.forEach(function(colors) {
+        var div = document.createElement('div');
+        div.className = 'preset';
+        div.style.background = 'linear-gradient(135deg, ' + colors[0] + ', ' + colors[1] + ')';
+        div.addEventListener('click', function() {
+          colorStops = [
+            { color: colors[0], position: 0 },
+            { color: colors[1], position: 100 }
+          ];
+          renderColorStops();
+          updateGradient();
+        });
+        presetsEl.appendChild(div);
+      });
+    }
+
+    // Type tabs
+    document.querySelectorAll('.type-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.type-tab').forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        gradientType = tab.getAttribute('data-type');
+        
+        document.getElementById('linearControls').style.display = gradientType === 'linear' ? 'block' : 'none';
+        document.getElementById('radialControls').style.display = gradientType === 'radial' ? 'block' : 'none';
+        document.getElementById('conicControls').style.display = gradientType === 'conic' ? 'block' : 'none';
+        
+        updateGradient();
+      });
+    });
+
+    // Range inputs
+    document.getElementById('angle').addEventListener('input', function(e) {
+      document.getElementById('angleValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('posX').addEventListener('input', function(e) {
+      document.getElementById('posXValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('posY').addEventListener('input', function(e) {
+      document.getElementById('posYValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('conicAngle').addEventListener('input', function(e) {
+      document.getElementById('conicAngleValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('conicPosX').addEventListener('input', function(e) {
+      document.getElementById('conicPosXValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('conicPosY').addEventListener('input', function(e) {
+      document.getElementById('conicPosYValue').textContent = e.target.value;
+      updateGradient();
+    });
+
+    document.getElementById('radialShape').addEventListener('change', updateGradient);
+
+    document.getElementById('btnAddStop').addEventListener('click', function() {
+      if (colorStops.length >= 8) return;
+      var lastPos = colorStops[colorStops.length - 1].position;
+      var newPos = Math.min(100, lastPos + 20);
+      colorStops.push({ color: '#ffffff', position: newPos });
+      renderColorStops();
+      updateGradient();
+    });
+
+    document.getElementById('btnCopy').addEventListener('click', async function() {
+      try {
+        await navigator.clipboard.writeText(codeOutputEl.textContent);
+        statusEl.textContent = '已复制到剪贴板';
+        setTimeout(function() { statusEl.textContent = ''; }, 2000);
+      } catch (e) {
+        statusEl.textContent = '复制失败';
+      }
+    });
+
+    document.getElementById('btnRandom').addEventListener('click', function() {
+      var randomColor = function() {
+        return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+      };
+      colorStops = [
+        { color: randomColor(), position: 0 },
+        { color: randomColor(), position: 100 }
+      ];
+      if (Math.random() > 0.5) {
+        colorStops.splice(1, 0, { color: randomColor(), position: 50 });
+      }
+      document.getElementById('angle').value = Math.floor(Math.random() * 360);
+      document.getElementById('angleValue').textContent = document.getElementById('angle').value;
+      renderColorStops();
+      updateGradient();
+    });
+
+    // Initialize
+    renderColorStops();
+    renderPresets();
+    updateGradient();
+  </script>
+</body>
+</html>

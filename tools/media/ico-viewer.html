@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICO 图标查看器 - WebUtils</title>
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --border-default: #2a2a3a;
+      --border-focus: #3a3a4a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888;
+      --accent-cyan: #00d4ff;
+      --accent-magenta: #ff00ff;
+      --accent-green: #00ff88;
+      --accent-yellow: #ffdd00;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding: 8px 16px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .back-link:hover {
+      background: var(--bg-card);
+      border-color: var(--accent-cyan);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .upload-area {
+      border: 2px dashed var(--border-default);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 212, 255, 0.05);
+    }
+    .upload-area input { display: none; }
+    .upload-icon { font-size: 48px; margin-bottom: 16px; }
+    .file-info {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-surface);
+      border-radius: 8px;
+    }
+    .file-info.visible { display: block; }
+    .file-info h3 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: var(--accent-cyan);
+    }
+    .file-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .file-info-item {
+      font-size: 12px;
+    }
+    .file-info-item span {
+      color: var(--text-secondary);
+    }
+    .file-info-item strong {
+      color: var(--text-primary);
+      display: block;
+      margin-top: 4px;
+    }
+    .icons-grid {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .icons-grid.visible { display: grid; }
+    .icon-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .icon-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+    .icon-preview {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 16px 16px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .icon-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+    }
+    .icon-preview canvas {
+      image-rendering: pixelated;
+    }
+    .icon-meta {
+      font-size: 12px;
+    }
+    .icon-meta .size {
+      color: var(--accent-cyan);
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .icon-meta .details {
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .icon-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .icon-actions button {
+      flex: 1;
+      padding: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .icon-actions button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .no-icons {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    .no-icons .icon { font-size: 48px; margin-bottom: 16px; }
+    .status {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 16px;
+      display: none;
+    }
+    .status.error {
+      display: block;
+      background: rgba(255, 0, 100, 0.1);
+      border: 1px solid var(--accent-magenta);
+      color: var(--accent-magenta);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>ICO 图标查看器</h1>
+    <p class="subtitle">查看和提取 ICO 文件中的所有图标尺寸</p>
+
+    <div class="card">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">🎨</div>
+        <p>点击或拖拽 ICO 文件到此处</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">支持 .ico 和 .cur 格式</p>
+        <input type="file" id="fileInput" accept=".ico,.cur">
+      </div>
+      <div class="status" id="errorStatus"></div>
+
+      <div class="file-info" id="fileInfo">
+        <h3>文件信息</h3>
+        <div class="file-info-grid" id="fileInfoGrid"></div>
+      </div>
+    </div>
+
+    <div class="icons-grid" id="iconsGrid"></div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileInfoGrid = document.getElementById('fileInfoGrid');
+    const iconsGrid = document.getElementById('iconsGrid');
+    const errorStatus = document.getElementById('errorStatus');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) parseICO(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) parseICO(e.target.files[0]);
+    });
+
+    function parseICO(file) {
+      errorStatus.className = 'status';
+      fileInfo.classList.remove('visible');
+      iconsGrid.classList.remove('visible');
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const buffer = e.target.result;
+          const view = new DataView(buffer);
+          
+          // Check header
+          const reserved = view.getUint16(0, true);
+          const type = view.getUint16(2, true);
+          const count = view.getUint16(4, true);
+          
+          if (reserved !== 0 || (type !== 1 && type !== 2)) {
+            throw new Error('不是有效的 ICO/CUR 文件');
+          }
+          
+          // Display file info
+          renderFileInfo(file.name, file.size, type === 1 ? 'ICO' : 'CUR', count);
+          fileInfo.classList.add('visible');
+          
+          // Parse each icon entry
+          const icons = [];
+          for (let i = 0; i < count; i++) {
+            const offset = 6 + i * 16;
+            const entry = {
+              width: view.getUint8(offset) || 256,
+              height: view.getUint8(offset + 1) || 256,
+              colorCount: view.getUint8(offset + 2),
+              reserved: view.getUint8(offset + 3),
+              planes: view.getUint16(offset + 4, true),
+              bitCount: view.getUint16(offset + 6, true),
+              bytesInRes: view.getUint32(offset + 8, true),
+              imageOffset: view.getUint32(offset + 12, true)
+            };
+            
+            // Extract image data
+            const imageData = new Uint8Array(buffer, entry.imageOffset, entry.bytesInRes);
+            entry.data = imageData;
+            entry.isPNG = imageData[0] === 0x89 && imageData[1] === 0x50;
+            
+            icons.push(entry);
+          }
+          
+          // Sort by size (largest first)
+          icons.sort((a, b) => (b.width * b.height) - (a.width * a.height));
+          
+          // Render icons
+          renderIcons(icons);
+          iconsGrid.classList.add('visible');
+          
+        } catch (err) {
+          errorStatus.className = 'status error';
+          errorStatus.textContent = err.message;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderFileInfo(name, size, type, count) {
+      while (fileInfoGrid.firstChild) {
+        fileInfoGrid.removeChild(fileInfoGrid.firstChild);
+      }
+      
+      const items = [
+        { label: '文件名', value: name },
+        { label: '文件大小', value: formatFileSize(size) },
+        { label: '文件类型', value: type },
+        { label: '图标数量', value: count + ' 个' }
+      ];
+      
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'file-info-item';
+        const span = document.createElement('span');
+        span.textContent = item.label;
+        const strong = document.createElement('strong');
+        strong.textContent = item.value;
+        div.appendChild(span);
+        div.appendChild(strong);
+        fileInfoGrid.appendChild(div);
+      });
+    }
+
+    function renderIcons(icons) {
+      while (iconsGrid.firstChild) {
+        iconsGrid.removeChild(iconsGrid.firstChild);
+      }
+      
+      icons.forEach((icon, index) => {
+        const card = document.createElement('div');
+        card.className = 'icon-card';
+        
+        const preview = document.createElement('div');
+        preview.className = 'icon-preview';
+        
+        if (icon.isPNG) {
+          // PNG embedded
+          const blob = new Blob([icon.data], { type: 'image/png' });
+          const url = URL.createObjectURL(blob);
+          const img = document.createElement('img');
+          img.src = url;
+          img.style.width = Math.min(icon.width, 128) + 'px';
+          img.style.height = Math.min(icon.height, 128) + 'px';
+          preview.appendChild(img);
+        } else {
+          // BMP format - render to canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = icon.width;
+          canvas.height = icon.height;
+          const ctx = canvas.getContext('2d');
+          
+          try {
+            renderBMPIcon(ctx, icon);
+          } catch (e) {
+            // Fallback: show placeholder
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, icon.width, icon.height);
+            ctx.fillStyle = '#666';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('BMP', icon.width/2, icon.height/2);
+          }
+          
+          canvas.style.width = Math.min(icon.width, 128) + 'px';
+          canvas.style.height = Math.min(icon.height, 128) + 'px';
+          preview.appendChild(canvas);
+        }
+        
+        card.appendChild(preview);
+        
+        const meta = document.createElement('div');
+        meta.className = 'icon-meta';
+        
+        const sizeSpan = document.createElement('div');
+        sizeSpan.className = 'size';
+        sizeSpan.textContent = icon.width + ' × ' + icon.height;
+        meta.appendChild(sizeSpan);
+        
+        const details = document.createElement('div');
+        details.className = 'details';
+        const bpp = icon.bitCount || (icon.colorCount === 0 ? 32 : Math.log2(icon.colorCount || 256));
+        details.textContent = (icon.isPNG ? 'PNG' : 'BMP') + ' · ' + bpp + ' bit';
+        meta.appendChild(details);
+        
+        card.appendChild(meta);
+        
+        const actions = document.createElement('div');
+        actions.className = 'icon-actions';
+        
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = '下载 PNG';
+        downloadBtn.onclick = () => downloadIcon(icon, index);
+        actions.appendChild(downloadBtn);
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = '复制';
+        copyBtn.onclick = () => copyIcon(icon, index, copyBtn);
+        actions.appendChild(copyBtn);
+        
+        card.appendChild(actions);
+        iconsGrid.appendChild(card);
+      });
+    }
+
+    function renderBMPIcon(ctx, icon) {
+      const data = icon.data;
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      
+      // BMP header info
+      const headerSize = view.getUint32(0, true);
+      const width = view.getInt32(4, true);
+      const height = view.getInt32(8, true) / 2; // DIB height is doubled (includes mask)
+      const bpp = view.getUint16(14, true);
+      
+      const imageData = ctx.createImageData(icon.width, icon.height);
+      const pixels = imageData.data;
+      
+      if (bpp === 32) {
+        // 32-bit BGRA
+        const pixelOffset = headerSize;
+        for (let y = 0; y < icon.height; y++) {
+          for (let x = 0; x < icon.width; x++) {
+            const srcIdx = pixelOffset + ((icon.height - 1 - y) * icon.width + x) * 4;
+            const dstIdx = (y * icon.width + x) * 4;
+            pixels[dstIdx] = data[srcIdx + 2];     // R
+            pixels[dstIdx + 1] = data[srcIdx + 1]; // G
+            pixels[dstIdx + 2] = data[srcIdx];     // B
+            pixels[dstIdx + 3] = data[srcIdx + 3]; // A
+          }
+        }
+      } else if (bpp === 24) {
+        // 24-bit BGR
+        const rowSize = Math.ceil(icon.width * 3 / 4) * 4;
+        const pixelOffset = headerSize;
+        const maskOffset = pixelOffset + rowSize * icon.height;
+        
+        for (let y = 0; y < icon.height; y++) {
+          for (let x = 0; x < icon.width; x++) {
+            const srcIdx = pixelOffset + (icon.height - 1 - y) * rowSize + x * 3;
+            const dstIdx = (y * icon.width + x) * 4;
+            pixels[dstIdx] = data[srcIdx + 2];
+            pixels[dstIdx + 1] = data[srcIdx + 1];
+            pixels[dstIdx + 2] = data[srcIdx];
+            pixels[dstIdx + 3] = 255;
+          }
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function downloadIcon(icon, index) {
+      const canvas = document.createElement('canvas');
+      canvas.width = icon.width;
+      canvas.height = icon.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (icon.isPNG) {
+        const blob = new Blob([icon.data], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+          downloadCanvas(canvas, icon.width + 'x' + icon.height);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      } else {
+        try {
+          renderBMPIcon(ctx, icon);
+        } catch (e) {
+          ctx.fillStyle = '#333';
+          ctx.fillRect(0, 0, icon.width, icon.height);
+        }
+        downloadCanvas(canvas, icon.width + 'x' + icon.height);
+      }
+    }
+
+    function downloadCanvas(canvas, sizeName) {
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'icon_' + sizeName + '.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    function copyIcon(icon, index, btn) {
+      const canvas = document.createElement('canvas');
+      canvas.width = icon.width;
+      canvas.height = icon.height;
+      const ctx = canvas.getContext('2d');
+      
+      const doCopy = () => {
+        canvas.toBlob(blob => {
+          navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]).then(() => {
+            btn.textContent = '已复制!';
+            setTimeout(() => btn.textContent = '复制', 2000);
+          });
+        });
+      };
+      
+      if (icon.isPNG) {
+        const blob = new Blob([icon.data], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0);
+          doCopy();
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      } else {
+        try {
+          renderBMPIcon(ctx, icon);
+        } catch (e) {
+          ctx.fillStyle = '#333';
+          ctx.fillRect(0, 0, icon.width, icon.height);
+        }
+        doCopy();
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+  </script>
+</body>
+</html>

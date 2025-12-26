@@ -1,260 +1,720 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>图片 EXIF 查看器 - WebUtils</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIF 信息查看 - WebUtils</title>
   <style>
-    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
-    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
-    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
-    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
-    .dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 3rem; text-align: center; cursor: pointer; transition: border-color 0.2s; }
-    .dropzone:hover, .dropzone.dragover { border-color: var(--primary); }
-    .dropzone input { display: none; }
-    .preview { margin-top: 1.5rem; display: none; }
-    .preview.active { display: block; }
-    .preview img { max-width: 100%; max-height: 300px; border-radius: var(--radius); }
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-    .info-item { padding: 0.75rem; background: var(--bg); border-radius: var(--radius); }
-    .info-item label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
-    .info-item .value { font-weight: 500; word-break: break-all; }
-    .no-exif { text-align: center; color: var(--text-muted); padding: 2rem; }
-    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
-    footer a { color: var(--primary); text-decoration: none; }
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --border-default: #2a2a3a;
+      --border-focus: #3a3a4a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888;
+      --accent-cyan: #00d4ff;
+      --accent-magenta: #ff00ff;
+      --accent-green: #00ff88;
+      --accent-yellow: #ffdd00;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding: 8px 16px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .back-link:hover {
+      background: var(--bg-card);
+      border-color: var(--accent-cyan);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .upload-area {
+      border: 2px dashed var(--border-default);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 212, 255, 0.05);
+    }
+    .upload-area input { display: none; }
+    .upload-icon { font-size: 48px; margin-bottom: 16px; }
+    .image-preview {
+      display: none;
+      margin-top: 20px;
+    }
+    .image-preview.visible { display: block; }
+    .image-preview img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border-default);
+    }
+    .image-info {
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--bg-surface);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .image-info p {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .image-info span:last-child {
+      color: var(--accent-cyan);
+    }
+    .exif-section {
+      display: none;
+    }
+    .exif-section.visible { display: block; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-surface);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .section-header:hover {
+      background: var(--border-default);
+    }
+    .section-header h3 {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-header .toggle {
+      color: var(--text-secondary);
+      transition: transform 0.2s;
+    }
+    .section-header.collapsed .toggle {
+      transform: rotate(-90deg);
+    }
+    .section-content {
+      overflow: hidden;
+      transition: max-height 0.3s;
+    }
+    .section-header.collapsed + .section-content {
+      max-height: 0 !important;
+    }
+    .exif-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .exif-table th, .exif-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-default);
+      font-size: 13px;
+    }
+    .exif-table th {
+      color: var(--text-secondary);
+      font-weight: normal;
+      width: 40%;
+    }
+    .exif-table td {
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+    .exif-table tr:last-child th,
+    .exif-table tr:last-child td {
+      border-bottom: none;
+    }
+    .no-exif {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+    .no-exif .icon { font-size: 48px; margin-bottom: 16px; }
+    .map-container {
+      height: 200px;
+      background: var(--bg-surface);
+      border-radius: 8px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .map-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 8px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+    .btn:hover {
+      border-color: var(--accent-cyan);
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .highlight {
+      color: var(--accent-cyan);
+    }
+    .warning {
+      color: var(--accent-yellow);
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <a href="../../index.html" class="back-link">← 返回工具列表</a>
-    <h1>图片 EXIF 查看器</h1>
-    <p class="desc">查看图片的 EXIF 元数据，包括拍摄设备、时间、GPS 位置等信息</p>
+    <h1>EXIF 信息查看</h1>
+    <p class="subtitle">查看图片的 EXIF 元数据信息</p>
 
-    <div class="card">
-      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
-        <p>点击或拖放图片到此处</p>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">支持 JPEG、PNG、TIFF 等格式</p>
+    <div class="layout">
+      <div class="sidebar">
+        <div class="card">
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📷</div>
+            <p>点击或拖拽图片到此处</p>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">支持 JPG、JPEG 格式</p>
+            <input type="file" id="fileInput" accept="image/jpeg,image/jpg">
+          </div>
+
+          <div class="image-preview" id="imagePreview">
+            <img id="previewImg" src="" alt="Preview">
+            <div class="image-info" id="basicInfo"></div>
+          </div>
+
+          <div class="btn-row" id="btnRow" style="display: none;">
+            <button class="btn" id="exportBtn">导出 JSON</button>
+            <button class="btn" id="copyBtn">复制信息</button>
+          </div>
+        </div>
       </div>
 
-      <div class="preview" id="preview">
-        <img id="previewImg" alt="预览">
-      </div>
+      <div class="main-area">
+        <div class="card exif-section" id="exifSection">
+          <div id="exifContent"></div>
+        </div>
 
-      <div class="info-grid" id="infoGrid"></div>
-      <div class="no-exif" id="noExif" style="display:none;">此图片不包含 EXIF 信息</div>
+        <div class="card" id="noExifCard">
+          <div class="no-exif" id="noExifContent">
+            <div class="icon">📋</div>
+            <p>上传 JPEG 图片以查看 EXIF 信息</p>
+            <p style="font-size: 12px; margin-top: 8px;">仅 JPEG 格式支持 EXIF 数据</p>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <footer>
-      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
-    </footer>
   </div>
 
   <script>
-    var dropzone = document.getElementById('dropzone');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const basicInfo = document.getElementById('basicInfo');
+    const exifSection = document.getElementById('exifSection');
+    const exifContent = document.getElementById('exifContent');
+    const noExifCard = document.getElementById('noExifCard');
+    const noExifContent = document.getElementById('noExifContent');
+    const btnRow = document.getElementById('btnRow');
 
-    dropzone.addEventListener('dragover', function(e) {
+    let currentExif = null;
+
+    // Upload handlers
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropzone.classList.add('dragover');
+      uploadArea.classList.add('dragover');
     });
-
-    dropzone.addEventListener('dragleave', function() {
-      dropzone.classList.remove('dragover');
-    });
-
-    dropzone.addEventListener('drop', function(e) {
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
       e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        handleFile(e.dataTransfer.files[0]);
-      }
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) loadImage(e.target.files[0]);
     });
 
-    function handleFile(file) {
-      if (!file || !file.type.startsWith('image/')) {
-        alert('请选择图片文件');
+    function loadImage(file) {
+      if (!file.type.match(/image\/jpe?g/)) {
+        alert('请上传 JPEG 格式的图片');
         return;
       }
 
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('previewImg').src = e.target.result;
-        document.getElementById('preview').classList.add('active');
-        extractExif(e.target.result, file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        imagePreview.classList.add('visible');
+        
+        const img = new Image();
+        img.onload = () => {
+          renderBasicInfo(file.name, img.width, img.height, file.size, file.type);
+        };
+        img.src = e.target.result;
+        
+        readExif(e.target.result);
       };
       reader.readAsDataURL(file);
     }
 
-    function extractExif(dataUrl, file) {
-      var grid = document.getElementById('infoGrid');
-      var noExif = document.getElementById('noExif');
-      while (grid.firstChild) grid.removeChild(grid.firstChild);
-      noExif.style.display = 'none';
-
-      var basicInfo = [
-        { label: '文件名', value: file.name },
-        { label: '文件大小', value: formatFileSize(file.size) },
-        { label: '文件类型', value: file.type },
-        { label: '最后修改', value: new Date(file.lastModified).toLocaleString() }
+    function renderBasicInfo(name, width, height, size, type) {
+      while (basicInfo.firstChild) {
+        basicInfo.removeChild(basicInfo.firstChild);
+      }
+      
+      const items = [
+        { label: '文件名', value: name },
+        { label: '尺寸', value: width + ' × ' + height },
+        { label: '文件大小', value: formatFileSize(size) },
+        { label: '类型', value: type }
       ];
-
-      var img = new Image();
-      img.onload = function() {
-        basicInfo.push({ label: '图片尺寸', value: img.width + ' × ' + img.height + ' 像素' });
-        basicInfo.push({ label: '宽高比', value: (img.width / img.height).toFixed(2) });
-
-        displayInfo(basicInfo);
-
-        if (file.type === 'image/jpeg') {
-          readJpegExif(dataUrl);
-        }
-      };
-      img.src = dataUrl;
-    }
-
-    function displayInfo(items) {
-      var grid = document.getElementById('infoGrid');
-      items.forEach(function(item) {
-        var div = document.createElement('div');
-        div.className = 'info-item';
-
-        var label = document.createElement('label');
-        label.textContent = item.label;
-        div.appendChild(label);
-
-        var value = document.createElement('div');
-        value.className = 'value';
-        value.textContent = item.value;
-        div.appendChild(value);
-
-        grid.appendChild(div);
+      
+      items.forEach(item => {
+        const p = document.createElement('p');
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = item.label;
+        const valueSpan = document.createElement('span');
+        valueSpan.textContent = item.value;
+        p.appendChild(labelSpan);
+        p.appendChild(valueSpan);
+        basicInfo.appendChild(p);
       });
     }
 
-    function readJpegExif(dataUrl) {
-      var base64 = dataUrl.split(',')[1];
-      var binary = atob(base64);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i++) {
+    function readExif(dataUrl) {
+      // Convert base64 to ArrayBuffer
+      const base64 = dataUrl.split(',')[1];
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
         bytes[i] = binary.charCodeAt(i);
       }
 
-      if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) {
-        return;
-      }
+      const exif = parseExif(bytes.buffer);
+      currentExif = exif;
 
-      var offset = 2;
-      while (offset < bytes.length) {
-        if (bytes[offset] !== 0xFF) break;
-
-        var marker = bytes[offset + 1];
-        if (marker === 0xE1) {
-          var length = (bytes[offset + 2] << 8) | bytes[offset + 3];
-          var exifData = bytes.slice(offset + 4, offset + 2 + length);
-
-          if (String.fromCharCode.apply(null, exifData.slice(0, 4)) === 'Exif') {
-            parseExif(exifData.slice(6));
-            return;
-          }
-        }
-
-        var segmentLength = (bytes[offset + 2] << 8) | bytes[offset + 3];
-        offset += 2 + segmentLength;
-      }
-
-      document.getElementById('noExif').style.display = 'block';
-    }
-
-    function parseExif(data) {
-      var littleEndian = String.fromCharCode(data[0], data[1]) === 'II';
-      var exifInfo = [];
-
-      var ifdOffset = readUint32(data, 4, littleEndian);
-      var numEntries = readUint16(data, ifdOffset, littleEndian);
-
-      var tagNames = {
-        0x010F: '相机制造商',
-        0x0110: '相机型号',
-        0x0112: '方向',
-        0x011A: 'X 分辨率',
-        0x011B: 'Y 分辨率',
-        0x0128: '分辨率单位',
-        0x0131: '软件',
-        0x0132: '修改时间',
-        0x8769: 'Exif IFD',
-        0x8825: 'GPS IFD'
-      };
-
-      for (var i = 0; i < numEntries; i++) {
-        var entryOffset = ifdOffset + 2 + i * 12;
-        var tag = readUint16(data, entryOffset, littleEndian);
-        var type = readUint16(data, entryOffset + 2, littleEndian);
-        var count = readUint32(data, entryOffset + 4, littleEndian);
-
-        if (tagNames[tag]) {
-          var value = readTagValue(data, entryOffset, type, count, littleEndian);
-          if (value) {
-            exifInfo.push({ label: tagNames[tag], value: value });
-          }
-        }
-      }
-
-      if (exifInfo.length > 0) {
-        displayInfo(exifInfo);
+      if (exif && Object.keys(exif).length > 0) {
+        displayExif(exif);
+        exifSection.classList.add('visible');
+        noExifCard.style.display = 'none';
+        btnRow.style.display = 'flex';
       } else {
-        document.getElementById('noExif').style.display = 'block';
+        exifSection.classList.remove('visible');
+        noExifCard.style.display = 'block';
+        showNoExifMessage();
+        btnRow.style.display = 'none';
       }
     }
 
-    function readUint16(data, offset, littleEndian) {
-      if (littleEndian) {
-        return data[offset] | (data[offset + 1] << 8);
+    function showNoExifMessage() {
+      while (noExifContent.firstChild) {
+        noExifContent.removeChild(noExifContent.firstChild);
       }
-      return (data[offset] << 8) | data[offset + 1];
+      
+      const icon = document.createElement('div');
+      icon.className = 'icon';
+      icon.textContent = '⚠️';
+      
+      const msg = document.createElement('p');
+      msg.textContent = '此图片不包含 EXIF 信息';
+      
+      const sub = document.createElement('p');
+      sub.style.fontSize = '12px';
+      sub.style.marginTop = '8px';
+      sub.textContent = '可能已被剥离或从未包含';
+      
+      noExifContent.appendChild(icon);
+      noExifContent.appendChild(msg);
+      noExifContent.appendChild(sub);
     }
 
-    function readUint32(data, offset, littleEndian) {
-      if (littleEndian) {
-        return data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
-      }
-      return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3];
-    }
+    function parseExif(buffer) {
+      const view = new DataView(buffer);
+      
+      // Check JPEG magic number
+      if (view.getUint16(0) !== 0xFFD8) return null;
 
-    function readTagValue(data, entryOffset, type, count, littleEndian) {
-      var valueOffset = entryOffset + 8;
+      let offset = 2;
+      const exifData = {};
 
-      if (type === 2) {
-        if (count > 4) {
-          valueOffset = readUint32(data, entryOffset + 8, littleEndian);
+      while (offset < view.byteLength) {
+        if (view.getUint8(offset) !== 0xFF) break;
+
+        const marker = view.getUint8(offset + 1);
+        
+        // APP1 marker (EXIF)
+        if (marker === 0xE1) {
+          const exifHeader = getString(view, offset + 4, 4);
+          
+          if (exifHeader === 'Exif') {
+            const tiffOffset = offset + 10;
+            const littleEndian = view.getUint16(tiffOffset) === 0x4949;
+            
+            const ifdOffset = view.getUint32(tiffOffset + 4, littleEndian);
+            
+            // Parse IFD0
+            parseIFD(view, tiffOffset, tiffOffset + ifdOffset, littleEndian, exifData, 'IFD0');
+            
+            // Look for EXIF IFD
+            if (exifData.ExifIFDPointer) {
+              parseIFD(view, tiffOffset, tiffOffset + exifData.ExifIFDPointer, littleEndian, exifData, 'EXIF');
+            }
+            
+            // Look for GPS IFD
+            if (exifData.GPSInfoIFDPointer) {
+              parseIFD(view, tiffOffset, tiffOffset + exifData.GPSInfoIFDPointer, littleEndian, exifData, 'GPS');
+            }
+          }
+          break;
         }
-        var str = '';
-        for (var i = 0; i < count - 1; i++) {
-          str += String.fromCharCode(data[valueOffset + i]);
+
+        offset += 2 + view.getUint16(offset + 2);
+      }
+
+      return exifData;
+    }
+
+    const EXIF_TAGS = {
+      0x010F: 'Make', 0x0110: 'Model', 0x0112: 'Orientation',
+      0x011A: 'XResolution', 0x011B: 'YResolution', 0x0128: 'ResolutionUnit',
+      0x0131: 'Software', 0x0132: 'DateTime', 0x013B: 'Artist',
+      0x8298: 'Copyright', 0x8769: 'ExifIFDPointer', 0x8825: 'GPSInfoIFDPointer',
+      0x829A: 'ExposureTime', 0x829D: 'FNumber', 0x8822: 'ExposureProgram',
+      0x8827: 'ISOSpeedRatings', 0x9000: 'ExifVersion', 0x9003: 'DateTimeOriginal',
+      0x9004: 'DateTimeDigitized', 0x9201: 'ShutterSpeedValue', 0x9202: 'ApertureValue',
+      0x9203: 'BrightnessValue', 0x9204: 'ExposureBiasValue', 0x9205: 'MaxApertureValue',
+      0x9206: 'SubjectDistance', 0x9207: 'MeteringMode', 0x9208: 'LightSource',
+      0x9209: 'Flash', 0x920A: 'FocalLength', 0xA001: 'ColorSpace',
+      0xA002: 'PixelXDimension', 0xA003: 'PixelYDimension', 0xA402: 'ExposureMode',
+      0xA403: 'WhiteBalance', 0xA404: 'DigitalZoomRatio', 0xA405: 'FocalLengthIn35mmFilm',
+      0xA406: 'SceneCaptureType', 0xA420: 'ImageUniqueID', 0xA433: 'LensMake',
+      0xA434: 'LensModel'
+    };
+
+    const GPS_TAGS = {
+      0x0000: 'GPSVersionID', 0x0001: 'GPSLatitudeRef', 0x0002: 'GPSLatitude',
+      0x0003: 'GPSLongitudeRef', 0x0004: 'GPSLongitude', 0x0005: 'GPSAltitudeRef',
+      0x0006: 'GPSAltitude', 0x0007: 'GPSTimeStamp', 0x001D: 'GPSDateStamp'
+    };
+
+    function parseIFD(view, tiffOffset, ifdOffset, littleEndian, exifData, ifdName) {
+      try {
+        const numEntries = view.getUint16(ifdOffset, littleEndian);
+        
+        for (let i = 0; i < numEntries; i++) {
+          const entryOffset = ifdOffset + 2 + i * 12;
+          const tag = view.getUint16(entryOffset, littleEndian);
+          const type = view.getUint16(entryOffset + 2, littleEndian);
+          const count = view.getUint32(entryOffset + 4, littleEndian);
+          const valueOffset = entryOffset + 8;
+          
+          const tagName = (ifdName === 'GPS' ? GPS_TAGS[tag] : EXIF_TAGS[tag]) || ('Unknown_' + tag.toString(16));
+          const value = readTagValue(view, tiffOffset, valueOffset, type, count, littleEndian);
+          
+          if (value !== null) {
+            exifData[tagName] = value;
+          }
         }
-        return str.trim();
+      } catch (e) {
+        console.log('Error parsing IFD:', e);
+      }
+    }
+
+    function readTagValue(view, tiffOffset, valueOffset, type, count, littleEndian) {
+      const typeSize = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8];
+      const totalSize = typeSize[type] * count;
+      
+      let dataOffset = valueOffset;
+      if (totalSize > 4) {
+        dataOffset = tiffOffset + view.getUint32(valueOffset, littleEndian);
       }
 
-      if (type === 3) {
-        return readUint16(data, valueOffset, littleEndian).toString();
+      try {
+        switch (type) {
+          case 1: // BYTE
+          case 7: // UNDEFINED
+            if (count === 1) return view.getUint8(dataOffset);
+            const bytes = [];
+            for (let i = 0; i < count; i++) bytes.push(view.getUint8(dataOffset + i));
+            return bytes;
+          case 2: // ASCII
+            return getString(view, dataOffset, count - 1);
+          case 3: // SHORT
+            if (count === 1) return view.getUint16(dataOffset, littleEndian);
+            const shorts = [];
+            for (let i = 0; i < count; i++) shorts.push(view.getUint16(dataOffset + i * 2, littleEndian));
+            return shorts;
+          case 4: // LONG
+            if (count === 1) return view.getUint32(dataOffset, littleEndian);
+            const longs = [];
+            for (let i = 0; i < count; i++) longs.push(view.getUint32(dataOffset + i * 4, littleEndian));
+            return longs;
+          case 5: // RATIONAL
+          case 10: // SRATIONAL
+            const rationals = [];
+            for (let i = 0; i < count; i++) {
+              const num = type === 5 ? view.getUint32(dataOffset + i * 8, littleEndian) : view.getInt32(dataOffset + i * 8, littleEndian);
+              const den = type === 5 ? view.getUint32(dataOffset + i * 8 + 4, littleEndian) : view.getInt32(dataOffset + i * 8 + 4, littleEndian);
+              rationals.push(den === 0 ? 0 : num / den);
+            }
+            return count === 1 ? rationals[0] : rationals;
+          default:
+            return null;
+        }
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getString(view, offset, length) {
+      let str = '';
+      for (let i = 0; i < length; i++) {
+        const c = view.getUint8(offset + i);
+        if (c === 0) break;
+        str += String.fromCharCode(c);
+      }
+      return str;
+    }
+
+    function displayExif(exif) {
+      const sections = [
+        { title: '📷 相机信息', keys: ['Make', 'Model', 'Software', 'LensMake', 'LensModel'], collapsed: false },
+        { title: '⚙️ 拍摄参数', keys: ['ExposureTime', 'FNumber', 'ISOSpeedRatings', 'FocalLength', 'FocalLengthIn35mmFilm', 'ExposureBiasValue', 'MaxApertureValue', 'MeteringMode', 'Flash', 'WhiteBalance', 'ExposureMode', 'ExposureProgram'], collapsed: false },
+        { title: '📅 日期时间', keys: ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized'], collapsed: true },
+        { title: '📐 图像信息', keys: ['PixelXDimension', 'PixelYDimension', 'Orientation', 'ColorSpace', 'XResolution', 'YResolution', 'ResolutionUnit'], collapsed: true },
+        { title: '📍 GPS 信息', keys: ['GPSLatitude', 'GPSLatitudeRef', 'GPSLongitude', 'GPSLongitudeRef', 'GPSAltitude', 'GPSAltitudeRef', 'GPSDateStamp', 'GPSTimeStamp'], collapsed: true },
+        { title: '📝 其他信息', keys: ['Artist', 'Copyright', 'ImageUniqueID', 'SceneCaptureType'], collapsed: true }
+      ];
+
+      while (exifContent.firstChild) {
+        exifContent.removeChild(exifContent.firstChild);
       }
 
-      if (type === 4) {
-        return readUint32(data, valueOffset, littleEndian).toString();
-      }
+      sections.forEach((section) => {
+        const sectionData = section.keys.filter(key => exif[key] !== undefined);
+        if (sectionData.length === 0) return;
 
-      return null;
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'section-header' + (section.collapsed ? ' collapsed' : '');
+        header.onclick = function() { this.classList.toggle('collapsed'); };
+        
+        const h3 = document.createElement('h3');
+        h3.textContent = section.title;
+        header.appendChild(h3);
+        
+        const toggle = document.createElement('span');
+        toggle.className = 'toggle';
+        toggle.textContent = '▼';
+        header.appendChild(toggle);
+        
+        exifContent.appendChild(header);
+
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'section-content';
+        content.style.maxHeight = section.collapsed ? '0' : '1000px';
+        
+        const table = document.createElement('table');
+        table.className = 'exif-table';
+        
+        sectionData.forEach(key => {
+          const tr = document.createElement('tr');
+          const th = document.createElement('th');
+          th.textContent = formatTagName(key);
+          const td = document.createElement('td');
+          td.textContent = formatExifValue(key, exif[key]);
+          tr.appendChild(th);
+          tr.appendChild(td);
+          table.appendChild(tr);
+        });
+        
+        content.appendChild(table);
+        exifContent.appendChild(content);
+
+        // Show GPS coordinates as text (no external map to protect privacy)
+        if (section.title.includes('GPS') && exif.GPSLatitude && exif.GPSLongitude) {
+          const lat = convertGPSToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
+          const lng = convertGPSToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
+          
+          const coordsContainer = document.createElement('div');
+          coordsContainer.className = 'map-container';
+          coordsContainer.style.flexDirection = 'column';
+          coordsContainer.style.gap = '8px';
+          coordsContainer.style.padding = '16px';
+          
+          const coordsText = document.createElement('div');
+          coordsText.style.fontFamily = "'JetBrains Mono', monospace";
+          coordsText.style.fontSize = '14px';
+          coordsText.style.color = 'var(--accent-cyan)';
+          coordsText.textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+          
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'btn';
+          copyBtn.style.marginTop = '8px';
+          copyBtn.textContent = '复制坐标';
+          copyBtn.onclick = function() {
+            navigator.clipboard.writeText(lat.toFixed(6) + ', ' + lng.toFixed(6)).then(function() {
+              copyBtn.textContent = '已复制!';
+              setTimeout(function() { copyBtn.textContent = '复制坐标'; }, 2000);
+            });
+          };
+          
+          coordsContainer.appendChild(coordsText);
+          coordsContainer.appendChild(copyBtn);
+          exifContent.appendChild(coordsContainer);
+        }
+      });
+    }
+
+    function formatTagName(tag) {
+      return tag.replace(/([A-Z])/g, ' $1').trim();
+    }
+
+    function formatExifValue(tag, value) {
+      if (value === undefined || value === null) return '-';
+
+      switch (tag) {
+        case 'ExposureTime':
+          return value < 1 ? ('1/' + Math.round(1/value) + 's') : (value + 's');
+        case 'FNumber':
+          return 'f/' + value.toFixed(1);
+        case 'FocalLength':
+        case 'FocalLengthIn35mmFilm':
+          return value + 'mm';
+        case 'ExposureBiasValue':
+          return (value > 0 ? '+' : '') + value.toFixed(1) + ' EV';
+        case 'GPSLatitude':
+        case 'GPSLongitude':
+          if (Array.isArray(value)) {
+            return value[0] + '° ' + value[1] + "' " + value[2].toFixed(2) + '"';
+          }
+          return String(value);
+        case 'GPSAltitude':
+          return value.toFixed(1) + 'm';
+        case 'Flash':
+          return value & 1 ? '闪光灯已触发' : '闪光灯未触发';
+        case 'MeteringMode':
+          const meters = ['未知', '平均', '中央重点', '点测光', '多点', '矩阵', '局部'];
+          return meters[value] || String(value);
+        case 'WhiteBalance':
+          return value === 0 ? '自动' : '手动';
+        case 'ExposureMode':
+          return ['自动', '手动', '包围曝光'][value] || String(value);
+        case 'Orientation':
+          const orientations = ['', '正常', '水平翻转', '旋转180°', '垂直翻转', '顺时针90°+水平翻转', '顺时针90°', '逆时针90°+水平翻转', '逆时针90°'];
+          return orientations[value] || String(value);
+        case 'ColorSpace':
+          return value === 1 ? 'sRGB' : 'Adobe RGB';
+        case 'ResolutionUnit':
+          return value === 2 ? 'dpi' : value === 3 ? 'dpcm' : String(value);
+        default:
+          if (Array.isArray(value)) return value.join(', ');
+          return String(value);
+      }
+    }
+
+    function convertGPSToDecimal(coords, ref) {
+      if (!Array.isArray(coords) || coords.length < 3) return 0;
+      let decimal = coords[0] + coords[1]/60 + coords[2]/3600;
+      if (ref === 'S' || ref === 'W') decimal = -decimal;
+      return decimal;
     }
 
     function formatFileSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
+
+    // Export
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      if (!currentExif) return;
+      const blob = new Blob([JSON.stringify(currentExif, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'exif_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Copy
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      if (!currentExif) return;
+      const text = Object.entries(currentExif)
+        .map(([k, v]) => formatTagName(k) + ': ' + formatExifValue(k, v))
+        .join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '已复制!';
+        setTimeout(() => btn.textContent = '复制信息', 2000);
+      });
+    });
   </script>
 </body>
 </html>

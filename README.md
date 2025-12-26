@@ -28,11 +28,12 @@
 
 | 平台 | 链接 | 状态 |
 |------|------|------|
-| **GitHub Pages** | https://chicogong.github.io/html-tools/ | ✅ |
-| **Cloudflare Pages** | https://htmltools-bkt.pages.dev | ✅ |
-| **Vercel** | https://html-tools-jade.vercel.app | ✅ |
-| **Render** | https://webutils-uj15.onrender.com | ✅ |
-| **Surge** | https://webutils.surge.sh | ✅ |
+| **🌐 自定义域名** | https://tools.realtime-ai.chat | ✅ |
+| GitHub Pages | https://chicogong.github.io/html-tools/ | ✅ |
+| Cloudflare Pages | https://htmltools-bkt.pages.dev | ✅ |
+| Vercel | https://html-tools-jade.vercel.app | ✅ |
+| Render | https://webutils-uj15.onrender.com | ✅ |
+| Surge | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
 ## 工具列表

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XML ⇄ JSON 转换 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    [data-theme="dark"] {
+      --bg: #0a0a0f;
+      --card-bg: #1a1a24;
+      --text: #e8e8ed;
+      --text-muted: #999;
+      --border: #2a2a36;
+      --shadow: 0 2px 8px rgb(0,0,0,0.3);
+    }
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+    }
+
+    .desc {
+      color: var(--text-muted);
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      color: #fff;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (width <= 768px) {
+      .panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 350px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      color: var(--text);
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+
+    .status {
+      font-size: 0.85rem;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .options {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+
+    .options label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .options select {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--card-bg);
+      color: var(--text);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">☀️</button>
+    <h1>XML ⇄ JSON 转换</h1>
+    <p class="desc">XML 与 JSON 格式互转，支持格式化输出，纯本地处理</p>
+
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnXmlToJson" class="primary">XML → JSON</button>
+        <button id="btnJsonToXml" class="primary">JSON → XML</button>
+        <button id="btnCopy">复制输出</button>
+        <button id="btnShare">分享链接</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="options">
+        <label>
+          <input type="checkbox" id="prettyPrint" checked />
+          格式化输出
+        </label>
+        <label>
+          缩进:
+          <select id="indent">
+            <option value="2">2 空格</option>
+            <option value="4">4 空格</option>
+            <option value="tab">Tab</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" id="includeDeclaration" checked />
+          包含 XML 声明
+        </label>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <label for="input">输入 (XML 或 JSON)</label>
+          <textarea id="input" placeholder="在此粘贴 XML 或 JSON..."></textarea>
+        </div>
+        <div class="panel">
+          <label for="output">输出</label>
+          <textarea id="output" readonly placeholder="转换结果将显示在这里..."></textarea>
+        </div>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools/blob/main/tools/dev/xml-json.html" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const prettyPrintEl = document.getElementById('prettyPrint');
+    const indentEl = document.getElementById('indent');
+    const includeDeclarationEl = document.getElementById('includeDeclaration');
+
+    const LS_KEY = 'xml_json_input_v1';
+
+    // URL state
+    function loadFromUrl() {
+      const hash = location.hash.slice(1);
+      if (!hash) return false;
+      try {
+        inputEl.value = decodeURIComponent(atob(hash));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function saveToUrl() {
+      try {
+        const encoded = btoa(encodeURIComponent(inputEl.value));
+        history.replaceState(null, '', '#' + encoded);
+      } catch (e) {}
+    }
+
+    // localStorage
+    function loadFromStorage() {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        inputEl.value = saved;
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(LS_KEY, inputEl.value);
+    }
+
+    // 获取缩进
+    function getIndent() {
+      const val = indentEl.value;
+      if (val === 'tab') return '\t';
+      return parseInt(val, 10);
+    }
+
+    function getIndentStr(level) {
+      const indent = getIndent();
+      if (indent === '\t') {
+        return '\t'.repeat(level);
+      }
+      return ' '.repeat(indent * level);
+    }
+
+    // XML → JSON
+    function xmlToJson() {
+      const text = inputEl.value.trim();
+      if (!text) {
+        showStatus('请输入内容', 'error');
+        return;
+      }
+
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        
+        // Check for parse errors
+        const parseError = xmlDoc.querySelector('parsererror');
+        if (parseError) {
+          throw new Error('XML 解析错误: ' + parseError.textContent);
+        }
+
+        const obj = xmlNodeToObj(xmlDoc.documentElement);
+        const result = {};
+        result[xmlDoc.documentElement.tagName] = obj;
+        
+        const indent = prettyPrintEl.checked ? getIndent() : 0;
+        outputEl.value = JSON.stringify(result, null, indent);
+        showStatus('XML → JSON 转换成功', 'success');
+      } catch (e) {
+        showStatus(e.message || 'XML 解析错误', 'error');
+      }
+    }
+
+    // XML node to JS object
+    function xmlNodeToObj(node) {
+      // Text node
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.nodeValue.trim();
+      }
+
+      const obj = {};
+
+      // Attributes
+      if (node.attributes && node.attributes.length > 0) {
+        obj['@attributes'] = {};
+        for (let i = 0; i < node.attributes.length; i++) {
+          const attr = node.attributes[i];
+          obj['@attributes'][attr.name] = attr.value;
+        }
+      }
+
+      // Child nodes
+      if (node.hasChildNodes()) {
+        const children = node.childNodes;
+        
+        // Check if only text content
+        if (children.length === 1 && children[0].nodeType === Node.TEXT_NODE) {
+          const textContent = children[0].nodeValue.trim();
+          if (obj['@attributes']) {
+            obj['#text'] = textContent;
+          } else {
+            return textContent;
+          }
+        } else {
+          for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            
+            if (child.nodeType === Node.TEXT_NODE) {
+              const text = child.nodeValue.trim();
+              if (text) {
+                obj['#text'] = text;
+              }
+              continue;
+            }
+            
+            if (child.nodeType === Node.ELEMENT_NODE) {
+              const childName = child.tagName;
+              const childObj = xmlNodeToObj(child);
+              
+              if (obj[childName] !== undefined) {
+                // Convert to array if multiple same-name children
+                if (!Array.isArray(obj[childName])) {
+                  obj[childName] = [obj[childName]];
+                }
+                obj[childName].push(childObj);
+              } else {
+                obj[childName] = childObj;
+              }
+            }
+          }
+        }
+      }
+
+      // Return empty object for empty elements
+      if (Object.keys(obj).length === 0) {
+        return '';
+      }
+
+      return obj;
+    }
+
+    // JSON → XML
+    function jsonToXml() {
+      const text = inputEl.value.trim();
+      if (!text) {
+        showStatus('请输入内容', 'error');
+        return;
+      }
+
+      try {
+        const obj = JSON.parse(text);
+        const pretty = prettyPrintEl.checked;
+        let xml = '';
+        
+        if (includeDeclarationEl.checked) {
+          xml = '<?xml version="1.0" encoding="UTF-8"?>' + (pretty ? '\n' : '');
+        }
+        
+        xml += objToXml(obj, 0, pretty);
+        outputEl.value = xml;
+        showStatus('JSON → XML 转换成功', 'success');
+      } catch (e) {
+        showStatus('JSON 解析错误: ' + e.message, 'error');
+      }
+    }
+
+    // JS object to XML
+    function objToXml(obj, level, pretty) {
+      let xml = '';
+      const newline = pretty ? '\n' : '';
+      const indent = pretty ? getIndentStr(level) : '';
+
+      for (const key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
+        
+        const value = obj[key];
+        
+        if (key === '@attributes' || key === '#text') continue;
+        
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            xml += formatElement(key, item, level, pretty);
+          }
+        } else {
+          xml += formatElement(key, value, level, pretty);
+        }
+      }
+
+      return xml;
+    }
+
+    function formatElement(tagName, value, level, pretty) {
+      const newline = pretty ? '\n' : '';
+      const indent = pretty ? getIndentStr(level) : '';
+      
+      let xml = indent + '<' + escapeXml(tagName);
+      
+      // Add attributes
+      if (value && typeof value === 'object' && value['@attributes']) {
+        for (const attrName in value['@attributes']) {
+          xml += ' ' + escapeXml(attrName) + '="' + escapeXml(value['@attributes'][attrName]) + '"';
+        }
+      }
+      
+      if (value === null || value === undefined || value === '') {
+        xml += '/>' + newline;
+      } else if (typeof value === 'object') {
+        const hasTextContent = value['#text'] !== undefined;
+        const hasChildren = Object.keys(value).some(k => k !== '@attributes' && k !== '#text');
+        
+        if (hasChildren) {
+          xml += '>' + newline;
+          xml += objToXml(value, level + 1, pretty);
+          if (hasTextContent) {
+            xml += (pretty ? getIndentStr(level + 1) : '') + escapeXml(String(value['#text'])) + newline;
+          }
+          xml += indent + '</' + escapeXml(tagName) + '>' + newline;
+        } else if (hasTextContent) {
+          xml += '>' + escapeXml(String(value['#text'])) + '</' + escapeXml(tagName) + '>' + newline;
+        } else {
+          xml += '/>' + newline;
+        }
+      } else {
+        xml += '>' + escapeXml(String(value)) + '</' + escapeXml(tagName) + '>' + newline;
+      }
+      
+      return xml;
+    }
+
+    function escapeXml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    // Event bindings
+    document.getElementById('btnPaste').addEventListener('click', async function() {
+      try {
+        const text = await navigator.clipboard.readText();
+        inputEl.value = text;
+        saveToStorage();
+        saveToUrl();
+        showStatus('已粘贴', 'success');
+      } catch (e) {
+        showStatus('无法访问剪贴板', 'error');
+      }
+    });
+
+    document.getElementById('btnXmlToJson').addEventListener('click', xmlToJson);
+    document.getElementById('btnJsonToXml').addEventListener('click', jsonToXml);
+
+    document.getElementById('btnCopy').addEventListener('click', async function() {
+      if (!outputEl.value) {
+        showStatus('没有可复制的内容', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showStatus('已复制到剪贴板', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    });
+
+    document.getElementById('btnShare').addEventListener('click', async function() {
+      saveToUrl();
+      try {
+        await navigator.clipboard.writeText(location.href);
+        showStatus('分享链接已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    });
+
+    document.getElementById('btnClear').addEventListener('click', function() {
+      inputEl.value = '';
+      outputEl.value = '';
+      localStorage.removeItem(LS_KEY);
+      history.replaceState(null, '', location.pathname);
+      showStatus('已清空', 'success');
+    });
+
+    inputEl.addEventListener('input', function() {
+      saveToStorage();
+      saveToUrl();
+    });
+
+    // Initialize
+    if (!loadFromUrl()) {
+      loadFromStorage();
+    }
+
+    function toggleTheme(){const html=document.documentElement;const btn=document.querySelector('.theme-toggle');const next=html.getAttribute('data-theme')==='dark'?'':'dark';html.setAttribute('data-theme',next);btn.textContent=next==='dark'?'🌙':'☀️';localStorage.setItem('theme',next||'light');}(function(){const saved=localStorage.getItem('theme');if(saved==='dark'){document.documentElement.setAttribute('data-theme','dark');const btn=document.querySelector('.theme-toggle');if(btn)btn.textContent='🌙';}})();
+  </script>
+</body>
+</html>

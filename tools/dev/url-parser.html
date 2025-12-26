@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>URL 解析器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    [data-theme="dark"]{--bg:#0a0a0f;--card-bg:#1a1a24;--text:#e8e8ed;--text-muted:#9898a4;--border:#2a2a36;--primary:#00f5d4;--primary-hover:#00dfc4;--success:#10b981;--danger:#f43f5e;--shadow:0 2px 8px rgb(0,0,0,0.3)}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .input-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 0.9rem; }
+    input[type="text"] { width: 100%; padding: 12px; font-size: 1rem; font-family: "JetBrains Mono", "Fira Code", monospace; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); }
+    input[type="text"]:focus { outline: none; border-color: var(--primary); }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; transition: all 0.2s; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button.primary:hover { background: var(--primary-hover); }
+    .result-table { width: 100%; border-collapse: collapse; }
+    .result-table th, .result-table td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+    .result-table th { font-weight: 600; color: var(--text-muted); width: 140px; font-size: 0.85rem; text-transform: uppercase; }
+    .result-table td { font-family: "JetBrains Mono", "Fira Code", monospace; word-break: break-all; }
+    .result-table tr:last-child th, .result-table tr:last-child td { border-bottom: none; }
+    .empty { color: var(--text-muted); font-style: italic; }
+    .params-list { margin: 0; padding: 0; list-style: none; }
+    .params-list li { padding: 8px 0; border-bottom: 1px dashed var(--border); display: flex; gap: 8px; align-items: flex-start; }
+    .params-list li:last-child { border-bottom: none; }
+    .param-key { color: var(--primary); font-weight: 500; min-width: 100px; }
+    .param-value { color: var(--text); word-break: break-all; flex: 1; }
+    .copy-btn { padding: 4px 8px; font-size: 0.75rem; margin-left: 8px; opacity: 0.6; }
+    .copy-btn:hover { opacity: 1; }
+    .error { color: var(--danger); padding: 12px; background: rgba(220, 53, 69, 0.1); border-radius: var(--radius); margin-top: 16px; }
+    .example-urls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .example-url { font-size: 0.8rem; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+    .example-url:hover { border-color: var(--primary); color: var(--primary); }
+    .td-content { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .td-value { flex: 1; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="theme-toggle">🌙</button>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>🔗 URL 解析器</h1>
+    <p class="desc">解析 URL 的各个组成部分：协议、域名、端口、路径、查询参数、锚点等</p>
+
+    <div class="card">
+      <div class="input-group">
+        <label for="url-input">输入 URL</label>
+        <input type="text" id="url-input" placeholder="https://example.com:8080/path/to/page?name=value&foo=bar#section" />
+      </div>
+      <div class="btn-row">
+        <button class="primary" onclick="parseUrl()">解析</button>
+        <button onclick="pasteUrl()">📋 粘贴</button>
+        <button onclick="clearAll()">清空</button>
+      </div>
+      <div class="example-urls">
+        <span style="color: var(--text-muted); font-size: 0.8rem;">示例：</span>
+        <span class="example-url" data-url="https://www.google.com/search?q=hello&hl=zh-CN">Google 搜索</span>
+        <span class="example-url" data-url="ftp://user:pass@host.com:21/path">FTP 链接</span>
+        <span class="example-url" data-url="https://api.example.com/v1/users?page=1&limit=10&sort=name#top">API 请求</span>
+      </div>
+    </div>
+
+    <div class="card" id="result-card" style="display: none;">
+      <h3 style="margin: 0 0 16px; font-size: 1rem;">解析结果</h3>
+      <table class="result-table">
+        <tr><th>完整 URL</th><td id="res-href"></td></tr>
+        <tr><th>协议</th><td id="res-protocol"></td></tr>
+        <tr><th>用户名</th><td id="res-username"></td></tr>
+        <tr><th>密码</th><td id="res-password"></td></tr>
+        <tr><th>主机名</th><td id="res-hostname"></td></tr>
+        <tr><th>端口</th><td id="res-port"></td></tr>
+        <tr><th>Origin</th><td id="res-origin"></td></tr>
+        <tr><th>路径</th><td id="res-pathname"></td></tr>
+        <tr><th>查询字符串</th><td id="res-search"></td></tr>
+        <tr><th>锚点 (Hash)</th><td id="res-hash"></td></tr>
+      </table>
+    </div>
+
+    <div class="card" id="params-card" style="display: none;">
+      <h3 style="margin: 0 0 16px; font-size: 1rem;">查询参数</h3>
+      <ul class="params-list" id="params-list"></ul>
+    </div>
+
+    <div id="error-msg" class="error" style="display: none;"></div>
+  </div>
+
+  <script>
+    // 主题切换
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '☀️';
+    }
+    themeToggle.addEventListener('click', () => {
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      themeToggle.textContent = isDark ? '🌙' : '☀️';
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    });
+
+    const urlInput = document.getElementById('url-input');
+    const resultCard = document.getElementById('result-card');
+    const paramsCard = document.getElementById('params-card');
+    const paramsList = document.getElementById('params-list');
+    const errorMsg = document.getElementById('error-msg');
+
+    // 示例点击
+    document.querySelectorAll('.example-url').forEach(el => {
+      el.addEventListener('click', () => {
+        urlInput.value = el.dataset.url;
+        window.location.hash = encodeURIComponent(el.dataset.url);
+        parseUrl();
+      });
+    });
+
+    // 从 URL hash 恢复输入
+    if (window.location.hash) {
+      try {
+        const saved = decodeURIComponent(window.location.hash.slice(1));
+        urlInput.value = saved;
+        parseUrl();
+      } catch (e) {}
+    }
+
+    urlInput.addEventListener('input', () => {
+      const url = urlInput.value.trim();
+      if (url) {
+        window.location.hash = encodeURIComponent(url);
+      } else {
+        history.replaceState(null, '', window.location.pathname);
+      }
+    });
+
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') parseUrl();
+    });
+
+    function parseUrl() {
+      const input = urlInput.value.trim();
+      errorMsg.style.display = 'none';
+      resultCard.style.display = 'none';
+      paramsCard.style.display = 'none';
+
+      if (!input) {
+        showError('请输入 URL');
+        return;
+      }
+
+      try {
+        const url = new URL(input);
+        
+        resultCard.style.display = 'block';
+        setValue('res-href', url.href);
+        setValue('res-protocol', url.protocol);
+        setValue('res-username', url.username);
+        setValue('res-password', url.password);
+        setValue('res-hostname', url.hostname);
+        setValue('res-port', url.port || getDefaultPort(url.protocol));
+        setValue('res-origin', url.origin);
+        setValue('res-pathname', url.pathname);
+        setValue('res-search', url.search);
+        setValue('res-hash', url.hash);
+
+        // 解析查询参数
+        const params = url.searchParams;
+        const entries = Array.from(params.entries());
+        
+        if (entries.length > 0) {
+          paramsCard.style.display = 'block';
+          paramsList.textContent = '';
+          entries.forEach(([key, value]) => {
+            const li = document.createElement('li');
+            
+            const keySpan = document.createElement('span');
+            keySpan.className = 'param-key';
+            keySpan.textContent = key;
+            
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'param-value';
+            valueSpan.textContent = decodeURIComponent(value);
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = '复制';
+            copyBtn.addEventListener('click', () => copyText(value));
+            
+            li.appendChild(keySpan);
+            li.appendChild(valueSpan);
+            li.appendChild(copyBtn);
+            paramsList.appendChild(li);
+          });
+        }
+      } catch (e) {
+        showError('无效的 URL 格式: ' + e.message);
+      }
+    }
+
+    function setValue(id, value) {
+      const el = document.getElementById(id);
+      el.textContent = '';
+      
+      const container = document.createElement('div');
+      container.className = 'td-content';
+      
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'td-value';
+      valueSpan.textContent = value || '-';
+      if (!value) valueSpan.classList.add('empty');
+      
+      container.appendChild(valueSpan);
+      
+      if (value) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = '复制';
+        copyBtn.addEventListener('click', () => copyText(value));
+        container.appendChild(copyBtn);
+      }
+      
+      el.appendChild(container);
+    }
+
+    function getDefaultPort(protocol) {
+      const ports = {
+        'http:': '80 (默认)',
+        'https:': '443 (默认)',
+        'ftp:': '21 (默认)',
+        'ssh:': '22 (默认)',
+        'ws:': '80 (默认)',
+        'wss:': '443 (默认)'
+      };
+      return ports[protocol] || '';
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+    }
+
+    async function pasteUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        urlInput.value = text;
+        window.location.hash = encodeURIComponent(text);
+        parseUrl();
+      } catch (e) {
+        showError('无法读取剪贴板');
+      }
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text);
+    }
+
+    function clearAll() {
+      urlInput.value = '';
+      resultCard.style.display = 'none';
+      paramsCard.style.display = 'none';
+      errorMsg.style.display = 'none';
+      history.replaceState(null, '', window.location.pathname);
+    }
+  </script>
+</body>
+</html>

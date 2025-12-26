@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSV-JSON 转换器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .options { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .option { display: flex; align-items: center; gap: 6px; }
+    .option select, .option input { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; }
+    label { font-size: 0.9rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    .panel label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+    textarea { width: 100%; height: 300px; padding: 12px; font-family: monospace; font-size: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; line-height: 1.5; }
+    textarea:focus { outline: none; border-color: var(--primary); }
+    .status { font-size: 0.85rem; margin-top: 12px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>CSV-JSON 转换器</h1>
+    <p class="desc">CSV 与 JSON 格式互相转换</p>
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnCsvToJson" class="primary">CSV → JSON</button>
+        <button id="btnJsonToCsv" class="primary">JSON → CSV</button>
+        <button id="btnCopy">复制结果</button>
+        <button id="btnClear">清空</button>
+      </div>
+      <div class="options">
+        <div class="option"><label>分隔符:</label><select id="delimiter"><option value=",">逗号 (,)</option><option value=";">分号 (;)</option><option value="\t">制表符</option></select></div>
+        <div class="option"><input type="checkbox" id="hasHeader" checked><label for="hasHeader">首行为表头</label></div>
+      </div>
+      <div class="grid">
+        <div class="panel"><label for="input">输入</label><textarea id="input" placeholder="输入 CSV 或 JSON 数据..."></textarea></div>
+        <div class="panel"><label for="output">输出</label><textarea id="output" readonly placeholder="转换结果将显示在这里..."></textarea></div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    function parseCSV(text, delimiter) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+          else if (c === '"') { inQuotes = false; }
+          else { cell += c; }
+        } else {
+          if (c === '"') { inQuotes = true; }
+          else if (c === delimiter) { row.push(cell); cell = ''; }
+          else if (c === '\n' || (c === '\r' && text[i + 1] === '\n')) {
+            row.push(cell); cell = ''; rows.push(row); row = [];
+            if (c === '\r') i++;
+          } else if (c !== '\r') { cell += c; }
+        }
+      }
+      if (cell || row.length) { row.push(cell); rows.push(row); }
+      return rows.filter(r => r.some(c => c.trim()));
+    }
+    function csvToJson() {
+      const delimiter = document.getElementById('delimiter').value === '\\t' ? '\t' : document.getElementById('delimiter').value;
+      const hasHeader = document.getElementById('hasHeader').checked;
+      const rows = parseCSV(inputEl.value, delimiter);
+      if (rows.length === 0) { showStatus('没有有效数据', 'error'); return; }
+      let result;
+      if (hasHeader) {
+        const headers = rows[0];
+        result = rows.slice(1).map(row => {
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+          return obj;
+        });
+      } else {
+        result = rows;
+      }
+      outputEl.value = JSON.stringify(result, null, 2);
+      showStatus(`转换成功，共 ${result.length} 条记录`, 'success');
+    }
+    function jsonToCsv() {
+      const delimiter = document.getElementById('delimiter').value === '\\t' ? '\t' : document.getElementById('delimiter').value;
+      let data;
+      try { data = JSON.parse(inputEl.value); } catch (e) { showStatus('JSON 解析错误: ' + e.message, 'error'); return; }
+      if (!Array.isArray(data)) { showStatus('JSON 必须是数组', 'error'); return; }
+      if (data.length === 0) { showStatus('数组为空', 'error'); return; }
+      const escape = v => {
+        const s = String(v ?? '');
+        if (s.includes(delimiter) || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      let csv = '';
+      if (typeof data[0] === 'object' && data[0] !== null) {
+        const headers = Object.keys(data[0]);
+        csv = headers.map(escape).join(delimiter) + '\n';
+        csv += data.map(row => headers.map(h => escape(row[h])).join(delimiter)).join('\n');
+      } else {
+        csv = data.map(row => Array.isArray(row) ? row.map(escape).join(delimiter) : escape(row)).join('\n');
+      }
+      outputEl.value = csv;
+      showStatus(`转换成功，共 ${data.length} 行`, 'success');
+    }
+    document.getElementById('btnCsvToJson').onclick = csvToJson;
+    document.getElementById('btnJsonToCsv').onclick = jsonToCsv;
+    document.getElementById('btnPaste').onclick = async () => { try { inputEl.value = await navigator.clipboard.readText(); showStatus('已粘贴', 'success'); } catch(e) { showStatus('无法访问剪贴板', 'error'); }};
+    document.getElementById('btnCopy').onclick = async () => { if (!outputEl.value) { showStatus('没有可复制的内容', 'error'); return; } try { await navigator.clipboard.writeText(outputEl.value); showStatus('已复制', 'success'); } catch(e) { showStatus('复制失败', 'error'); }};
+    document.getElementById('btnClear').onclick = () => { inputEl.value = ''; outputEl.value = ''; showStatus('已清空', 'success'); };
+  </script>
+</body>
+</html>

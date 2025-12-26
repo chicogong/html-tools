@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>图片 EXIF 查看器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 3rem; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--primary); }
+    .dropzone input { display: none; }
+    .preview { margin-top: 1.5rem; display: none; }
+    .preview.active { display: block; }
+    .preview img { max-width: 100%; max-height: 300px; border-radius: var(--radius); }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+    .info-item { padding: 0.75rem; background: var(--bg); border-radius: var(--radius); }
+    .info-item label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .info-item .value { font-weight: 500; word-break: break-all; }
+    .no-exif { text-align: center; color: var(--text-muted); padding: 2rem; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>图片 EXIF 查看器</h1>
+    <p class="desc">查看图片的 EXIF 元数据，包括拍摄设备、时间、GPS 位置等信息</p>
+
+    <div class="card">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+        <p>点击或拖放图片到此处</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">支持 JPEG、PNG、TIFF 等格式</p>
+      </div>
+
+      <div class="preview" id="preview">
+        <img id="previewImg" alt="预览">
+      </div>
+
+      <div class="info-grid" id="infoGrid"></div>
+      <div class="no-exif" id="noExif" style="display:none;">此图片不包含 EXIF 信息</div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var dropzone = document.getElementById('dropzone');
+
+    dropzone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', function() {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        alert('请选择图片文件');
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('preview').classList.add('active');
+        extractExif(e.target.result, file);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function extractExif(dataUrl, file) {
+      var grid = document.getElementById('infoGrid');
+      var noExif = document.getElementById('noExif');
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
+      noExif.style.display = 'none';
+
+      var basicInfo = [
+        { label: '文件名', value: file.name },
+        { label: '文件大小', value: formatFileSize(file.size) },
+        { label: '文件类型', value: file.type },
+        { label: '最后修改', value: new Date(file.lastModified).toLocaleString() }
+      ];
+
+      var img = new Image();
+      img.onload = function() {
+        basicInfo.push({ label: '图片尺寸', value: img.width + ' × ' + img.height + ' 像素' });
+        basicInfo.push({ label: '宽高比', value: (img.width / img.height).toFixed(2) });
+
+        displayInfo(basicInfo);
+
+        if (file.type === 'image/jpeg') {
+          readJpegExif(dataUrl);
+        }
+      };
+      img.src = dataUrl;
+    }
+
+    function displayInfo(items) {
+      var grid = document.getElementById('infoGrid');
+      items.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'info-item';
+
+        var label = document.createElement('label');
+        label.textContent = item.label;
+        div.appendChild(label);
+
+        var value = document.createElement('div');
+        value.className = 'value';
+        value.textContent = item.value;
+        div.appendChild(value);
+
+        grid.appendChild(div);
+      });
+    }
+
+    function readJpegExif(dataUrl) {
+      var base64 = dataUrl.split(',')[1];
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) {
+        return;
+      }
+
+      var offset = 2;
+      while (offset < bytes.length) {
+        if (bytes[offset] !== 0xFF) break;
+
+        var marker = bytes[offset + 1];
+        if (marker === 0xE1) {
+          var length = (bytes[offset + 2] << 8) | bytes[offset + 3];
+          var exifData = bytes.slice(offset + 4, offset + 2 + length);
+
+          if (String.fromCharCode.apply(null, exifData.slice(0, 4)) === 'Exif') {
+            parseExif(exifData.slice(6));
+            return;
+          }
+        }
+
+        var segmentLength = (bytes[offset + 2] << 8) | bytes[offset + 3];
+        offset += 2 + segmentLength;
+      }
+
+      document.getElementById('noExif').style.display = 'block';
+    }
+
+    function parseExif(data) {
+      var littleEndian = String.fromCharCode(data[0], data[1]) === 'II';
+      var exifInfo = [];
+
+      var ifdOffset = readUint32(data, 4, littleEndian);
+      var numEntries = readUint16(data, ifdOffset, littleEndian);
+
+      var tagNames = {
+        0x010F: '相机制造商',
+        0x0110: '相机型号',
+        0x0112: '方向',
+        0x011A: 'X 分辨率',
+        0x011B: 'Y 分辨率',
+        0x0128: '分辨率单位',
+        0x0131: '软件',
+        0x0132: '修改时间',
+        0x8769: 'Exif IFD',
+        0x8825: 'GPS IFD'
+      };
+
+      for (var i = 0; i < numEntries; i++) {
+        var entryOffset = ifdOffset + 2 + i * 12;
+        var tag = readUint16(data, entryOffset, littleEndian);
+        var type = readUint16(data, entryOffset + 2, littleEndian);
+        var count = readUint32(data, entryOffset + 4, littleEndian);
+
+        if (tagNames[tag]) {
+          var value = readTagValue(data, entryOffset, type, count, littleEndian);
+          if (value) {
+            exifInfo.push({ label: tagNames[tag], value: value });
+          }
+        }
+      }
+
+      if (exifInfo.length > 0) {
+        displayInfo(exifInfo);
+      } else {
+        document.getElementById('noExif').style.display = 'block';
+      }
+    }
+
+    function readUint16(data, offset, littleEndian) {
+      if (littleEndian) {
+        return data[offset] | (data[offset + 1] << 8);
+      }
+      return (data[offset] << 8) | data[offset + 1];
+    }
+
+    function readUint32(data, offset, littleEndian) {
+      if (littleEndian) {
+        return data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
+      }
+      return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3];
+    }
+
+    function readTagValue(data, entryOffset, type, count, littleEndian) {
+      var valueOffset = entryOffset + 8;
+
+      if (type === 2) {
+        if (count > 4) {
+          valueOffset = readUint32(data, entryOffset + 8, littleEndian);
+        }
+        var str = '';
+        for (var i = 0; i < count - 1; i++) {
+          str += String.fromCharCode(data[valueOffset + i]);
+        }
+        return str.trim();
+      }
+
+      if (type === 3) {
+        return readUint16(data, valueOffset, littleEndian).toString();
+      }
+
+      if (type === 4) {
+        return readUint32(data, valueOffset, littleEndian).toString();
+      }
+
+      return null;
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+  </script>
+</body>
+</html>

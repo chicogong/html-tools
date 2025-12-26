@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>随机数生成器 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 700px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-group label { font-size: 0.85rem; color: var(--text-muted); }
+    .input-group input { padding: 10px 12px; font-size: 1rem; border: 1px solid var(--border); border-radius: var(--radius); }
+    .input-group input:focus { outline: none; border-color: var(--primary); }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    button { padding: 12px 20px; font-size: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .result { background: var(--bg); border-radius: var(--radius); padding: 24px; text-align: center; }
+    .result-main { font-size: 3rem; font-weight: 700; color: var(--primary); font-family: monospace; margin-bottom: 16px; word-break: break-all; }
+    .result-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+    .result-item { background: var(--card-bg); border-radius: var(--radius); padding: 8px 16px; font-family: monospace; font-size: 1.1rem; }
+    .options { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .option { display: flex; align-items: center; gap: 6px; }
+    .option input[type="checkbox"] { width: 16px; height: 16px; }
+    .status { font-size: 0.85rem; margin-top: 12px; text-align: center; }
+    .status.success { color: var(--success); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>随机数生成器</h1>
+    <p class="desc">生成指定范围和数量的随机数</p>
+    <div class="card">
+      <div class="input-grid">
+        <div class="input-group"><label>最小值</label><input type="number" id="min" value="1"></div>
+        <div class="input-group"><label>最大值</label><input type="number" id="max" value="100"></div>
+        <div class="input-group"><label>生成数量</label><input type="number" id="count" value="1" min="1" max="100"></div>
+        <div class="input-group"><label>小数位数</label><input type="number" id="decimals" value="0" min="0" max="10"></div>
+      </div>
+      <div class="options">
+        <div class="option"><input type="checkbox" id="unique"><label for="unique">不重复</label></div>
+        <div class="option"><input type="checkbox" id="sorted"><label for="sorted">排序结果</label></div>
+      </div>
+      <div class="btn-row">
+        <button id="btnGenerate" class="primary">生成随机数</button>
+        <button id="btnCopy">复制结果</button>
+      </div>
+      <div class="result">
+        <div class="result-main" id="resultMain">?</div>
+        <div class="result-list" id="resultList"></div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const minEl = document.getElementById('min');
+    const maxEl = document.getElementById('max');
+    const countEl = document.getElementById('count');
+    const decimalsEl = document.getElementById('decimals');
+    const uniqueEl = document.getElementById('unique');
+    const sortedEl = document.getElementById('sorted');
+    const resultMain = document.getElementById('resultMain');
+    const resultList = document.getElementById('resultList');
+    const statusEl = document.getElementById('status');
+    let results = [];
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    function generate() {
+      const min = parseFloat(minEl.value);
+      const max = parseFloat(maxEl.value);
+      const count = parseInt(countEl.value);
+      const decimals = parseInt(decimalsEl.value);
+      const unique = uniqueEl.checked;
+      const sorted = sortedEl.checked;
+      if (isNaN(min) || isNaN(max) || isNaN(count) || min > max) {
+        showStatus('请检查输入参数', 'error');
+        return;
+      }
+      if (unique && decimals === 0 && count > (max - min + 1)) {
+        showStatus('不重复模式下，数量不能超过范围', 'error');
+        return;
+      }
+      results = [];
+      const used = new Set();
+      for (let i = 0; i < count; i++) {
+        let num;
+        let attempts = 0;
+        do {
+          num = Math.random() * (max - min) + min;
+          num = parseFloat(num.toFixed(decimals));
+          attempts++;
+        } while (unique && used.has(num) && attempts < 1000);
+        if (unique) used.add(num);
+        results.push(num);
+      }
+      if (sorted) results.sort((a, b) => a - b);
+      if (count === 1) {
+        resultMain.textContent = results[0];
+        resultList.textContent = '';
+      } else {
+        resultMain.textContent = results.length + ' 个随机数';
+        resultList.textContent = '';
+        results.forEach(n => {
+          const span = document.createElement('span');
+          span.className = 'result-item';
+          span.textContent = n;
+          resultList.appendChild(span);
+        });
+      }
+      showStatus('生成成功', 'success');
+    }
+    document.getElementById('btnGenerate').onclick = generate;
+    document.getElementById('btnCopy').onclick = async () => {
+      if (results.length === 0) { showStatus('没有可复制的内容', 'error'); return; }
+      try {
+        await navigator.clipboard.writeText(results.join('\n'));
+        showStatus('已复制到剪贴板', 'success');
+      } catch (e) { showStatus('复制失败', 'error'); }
+    };
+    generate();
+  </script>
+</body>
+</html>

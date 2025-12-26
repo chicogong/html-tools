@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>字符串转义工具 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab { padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; font-size: 0.9rem; }
+    .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+    textarea { width: 100%; height: 200px; padding: 12px; font-family: monospace; font-size: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; line-height: 1.5; }
+    textarea:focus { outline: none; border-color: var(--primary); }
+    .status { font-size: 0.85rem; margin-top: 12px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>字符串转义工具</h1>
+    <p class="desc">支持 JavaScript、JSON、HTML、SQL 等多种格式的字符串转义与反转义</p>
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnEscape" class="primary">转义</button>
+        <button id="btnUnescape">反转义</button>
+        <button id="btnCopy">复制结果</button>
+        <button id="btnClear">清空</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-type="js">JavaScript</button>
+        <button class="tab" data-type="json">JSON</button>
+        <button class="tab" data-type="html">HTML</button>
+        <button class="tab" data-type="sql">SQL</button>
+        <button class="tab" data-type="csv">CSV</button>
+        <button class="tab" data-type="regex">正则</button>
+      </div>
+      <div class="grid">
+        <div><label for="input">输入</label><textarea id="input" placeholder="输入要转义或反转义的字符串..."></textarea></div>
+        <div><label for="output">输出</label><textarea id="output" readonly placeholder="结果将显示在这里..."></textarea></div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    let currentType = 'js';
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    const escapers = {
+      js: {
+        escape: s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'),
+        unescape: s => s.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\\/g, '\\')
+      },
+      json: {
+        escape: s => JSON.stringify(s).slice(1, -1),
+        unescape: s => { try { return JSON.parse('"' + s + '"'); } catch { return s; } }
+      },
+      html: {
+        escape: s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
+        unescape: s => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+      },
+      sql: {
+        escape: s => s.replace(/'/g, "''").replace(/\\/g, '\\\\'),
+        unescape: s => s.replace(/''/g, "'").replace(/\\\\/g, '\\')
+      },
+      csv: {
+        escape: s => { if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"'; return s; },
+        unescape: s => { if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1).replace(/""/g, '"'); return s; }
+      },
+      regex: {
+        escape: s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        unescape: s => s.replace(/\\([.*+?^${}()|[\]\\])/g, '$1')
+      }
+    };
+    function escape() {
+      const text = inputEl.value;
+      if (!text) { showStatus('请输入内容', 'error'); return; }
+      outputEl.value = escapers[currentType].escape(text);
+      showStatus('转义完成', 'success');
+    }
+    function unescape() {
+      const text = inputEl.value;
+      if (!text) { showStatus('请输入内容', 'error'); return; }
+      outputEl.value = escapers[currentType].unescape(text);
+      showStatus('反转义完成', 'success');
+    }
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentType = tab.dataset.type;
+      };
+    });
+    document.getElementById('btnEscape').onclick = escape;
+    document.getElementById('btnUnescape').onclick = unescape;
+    document.getElementById('btnPaste').onclick = async () => { try { inputEl.value = await navigator.clipboard.readText(); showStatus('已粘贴', 'success'); } catch(e) { showStatus('无法访问剪贴板', 'error'); }};
+    document.getElementById('btnCopy').onclick = async () => { if (!outputEl.value) { showStatus('没有可复制的内容', 'error'); return; } try { await navigator.clipboard.writeText(outputEl.value); showStatus('已复制', 'success'); } catch(e) { showStatus('复制失败', 'error'); }};
+    document.getElementById('btnClear').onclick = () => { inputEl.value = ''; outputEl.value = ''; showStatus('已清空', 'success'); };
+  </script>
+</body>
+</html>

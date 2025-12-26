@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文本去重排序 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button { padding: 10px 16px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); cursor: pointer; }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .options { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .option { display: flex; align-items: center; gap: 6px; }
+    .option input[type="checkbox"] { width: 16px; height: 16px; }
+    label { font-size: 0.9rem; }
+    textarea { width: 100%; min-height: 250px; padding: 12px; font-family: monospace; font-size: 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; line-height: 1.5; }
+    textarea:focus { outline: none; border-color: var(--primary); }
+    .stats { background: var(--bg); border-radius: var(--radius); padding: 12px 16px; margin-top: 16px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 0.9rem; }
+    .stat-item { display: flex; gap: 8px; }
+    .stat-label { color: var(--text-muted); }
+    .stat-value { font-weight: 600; }
+    .status { font-size: 0.85rem; margin-top: 12px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>文本去重排序</h1>
+    <p class="desc">按行去重、排序、过滤空行，支持多种处理选项</p>
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnDedup" class="primary">去重</button>
+        <button id="btnSortAsc">升序排序</button>
+        <button id="btnSortDesc">降序排序</button>
+        <button id="btnReverse">反转行序</button>
+        <button id="btnShuffle">随机打乱</button>
+        <button id="btnCopy">复制</button>
+        <button id="btnClear">清空</button>
+      </div>
+      <div class="options">
+        <div class="option"><input type="checkbox" id="optTrim" checked><label for="optTrim">去除行首尾空格</label></div>
+        <div class="option"><input type="checkbox" id="optEmpty" checked><label for="optEmpty">过滤空行</label></div>
+        <div class="option"><input type="checkbox" id="optCase"><label for="optCase">忽略大小写</label></div>
+        <div class="option"><input type="checkbox" id="optNumeric"><label for="optNumeric">数字排序</label></div>
+      </div>
+      <textarea id="input" placeholder="每行一个内容，如：
+apple
+banana
+apple
+cherry
+banana"></textarea>
+      <div class="stats" id="stats">
+        <div class="stat-item"><span class="stat-label">原始行数:</span><span class="stat-value" id="statOriginal">0</span></div>
+        <div class="stat-item"><span class="stat-label">处理后:</span><span class="stat-value" id="statResult">0</span></div>
+        <div class="stat-item"><span class="stat-label">去除重复:</span><span class="stat-value" id="statRemoved">0</span></div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+    <footer><a href="https://github.com/chicogong/html-tools" target="_blank">View source</a> · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+  <script>
+    const inputEl = document.getElementById('input');
+    const statusEl = document.getElementById('status');
+    function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status ' + (type || ''); }
+    function getLines() {
+      let lines = inputEl.value.split('\n');
+      if (document.getElementById('optTrim').checked) lines = lines.map(l => l.trim());
+      if (document.getElementById('optEmpty').checked) lines = lines.filter(l => l.length > 0);
+      return lines;
+    }
+    function updateStats(original, result, removed) {
+      document.getElementById('statOriginal').textContent = original;
+      document.getElementById('statResult').textContent = result;
+      document.getElementById('statRemoved').textContent = removed;
+    }
+    function dedup() {
+      const original = inputEl.value.split('\n').length;
+      let lines = getLines();
+      const ignoreCase = document.getElementById('optCase').checked;
+      const seen = new Set();
+      const unique = [];
+      for (const line of lines) {
+        const key = ignoreCase ? line.toLowerCase() : line;
+        if (!seen.has(key)) { seen.add(key); unique.push(line); }
+      }
+      inputEl.value = unique.join('\n');
+      updateStats(original, unique.length, lines.length - unique.length);
+      showStatus('去重完成', 'success');
+    }
+    function sort(asc) {
+      const original = inputEl.value.split('\n').length;
+      let lines = getLines();
+      const numeric = document.getElementById('optNumeric').checked;
+      const ignoreCase = document.getElementById('optCase').checked;
+      lines.sort((a, b) => {
+        let va = ignoreCase ? a.toLowerCase() : a;
+        let vb = ignoreCase ? b.toLowerCase() : b;
+        if (numeric) { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; return asc ? va - vb : vb - va; }
+        return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+      });
+      inputEl.value = lines.join('\n');
+      updateStats(original, lines.length, 0);
+      showStatus(asc ? '升序排序完成' : '降序排序完成', 'success');
+    }
+    function reverse() {
+      const original = inputEl.value.split('\n').length;
+      const lines = getLines().reverse();
+      inputEl.value = lines.join('\n');
+      updateStats(original, lines.length, 0);
+      showStatus('反转完成', 'success');
+    }
+    function shuffle() {
+      const original = inputEl.value.split('\n').length;
+      const lines = getLines();
+      for (let i = lines.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lines[i], lines[j]] = [lines[j], lines[i]];
+      }
+      inputEl.value = lines.join('\n');
+      updateStats(original, lines.length, 0);
+      showStatus('随机打乱完成', 'success');
+    }
+    document.getElementById('btnDedup').onclick = dedup;
+    document.getElementById('btnSortAsc').onclick = () => sort(true);
+    document.getElementById('btnSortDesc').onclick = () => sort(false);
+    document.getElementById('btnReverse').onclick = reverse;
+    document.getElementById('btnShuffle').onclick = shuffle;
+    document.getElementById('btnPaste').onclick = async () => { try { inputEl.value = await navigator.clipboard.readText(); showStatus('已粘贴', 'success'); } catch(e) { showStatus('无法访问剪贴板', 'error'); }};
+    document.getElementById('btnCopy').onclick = async () => { if (!inputEl.value) { showStatus('没有可复制的内容', 'error'); return; } try { await navigator.clipboard.writeText(inputEl.value); showStatus('已复制', 'success'); } catch(e) { showStatus('复制失败', 'error'); }};
+    document.getElementById('btnClear').onclick = () => { inputEl.value = ''; updateStats(0, 0, 0); showStatus('已清空', 'success'); };
+  </script>
+</body>
+</html>

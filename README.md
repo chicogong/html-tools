@@ -49,6 +49,14 @@
 | [颜色转换器](tools/dev/color-converter.html) | HEX、RGB、HSL 颜色格式互转 |
 | [HTML 实体编解码](tools/dev/html-entity.html) | HTML 实体编码与解码，常用实体参考 |
 | [进制转换器](tools/dev/number-base.html) | 二进制、八进制、十进制、十六进制互转 |
+| [IP 工具](tools/dev/ip-tools.html) | IP 解析、子网计算、IPv4/IPv6 转换 |
+| [cURL 转换器](tools/dev/curl-converter.html) | 将 cURL 命令转换为 JS/Python/Go/PHP/Java 代码 |
+| [KeyCode 查看器](tools/dev/keycode.html) | 按下键盘查看 keyCode、key、code 等事件属性 |
+| [HTTP 状态码](tools/dev/http-status.html) | HTTP 状态码速查表，含详细说明和搜索功能 |
+| [User-Agent 解析器](tools/dev/useragent-parser.html) | 解析浏览器 User-Agent 字符串 |
+| [HMAC 生成器](tools/dev/hmac-generator.html) | 生成 HMAC-SHA1/SHA256/SHA384/SHA512 消息认证码 |
+| [RSA 密钥生成器](tools/dev/rsa-keygen.html) | 生成 RSA 密钥对，支持 PKCS#8 和 JWK 格式 |
+| [OTP 生成器](tools/dev/otp-generator.html) | TOTP 动态验证码生成，兼容 Google Authenticator |
 
 ### 文本工具
 
@@ -58,6 +66,11 @@
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [字数统计](tools/text/word-counter.html) | 统计字符、单词、句子、段落数量，支持目标字数进度追踪 |
 | [Lorem Ipsum 生成器](tools/text/lorem-ipsum.html) | 生成占位文本，支持段落、句子、单词模式 |
+| [Emoji 选择器](tools/text/emoji-picker.html) | 搜索并复制 Emoji 表情，按分类浏览 |
+| [ASCII Art 生成器](tools/text/ascii-art.html) | 将文本转换为 ASCII 艺术字，支持多种字体 |
+| [Slug 生成器](tools/text/slugify.html) | 将文本转换为 URL 友好的 slug 格式 |
+| [罗马数字转换](tools/text/roman-numeral.html) | 阿拉伯数字与罗马数字互转 |
+| [NATO 音标字母表](tools/text/nato-alphabet.html) | 将文本转换为 NATO 音标字母表 |
 
 ### 时间工具
 
@@ -76,12 +89,14 @@
 | [UUID/ULID 生成器](tools/generator/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
 | [二维码生成器](tools/generator/qrcode-generator.html) | 生成自定义颜色和大小的二维码，支持下载 PNG |
 | [密码生成器](tools/generator/password-generator.html) | 生成安全随机密码，支持自定义长度和字符类型 |
+| [WiFi 二维码生成器](tools/generator/wifi-qrcode.html) | 生成 WiFi 连接二维码，手机扫码即可连接 |
 
 ### 隐私工具
 
 | 工具 | 描述 |
 |------|------|
 | [日志脱敏](tools/privacy/log-masker.html) | 自动识别并脱敏 IP、邮箱、手机号等敏感信息 |
+| [AES 加密解密](tools/privacy/encrypt-decrypt.html) | 使用 AES-GCM 算法进行文本加密和解密 |
 
 ### 媒体工具
 
@@ -91,6 +106,8 @@
 | [图片压缩对比](tools/media/image-resize.html) | 比较不同质量设置下的图片压缩效果，找到最佳平衡点 |
 | [SVG 渲染器](tools/media/svg-render.html) | 将 SVG 代码渲染为 PNG/JPEG 图片，支持自定义尺寸和背景 |
 | [摄像头拍照](tools/media/camera-demo.html) | 调用摄像头拍照并保存到本地 |
+| [SVG 占位图生成器](tools/media/svg-placeholder.html) | 生成自定义尺寸和样式的 SVG 占位图 |
+| [Favicon 生成器](tools/media/favicon-generator.html) | 从图片生成多种尺寸的 favicon 图标 |
 
 ## 使用方式
 

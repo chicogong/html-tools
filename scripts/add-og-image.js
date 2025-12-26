@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
-const BASE_URL = 'https://chicogong.github.io/html-tools';
+const BASE_URL = 'https://tools.realtime-ai.chat/html-tools';
 const OG_IMAGE_URL = `${BASE_URL}/social-preview.png`;
 
 // 读取 tools.json

@@ -63,6 +63,9 @@
       numbers: '0123456789'
     };
 
+    // 存储生成的 ID，用于复制
+    let generatedIds = [];
+
     document.getElementById('alphabet').addEventListener('change', (e) => {
       document.getElementById('customAlphabetGroup').style.display = e.target.value === 'custom' ? 'block' : 'none';
     });
@@ -85,19 +88,33 @@
         ? document.getElementById('customAlphabet').value 
         : ALPHABETS[alphabetType];
 
-      const ids = [];
+      generatedIds = [];
       for (let i = 0; i < count; i++) {
-        ids.push(nanoid(length, alphabet));
+        generatedIds.push(nanoid(length, alphabet));
       }
 
-      document.getElementById('output').innerHTML = ids.map((id, i) => 
-        `<div class="id-item"><code>${id}</code><button onclick="copyId('${id}')">复制</button></div>`
-      ).join('');
+      // 使用 DOM API 安全构建元素，避免 XSS
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      generatedIds.forEach((id, i) => {
+        const item = document.createElement('div');
+        item.className = 'id-item';
+        
+        const code = document.createElement('code');
+        code.textContent = id;
+        
+        const btn = document.createElement('button');
+        btn.textContent = '复制';
+        btn.onclick = () => copyId(i);
+        
+        item.appendChild(code);
+        item.appendChild(btn);
+        output.appendChild(item);
+      });
 
       // Calculate collision probability
       const bitsPerChar = Math.log2(alphabet.length);
       const totalBits = length * bitsPerChar;
-      const collisionProb = Math.pow(2, -totalBits / 2);
       const speedInfo = totalBits >= 128 ? '非常安全' : totalBits >= 64 ? '安全' : '较弱';
 
       document.getElementById('info').innerHTML = `
@@ -110,13 +127,12 @@
       `;
     }
 
-    function copyId(id) {
-      navigator.clipboard.writeText(id);
+    function copyId(index) {
+      navigator.clipboard.writeText(generatedIds[index]);
     }
 
     function copyAll() {
-      const ids = Array.from(document.querySelectorAll('.id-item code')).map(c => c.textContent);
-      navigator.clipboard.writeText(ids.join('\n'));
+      navigator.clipboard.writeText(generatedIds.join('\n'));
     }
 
     generate();

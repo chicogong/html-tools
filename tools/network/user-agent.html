@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Agent 解析器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --accent-blue: #4cc9f0;
+      --accent-purple: #9d4edd;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .ua-input-section {
+      margin-bottom: 24px;
+    }
+
+    .ua-input-section label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .ua-input-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 80px;
+      padding: 12px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      resize: vertical;
+      transition: all 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    .current-ua {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .current-ua h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .current-ua-content {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .result-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .result-card:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .result-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .result-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+
+    .result-value.browser {
+      color: var(--accent-cyan);
+    }
+
+    .result-value.os {
+      color: var(--accent-blue);
+    }
+
+    .result-value.device {
+      color: var(--accent-purple);
+    }
+
+    .result-value.engine {
+      color: var(--accent-green);
+    }
+
+    .ua-details {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .ua-details h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .ua-features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .feature-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .feature-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .feature-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .feature-value.yes {
+      color: var(--accent-green);
+    }
+
+    .feature-value.no {
+      color: var(--text-muted);
+    }
+
+    .examples {
+      margin-bottom: 24px;
+    }
+
+    .examples h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .example-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .example-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    button.primary:hover {
+      background: #00dfc4;
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success {
+      color: var(--accent-green);
+    }
+
+    .status.success::before {
+      content: '✓ ';
+    }
+
+    .status.error {
+      color: #f43f5e;
+    }
+
+    .status.error::before {
+      content: '✗ ';
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>User Agent 解析器</h1>
+    <p class="desc">解析浏览器 User Agent 字符串，显示浏览器、操作系统、设备等详细信息</p>
+
+    <div class="card">
+      <div class="current-ua">
+        <h3>当前浏览器 User Agent</h3>
+        <div class="current-ua-content" id="currentUA"></div>
+      </div>
+
+      <div class="ua-input-section">
+        <label>User Agent 字符串 (可选)</label>
+        <div class="ua-input-group">
+          <textarea id="input" placeholder="粘贴要解析的 User Agent 字符串... 留空则使用当前浏览器 UA"></textarea>
+          <button id="btnAnalyze" class="primary">解析</button>
+        </div>
+      </div>
+
+      <div class="examples">
+        <h3>示例 User Agent</h3>
+        <div class="example-buttons">
+          <button class="example-btn" data-ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36">Chrome Windows</button>
+          <button class="example-btn" data-ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15">Safari Mac</button>
+          <button class="example-btn" data-ua="Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1">Safari iOS</button>
+          <button class="example-btn" data-ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0">Firefox Windows</button>
+        </div>
+      </div>
+
+      <div class="results-grid" id="resultsGrid"></div>
+
+      <div class="ua-details" id="uaDetails" style="display: none;">
+        <h3>功能检测</h3>
+        <div class="ua-features-grid" id="uaFeatures"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btnCopy">复制结果</button>
+        <button id="btnPaste">粘贴 UA</button>
+        <button id="btnCopyCurrent">复制当前 UA</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const currentUAEl = document.getElementById('currentUA');
+    const resultsGridEl = document.getElementById('resultsGrid');
+    const uaDetailsEl = document.getElementById('uaDetails');
+    const uaFeaturesEl = document.getElementById('uaFeatures');
+    const statusEl = document.getElementById('status');
+    const LS_KEY = 'user_agent_input_v1';
+
+    function parseUserAgent(uaString) {
+      const ua = uaString || navigator.userAgent;
+      let browser = 'Unknown';
+      let browserVersion = '';
+      let os = 'Unknown';
+      let osVersion = '';
+      let device = 'Unknown';
+      let engine = 'Unknown';
+
+      // Browser detection
+      if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) {
+        browser = 'Chrome';
+        const match = ua.match(/Chrome\/([\d.]+)/);
+        if (match) browserVersion = match[1];
+      } else if (ua.includes('Firefox')) {
+        browser = 'Firefox';
+        const match = ua.match(/Firefox\/([\d.]+)/);
+        if (match) browserVersion = match[1];
+      } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+        browser = 'Safari';
+        const match = ua.match(/Version\/([\d.]+)/);
+        if (match) browserVersion = match[1];
+      } else if (ua.includes('Edg')) {
+        browser = 'Edge';
+        const match = ua.match(/Edg\/([\d.]+)/);
+        if (match) browserVersion = match[1];
+      } else if (ua.includes('OPR')) {
+        browser = 'Opera';
+        const match = ua.match(/OPR\/([\d.]+)/);
+        if (match) browserVersion = match[1];
+      }
+
+      // OS detection
+      if (ua.includes('Windows NT')) {
+        os = 'Windows';
+        const match = ua.match(/Windows NT ([\d.]+)/);
+        if (match) {
+          const version = match[1];
+          if (version === '10.0') osVersion = '10/11';
+          else if (version === '6.3') osVersion = '8.1';
+          else if (version === '6.2') osVersion = '8';
+          else if (version === '6.1') osVersion = '7';
+          else osVersion = version;
+        }
+      } else if (ua.includes('Mac OS X')) {
+        os = 'macOS';
+        const match = ua.match(/Mac OS X ([\d_]+)/);
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      } else if (ua.includes('iPhone') || ua.includes('iPad')) {
+        os = 'iOS';
+        const match = ua.match(/OS ([\d_]+)/);
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      } else if (ua.includes('Android')) {
+        os = 'Android';
+        const match = ua.match(/Android ([\d.]+)/);
+        if (match) osVersion = match[1];
+      } else if (ua.includes('Linux')) {
+        os = 'Linux';
+      }
+
+      // Device detection
+      if (ua.includes('Mobile') || ua.includes('iPhone') || ua.includes('Android')) {
+        device = 'Mobile';
+        if (ua.includes('iPhone')) device = 'iPhone';
+        else if (ua.includes('iPad')) device = 'iPad';
+        else if (ua.includes('Android')) device = 'Android Phone/Tablet';
+      } else if (ua.includes('Tablet') || ua.includes('iPad')) {
+        device = 'Tablet';
+      } else {
+        device = 'Desktop';
+      }
+
+      // Engine detection
+      if (ua.includes('AppleWebKit')) {
+        engine = 'WebKit';
+        if (ua.includes('Chrome')) engine = 'Blink (WebKit fork)';
+      } else if (ua.includes('Gecko')) {
+        engine = 'Gecko';
+      } else if (ua.includes('Trident')) {
+        engine = 'Trident';
+      }
+
+      return {
+        browser: browser + (browserVersion ? ' ' + browserVersion : ''),
+        os: os + (osVersion ? ' ' + osVersion : ''),
+        device: device,
+        engine: engine,
+        raw: ua
+      };
+    }
+
+    function detectFeatures() {
+      return {
+        localStorage: !!window.localStorage,
+        sessionStorage: !!window.sessionStorage,
+        cookies: navigator.cookieEnabled,
+        javascript: true,
+        geolocation: !!navigator.geolocation,
+        webGL: (function() {
+          try {
+            const canvas = document.createElement('canvas');
+            return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+          } catch (e) {
+            return false;
+          }
+        })(),
+        canvas: !!window.HTMLCanvasElement,
+        webWorkers: !!window.Worker,
+        serviceWorkers: 'serviceWorker' in navigator,
+        pushNotifications: 'PushManager' in window,
+        touchEvents: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+        webAssembly: !!window.WebAssembly,
+        webAudio: !!window.AudioContext || !!window.webkitAudioContext
+      };
+    }
+
+    function analyzeUA() {
+      const inputText = inputEl.value.trim();
+      const uaString = inputText || navigator.userAgent;
+
+      if (!inputText) {
+        inputEl.value = uaString;
+      }
+
+      const result = parseUserAgent(uaString);
+      const features = detectFeatures();
+
+      resultsGridEl.innerHTML = '';
+      uaDetailsEl.style.display = 'block';
+      uaFeaturesEl.innerHTML = '';
+
+      const results = [
+        { title: '浏览器', value: result.browser, className: 'browser' },
+        { title: '操作系统', value: result.os, className: 'os' },
+        { title: '设备类型', value: result.device, className: 'device' },
+        { title: '渲染引擎', value: result.engine, className: 'engine' },
+        { title: '语言', value: navigator.language || 'Unknown' },
+        { title: '平台', value: navigator.platform || 'Unknown' },
+        { title: '用户代理长度', value: result.raw.length + ' 字符' },
+        { title: '完整 UA', value: result.raw }
+      ];
+
+      results.forEach(function(resultItem) {
+        const card = document.createElement('div');
+        card.className = 'result-card';
+        card.innerHTML =
+          '<div class="result-title">' + resultItem.title + '</div>' +
+          '<div class="result-value ' + (resultItem.className || '') + '">' + resultItem.value + '</div>';
+        resultsGridEl.appendChild(card);
+      });
+
+      const featureItems = [
+        { label: 'Local Storage', value: features.localStorage ? 'yes' : 'no' },
+        { label: 'Session Storage', value: features.sessionStorage ? 'yes' : 'no' },
+        { label: 'Cookies', value: features.cookies ? 'yes' : 'no' },
+        { label: 'JavaScript', value: features.javascript ? 'yes' : 'no' },
+        { label: 'Geolocation', value: features.geolocation ? 'yes' : 'no' },
+        { label: 'WebGL', value: features.webGL ? 'yes' : 'no' },
+        { label: 'Canvas', value: features.canvas ? 'yes' : 'no' },
+        { label: 'Web Workers', value: features.webWorkers ? 'yes' : 'no' },
+        { label: 'Service Workers', value: features.serviceWorkers ? 'yes' : 'no' },
+        { label: 'Push Notifications', value: features.pushNotifications ? 'yes' : 'no' },
+        { label: 'Touch Events', value: features.touchEvents ? 'yes' : 'no' },
+        { label: 'WebAssembly', value: features.webAssembly ? 'yes' : 'no' },
+        { label: 'Web Audio', value: features.webAudio ? 'yes' : 'no' }
+      ];
+
+      featureItems.forEach(function(feature) {
+        const item = document.createElement('div');
+        item.className = 'feature-item';
+        item.innerHTML =
+          '<div class="feature-label">' + feature.label + '</div>' +
+          '<div class="feature-value ' + feature.value + '">' + (feature.value === 'yes' ? '支持' : '不支持') + '</div>';
+        uaFeaturesEl.appendChild(item);
+      });
+
+      showStatus('解析完成', 'success');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function reset() {
+      inputEl.value = '';
+      resultsGridEl.innerHTML = '';
+      uaDetailsEl.style.display = 'none';
+      uaFeaturesEl.innerHTML = '';
+      statusEl.textContent = '';
+      localStorage.removeItem(LS_KEY);
+    }
+
+    currentUAEl.textContent = navigator.userAgent;
+
+    document.getElementById('btnAnalyze').onclick = analyzeUA;
+
+    document.getElementById('btnCopy').onclick = async function() {
+      const results = [];
+      resultsGridEl.querySelectorAll('.result-card').forEach(function(card) {
+        const title = card.querySelector('.result-title').textContent;
+        const value = card.querySelector('.result-value').textContent;
+        results.push(`${title}: ${value}`);
+      });
+
+      const output = results.join('\n');
+
+      try {
+        await navigator.clipboard.writeText(output);
+        showStatus('已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnPaste').onclick = async function() {
+      try {
+        const text = await navigator.clipboard.readText();
+        inputEl.value = text.trim();
+        showStatus('已粘贴', 'success');
+      } catch (e) {
+        showStatus('无法访问剪贴板', 'error');
+      }
+    };
+
+    document.getElementById('btnCopyCurrent').onclick = async function() {
+      try {
+        await navigator.clipboard.writeText(navigator.userAgent);
+        showStatus('当前 UA 已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnClear').onclick = reset;
+
+    document.querySelectorAll('.example-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        inputEl.value = btn.getAttribute('data-ua');
+        analyzeUA();
+      });
+    });
+
+    inputEl.addEventListener('input', function() {
+      localStorage.setItem(LS_KEY, this.value);
+    });
+
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) inputEl.value = saved;
+
+    analyzeUA();
+  </script>
+</body>
+</html>

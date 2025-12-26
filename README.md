@@ -28,6 +28,8 @@
 | **GitHub Pages** | https://chicogong.github.io/html-tools/ | ✅ |
 | **Cloudflare Pages** | https://htmltools-bkt.pages.dev | ✅ |
 | **Vercel** | https://html-tools-jade.vercel.app | ✅ |
+| **Render** | https://webutils-uj15.onrender.com | ✅ |
+| **Surge** | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
 ## 工具列表
@@ -60,6 +62,11 @@
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [字数统计](tools/text/word-counter.html) | 统计字符、单词、句子、段落数量，支持目标字数进度追踪 |
 | [Lorem Ipsum 生成器](tools/text/lorem-ipsum.html) | 生成占位文本，支持段落、句子、单词模式 |
+| [Emoji 选择器](tools/text/emoji-picker.html) | 搜索并复制 Emoji 表情，按分类浏览 |
+| [ASCII Art 生成器](tools/text/ascii-art.html) | 将文本转换为 ASCII 艺术字，支持多种字体 |
+| [Slug 生成器](tools/text/slugify.html) | 将文本转换为 URL 友好的 slug 格式 |
+| [罗马数字转换](tools/text/roman-numeral.html) | 阿拉伯数字与罗马数字互转 |
+| [NATO 音标字母表](tools/text/nato-alphabet.html) | 将文本转换为 NATO 音标字母表 |
 
 ### 时间工具
 
@@ -88,6 +95,7 @@
 | 工具 | 描述 |
 |------|------|
 | [日志脱敏](tools/privacy/log-masker.html) | 自动识别并脱敏 IP、邮箱、手机号等敏感信息 |
+| [AES 加密解密](tools/privacy/encrypt-decrypt.html) | 使用 AES-GCM 算法进行文本加密和解密 |
 
 ### 安全工具
 

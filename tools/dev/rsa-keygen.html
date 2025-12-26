@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RSA 密钥对生成器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .options { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .options label { display: inline; font-weight: normal; margin: 0; }
+
+    select {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+    }
+    .key-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+    .key-section { }
+    .key-section h3 { font-size: 1rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+
+    .key-section h3 .badge {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: normal;
+    }
+    .key-section h3 .badge.public { background: var(--success); color: #fff; }
+    .key-section h3 .badge.private { background: var(--danger); color: #fff; }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+    .key-actions { margin-top: 8px; display: flex; gap: 8px; }
+    .key-actions button { padding: 6px 12px; font-size: 0.85rem; }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>RSA 密钥对生成器</h1>
+    <p class="desc">生成 RSA 公钥和私钥对，支持多种密钥长度</p>
+
+    <div class="warning">
+      ⚠️ 密钥仅在浏览器中生成，不会上传到服务器。但请勿在生产环境中使用此工具生成的密钥。
+    </div>
+
+    <div class="card">
+      <div class="options">
+        <label>
+          密钥长度:
+          <select id="keySize">
+            <option value="1024">1024 位 (不安全)</option>
+            <option value="2048" selected>2048 位 (推荐)</option>
+            <option value="4096">4096 位 (高安全)</option>
+          </select>
+        </label>
+        <label>
+          格式:
+          <select id="format">
+            <option value="pkcs8" selected>PKCS#8 (PEM)</option>
+            <option value="jwk">JWK (JSON)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="btn-row">
+        <button id="btnGenerate" class="primary">生成密钥对</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="key-grid">
+        <div class="key-section">
+          <h3>公钥 <span class="badge public">Public Key</span></h3>
+          <textarea id="publicKey" readonly placeholder="公钥将显示在这里..."></textarea>
+          <div class="key-actions">
+            <button id="btnCopyPublic">复制</button>
+            <button id="btnDownloadPublic">下载</button>
+          </div>
+        </div>
+        <div class="key-section">
+          <h3>私钥 <span class="badge private">Private Key</span></h3>
+          <textarea id="privateKey" readonly placeholder="私钥将显示在这里..."></textarea>
+          <div class="key-actions">
+            <button id="btnCopyPrivate">复制</button>
+            <button id="btnDownloadPrivate">下载</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var keySizeEl = document.getElementById('keySize');
+    var formatEl = document.getElementById('format');
+    var publicKeyEl = document.getElementById('publicKey');
+    var privateKeyEl = document.getElementById('privateKey');
+    var statusEl = document.getElementById('status');
+    var btnGenerate = document.getElementById('btnGenerate');
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function arrayBufferToBase64(buffer) {
+      var bytes = new Uint8Array(buffer);
+      var binary = '';
+      for (var i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    function formatPEM(base64, type) {
+      var lines = [];
+      for (var i = 0; i < base64.length; i += 64) {
+        lines.push(base64.slice(i, i + 64));
+      }
+      return '-----BEGIN ' + type + '-----\n' + lines.join('\n') + '\n-----END ' + type + '-----';
+    }
+
+    async function generateKeys() {
+      var keySize = parseInt(keySizeEl.value, 10);
+      var format = formatEl.value;
+
+      btnGenerate.disabled = true;
+      showStatus('正在生成密钥...', '');
+
+      try {
+        var keyPair = await crypto.subtle.generateKey(
+          {
+            name: 'RSA-OAEP',
+            modulusLength: keySize,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: 'SHA-256'
+          },
+          true,
+          ['encrypt', 'decrypt']
+        );
+
+        if (format === 'jwk') {
+          var publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+          var privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+          publicKeyEl.value = JSON.stringify(publicJwk, null, 2);
+          privateKeyEl.value = JSON.stringify(privateJwk, null, 2);
+        } else {
+          var publicSpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+          var privatePkcs8 = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+          publicKeyEl.value = formatPEM(arrayBufferToBase64(publicSpki), 'PUBLIC KEY');
+          privateKeyEl.value = formatPEM(arrayBufferToBase64(privatePkcs8), 'PRIVATE KEY');
+        }
+
+        showStatus('密钥对生成成功 (' + keySize + ' 位)', 'success');
+      } catch (e) {
+        showStatus('生成失败: ' + e.message, 'error');
+      } finally {
+        btnGenerate.disabled = false;
+      }
+    }
+
+    function download(content, filename) {
+      var blob = new Blob([content], { type: 'text/plain' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    btnGenerate.onclick = generateKeys;
+
+    document.getElementById('btnCopyPublic').onclick = async function() {
+      if (publicKeyEl.value) {
+        await navigator.clipboard.writeText(publicKeyEl.value);
+        showStatus('公钥已复制', 'success');
+      }
+    };
+
+    document.getElementById('btnCopyPrivate').onclick = async function() {
+      if (privateKeyEl.value) {
+        await navigator.clipboard.writeText(privateKeyEl.value);
+        showStatus('私钥已复制', 'success');
+      }
+    };
+
+    document.getElementById('btnDownloadPublic').onclick = function() {
+      if (publicKeyEl.value) {
+        var ext = formatEl.value === 'jwk' ? 'json' : 'pem';
+        download(publicKeyEl.value, 'public_key.' + ext);
+      }
+    };
+
+    document.getElementById('btnDownloadPrivate').onclick = function() {
+      if (privateKeyEl.value) {
+        var ext = formatEl.value === 'jwk' ? 'json' : 'pem';
+        download(privateKeyEl.value, 'private_key.' + ext);
+      }
+    };
+  </script>
+</body>
+</html>

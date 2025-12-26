@@ -5,8 +5,12 @@
  * 基于 tools.json 中的元数据
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
@@ -55,7 +59,7 @@ function processToolFile(tool) {
   
   if (!fs.existsSync(filePath)) {
     console.log(`⚠️  文件不存在: ${tool.path}`);
-    return false;
+    return 'failed';
   }
   
   let content = fs.readFileSync(filePath, 'utf8');
@@ -63,7 +67,7 @@ function processToolFile(tool) {
   // 检查是否已有 og:title 标签（避免重复添加）
   if (content.includes('og:title')) {
     console.log(`⏭️  已有 OG 标签: ${tool.path}`);
-    return false;
+    return 'skipped';
   }
   
   // 在 </head> 之前插入 SEO 标签
@@ -77,10 +81,10 @@ function processToolFile(tool) {
     
     fs.writeFileSync(filePath, content, 'utf8');
     console.log(`✅ 已添加 SEO 标签: ${tool.path}`);
-    return true;
+    return 'updated';
   } else {
     console.log(`⚠️  未找到 <title> 标签: ${tool.path}`);
-    return false;
+    return 'failed';
   }
 }
 
@@ -93,21 +97,12 @@ let failed = 0;
 
 for (const tool of toolsData.tools) {
   const result = processToolFile(tool);
-  if (result === true) {
+  if (result === 'updated') {
     updated++;
-  } else if (result === false) {
-    // 检查是否是跳过还是失败
-    const filePath = path.join(ROOT_DIR, tool.path);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      if (content.includes('og:title')) {
-        skipped++;
-      } else {
-        failed++;
-      }
-    } else {
-      failed++;
-    }
+  } else if (result === 'skipped') {
+    skipped++;
+  } else {
+    failed++;
   }
 }
 

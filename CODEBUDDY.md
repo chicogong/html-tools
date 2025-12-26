@@ -25,6 +25,9 @@ npm run lint:js      # ESLint (JS in HTML files)
 # Auto-fix CSS issues
 npm run lint:fix
 
+# Sync tools list (tools.json → index.html)
+npm run sync:tools
+
 # Local development - just open in browser
 open index.html              # macOS
 python3 -m http.server 8080  # For tools requiring HTTP
@@ -127,13 +130,24 @@ The project uses a **Neo-Brutalist Tech** dark theme:
 ## Adding a New Tool
 
 1. Create `tools/[category]/[tool-name].html` following the pattern above
-   - Categories: `dev`, `text`, `time`, `generator`, `privacy`, `media`
-2. Add tool card to `index.html` with:
-   - `data-category` attribute (dev/text/time/generator/privacy/media)
-   - `data-keywords` for search
-   - Tool icon in `.tool-icon` element
-   - Link path: `tools/[category]/[tool-name].html`
-3. Update `README.md` tool list with correct category path
+   - Categories: `dev`, `text`, `time`, `generator`, `privacy`, `media`, `security`, `network`, `calculator`, `extractor`, `ai`
+2. Add tool metadata to `tools.json`:
+   ```json
+   {
+     "path": "tools/[category]/[tool-name].html",
+     "name": "Tool Name",
+     "category": "[category]",
+     "keywords": "keyword1 keyword2 关键词"
+   }
+   ```
+3. Run `npm run sync:tools` to update index.html
+4. Update `README.md` tool list
+5. Commit and push (CI will verify sync status)
+
+**Tools Sync Mechanism**:
+- `tools.json` is the single source of truth for all tools
+- `npm run sync:tools` generates tool cards in index.html from tools.json
+- CI checks sync status - build fails if out of sync
 
 ## Common Tool Features
 
@@ -155,5 +169,6 @@ Only use CDN when necessary. Current dependencies:
 ## CI/CD
 
 - **Lint**: PR triggers HTMLHint + Stylelint + ESLint
+- **Tools Sync Check**: CI verifies tools.json and index.html are in sync
 - **Deploy**: Push to master auto-deploys to GitHub Pages
 - **Release**: Push tag creates GitHub Release

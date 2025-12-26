@@ -267,13 +267,34 @@ npm run lint:css   # Stylelint
 npm run lint:js    # ESLint
 ```
 
+### 工具同步
+
+工具列表使用 `tools.json` 作为唯一数据源，通过同步脚本更新 `index.html`：
+
+```bash
+# 同步 tools.json 到 index.html
+npm run sync:tools
+```
+
+CI 会自动检查同步状态，如果 `tools.json` 和 `index.html` 不一致，构建会失败。
+
 ### 添加新工具
 
-1. 在 `tools/` 下选择合适的分类目录（dev/text/time/generator/privacy/media）
+1. 在 `tools/` 下选择合适的分类目录（dev/text/time/generator/privacy/media/security/network/calculator/extractor/ai）
 2. 创建新的 HTML 文件，遵循单文件模式
-3. 更新 `index.html` 添加工具卡片
-4. 更新 `README.md` 工具列表
-5. 运行 `npm run lint` 确保代码规范
+3. 在 `tools.json` 中添加工具元数据：
+   ```json
+   {
+     "path": "tools/<category>/<file>.html",
+     "name": "工具名称",
+     "category": "<category>",
+     "keywords": "关键词1 关键词2 keyword"
+   }
+   ```
+4. 运行 `npm run sync:tools` 同步到 index.html
+5. 更新 `README.md` 工具列表
+6. 运行 `npm run lint` 确保代码规范
+7. 提交更改（CI 会检查同步状态）
 
 ### 工具模板
 
@@ -382,6 +403,7 @@ git push origin feature/new-tool
 ## CI/CD
 
 - **Lint**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint
+- **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
 - **Deploy**: 每次推送到 master 自动部署到 GitHub Pages
 - **Release**: 推送 tag 自动创建 Release
 - **Dependabot**: 自动检查依赖更新

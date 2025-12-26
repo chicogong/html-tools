@@ -48,6 +48,9 @@ npm run lint:js      # ESLint - 检查内联 JavaScript
 
 # 自动修复 CSS 问题
 npm run lint:fix
+
+# 同步工具列表（将 tools.json 同步到 index.html）
+npm run sync:tools
 ```
 
 **注意**: 这个项目没有 `npm run build`、`npm start` 或 `npm test` 命令。
@@ -147,22 +150,22 @@ npm run lint:fix
    - 完整的 `<head>` 设置 (charset, viewport, title, fonts)
    - 内联 CSS 和 JavaScript
    - 返回主页的链接: `<a href="../../index.html">← 返回</a>`
-3. 在 `index.html` 中添加工具卡片:
-   ```html
-   <a href="tools/<category>/<file>.html" class="tool-card"
-      data-category="<category>"
-      data-keywords="关键词1 关键词2">
-     <div class="tool-card-header">
-       <div class="tool-icon">图标</div>
-       <h3>工具名</h3>
-     </div>
-     <p>工具描述</p>
-     <div class="tool-card-footer">
-       <span class="tool-tag"><category></span>
-       <span class="tool-arrow">→</span>
-     </div>
-   </a>
+3. 在 `tools.json` 中添加工具元数据:
+   ```json
+   {
+     "path": "tools/<category>/<file>.html",
+     "name": "工具名",
+     "category": "<category>",
+     "keywords": "关键词1 关键词2 keyword1"
+   }
    ```
+4. 运行 `npm run sync:tools` 同步到 index.html
+5. 提交更改（CI 会检查同步状态）
+
+**工具同步机制**:
+- `tools.json` 是工具列表的唯一数据源（Single Source of Truth）
+- `npm run sync:tools` 读取 tools.json 并更新 index.html 中的工具卡片
+- CI 会检查两者是否同步，不同步则构建失败
 
 ## 样式约定
 
@@ -176,6 +179,7 @@ npm run lint:fix
 ## CI/CD 和部署
 
 - **Lint CI**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint
+- **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
 - **Deploy CI**: 推送到 master 自动部署到 GitHub Pages
 - **多平台部署**: 同时部署到 GitHub Pages, Vercel, Netlify, Cloudflare Pages
 

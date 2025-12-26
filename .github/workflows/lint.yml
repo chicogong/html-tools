@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -37,16 +35,19 @@ jobs:
         run: npm run lint:js
         continue-on-error: true
 
-      - name: Sync tools and auto-commit
+      - name: Check tools sync
         run: |
           npm run sync:tools
           if [ -n "$(git diff --name-only index.html)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add index.html
-            git commit -m "chore: auto-sync tools list"
-            git push
-            echo "✅ Auto-committed tools sync"
-          else
-            echo "✅ Tools already in sync"
+            echo "❌ Error: index.html is out of sync with tools.json"
+            echo ""
+            echo "Please run locally:"
+            echo "  npm run sync:tools"
+            echo "  git add index.html && git commit --amend --no-edit"
+            echo "  git push --force-with-lease"
+            echo ""
+            echo "Diff:"
+            git diff index.html | head -50
+            exit 1
           fi
+          echo "✅ Tools are in sync"

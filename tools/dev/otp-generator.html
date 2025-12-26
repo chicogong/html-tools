@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OTP 验证码生成器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+
+    .otp-display {
+      text-align: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+
+    .otp-display .code {
+      font-size: 3.5rem;
+      font-weight: bold;
+      color: #fff;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      letter-spacing: 0.3em;
+      text-shadow: 0 2px 10px rgb(0,0,0,0.2);
+    }
+
+    .otp-display .timer {
+      margin-top: 16px;
+      color: rgb(255,255,255,0.9);
+      font-size: 0.95rem;
+    }
+
+    .progress-bar {
+      width: 200px;
+      height: 4px;
+      background: rgb(255,255,255,0.3);
+      border-radius: 2px;
+      margin: 12px auto 0;
+      overflow: hidden;
+    }
+
+    .progress-bar .fill {
+      height: 100%;
+      background: #fff;
+      transition: width 1s linear;
+    }
+    .options { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .options label { display: inline; font-weight: normal; margin: 0; }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>OTP 验证码生成器</h1>
+    <p class="desc">生成基于时间的一次性密码 (TOTP)，兼容 Google Authenticator</p>
+
+    <div class="card">
+      <div class="otp-display">
+        <div class="code" id="otpCode">------</div>
+        <div class="timer" id="timer">剩余 30 秒</div>
+        <div class="progress-bar">
+          <div class="fill" id="progress"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="btnCopy" class="primary">复制验证码</button>
+        <button id="btnGenSecret">生成新密钥</button>
+      </div>
+
+      <label for="secretInput">密钥 (Base32 编码)</label>
+      <input type="text" id="secretInput" placeholder="例如: JBSWY3DPEHPK3PXP" />
+
+      <div class="options">
+        <label>
+          位数:
+          <select id="digits">
+            <option value="6" selected>6 位</option>
+            <option value="8">8 位</option>
+          </select>
+        </label>
+        <label>
+          周期:
+          <select id="period">
+            <option value="30" selected>30 秒</option>
+            <option value="60">60 秒</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var secretInput = document.getElementById('secretInput');
+    var otpCodeEl = document.getElementById('otpCode');
+    var timerEl = document.getElementById('timer');
+    var progressEl = document.getElementById('progress');
+    var digitsEl = document.getElementById('digits');
+    var periodEl = document.getElementById('period');
+    var statusEl = document.getElementById('status');
+
+    var BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function base32Decode(str) {
+      str = str.toUpperCase().replace(/[^A-Z2-7]/g, '');
+      var bits = '';
+      for (var i = 0; i < str.length; i++) {
+        var val = BASE32_CHARS.indexOf(str[i]);
+        if (val === -1) continue;
+        bits += val.toString(2).padStart(5, '0');
+      }
+      var bytes = new Uint8Array(Math.floor(bits.length / 8));
+      for (var j = 0; j < bytes.length; j++) {
+        bytes[j] = parseInt(bits.slice(j * 8, j * 8 + 8), 2);
+      }
+      return bytes;
+    }
+
+    function base32Encode(bytes) {
+      var bits = '';
+      for (var i = 0; i < bytes.length; i++) {
+        bits += bytes[i].toString(2).padStart(8, '0');
+      }
+      var result = '';
+      for (var j = 0; j < bits.length; j += 5) {
+        var chunk = bits.slice(j, j + 5);
+        if (chunk.length < 5) chunk = chunk + '0'.repeat(5 - chunk.length);
+        result += BASE32_CHARS[parseInt(chunk, 2)];
+      }
+      return result;
+    }
+
+    function generateSecret() {
+      var bytes = new Uint8Array(20);
+      crypto.getRandomValues(bytes);
+      return base32Encode(bytes);
+    }
+
+    async function hmacSha1(key, data) {
+      var cryptoKey = await crypto.subtle.importKey(
+        'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+      );
+      var sig = await crypto.subtle.sign('HMAC', cryptoKey, data);
+      return new Uint8Array(sig);
+    }
+
+    async function generateTOTP(secret, digits, period) {
+      var key = base32Decode(secret);
+      var time = Math.floor(Date.now() / 1000 / period);
+      
+      var timeBytes = new Uint8Array(8);
+      for (var i = 7; i >= 0; i--) {
+        timeBytes[i] = time & 0xff;
+        time = Math.floor(time / 256);
+      }
+
+      var hash = await hmacSha1(key, timeBytes);
+      var offset = hash[hash.length - 1] & 0x0f;
+      var code = ((hash[offset] & 0x7f) << 24) |
+                 ((hash[offset + 1] & 0xff) << 16) |
+                 ((hash[offset + 2] & 0xff) << 8) |
+                 (hash[offset + 3] & 0xff);
+      
+      code = code % Math.pow(10, digits);
+      return code.toString().padStart(digits, '0');
+    }
+
+    async function updateOTP() {
+      var secret = secretInput.value.trim();
+      if (!secret) {
+        otpCodeEl.textContent = '-'.repeat(parseInt(digitsEl.value, 10));
+        return;
+      }
+
+      try {
+        var digits = parseInt(digitsEl.value, 10);
+        var period = parseInt(periodEl.value, 10);
+        var otp = await generateTOTP(secret, digits, period);
+        otpCodeEl.textContent = otp;
+      } catch (e) {
+        otpCodeEl.textContent = 'ERROR';
+        showStatus('密钥格式错误', 'error');
+      }
+    }
+
+    function updateTimer() {
+      var period = parseInt(periodEl.value, 10);
+      var now = Math.floor(Date.now() / 1000);
+      var remaining = period - (now % period);
+      timerEl.textContent = '剩余 ' + remaining + ' 秒';
+      progressEl.style.width = (remaining / period * 100) + '%';
+      
+      if (remaining === period) {
+        updateOTP();
+      }
+    }
+
+    document.getElementById('btnCopy').onclick = async function() {
+      var code = otpCodeEl.textContent;
+      if (code && !code.includes('-') && code !== 'ERROR') {
+        await navigator.clipboard.writeText(code);
+        showStatus('已复制', 'success');
+      }
+    };
+
+    document.getElementById('btnGenSecret').onclick = function() {
+      secretInput.value = generateSecret();
+      updateOTP();
+      showStatus('已生成新密钥', 'success');
+    };
+
+    secretInput.addEventListener('input', updateOTP);
+    digitsEl.addEventListener('change', updateOTP);
+    periodEl.addEventListener('change', function() {
+      updateOTP();
+      updateTimer();
+    });
+
+    setInterval(updateTimer, 1000);
+    updateTimer();
+    updateOTP();
+  </script>
+</body>
+</html>

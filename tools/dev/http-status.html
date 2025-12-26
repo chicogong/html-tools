@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTTP 状态码 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --success: #198754;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --info: #0dcaf0;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+    .search-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+
+    .category {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .category-header {
+      padding: 16px 20px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .category-header .badge {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #fff;
+    }
+    .cat-1xx .badge { background: var(--info); }
+    .cat-2xx .badge { background: var(--success); }
+    .cat-3xx .badge { background: var(--primary); }
+    .cat-4xx .badge { background: var(--warning); color: #000; }
+    .cat-5xx .badge { background: var(--danger); }
+    .category-content { border-top: 1px solid var(--border); }
+
+    .status-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .status-item:last-child { border-bottom: none; }
+    .status-item:hover { background: var(--bg); }
+
+    .status-code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      min-width: 50px;
+    }
+    .status-info { flex: 1; }
+    .status-name { font-weight: 600; margin-bottom: 4px; }
+    .status-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+    .hidden { display: none; }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>HTTP 状态码参考</h1>
+    <p class="desc">快速查询 HTTP 状态码含义和用途</p>
+
+    <div class="search-box">
+      <input type="text" id="search" placeholder="搜索状态码或描述..." autofocus />
+    </div>
+
+    <div id="statusList"></div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var statusCodes = {
+      '1xx 信息响应': [
+        { code: 100, name: 'Continue', desc: '服务器已收到请求头，客户端应继续发送请求体' },
+        { code: 101, name: 'Switching Protocols', desc: '服务器同意切换协议（如升级到 WebSocket）' },
+        { code: 102, name: 'Processing', desc: '服务器正在处理请求，但尚无响应可用（WebDAV）' },
+        { code: 103, name: 'Early Hints', desc: '用于在最终响应之前返回部分响应头' }
+      ],
+      '2xx 成功': [
+        { code: 200, name: 'OK', desc: '请求成功。GET 返回资源，POST 返回处理结果' },
+        { code: 201, name: 'Created', desc: '请求成功且服务器创建了新资源' },
+        { code: 202, name: 'Accepted', desc: '请求已接受但尚未处理完成' },
+        { code: 203, name: 'Non-Authoritative Information', desc: '返回的信息来自第三方，非原始服务器' },
+        { code: 204, name: 'No Content', desc: '请求成功但无返回内容' },
+        { code: 205, name: 'Reset Content', desc: '请求成功，客户端应重置文档视图' },
+        { code: 206, name: 'Partial Content', desc: '服务器返回部分资源（范围请求）' },
+        { code: 207, name: 'Multi-Status', desc: '多个状态的 XML 消息体（WebDAV）' },
+        { code: 208, name: 'Already Reported', desc: '已在之前的响应中报告过（WebDAV）' },
+        { code: 226, name: 'IM Used', desc: '服务器已完成资源的 GET 请求，响应表示实例操作结果' }
+      ],
+      '3xx 重定向': [
+        { code: 300, name: 'Multiple Choices', desc: '请求有多个可能的响应' },
+        { code: 301, name: 'Moved Permanently', desc: '资源已永久移动到新 URI' },
+        { code: 302, name: 'Found', desc: '资源临时移动到其他 URI' },
+        { code: 303, name: 'See Other', desc: '应使用 GET 方法访问另一个 URI' },
+        { code: 304, name: 'Not Modified', desc: '资源未修改，可使用缓存版本' },
+        { code: 305, name: 'Use Proxy', desc: '必须通过代理访问（已废弃）' },
+        { code: 307, name: 'Temporary Redirect', desc: '临时重定向，保持原请求方法' },
+        { code: 308, name: 'Permanent Redirect', desc: '永久重定向，保持原请求方法' }
+      ],
+      '4xx 客户端错误': [
+        { code: 400, name: 'Bad Request', desc: '请求语法错误或无法被服务器理解' },
+        { code: 401, name: 'Unauthorized', desc: '需要身份验证' },
+        { code: 402, name: 'Payment Required', desc: '保留供将来使用（支付相关）' },
+        { code: 403, name: 'Forbidden', desc: '服务器拒绝执行请求' },
+        { code: 404, name: 'Not Found', desc: '请求的资源不存在' },
+        { code: 405, name: 'Method Not Allowed', desc: '请求方法不被允许' },
+        { code: 406, name: 'Not Acceptable', desc: '无法生成符合 Accept 头的响应' },
+        { code: 407, name: 'Proxy Authentication Required', desc: '需要代理身份验证' },
+        { code: 408, name: 'Request Timeout', desc: '服务器等待请求超时' },
+        { code: 409, name: 'Conflict', desc: '请求与当前资源状态冲突' },
+        { code: 410, name: 'Gone', desc: '资源已永久删除' },
+        { code: 411, name: 'Length Required', desc: '需要 Content-Length 头' },
+        { code: 412, name: 'Precondition Failed', desc: '先决条件验证失败' },
+        { code: 413, name: 'Payload Too Large', desc: '请求体过大' },
+        { code: 414, name: 'URI Too Long', desc: 'URI 过长' },
+        { code: 415, name: 'Unsupported Media Type', desc: '不支持的媒体类型' },
+        { code: 416, name: 'Range Not Satisfiable', desc: '请求的范围无法满足' },
+        { code: 417, name: 'Expectation Failed', desc: 'Expect 头的期望无法满足' },
+        { code: 418, name: "I'm a teapot", desc: '我是茶壶（愚人节彩蛋）' },
+        { code: 421, name: 'Misdirected Request', desc: '请求被定向到无法响应的服务器' },
+        { code: 422, name: 'Unprocessable Entity', desc: '请求格式正确但语义错误（WebDAV）' },
+        { code: 423, name: 'Locked', desc: '资源已锁定（WebDAV）' },
+        { code: 424, name: 'Failed Dependency', desc: '依赖的请求失败（WebDAV）' },
+        { code: 425, name: 'Too Early', desc: '服务器不愿处理可能重放的请求' },
+        { code: 426, name: 'Upgrade Required', desc: '需要升级到其他协议' },
+        { code: 428, name: 'Precondition Required', desc: '需要先决条件头' },
+        { code: 429, name: 'Too Many Requests', desc: '请求过于频繁' },
+        { code: 431, name: 'Request Header Fields Too Large', desc: '请求头字段过大' },
+        { code: 451, name: 'Unavailable For Legal Reasons', desc: '因法律原因不可用' }
+      ],
+      '5xx 服务器错误': [
+        { code: 500, name: 'Internal Server Error', desc: '服务器内部错误' },
+        { code: 501, name: 'Not Implemented', desc: '服务器不支持请求的功能' },
+        { code: 502, name: 'Bad Gateway', desc: '网关或代理收到无效响应' },
+        { code: 503, name: 'Service Unavailable', desc: '服务器暂时不可用' },
+        { code: 504, name: 'Gateway Timeout', desc: '网关或代理等待响应超时' },
+        { code: 505, name: 'HTTP Version Not Supported', desc: '不支持请求的 HTTP 版本' },
+        { code: 506, name: 'Variant Also Negotiates', desc: '服务器配置错误' },
+        { code: 507, name: 'Insufficient Storage', desc: '存储空间不足（WebDAV）' },
+        { code: 508, name: 'Loop Detected', desc: '检测到无限循环（WebDAV）' },
+        { code: 510, name: 'Not Extended', desc: '需要进一步扩展请求' },
+        { code: 511, name: 'Network Authentication Required', desc: '需要网络身份验证' }
+      ]
+    };
+
+    var searchEl = document.getElementById('search');
+    var listEl = document.getElementById('statusList');
+
+    function render(filter) {
+      filter = (filter || '').toLowerCase();
+      
+      while (listEl.firstChild) {
+        listEl.removeChild(listEl.firstChild);
+      }
+
+      var categories = Object.keys(statusCodes);
+      categories.forEach(function(cat, idx) {
+        var items = statusCodes[cat];
+        var filteredItems = items.filter(function(item) {
+          if (!filter) return true;
+          return item.code.toString().indexOf(filter) !== -1 ||
+                 item.name.toLowerCase().indexOf(filter) !== -1 ||
+                 item.desc.toLowerCase().indexOf(filter) !== -1;
+        });
+
+        if (filteredItems.length === 0) return;
+
+        var catClass = 'cat-' + (idx + 1) + 'xx';
+        var categoryEl = document.createElement('div');
+        categoryEl.className = 'category ' + catClass;
+
+        var headerEl = document.createElement('div');
+        headerEl.className = 'category-header';
+        
+        var badgeEl = document.createElement('span');
+        badgeEl.className = 'badge';
+        badgeEl.textContent = (idx + 1) + 'xx';
+        
+        var titleEl = document.createElement('span');
+        titleEl.textContent = cat;
+        
+        headerEl.appendChild(badgeEl);
+        headerEl.appendChild(titleEl);
+        categoryEl.appendChild(headerEl);
+
+        var contentEl = document.createElement('div');
+        contentEl.className = 'category-content';
+
+        filteredItems.forEach(function(item) {
+          var itemEl = document.createElement('div');
+          itemEl.className = 'status-item';
+
+          var codeEl = document.createElement('div');
+          codeEl.className = 'status-code';
+          codeEl.textContent = item.code;
+
+          var infoEl = document.createElement('div');
+          infoEl.className = 'status-info';
+
+          var nameEl = document.createElement('div');
+          nameEl.className = 'status-name';
+          nameEl.textContent = item.name;
+
+          var descEl = document.createElement('div');
+          descEl.className = 'status-desc';
+          descEl.textContent = item.desc;
+
+          infoEl.appendChild(nameEl);
+          infoEl.appendChild(descEl);
+          itemEl.appendChild(codeEl);
+          itemEl.appendChild(infoEl);
+          contentEl.appendChild(itemEl);
+        });
+
+        categoryEl.appendChild(contentEl);
+        listEl.appendChild(categoryEl);
+      });
+    }
+
+    searchEl.addEventListener('input', function() {
+      render(searchEl.value);
+    });
+
+    render();
+  </script>
+</body>
+</html>

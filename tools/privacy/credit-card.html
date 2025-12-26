@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>信用卡验证器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-blue: #4cc9f0;
+      --accent-purple: #9d4edd;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .input-section {
+      margin-bottom: 24px;
+    }
+
+    .input-section label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      padding: 14px 18px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      letter-spacing: 0.1em;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    .card-preview {
+      background: linear-gradient(135deg, #1a1a24 0%, #0f0f16 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-preview::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(0, 245, 212, 0.05) 50%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+    }
+
+    .card-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+    }
+
+    .card-holder, .card-expires {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .card-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    .card-brand {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .validation-result {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .validation-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .validation-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .validation-status.valid {
+      color: var(--accent-green);
+    }
+
+    .validation-status.invalid {
+      color: var(--accent-red);
+    }
+
+    .card-type {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .info-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .info-card:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .info-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .info-value.mii {
+      color: var(--accent-cyan);
+    }
+
+    .luhn-steps {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .luhn-steps h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .luhn-content {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    button.primary:hover {
+      background: #00dfc4;
+    }
+
+    .examples {
+      margin-bottom: 24px;
+    }
+
+    .examples h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .example-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .example-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success {
+      color: var(--accent-green);
+    }
+
+    .status.success::before {
+      content: '✓ ';
+    }
+
+    .status.error {
+      color: var(--accent-red);
+    }
+
+    .status.error::before {
+      content: '✗ ';
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>信用卡验证器</h1>
+    <p class="desc">使用 Luhn 算法验证信用卡号码，检测卡类型和发卡行</p>
+
+    <div class="card">
+      <div class="input-section">
+        <label>信用卡号码</label>
+        <div class="input-group">
+          <input type="text" id="input" placeholder="1234 5678 9012 3456" maxlength="19" />
+          <button id="btnValidate" class="primary">验证</button>
+        </div>
+      </div>
+
+      <div class="examples">
+        <h3>测试号码 (测试用途)</h3>
+        <div class="example-buttons">
+          <button class="example-btn" data-number="4532015112830366">Visa</button>
+          <button class="example-btn" data-number="5555555555554444">Mastercard</button>
+          <button class="example-btn" data-number="378282246310005">Amex</button>
+          <button class="example-btn" data-number="6011111111111117">Discover</button>
+        </div>
+      </div>
+
+      <div class="card-preview" id="cardPreview" style="display: none;">
+        <div class="card-number" id="cardNumber"></div>
+        <div class="card-details">
+          <div class="card-holder">
+            <div class="card-label">Card Holder</div>
+            <div class="card-value">TEST USER</div>
+          </div>
+          <div class="card-expires">
+            <div class="card-label">Expires</div>
+            <div class="card-value">12/28</div>
+          </div>
+          <div class="card-brand" id="cardBrand">VISA</div>
+        </div>
+      </div>
+
+      <div class="validation-result" id="validationResult" style="display: none;">
+        <div class="validation-icon" id="validationIcon"></div>
+        <div class="validation-status" id="validationStatus"></div>
+        <div class="card-type" id="cardType"></div>
+      </div>
+
+      <div class="info-grid" id="infoGrid" style="display: none;">
+        <div class="info-card">
+          <div class="info-label">MII (主要行业标识符)</div>
+          <div class="info-value mii" id="miiValue"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">发卡行</div>
+          <div class="info-value" id="issuerValue"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">卡号长度</div>
+          <div class="info-value" id="lengthValue"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Luhn 校验和</div>
+          <div class="info-value" id="luhnValue"></div>
+        </div>
+      </div>
+
+      <div class="luhn-steps" id="luhnSteps" style="display: none;">
+        <h3>Luhn 算法验证步骤</h3>
+        <div class="luhn-content" id="luhnContent"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btnCopy">复制结果</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const cardPreviewEl = document.getElementById('cardPreview');
+    const cardNumberEl = document.getElementById('cardNumber');
+    const cardBrandEl = document.getElementById('cardBrand');
+    const validationResultEl = document.getElementById('validationResult');
+    const validationIconEl = document.getElementById('validationIcon');
+    const validationStatusEl = document.getElementById('validationStatus');
+    const cardTypeEl = document.getElementById('cardType');
+    const infoGridEl = document.getElementById('infoGrid');
+    const miiValueEl = document.getElementById('miiValue');
+    const issuerValueEl = document.getElementById('issuerValue');
+    const lengthValueEl = document.getElementById('lengthValue');
+    const luhnValueEl = document.getElementById('luhnValue');
+    const luhnStepsEl = document.getElementById('luhnSteps');
+    const luhnContentEl = document.getElementById('luhnContent');
+    const statusEl = document.getElementById('status');
+
+    const cardPatterns = {
+      visa: {
+        pattern: /^4/,
+        name: 'Visa',
+        icon: 'VISA'
+      },
+      mastercard: {
+        pattern: /^(?:5[1-5][0-9]{2}|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)/,
+        name: 'Mastercard',
+        icon: 'MASTERCARD'
+      },
+      amex: {
+        pattern: /^3[47]/,
+        name: 'American Express',
+        icon: 'AMEX'
+      },
+      discover: {
+        pattern: /^6(?:011|5)/,
+        name: 'Discover',
+        icon: 'DISCOVER'
+      },
+      diners: {
+        pattern: /^3(?:0[0-5]|[68][0-9])/,
+        name: "Diner's Club",
+        icon: 'DINERS'
+      },
+      jcb: {
+        pattern: /^(?:2131|1800|35\d{3})/,
+        name: 'JCB',
+        icon: 'JCB'
+      }
+    };
+
+    const miiIndustries = {
+      '0': 'ISO/TC 68 和其他未来行业分配',
+      '1': '航空公司',
+      '2': '航空公司',
+      '3': '旅行和娱乐',
+      '4': '银行和金融',
+      '5': '银行和金融',
+      '6': '商业和银行',
+      '7': '石油',
+      '8': '医疗保健和电信',
+      '9': '政府'
+    };
+
+    function detectCardType(number) {
+      const cleaned = number.replace(/\s/g, '');
+      for (const [key, card] of Object.entries(cardPatterns)) {
+        if (card.pattern.test(cleaned)) {
+          return card;
+        }
+      }
+      return { name: 'Unknown', icon: '?' };
+    }
+
+    function luhnCheck(cardNumber) {
+      const cleaned = cardNumber.replace(/\s/g, '');
+      if (!/^\d+$/.test(cleaned)) return { valid: false };
+
+      let sum = 0;
+      let shouldDouble = false;
+
+      for (let i = cleaned.length - 1; i >= 0; i--) {
+        let digit = parseInt(cleaned[i], 10);
+
+        if (shouldDouble) {
+          digit *= 2;
+          if (digit > 9) {
+            digit -= 9;
+          }
+        }
+
+        sum += digit;
+        shouldDouble = !shouldDouble;
+      }
+
+      return {
+        valid: sum % 10 === 0,
+        checksum: sum
+      };
+    }
+
+    function formatCardNumber(number) {
+      const cleaned = number.replace(/\s/g, '');
+      const groups = cleaned.match(/.{1,4}/g);
+      return groups ? groups.join(' ') : cleaned;
+    }
+
+    function formatLuhnSteps(number) {
+      const cleaned = number.replace(/\s/g, '');
+      let steps = [];
+      let digits = cleaned.split('').map(d => parseInt(d, 10));
+
+      steps.push('原始号码: ' + digits.join(' '));
+      steps.push('');
+      steps.push('从右到左，每隔一位翻倍:');
+
+      let shouldDouble = false;
+      let processed = [];
+
+      for (let i = digits.length - 1; i >= 0; i--) {
+        let digit = digits[i];
+        let original = digit;
+
+        if (shouldDouble) {
+          digit *= 2;
+          if (digit > 9) {
+            digit -= 9;
+          }
+          processed.unshift({
+            original: original,
+            doubled: original * 2,
+            final: digit,
+            position: i + 1
+          });
+        } else {
+          processed.unshift({
+            original: original,
+            doubled: null,
+            final: original,
+            position: i + 1
+          });
+        }
+        shouldDouble = !shouldDouble;
+      }
+
+      processed.reverse().forEach((p, idx) => {
+        if (p.doubled !== null) {
+          steps.push(`  位置 ${processed.length - idx}: ${p.original} × 2 = ${p.doubled}${p.doubled > 9 ? ' → ' + p.doubled + ' - 9 = ' + p.final : ''}`);
+        }
+      });
+
+      const sum = processed.reduce((acc, p) => acc + p.final, 0);
+      steps.push('');
+      steps.push('所有数字之和: ' + sum);
+      steps.push('校验结果: ' + (sum % 10 === 0 ? '有效 ✓' : '无效 ✗'));
+
+      return steps.join('\n');
+    }
+
+    function validateCard() {
+      const input = inputEl.value.trim();
+      if (!input) {
+        showStatus('请输入信用卡号码', 'error');
+        return;
+      }
+
+      const cleaned = input.replace(/\s/g, '');
+
+      if (!/^\d{13,19}$/.test(cleaned)) {
+        showStatus('号码格式无效', 'error');
+        resetDisplay();
+        return;
+      }
+
+      const card = detectCardType(cleaned);
+      const luhn = luhnCheck(cleaned);
+      const mii = miiIndustries[cleaned[0]] || 'Unknown';
+
+      cardNumberEl.textContent = formatCardNumber(cleaned);
+      cardBrandEl.textContent = card.icon;
+
+      cardPreviewEl.style.display = 'block';
+      validationResultEl.style.display = 'block';
+      infoGridEl.style.display = 'grid';
+      luhnStepsEl.style.display = 'block';
+
+      if (luhn.valid) {
+        validationIconEl.textContent = '✓';
+        validationStatusEl.textContent = '有效';
+        validationStatusEl.className = 'validation-status valid';
+        showStatus('验证通过', 'success');
+      } else {
+        validationIconEl.textContent = '✗';
+        validationStatusEl.textContent = '无效';
+        validationStatusEl.className = 'validation-status invalid';
+        showStatus('验证失败', 'error');
+      }
+
+      cardTypeEl.textContent = card.name !== 'Unknown' ? card.name + ' 卡' : '未知卡类型';
+
+      miiValueEl.textContent = mii;
+      issuerValueEl.textContent = card.name !== 'Unknown' ? card.name : 'Unknown';
+      lengthValueEl.textContent = cleaned.length + ' 位数字';
+      luhnValueEl.textContent = luhn.checksum + ' (' + (luhn.valid ? '通过' : '失败') + ')';
+
+      luhnContentEl.textContent = formatLuhnSteps(cleaned);
+    }
+
+    function resetDisplay() {
+      cardPreviewEl.style.display = 'none';
+      validationResultEl.style.display = 'none';
+      infoGridEl.style.display = 'none';
+      luhnStepsEl.style.display = 'none';
+      cardNumberEl.textContent = '';
+      cardBrandEl.textContent = '';
+      validationIconEl.textContent = '';
+      validationStatusEl.textContent = '';
+      cardTypeEl.textContent = '';
+      miiValueEl.textContent = '';
+      issuerValueEl.textContent = '';
+      lengthValueEl.textContent = '';
+      luhnValueEl.textContent = '';
+      luhnContentEl.textContent = '';
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function reset() {
+      inputEl.value = '';
+      resetDisplay();
+      statusEl.textContent = '';
+    }
+
+    document.getElementById('btnValidate').onclick = validateCard;
+
+    document.getElementById('btnCopy').onclick = async function() {
+      const result = [
+        '信用卡验证结果',
+        '==============',
+        '卡号: ' + cardNumberEl.textContent,
+        '卡类型: ' + cardTypeEl.textContent,
+        'MII: ' + miiValueEl.textContent,
+        '发卡行: ' + issuerValueEl.textContent,
+        '长度: ' + lengthValueEl.textContent,
+        'Luhn 校验: ' + luhnValueEl.textContent,
+        '',
+        '验证状态: ' + validationStatusEl.textContent
+      ].join('\n');
+
+      try {
+        await navigator.clipboard.writeText(result);
+        showStatus('结果已复制', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnClear').onclick = reset;
+
+    document.querySelectorAll('.example-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const number = btn.getAttribute('data-number');
+        inputEl.value = formatCardNumber(number);
+        validateCard();
+      });
+    });
+
+    inputEl.addEventListener('input', function() {
+      let value = this.value.replace(/\s/g, '').replace(/\D/g, '');
+      if (value.length > 16) value = value.slice(0, 16);
+      this.value = formatCardNumber(value);
+    });
+
+    inputEl.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        validateCard();
+      }
+    });
+  </script>
+</body>
+</html>

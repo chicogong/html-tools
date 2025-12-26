@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 工具列表同步脚本
- * 读取 tools.json 并更新 index.html 中的工具卡片
+ * 读取 tools.json 并更新 index.html 中的 TOOLS 和 CATEGORIES 数组
  */
 
 import fs from 'fs';
@@ -15,36 +15,6 @@ const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
 const INDEX_HTML = path.join(ROOT_DIR, 'index.html');
 
-// 颜色映射
-const COLOR_MAP = {
-  cyan: 'var(--accent-cyan)',
-  yellow: 'var(--accent-yellow)',
-  magenta: 'var(--accent-magenta)',
-  purple: 'var(--accent-purple)',
-  blue: 'var(--accent-blue)',
-  green: '#10b981',
-  red: '#ef4444'
-};
-
-function generateToolCard(tool, categories) {
-  const category = categories[tool.category] || { icon: '🔧', color: 'cyan' };
-  const color = COLOR_MAP[category.color] || COLOR_MAP.cyan;
-  const icon = tool.icon || category.icon;
-  const description = tool.description || tool.name;
-  
-  return `      <a href="${tool.path}" class="tool-card" data-category="${tool.category}" data-keywords="${tool.keywords}" style="--card-accent: ${color}">
-        <div class="tool-card-header">
-          <div class="tool-icon">${icon}</div>
-          <h3>${tool.name}</h3>
-        </div>
-        <p>${description}</p>
-        <div class="tool-card-footer">
-          <span class="tool-tag">${tool.category}</span>
-          <span class="tool-arrow">→</span>
-        </div>
-      </a>`;
-}
-
 function main() {
   // 读取 tools.json
   if (!fs.existsSync(TOOLS_JSON)) {
@@ -57,28 +27,29 @@ function main() {
   
   console.log(`📦 Found ${tools.length} tools in tools.json`);
   
-  // 按分类分组
-  const groupedTools = {};
-  for (const tool of tools) {
-    if (!groupedTools[tool.category]) {
-      groupedTools[tool.category] = [];
-    }
-    groupedTools[tool.category].push(tool);
-  }
+  // 生成 CATEGORIES 数组
+  const categoryOrder = ['all', 'favorites', 'dev', 'text', 'time', 'generator', 'privacy', 'media', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
   
-  // 生成工具卡片 HTML
-  const categoryOrder = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
+  const categoriesArray = categoryOrder.map(id => {
+    if (id === 'all') return { id: 'all', name: '全部' };
+    if (id === 'favorites') return { id: 'favorites', name: '⭐ 收藏' };
+    const cat = categories[id];
+    return cat ? { id, name: cat.name } : null;
+  }).filter(Boolean);
   
-  let cardsHtml = '\n';
-  for (const cat of categoryOrder) {
-    if (groupedTools[cat]) {
-      const catInfo = categories[cat];
-      cardsHtml += `      <!-- ${catInfo.name} -->\n`;
-      for (const tool of groupedTools[cat]) {
-        cardsHtml += generateToolCard(tool, categories) + '\n\n';
-      }
-    }
-  }
+  const categoriesJs = `const CATEGORIES = ${JSON.stringify(categoriesArray, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")};`;
+  
+  // 生成 TOOLS 数组
+  const toolsArray = tools.map(tool => ({
+    url: tool.path,
+    category: tool.category,
+    name: tool.name,
+    desc: tool.description || tool.name,
+    icon: tool.icon || '🔧',
+    keywords: tool.keywords || tool.name
+  }));
+  
+  const toolsJs = `const TOOLS = ${JSON.stringify(toolsArray, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")};`;
   
   // 读取 index.html
   if (!fs.existsSync(INDEX_HTML)) {
@@ -88,33 +59,48 @@ function main() {
   
   let indexHtml = fs.readFileSync(INDEX_HTML, 'utf8');
   
-  // 查找并替换工具卡片区域
-  const startMarker = '<div class="tools-grid" id="tools-grid">';
-  const endMarker = '</div>\n\n    <footer';
-  
-  const startIdx = indexHtml.indexOf(startMarker);
-  const endIdx = indexHtml.indexOf(endMarker);
-  
-  if (startIdx === -1 || endIdx === -1) {
-    console.error('❌ Could not find tools-grid markers in index.html');
-    process.exit(1);
+  // 替换 CATEGORIES 数组
+  const categoriesRegex = /const CATEGORIES = \[[\s\S]*?\];/;
+  if (categoriesRegex.test(indexHtml)) {
+    indexHtml = indexHtml.replace(categoriesRegex, categoriesJs);
+    console.log('✅ Updated CATEGORIES array');
+  } else {
+    console.error('❌ Could not find CATEGORIES array in index.html');
   }
   
-  const newHtml = indexHtml.substring(0, startIdx + startMarker.length) + 
-                  cardsHtml + 
-                  '    ' + indexHtml.substring(endIdx);
+  // 替换 TOOLS 数组
+  const toolsRegex = /const TOOLS = \[[\s\S]*?\];(\s*\/\/ ={20,})/;
+  if (toolsRegex.test(indexHtml)) {
+    indexHtml = indexHtml.replace(toolsRegex, toolsJs + '\n\n    $1');
+    console.log('✅ Updated TOOLS array');
+  } else {
+    console.error('❌ Could not find TOOLS array in index.html');
+  }
+  
+  // 更新 SEO meta 标签中的工具数量
+  const toolCount = tools.length;
+  indexHtml = indexHtml.replace(/包含 \d+ 个/g, `包含 ${toolCount} 个`);
+  indexHtml = indexHtml.replace(/\d+\+ 个纯前端/g, `${toolCount}+ 个纯前端`);
+  indexHtml = indexHtml.replace(/包含 \d+\+ 个/g, `包含 ${toolCount}+ 个`);
   
   // 写入更新后的 index.html
-  fs.writeFileSync(INDEX_HTML, newHtml);
+  fs.writeFileSync(INDEX_HTML, indexHtml);
   
-  console.log(`✅ Updated index.html with ${tools.length} tools`);
+  console.log(`\n✅ Updated index.html with ${tools.length} tools`);
   
   // 统计各分类数量
+  const groupedTools = {};
+  for (const tool of tools) {
+    if (!groupedTools[tool.category]) {
+      groupedTools[tool.category] = [];
+    }
+    groupedTools[tool.category].push(tool);
+  }
+  
   console.log('\n📊 Tools by category:');
   for (const cat of categoryOrder) {
-    if (groupedTools[cat]) {
-      const catInfo = categories[cat];
-      console.log(`   ${catInfo.icon} ${catInfo.name}: ${groupedTools[cat].length}`);
+    if (categories[cat] && groupedTools[cat]) {
+      console.log(`   ${categories[cat].icon || '📦'} ${categories[cat].name}: ${groupedTools[cat].length}`);
     }
   }
 }

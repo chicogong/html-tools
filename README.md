@@ -28,6 +28,8 @@
 | **GitHub Pages** | https://chicogong.github.io/html-tools/ | ✅ |
 | **Cloudflare Pages** | https://htmltools-bkt.pages.dev | ✅ |
 | **Vercel** | https://html-tools-jade.vercel.app | ✅ |
+| **Render** | https://webutils-uj15.onrender.com | ✅ |
+| **Surge** | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
 ## 工具列表

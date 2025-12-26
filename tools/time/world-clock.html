@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>世界时钟 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --danger: #ff6b6b; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .local-time { text-align: center; padding: 2rem; margin-bottom: 1.5rem; background: var(--bg); border-radius: var(--radius); }
+    .local-time .time { font-size: 3rem; font-weight: bold; font-family: monospace; }
+    .local-time .date { color: var(--text-muted); margin-top: 0.5rem; }
+    .add-zone { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .add-zone select { flex: 1; min-width: 200px; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .clocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+    .clock-card { padding: 1rem; background: var(--bg); border-radius: var(--radius); position: relative; }
+    .clock-card .remove { position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
+    .clock-card .remove:hover { color: var(--danger); }
+    .clock-card .city { font-weight: 600; margin-bottom: 0.25rem; }
+    .clock-card .timezone { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .clock-card .time { font-size: 1.8rem; font-family: monospace; }
+    .clock-card .date { font-size: 0.85rem; color: var(--text-muted); }
+    .clock-card .diff { font-size: 0.8rem; color: var(--primary); margin-top: 0.25rem; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>世界时钟</h1>
+    <p class="desc">查看全球主要城市的当前时间，支持添加自定义时区</p>
+
+    <div class="card">
+      <div class="local-time">
+        <div class="time" id="localTime">--:--:--</div>
+        <div class="date" id="localDate">----年--月--日 星期-</div>
+      </div>
+
+      <div class="add-zone">
+        <select id="tzSelect"></select>
+        <button class="btn btn-primary" onclick="addTimezone()">添加时区</button>
+      </div>
+
+      <div class="clocks" id="clocks"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var timezones = [
+      { id: 'America/New_York', name: '纽约' },
+      { id: 'America/Los_Angeles', name: '洛杉矶' },
+      { id: 'America/Chicago', name: '芝加哥' },
+      { id: 'Europe/London', name: '伦敦' },
+      { id: 'Europe/Paris', name: '巴黎' },
+      { id: 'Europe/Berlin', name: '柏林' },
+      { id: 'Europe/Moscow', name: '莫斯科' },
+      { id: 'Asia/Tokyo', name: '东京' },
+      { id: 'Asia/Shanghai', name: '上海' },
+      { id: 'Asia/Hong_Kong', name: '香港' },
+      { id: 'Asia/Singapore', name: '新加坡' },
+      { id: 'Asia/Seoul', name: '首尔' },
+      { id: 'Asia/Dubai', name: '迪拜' },
+      { id: 'Asia/Kolkata', name: '孟买' },
+      { id: 'Australia/Sydney', name: '悉尼' },
+      { id: 'Pacific/Auckland', name: '奥克兰' },
+    ];
+
+    var selectedZones = ['America/New_York', 'Europe/London', 'Asia/Tokyo'];
+
+    function init() {
+      var select = document.getElementById('tzSelect');
+      timezones.forEach(function(tz) {
+        var option = document.createElement('option');
+        option.value = tz.id;
+        option.textContent = tz.name + ' (' + tz.id + ')';
+        select.appendChild(option);
+      });
+
+      var saved = localStorage.getItem('worldClockZones');
+      if (saved) {
+        try { selectedZones = JSON.parse(saved); } catch(e) {}
+      }
+
+      renderClocks();
+      updateTime();
+      setInterval(updateTime, 1000);
+    }
+
+    // 获取指定时区的当前时间偏移（考虑夏令时）
+    function getTimezoneOffset(tzId) {
+      var now = new Date();
+      var utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+      var tzDate = new Date(now.toLocaleString('en-US', { timeZone: tzId }));
+      return (tzDate - utcDate) / 3600000;
+    }
+
+    function updateTime() {
+      var now = new Date();
+      var localOffset = -now.getTimezoneOffset() / 60;
+
+      document.getElementById('localTime').textContent = formatTime(now);
+      document.getElementById('localDate').textContent = formatDate(now);
+
+      selectedZones.forEach(function(tzId) {
+        var tz = timezones.find(function(t) { return t.id === tzId; });
+        if (!tz) return;
+
+        var timeEl = document.getElementById('time-' + tzId.replace(/\//g, '-'));
+        var dateEl = document.getElementById('date-' + tzId.replace(/\//g, '-'));
+        var diffEl = document.getElementById('diff-' + tzId.replace(/\//g, '-'));
+
+        // 使用 Intl API 获取正确的时区时间（自动处理夏令时）
+        if (timeEl) timeEl.textContent = formatTimeInZone(now, tzId);
+        if (dateEl) dateEl.textContent = formatDateInZone(now, tzId);
+        if (diffEl) {
+          var tzOffset = getTimezoneOffset(tzId);
+          var diff = tzOffset - localOffset;
+          var diffStr = diff >= 0 ? '+' + diff : '' + diff;
+          diffEl.textContent = '与本地时差: ' + diffStr + ' 小时';
+        }
+      });
+    }
+
+    function formatTimeInZone(date, tzId) {
+      return date.toLocaleString('zh-CN', {
+        timeZone: tzId,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    }
+
+    function formatDateInZone(date, tzId) {
+      var days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      var parts = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: tzId,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        weekday: 'short'
+      }).formatToParts(date);
+      
+      var year = '', month = '', day = '', weekday = '';
+      parts.forEach(function(p) {
+        if (p.type === 'year') year = p.value;
+        if (p.type === 'month') month = p.value;
+        if (p.type === 'day') day = p.value;
+        if (p.type === 'weekday') weekday = p.value;
+      });
+      return year + '年' + month + '月' + day + '日 ' + weekday;
+    }
+
+    function formatTime(date) {
+      return date.getHours().toString().padStart(2, '0') + ':' +
+             date.getMinutes().toString().padStart(2, '0') + ':' +
+             date.getSeconds().toString().padStart(2, '0');
+    }
+
+    function formatDate(date) {
+      var days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      return date.getFullYear() + '年' +
+             (date.getMonth() + 1) + '月' +
+             date.getDate() + '日 ' +
+             days[date.getDay()];
+    }
+
+    function renderClocks() {
+      var container = document.getElementById('clocks');
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      selectedZones.forEach(function(tzId) {
+        var tz = timezones.find(function(t) { return t.id === tzId; });
+        if (!tz) return;
+
+        var card = document.createElement('div');
+        card.className = 'clock-card';
+
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'remove';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = function() { removeTimezone(tzId); };
+        card.appendChild(removeBtn);
+
+        var city = document.createElement('div');
+        city.className = 'city';
+        city.textContent = tz.name;
+        card.appendChild(city);
+
+        var timezone = document.createElement('div');
+        timezone.className = 'timezone';
+        timezone.textContent = tz.id;
+        card.appendChild(timezone);
+
+        var time = document.createElement('div');
+        time.className = 'time';
+        time.id = 'time-' + tzId.replace(/\//g, '-');
+        time.textContent = '--:--:--';
+        card.appendChild(time);
+
+        var dateDiv = document.createElement('div');
+        dateDiv.className = 'date';
+        dateDiv.id = 'date-' + tzId.replace(/\//g, '-');
+        card.appendChild(dateDiv);
+
+        var diff = document.createElement('div');
+        diff.className = 'diff';
+        diff.id = 'diff-' + tzId.replace(/\//g, '-');
+        card.appendChild(diff);
+
+        container.appendChild(card);
+      });
+
+      localStorage.setItem('worldClockZones', JSON.stringify(selectedZones));
+    }
+
+    function addTimezone() {
+      var tzId = document.getElementById('tzSelect').value;
+      if (selectedZones.indexOf(tzId) === -1) {
+        selectedZones.push(tzId);
+        renderClocks();
+        updateTime();
+      }
+    }
+
+    function removeTimezone(tzId) {
+      selectedZones = selectedZones.filter(function(id) { return id !== tzId; });
+      renderClocks();
+    }
+
+    init();
+  </script>
+</body>
+</html>

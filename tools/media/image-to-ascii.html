@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>图片转 ASCII 艺术 - WebUtils</title>
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: #16213e; --text: #eef0f2; --text-muted: #a0a4a8; --border: #2d3748; --primary: #4dabf7; --success: #51cf66; --shadow: 0 2px 8px rgb(0,0,0,0.3); } }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1rem; }
+    .dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer; }
+    .dropzone:hover { border-color: var(--primary); }
+    .dropzone input { display: none; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    input, select { padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .preview { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .preview img { max-width: 100%; border-radius: var(--radius); }
+    .ascii-output { background: #000; color: #0f0; padding: 1rem; border-radius: var(--radius); font-family: monospace; font-size: 6px; line-height: 1; white-space: pre; overflow: auto; max-height: 500px; }
+    .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    footer { text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 768px) { .preview { grid-template-columns: 1fr; } .ascii-output { font-size: 4px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>图片转 ASCII 艺术</h1>
+    <p class="desc">将图片转换为 ASCII 字符画，支持自定义字符集和输出宽度</p>
+
+    <div class="card">
+      <div class="dropzone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+        <p>点击或拖放图片到此处</p>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>输出宽度</label>
+          <input type="number" id="width" value="100" min="20" max="300" onchange="convert()">
+        </div>
+        <div class="form-group">
+          <label>字符集</label>
+          <select id="charset" onchange="convert()">
+            <option value="standard">标准 (@%#*+=-:. )</option>
+            <option value="simple">简单 (#=-. )</option>
+            <option value="blocks">方块 (█▓▒░ )</option>
+            <option value="detailed">详细 ($@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. )</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>反色</label>
+          <select id="invert" onchange="convert()">
+            <option value="no">否</option>
+            <option value="yes">是</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="preview" id="previewArea" style="display:none;">
+        <div>
+          <h3 style="margin-bottom:0.5rem;">原图</h3>
+          <img id="originalImg" alt="原图">
+        </div>
+        <div>
+          <h3 style="margin-bottom:0.5rem;">ASCII 艺术</h3>
+          <div class="ascii-output" id="asciiOutput"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-success" onclick="copyAscii()">复制 ASCII</button>
+        <button class="btn btn-primary" onclick="downloadAscii()">下载为文本</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    var currentImage = null;
+
+    var charsets = {
+      standard: '@%#*+=-:. ',
+      simple: '#=-. ',
+      blocks: '█▓▒░ ',
+      detailed: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. '
+    };
+
+    var dropzone = document.querySelector('.dropzone');
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); });
+    dropzone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (e.dataTransfer.files.length > 0) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          currentImage = img;
+          document.getElementById('originalImg').src = e.target.result;
+          document.getElementById('previewArea').style.display = 'grid';
+          convert();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function convert() {
+      if (!currentImage) return;
+
+      var width = parseInt(document.getElementById('width').value) || 100;
+      var charsetName = document.getElementById('charset').value;
+      var invert = document.getElementById('invert').value === 'yes';
+      var chars = charsets[charsetName];
+
+      var aspectRatio = currentImage.height / currentImage.width;
+      var height = Math.round(width * aspectRatio * 0.5);
+
+      var canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(currentImage, 0, 0, width, height);
+
+      var imageData = ctx.getImageData(0, 0, width, height);
+      var pixels = imageData.data;
+
+      var ascii = '';
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          var idx = (y * width + x) * 4;
+          var r = pixels[idx];
+          var g = pixels[idx + 1];
+          var b = pixels[idx + 2];
+          var brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+          if (invert) brightness = 1 - brightness;
+
+          var charIdx = Math.floor(brightness * (chars.length - 1));
+          ascii += chars[charIdx];
+        }
+        ascii += '\n';
+      }
+
+      document.getElementById('asciiOutput').textContent = ascii;
+    }
+
+    function copyAscii() {
+      var ascii = document.getElementById('asciiOutput').textContent;
+      navigator.clipboard.writeText(ascii).then(function() {
+        event.target.textContent = '已复制!';
+        setTimeout(function() { event.target.textContent = '复制 ASCII'; }, 1500);
+      });
+    }
+
+    function downloadAscii() {
+      var ascii = document.getElementById('asciiOutput').textContent;
+      var blob = new Blob([ascii], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ascii-art.txt';
+      a.click();
+    }
+  </script>
+</body>
+</html>

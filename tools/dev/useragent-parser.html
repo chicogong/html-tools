@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User-Agent 解析器 - WebUtils</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --shadow: 0 2px 8px rgb(0,0,0,0.08);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; font-size: 0.95rem; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      resize: vertical;
+      line-height: 1.5;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13,110,253,0.15);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .result-item {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .result-item .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    .result-item .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .result-item .value {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .result-item .detail {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .current-ua {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+    .current-ua h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+    .current-ua .ua-text {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .status { font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <h1>User-Agent 解析器</h1>
+    <p class="desc">解析浏览器 User-Agent 字符串，识别浏览器、操作系统等信息</p>
+
+    <div class="current-ua">
+      <h3>当前浏览器 User-Agent</h3>
+      <div class="ua-text" id="currentUa"></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnPaste">粘贴</button>
+        <button id="btnParse" class="primary">解析</button>
+        <button id="btnCurrent">使用当前 UA</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <label for="uaInput">输入 User-Agent</label>
+      <textarea id="uaInput" placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."></textarea>
+
+      <div class="result-grid" id="result" style="display: none;">
+        <div class="result-item">
+          <div class="icon" id="browserIcon">🌐</div>
+          <div class="label">浏览器</div>
+          <div class="value" id="browserName">-</div>
+          <div class="detail" id="browserVersion"></div>
+        </div>
+        <div class="result-item">
+          <div class="icon" id="osIcon">💻</div>
+          <div class="label">操作系统</div>
+          <div class="value" id="osName">-</div>
+          <div class="detail" id="osVersion"></div>
+        </div>
+        <div class="result-item">
+          <div class="icon" id="deviceIcon">📱</div>
+          <div class="label">设备类型</div>
+          <div class="value" id="deviceType">-</div>
+          <div class="detail" id="deviceModel"></div>
+        </div>
+        <div class="result-item">
+          <div class="icon">⚙️</div>
+          <div class="label">渲染引擎</div>
+          <div class="value" id="engine">-</div>
+          <div class="detail" id="engineVersion"></div>
+        </div>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">View source</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var uaInput = document.getElementById('uaInput');
+    var statusEl = document.getElementById('status');
+    var resultEl = document.getElementById('result');
+
+    document.getElementById('currentUa').textContent = navigator.userAgent;
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function parseUserAgent(ua) {
+      var result = {
+        browser: { name: 'Unknown', version: '' },
+        os: { name: 'Unknown', version: '' },
+        device: { type: 'Desktop', model: '' },
+        engine: { name: 'Unknown', version: '' }
+      };
+
+      // 浏览器检测
+      if (ua.indexOf('Edg/') !== -1) {
+        result.browser.name = 'Microsoft Edge';
+        var m = ua.match(/Edg\/([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      } else if (ua.indexOf('OPR/') !== -1 || ua.indexOf('Opera') !== -1) {
+        result.browser.name = 'Opera';
+        var m = ua.match(/(?:OPR|Opera)[\/\s]([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      } else if (ua.indexOf('Chrome') !== -1 && ua.indexOf('Safari') !== -1) {
+        result.browser.name = 'Chrome';
+        var m = ua.match(/Chrome\/([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      } else if (ua.indexOf('Firefox') !== -1) {
+        result.browser.name = 'Firefox';
+        var m = ua.match(/Firefox\/([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      } else if (ua.indexOf('Safari') !== -1 && ua.indexOf('Chrome') === -1) {
+        result.browser.name = 'Safari';
+        var m = ua.match(/Version\/([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      } else if (ua.indexOf('MSIE') !== -1 || ua.indexOf('Trident/') !== -1) {
+        result.browser.name = 'Internet Explorer';
+        var m = ua.match(/(?:MSIE |rv:)([\d.]+)/);
+        if (m) result.browser.version = m[1];
+      }
+
+      // 操作系统检测
+      if (ua.indexOf('Windows NT 10') !== -1) {
+        result.os.name = 'Windows';
+        result.os.version = '10/11';
+      } else if (ua.indexOf('Windows NT 6.3') !== -1) {
+        result.os.name = 'Windows';
+        result.os.version = '8.1';
+      } else if (ua.indexOf('Windows NT 6.2') !== -1) {
+        result.os.name = 'Windows';
+        result.os.version = '8';
+      } else if (ua.indexOf('Windows NT 6.1') !== -1) {
+        result.os.name = 'Windows';
+        result.os.version = '7';
+      } else if (ua.indexOf('Mac OS X') !== -1) {
+        result.os.name = 'macOS';
+        var m = ua.match(/Mac OS X ([\d_.]+)/);
+        if (m) result.os.version = m[1].replace(/_/g, '.');
+      } else if (ua.indexOf('Android') !== -1) {
+        result.os.name = 'Android';
+        var m = ua.match(/Android ([\d.]+)/);
+        if (m) result.os.version = m[1];
+      } else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) {
+        result.os.name = 'iOS';
+        var m = ua.match(/OS ([\d_]+)/);
+        if (m) result.os.version = m[1].replace(/_/g, '.');
+      } else if (ua.indexOf('Linux') !== -1) {
+        result.os.name = 'Linux';
+      } else if (ua.indexOf('CrOS') !== -1) {
+        result.os.name = 'Chrome OS';
+      }
+
+      // 设备类型检测
+      if (ua.indexOf('Mobile') !== -1 || ua.indexOf('Android') !== -1 && ua.indexOf('Mobile') !== -1) {
+        result.device.type = 'Mobile';
+      } else if (ua.indexOf('iPad') !== -1 || ua.indexOf('Tablet') !== -1) {
+        result.device.type = 'Tablet';
+      } else if (ua.indexOf('iPhone') !== -1) {
+        result.device.type = 'Mobile';
+        result.device.model = 'iPhone';
+      }
+
+      // 渲染引擎检测
+      if (ua.indexOf('AppleWebKit') !== -1) {
+        result.engine.name = 'WebKit/Blink';
+        var m = ua.match(/AppleWebKit\/([\d.]+)/);
+        if (m) result.engine.version = m[1];
+      } else if (ua.indexOf('Gecko') !== -1) {
+        result.engine.name = 'Gecko';
+        var m = ua.match(/rv:([\d.]+)/);
+        if (m) result.engine.version = m[1];
+      } else if (ua.indexOf('Trident') !== -1) {
+        result.engine.name = 'Trident';
+        var m = ua.match(/Trident\/([\d.]+)/);
+        if (m) result.engine.version = m[1];
+      }
+
+      return result;
+    }
+
+    function getIcon(type, value) {
+      var icons = {
+        browser: {
+          'Chrome': '🔵',
+          'Firefox': '🦊',
+          'Safari': '🧭',
+          'Microsoft Edge': '🔷',
+          'Opera': '🔴',
+          'Internet Explorer': '📘'
+        },
+        os: {
+          'Windows': '🪟',
+          'macOS': '🍎',
+          'Linux': '🐧',
+          'Android': '🤖',
+          'iOS': '📱',
+          'Chrome OS': '💻'
+        },
+        device: {
+          'Desktop': '🖥️',
+          'Mobile': '📱',
+          'Tablet': '📱'
+        }
+      };
+      return (icons[type] && icons[type][value]) || (type === 'browser' ? '🌐' : type === 'os' ? '💻' : '📱');
+    }
+
+    function parse() {
+      var ua = uaInput.value.trim();
+      if (!ua) {
+        showStatus('请输入 User-Agent', 'error');
+        return;
+      }
+
+      var parsed = parseUserAgent(ua);
+
+      document.getElementById('browserIcon').textContent = getIcon('browser', parsed.browser.name);
+      document.getElementById('browserName').textContent = parsed.browser.name;
+      document.getElementById('browserVersion').textContent = parsed.browser.version ? 'v' + parsed.browser.version : '';
+
+      document.getElementById('osIcon').textContent = getIcon('os', parsed.os.name);
+      document.getElementById('osName').textContent = parsed.os.name;
+      document.getElementById('osVersion').textContent = parsed.os.version || '';
+
+      document.getElementById('deviceIcon').textContent = getIcon('device', parsed.device.type);
+      document.getElementById('deviceType').textContent = parsed.device.type;
+      document.getElementById('deviceModel').textContent = parsed.device.model || '';
+
+      document.getElementById('engine').textContent = parsed.engine.name;
+      document.getElementById('engineVersion').textContent = parsed.engine.version ? 'v' + parsed.engine.version : '';
+
+      resultEl.style.display = 'grid';
+      showStatus('解析成功', 'success');
+    }
+
+    document.getElementById('btnPaste').onclick = async function() {
+      try {
+        uaInput.value = await navigator.clipboard.readText();
+        showStatus('已粘贴', 'success');
+      } catch (e) {
+        showStatus('无法访问剪贴板', 'error');
+      }
+    };
+
+    document.getElementById('btnParse').onclick = parse;
+
+    document.getElementById('btnCurrent').onclick = function() {
+      uaInput.value = navigator.userAgent;
+      parse();
+    };
+
+    document.getElementById('btnClear').onclick = function() {
+      uaInput.value = '';
+      resultEl.style.display = 'none';
+      showStatus('已清空', 'success');
+    };
+
+    // 自动解析当前 UA
+    uaInput.value = navigator.userAgent;
+    parse();
+  </script>
+</body>
+</html>

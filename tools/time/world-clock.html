@@ -62,22 +62,22 @@
 
   <script>
     var timezones = [
-      { id: 'America/New_York', name: '纽约', offset: -5 },
-      { id: 'America/Los_Angeles', name: '洛杉矶', offset: -8 },
-      { id: 'America/Chicago', name: '芝加哥', offset: -6 },
-      { id: 'Europe/London', name: '伦敦', offset: 0 },
-      { id: 'Europe/Paris', name: '巴黎', offset: 1 },
-      { id: 'Europe/Berlin', name: '柏林', offset: 1 },
-      { id: 'Europe/Moscow', name: '莫斯科', offset: 3 },
-      { id: 'Asia/Tokyo', name: '东京', offset: 9 },
-      { id: 'Asia/Shanghai', name: '上海', offset: 8 },
-      { id: 'Asia/Hong_Kong', name: '香港', offset: 8 },
-      { id: 'Asia/Singapore', name: '新加坡', offset: 8 },
-      { id: 'Asia/Seoul', name: '首尔', offset: 9 },
-      { id: 'Asia/Dubai', name: '迪拜', offset: 4 },
-      { id: 'Asia/Kolkata', name: '孟买', offset: 5.5 },
-      { id: 'Australia/Sydney', name: '悉尼', offset: 11 },
-      { id: 'Pacific/Auckland', name: '奥克兰', offset: 13 },
+      { id: 'America/New_York', name: '纽约' },
+      { id: 'America/Los_Angeles', name: '洛杉矶' },
+      { id: 'America/Chicago', name: '芝加哥' },
+      { id: 'Europe/London', name: '伦敦' },
+      { id: 'Europe/Paris', name: '巴黎' },
+      { id: 'Europe/Berlin', name: '柏林' },
+      { id: 'Europe/Moscow', name: '莫斯科' },
+      { id: 'Asia/Tokyo', name: '东京' },
+      { id: 'Asia/Shanghai', name: '上海' },
+      { id: 'Asia/Hong_Kong', name: '香港' },
+      { id: 'Asia/Singapore', name: '新加坡' },
+      { id: 'Asia/Seoul', name: '首尔' },
+      { id: 'Asia/Dubai', name: '迪拜' },
+      { id: 'Asia/Kolkata', name: '孟买' },
+      { id: 'Australia/Sydney', name: '悉尼' },
+      { id: 'Pacific/Auckland', name: '奥克兰' },
     ];
 
     var selectedZones = ['America/New_York', 'Europe/London', 'Asia/Tokyo'];
@@ -101,6 +101,14 @@
       setInterval(updateTime, 1000);
     }
 
+    // 获取指定时区的当前时间偏移（考虑夏令时）
+    function getTimezoneOffset(tzId) {
+      var now = new Date();
+      var utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+      var tzDate = new Date(now.toLocaleString('en-US', { timeZone: tzId }));
+      return (tzDate - utcDate) / 3600000;
+    }
+
     function updateTime() {
       var now = new Date();
       var localOffset = -now.getTimezoneOffset() / 60;
@@ -112,21 +120,50 @@
         var tz = timezones.find(function(t) { return t.id === tzId; });
         if (!tz) return;
 
-        var utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        var tzTime = new Date(utc + tz.offset * 3600000);
-
         var timeEl = document.getElementById('time-' + tzId.replace(/\//g, '-'));
         var dateEl = document.getElementById('date-' + tzId.replace(/\//g, '-'));
         var diffEl = document.getElementById('diff-' + tzId.replace(/\//g, '-'));
 
-        if (timeEl) timeEl.textContent = formatTime(tzTime);
-        if (dateEl) dateEl.textContent = formatDate(tzTime);
+        // 使用 Intl API 获取正确的时区时间（自动处理夏令时）
+        if (timeEl) timeEl.textContent = formatTimeInZone(now, tzId);
+        if (dateEl) dateEl.textContent = formatDateInZone(now, tzId);
         if (diffEl) {
-          var diff = tz.offset - localOffset;
+          var tzOffset = getTimezoneOffset(tzId);
+          var diff = tzOffset - localOffset;
           var diffStr = diff >= 0 ? '+' + diff : '' + diff;
           diffEl.textContent = '与本地时差: ' + diffStr + ' 小时';
         }
       });
+    }
+
+    function formatTimeInZone(date, tzId) {
+      return date.toLocaleString('zh-CN', {
+        timeZone: tzId,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    }
+
+    function formatDateInZone(date, tzId) {
+      var days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      var parts = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: tzId,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        weekday: 'short'
+      }).formatToParts(date);
+      
+      var year = '', month = '', day = '', weekday = '';
+      parts.forEach(function(p) {
+        if (p.type === 'year') year = p.value;
+        if (p.type === 'month') month = p.value;
+        if (p.type === 'day') day = p.value;
+        if (p.type === 'weekday') weekday = p.value;
+      });
+      return year + '年' + month + '月' + day + '日 ' + weekday;
     }
 
     function formatTime(date) {

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTTP 状态码速查 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --accent-blue: #4cc9f0;
+      --accent-yellow: #fbbf24;
+      --accent-red: #f43f5e;
+      --accent-purple: #a855f7;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image: linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    .container {
+      position: relative; z-index: 1;
+      max-width: 1000px; margin: 0 auto; padding: 24px;
+    }
+    .header {
+      display: flex; align-items: center; gap: 20px;
+      margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+      color: var(--text-secondary); text-decoration: none;
+      padding: 8px 14px; background: var(--bg-surface);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+    }
+    .back-link:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .title-section { flex: 1; }
+    .title-section h1 {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .title-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), #4cc9f0);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--bg-deep); font-weight: bold;
+    }
+    .title-section .desc { font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px; }
+    .search-box { margin-bottom: 24px; }
+    .search-box input {
+      width: 100%; padding: 14px 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+      background: var(--bg-surface); border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md); color: var(--text-primary);
+    }
+    .search-box input:focus { outline: none; border-color: var(--accent-cyan); box-shadow: 0 0 0 4px var(--glow-cyan); }
+    .search-box input::placeholder { color: var(--text-muted); }
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+    .filter-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+      padding: 8px 16px; background: var(--bg-surface);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+      color: var(--text-secondary); cursor: pointer;
+    }
+    .filter-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+    .filter-btn.active { background: var(--accent-cyan); color: var(--bg-deep); border-color: var(--accent-cyan); }
+    .status-grid { display: grid; gap: 12px; }
+    .status-item {
+      display: grid; grid-template-columns: 80px 1fr;
+      background: var(--bg-card); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md); overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    .status-item:hover { border-color: var(--accent-cyan); transform: translateX(4px); }
+    .status-item.hidden { display: none; }
+    .status-code {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px; color: var(--bg-deep);
+    }
+    .status-code.c1xx { background: var(--accent-blue); }
+    .status-code.c2xx { background: var(--accent-green); }
+    .status-code.c3xx { background: var(--accent-yellow); }
+    .status-code.c4xx { background: var(--accent-red); }
+    .status-code.c5xx { background: var(--accent-purple); }
+    .status-info { padding: 12px 16px; }
+    .status-name { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+    .status-desc { font-size: 0.85rem; color: var(--text-secondary); }
+    .result-count { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
+    footer {
+      text-align: center; margin-top: 24px; padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    footer a { color: var(--accent-cyan); text-decoration: none; }
+    @media (width <= 600px) {
+      .status-item { grid-template-columns: 60px 1fr; }
+      .status-code { font-size: 1rem; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <div class="header">
+      <a href="../../index.html" class="back-link">← 返回</a>
+      <div class="title-section">
+        <h1><span class="title-icon">HTTP</span>HTTP 状态码速查</h1>
+        <p class="desc">HTTP 状态码完整列表与含义查询</p>
+      </div>
+    </div>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="搜索状态码或描述... (如 404, not found)" autocomplete="off" />
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="1xx">1xx 信息</button>
+      <button class="filter-btn" data-filter="2xx">2xx 成功</button>
+      <button class="filter-btn" data-filter="3xx">3xx 重定向</button>
+      <button class="filter-btn" data-filter="4xx">4xx 客户端错误</button>
+      <button class="filter-btn" data-filter="5xx">5xx 服务器错误</button>
+    </div>
+    <div class="result-count" id="resultCount"></div>
+    <div class="status-grid" id="statusGrid"></div>
+    <footer>
+      <p>
+        <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+        <span>·</span><span>纯前端 · 无服务器</span><span>·</span>
+        <a href="../../index.html">WebUtils</a>
+      </p>
+    </footer>
+  </div>
+  <script>
+    const httpStatus = [
+      { code: 100, name: 'Continue', desc: '继续。客户端应继续其请求' },
+      { code: 101, name: 'Switching Protocols', desc: '切换协议。服务器根据客户端的请求切换协议' },
+      { code: 102, name: 'Processing', desc: '处理中。服务器已收到并正在处理请求' },
+      { code: 103, name: 'Early Hints', desc: '早期提示。用于在最终响应之前返回响应头' },
+      { code: 200, name: 'OK', desc: '成功。请求已成功，返回请求的数据' },
+      { code: 201, name: 'Created', desc: '已创建。成功请求并创建了新的资源' },
+      { code: 202, name: 'Accepted', desc: '已接受。已接受请求，但尚未处理' },
+      { code: 203, name: 'Non-Authoritative Information', desc: '非授权信息。返回的信息来自另一来源' },
+      { code: 204, name: 'No Content', desc: '无内容。服务器成功处理，但未返回内容' },
+      { code: 205, name: 'Reset Content', desc: '重置内容。服务器处理成功，用户应重置文档视图' },
+      { code: 206, name: 'Partial Content', desc: '部分内容。服务器成功处理了部分 GET 请求' },
+      { code: 207, name: 'Multi-Status', desc: '多状态。代表多个资源的状态' },
+      { code: 208, name: 'Already Reported', desc: '已报告。DAV 绑定的成员已在之前枚举' },
+      { code: 226, name: 'IM Used', desc: '使用了 IM。服务器已完成对资源的请求' },
+      { code: 300, name: 'Multiple Choices', desc: '多种选择。请求的资源有多个位置可选' },
+      { code: 301, name: 'Moved Permanently', desc: '永久移动。资源已永久移动到新位置' },
+      { code: 302, name: 'Found', desc: '临时移动。资源临时从不同的 URI 响应' },
+      { code: 303, name: 'See Other', desc: '查看其他。响应可在另一个 URI 找到' },
+      { code: 304, name: 'Not Modified', desc: '未修改。资源未修改，可使用缓存版本' },
+      { code: 305, name: 'Use Proxy', desc: '使用代理。请求必须通过代理访问' },
+      { code: 307, name: 'Temporary Redirect', desc: '临时重定向。请求应使用另一 URI 重复' },
+      { code: 308, name: 'Permanent Redirect', desc: '永久重定向。将来的请求应使用另一 URI' },
+      { code: 400, name: 'Bad Request', desc: '错误请求。服务器无法理解请求的语法' },
+      { code: 401, name: 'Unauthorized', desc: '未授权。请求要求身份验证' },
+      { code: 402, name: 'Payment Required', desc: '需要付款。保留供将来使用' },
+      { code: 403, name: 'Forbidden', desc: '禁止。服务器拒绝请求' },
+      { code: 404, name: 'Not Found', desc: '未找到。服务器找不到请求的资源' },
+      { code: 405, name: 'Method Not Allowed', desc: '方法禁用。请求方法被禁用' },
+      { code: 406, name: 'Not Acceptable', desc: '不接受。无法使用请求的内容特性响应' },
+      { code: 407, name: 'Proxy Authentication Required', desc: '需要代理授权' },
+      { code: 408, name: 'Request Timeout', desc: '请求超时。服务器等候请求时超时' },
+      { code: 409, name: 'Conflict', desc: '冲突。请求与资源的当前状态冲突' },
+      { code: 410, name: 'Gone', desc: '已删除。资源已永久删除' },
+      { code: 411, name: 'Length Required', desc: '需要有效长度。需要 Content-Length 头' },
+      { code: 412, name: 'Precondition Failed', desc: '未满足前提条件' },
+      { code: 413, name: 'Payload Too Large', desc: '请求实体过大' },
+      { code: 414, name: 'URI Too Long', desc: 'URI 过长' },
+      { code: 415, name: 'Unsupported Media Type', desc: '不支持的媒体类型' },
+      { code: 416, name: 'Range Not Satisfiable', desc: '范围不符合要求' },
+      { code: 417, name: 'Expectation Failed', desc: '未满足期望' },
+      { code: 418, name: "I'm a Teapot", desc: '我是茶壶。彩蛋状态码' },
+      { code: 421, name: 'Misdirected Request', desc: '误导请求' },
+      { code: 422, name: 'Unprocessable Entity', desc: '无法处理的实体' },
+      { code: 423, name: 'Locked', desc: '已锁定。资源被锁定' },
+      { code: 424, name: 'Failed Dependency', desc: '依赖失败' },
+      { code: 425, name: 'Too Early', desc: '太早。服务器不愿处理可能被重放的请求' },
+      { code: 426, name: 'Upgrade Required', desc: '需要升级。客户端应升级协议' },
+      { code: 428, name: 'Precondition Required', desc: '要求先决条件' },
+      { code: 429, name: 'Too Many Requests', desc: '请求过多。请求频率超限' },
+      { code: 431, name: 'Request Header Fields Too Large', desc: '请求头字段太大' },
+      { code: 451, name: 'Unavailable For Legal Reasons', desc: '因法律原因不可用' },
+      { code: 500, name: 'Internal Server Error', desc: '服务器内部错误' },
+      { code: 501, name: 'Not Implemented', desc: '未实现。服务器不支持请求的功能' },
+      { code: 502, name: 'Bad Gateway', desc: '错误网关。作为网关收到无效响应' },
+      { code: 503, name: 'Service Unavailable', desc: '服务不可用。服务器暂时过载或维护' },
+      { code: 504, name: 'Gateway Timeout', desc: '网关超时' },
+      { code: 505, name: 'HTTP Version Not Supported', desc: '不支持的 HTTP 版本' },
+      { code: 506, name: 'Variant Also Negotiates', desc: '变体也在协商' },
+      { code: 507, name: 'Insufficient Storage', desc: '存储空间不足' },
+      { code: 508, name: 'Loop Detected', desc: '检测到循环' },
+      { code: 510, name: 'Not Extended', desc: '未扩展。需要更多扩展' },
+      { code: 511, name: 'Network Authentication Required', desc: '需要网络身份验证' }
+    ];
+
+    const gridEl = document.getElementById('statusGrid');
+    const searchEl = document.getElementById('search');
+    const resultCountEl = document.getElementById('resultCount');
+    let currentFilter = 'all';
+
+    function getCodeClass(code) {
+      if (code < 200) return 'c1xx';
+      if (code < 300) return 'c2xx';
+      if (code < 400) return 'c3xx';
+      if (code < 500) return 'c4xx';
+      return 'c5xx';
+    }
+
+    function render() {
+      gridEl.textContent = '';
+      httpStatus.forEach(function(s) {
+        const item = document.createElement('div');
+        item.className = 'status-item';
+        item.dataset.code = s.code;
+        
+        const codeDiv = document.createElement('div');
+        codeDiv.className = 'status-code ' + getCodeClass(s.code);
+        codeDiv.textContent = s.code;
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'status-info';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'status-name';
+        nameDiv.textContent = s.name;
+        
+        const descDiv = document.createElement('div');
+        descDiv.className = 'status-desc';
+        descDiv.textContent = s.desc;
+        
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(descDiv);
+        item.appendChild(codeDiv);
+        item.appendChild(infoDiv);
+        gridEl.appendChild(item);
+      });
+      filter();
+    }
+
+    function filter() {
+      const query = searchEl.value.toLowerCase().trim();
+      let visible = 0;
+
+      document.querySelectorAll('.status-item').forEach(function(item) {
+        const code = item.dataset.code;
+        const name = item.querySelector('.status-name').textContent.toLowerCase();
+        const desc = item.querySelector('.status-desc').textContent.toLowerCase();
+
+        var matchFilter = currentFilter === 'all' || code.startsWith(currentFilter[0]);
+        var matchSearch = !query || code.includes(query) || name.includes(query) || desc.includes(query);
+
+        if (matchFilter && matchSearch) {
+          item.classList.remove('hidden');
+          visible++;
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+
+      resultCountEl.textContent = '显示 ' + visible + ' 个状态码';
+    }
+
+    searchEl.addEventListener('input', filter);
+
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        currentFilter = this.dataset.filter;
+        filter();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>空白字符清理 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .clean-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 12px 16px;
+      background: var(--bg-surface);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .clean-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      background: var(--bg-card);
+    }
+
+    .clean-btn .label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .clean-btn .example {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .panels { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .panel-header label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .panel-header .info {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      resize: vertical;
+      transition: all 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    textarea[readonly] {
+      background: var(--bg-surface);
+      cursor: default;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      color: var(--text-secondary);
+    }
+
+    .stat strong {
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success {
+      color: var(--accent-green);
+    }
+
+    .status.success::before {
+      content: '// ';
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>空白字符清理</h1>
+    <p class="desc">清理文本中的各种空白字符、特殊空格和不可见字符</p>
+
+    <div class="card">
+      <div class="btn-grid">
+        <button class="clean-btn" data-mode="trim-lines">
+          <span class="label">去除行首尾空白</span>
+          <span class="example">"  hello  " → "hello"</span>
+        </button>
+        <button class="clean-btn" data-mode="collapse-spaces">
+          <span class="label">合并多余空格</span>
+          <span class="example">"a    b" → "a b"</span>
+        </button>
+        <button class="clean-btn" data-mode="remove-empty-lines">
+          <span class="label">删除空行</span>
+          <span class="example">移除所有空白行</span>
+        </button>
+        <button class="clean-btn" data-mode="collapse-empty-lines">
+          <span class="label">合并连续空行</span>
+          <span class="example">多个空行 → 一个空行</span>
+        </button>
+        <button class="clean-btn" data-mode="remove-all-spaces">
+          <span class="label">删除所有空格</span>
+          <span class="example">"a b c" → "abc"</span>
+        </button>
+        <button class="clean-btn" data-mode="tabs-to-spaces">
+          <span class="label">Tab 转空格</span>
+          <span class="example">Tab → 4个空格</span>
+        </button>
+        <button class="clean-btn" data-mode="spaces-to-tabs">
+          <span class="label">空格转 Tab</span>
+          <span class="example">4个空格 → Tab</span>
+        </button>
+        <button class="clean-btn" data-mode="normalize-unicode">
+          <span class="label">规范化 Unicode 空格</span>
+          <span class="example">全角空格/NBSP → 普通空格</span>
+        </button>
+        <button class="clean-btn" data-mode="remove-invisible">
+          <span class="label">删除不可见字符</span>
+          <span class="example">零宽字符、控制字符</span>
+        </button>
+        <button class="clean-btn" data-mode="clean-all">
+          <span class="label">一键全部清理</span>
+          <span class="example">应用所有常用清理</span>
+        </button>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header">
+            <label>输入文本</label>
+            <span class="info" id="inputInfo">0 字符</span>
+          </div>
+          <textarea id="input" placeholder="输入要清理的文本..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <label>清理结果</label>
+            <span class="info" id="outputInfo">0 字符</span>
+          </div>
+          <textarea id="output" readonly placeholder="清理结果将显示在这里..."></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnCopy">复制结果</button>
+        <button id="btnSwap">↔ 交换</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="stats">
+        <span class="stat">原始: <strong id="statOriginal">0</strong> 字符</span>
+        <span class="stat">清理后: <strong id="statCleaned">0</strong> 字符</span>
+        <span class="stat">减少: <strong id="statReduced">0</strong> 字符</span>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const inputInfoEl = document.getElementById('inputInfo');
+    const outputInfoEl = document.getElementById('outputInfo');
+    const statOriginalEl = document.getElementById('statOriginal');
+    const statCleanedEl = document.getElementById('statCleaned');
+    const statReducedEl = document.getElementById('statReduced');
+    const LS_KEY = 'whitespace_cleaner_v1';
+
+    // Unicode whitespace characters
+    const UNICODE_SPACES = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;
+    const INVISIBLE_CHARS = /[\u200B-\u200D\uFEFF\u2060\u00AD\u034F\u061C\u17B4\u17B5\u180E]/g;
+    const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+
+    function updateInputInfo() {
+      inputInfoEl.textContent = inputEl.value.length + ' 字符';
+    }
+
+    function updateOutputInfo() {
+      outputInfoEl.textContent = outputEl.value.length + ' 字符';
+    }
+
+    function updateStats(original, cleaned) {
+      statOriginalEl.textContent = original;
+      statCleanedEl.textContent = cleaned;
+      statReducedEl.textContent = original - cleaned;
+    }
+
+    const cleaners = {
+      'trim-lines': function(text) {
+        return text.split('\n').map(function(line) {
+          return line.trim();
+        }).join('\n');
+      },
+
+      'collapse-spaces': function(text) {
+        return text.replace(/[^\S\n]+/g, ' ');
+      },
+
+      'remove-empty-lines': function(text) {
+        return text.split('\n').filter(function(line) {
+          return line.trim() !== '';
+        }).join('\n');
+      },
+
+      'collapse-empty-lines': function(text) {
+        return text.replace(/\n{3,}/g, '\n\n');
+      },
+
+      'remove-all-spaces': function(text) {
+        return text.replace(/[^\S\n]/g, '');
+      },
+
+      'tabs-to-spaces': function(text) {
+        return text.replace(/\t/g, '    ');
+      },
+
+      'spaces-to-tabs': function(text) {
+        return text.replace(/    /g, '\t');
+      },
+
+      'normalize-unicode': function(text) {
+        return text.replace(UNICODE_SPACES, ' ');
+      },
+
+      'remove-invisible': function(text) {
+        return text
+          .replace(INVISIBLE_CHARS, '')
+          .replace(CONTROL_CHARS, '');
+      },
+
+      'clean-all': function(text) {
+        // Apply common cleanings
+        let result = text;
+        result = result.replace(UNICODE_SPACES, ' ');
+        result = result.replace(INVISIBLE_CHARS, '');
+        result = result.replace(CONTROL_CHARS, '');
+        result = result.split('\n').map(function(line) {
+          return line.trim();
+        }).join('\n');
+        result = result.replace(/[^\S\n]+/g, ' ');
+        result = result.replace(/\n{3,}/g, '\n\n');
+        return result;
+      }
+    };
+
+    const modeNames = {
+      'trim-lines': '去除行首尾空白',
+      'collapse-spaces': '合并多余空格',
+      'remove-empty-lines': '删除空行',
+      'collapse-empty-lines': '合并连续空行',
+      'remove-all-spaces': '删除所有空格',
+      'tabs-to-spaces': 'Tab 转空格',
+      'spaces-to-tabs': '空格转 Tab',
+      'normalize-unicode': '规范化 Unicode 空格',
+      'remove-invisible': '删除不可见字符',
+      'clean-all': '一键全部清理'
+    };
+
+    function clean(mode) {
+      const text = inputEl.value;
+      if (!text) {
+        showStatus('请输入文本', 'error');
+        return;
+      }
+
+      const cleaner = cleaners[mode];
+      if (!cleaner) return;
+
+      const originalLen = text.length;
+      const result = cleaner(text);
+      const cleanedLen = result.length;
+
+      outputEl.value = result;
+      updateOutputInfo();
+      updateStats(originalLen, cleanedLen);
+      saveToStorage();
+      
+      showStatus(modeNames[mode] + ' 完成，减少了 ' + (originalLen - cleanedLen) + ' 个字符', 'success');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(LS_KEY, inputEl.value);
+    }
+
+    function loadFromStorage() {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        inputEl.value = saved;
+        updateInputInfo();
+      }
+    }
+
+    // Bind clean buttons
+    document.querySelectorAll('.clean-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const mode = btn.getAttribute('data-mode');
+        clean(mode);
+      });
+    });
+
+    document.getElementById('btnCopy').onclick = async function() {
+      if (!outputEl.value) {
+        showStatus('没有内容可复制', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showStatus('已复制到剪贴板', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnSwap').onclick = function() {
+      const temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateInputInfo();
+      updateOutputInfo();
+      saveToStorage();
+    };
+
+    document.getElementById('btnClear').onclick = function() {
+      inputEl.value = '';
+      outputEl.value = '';
+      statusEl.textContent = '';
+      updateInputInfo();
+      updateOutputInfo();
+      updateStats(0, 0);
+      localStorage.removeItem(LS_KEY);
+    };
+
+    inputEl.addEventListener('input', function() {
+      updateInputInfo();
+      saveToStorage();
+    });
+
+    loadFromStorage();
+  </script>
+</body>
+</html>

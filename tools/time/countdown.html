@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>倒计时器 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .timer-display {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .timer-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-shadow: 0 0 30px var(--glow-cyan);
+      letter-spacing: 4px;
+    }
+
+    @media (max-width: 600px) {
+      .timer-value { font-size: 2.5rem; }
+    }
+
+    .timer-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    .timer-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .input-section {
+      margin-bottom: 20px;
+    }
+
+    .input-section label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .time-inputs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .time-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .time-input-group span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    input[type="datetime-local"] {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      width: 80px;
+    }
+
+    input[type="datetime-local"] {
+      width: auto;
+    }
+
+    input[type="text"] {
+      width: 100%;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .preset-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .tab.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 12px 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    button.danger {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-surface);
+      border-radius: 3px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-cyan);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>倒计时器</h1>
+    <p class="desc">设置倒计时或目标日期，支持预设时间和自定义标题</p>
+
+    <div class="card">
+      <div class="timer-display">
+        <div class="timer-title" id="timerTitle">倒计时</div>
+        <div class="timer-value" id="timerValue">00:00:00</div>
+        <div class="timer-label" id="timerLabel">时 : 分 : 秒</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="duration">时长倒计时</button>
+        <button class="tab" data-tab="target">目标日期</button>
+      </div>
+
+      <div class="tab-content active" id="durationTab">
+        <div class="presets">
+          <button class="preset-btn" data-seconds="60">1 分钟</button>
+          <button class="preset-btn" data-seconds="300">5 分钟</button>
+          <button class="preset-btn" data-seconds="600">10 分钟</button>
+          <button class="preset-btn" data-seconds="1500">25 分钟</button>
+          <button class="preset-btn" data-seconds="1800">30 分钟</button>
+          <button class="preset-btn" data-seconds="3600">1 小时</button>
+        </div>
+
+        <div class="input-section">
+          <label>自定义时长</label>
+          <div class="time-inputs">
+            <div class="time-input-group">
+              <input type="number" id="hours" min="0" max="99" value="0">
+              <span>时</span>
+            </div>
+            <div class="time-input-group">
+              <input type="number" id="minutes" min="0" max="59" value="5">
+              <span>分</span>
+            </div>
+            <div class="time-input-group">
+              <input type="number" id="seconds" min="0" max="59" value="0">
+              <span>秒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="targetTab">
+        <div class="input-section">
+          <label>目标日期时间</label>
+          <input type="datetime-local" id="targetDate">
+        </div>
+      </div>
+
+      <div class="input-section">
+        <label>倒计时标题（可选）</label>
+        <input type="text" id="title" placeholder="例如：休息时间、会议开始...">
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btnStart">开始</button>
+        <button id="btnPause" disabled>暂停</button>
+        <button class="danger" id="btnReset">重置</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var timerValueEl = document.getElementById('timerValue');
+    var timerTitleEl = document.getElementById('timerTitle');
+    var timerLabelEl = document.getElementById('timerLabel');
+    var progressFillEl = document.getElementById('progressFill');
+    var btnStart = document.getElementById('btnStart');
+    var btnPause = document.getElementById('btnPause');
+    var btnReset = document.getElementById('btnReset');
+    var hoursEl = document.getElementById('hours');
+    var minutesEl = document.getElementById('minutes');
+    var secondsEl = document.getElementById('seconds');
+    var targetDateEl = document.getElementById('targetDate');
+    var titleEl = document.getElementById('title');
+
+    var intervalId = null;
+    var totalSeconds = 0;
+    var remainingSeconds = 0;
+    var isRunning = false;
+    var isPaused = false;
+    var mode = 'duration'; // 'duration' or 'target'
+
+    // Set default target date to tomorrow
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    targetDateEl.value = tomorrow.toISOString().slice(0, 16);
+
+    function formatTime(seconds) {
+      var h = Math.floor(seconds / 3600);
+      var m = Math.floor((seconds % 3600) / 60);
+      var s = seconds % 60;
+      
+      if (h > 0) {
+        return pad(h) + ':' + pad(m) + ':' + pad(s);
+      }
+      return pad(m) + ':' + pad(s);
+    }
+
+    function formatTimeWithDays(seconds) {
+      var days = Math.floor(seconds / 86400);
+      var h = Math.floor((seconds % 86400) / 3600);
+      var m = Math.floor((seconds % 3600) / 60);
+      var s = seconds % 60;
+      
+      if (days > 0) {
+        return days + '天 ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+      }
+      return formatTime(seconds);
+    }
+
+    function pad(n) {
+      return n < 10 ? '0' + n : n;
+    }
+
+    function updateDisplay() {
+      if (mode === 'target') {
+        timerValueEl.textContent = formatTimeWithDays(remainingSeconds);
+        timerLabelEl.textContent = remainingSeconds >= 86400 ? '天 时 : 分 : 秒' : (remainingSeconds >= 3600 ? '时 : 分 : 秒' : '分 : 秒');
+      } else {
+        timerValueEl.textContent = formatTime(remainingSeconds);
+        timerLabelEl.textContent = remainingSeconds >= 3600 ? '时 : 分 : 秒' : '分 : 秒';
+      }
+      
+      // Update progress
+      var progress = totalSeconds > 0 ? ((totalSeconds - remainingSeconds) / totalSeconds) * 100 : 0;
+      progressFillEl.style.width = progress + '%';
+      
+      // Update title
+      var title = titleEl.value || '倒计时';
+      timerTitleEl.textContent = title;
+      document.title = formatTime(remainingSeconds) + ' - ' + title;
+    }
+
+    function tick() {
+      if (remainingSeconds <= 0) {
+        stop();
+        onComplete();
+        return;
+      }
+      
+      remainingSeconds--;
+      updateDisplay();
+    }
+
+    function tickTarget() {
+      var now = new Date().getTime();
+      var target = new Date(targetDateEl.value).getTime();
+      var diff = Math.floor((target - now) / 1000);
+      
+      if (diff <= 0) {
+        stop();
+        onComplete();
+        return;
+      }
+      
+      remainingSeconds = diff;
+      updateDisplay();
+    }
+
+    function start() {
+      if (isRunning && !isPaused) return;
+      
+      if (!isPaused) {
+        if (mode === 'duration') {
+          var h = parseInt(hoursEl.value) || 0;
+          var m = parseInt(minutesEl.value) || 0;
+          var s = parseInt(secondsEl.value) || 0;
+          totalSeconds = h * 3600 + m * 60 + s;
+          remainingSeconds = totalSeconds;
+        } else {
+          var now = new Date().getTime();
+          var target = new Date(targetDateEl.value).getTime();
+          totalSeconds = Math.floor((target - now) / 1000);
+          remainingSeconds = totalSeconds;
+        }
+        
+        if (remainingSeconds <= 0) {
+          alert('请设置有效的倒计时时间');
+          return;
+        }
+      }
+      
+      isRunning = true;
+      isPaused = false;
+      
+      if (mode === 'duration') {
+        intervalId = setInterval(tick, 1000);
+      } else {
+        intervalId = setInterval(tickTarget, 1000);
+      }
+      
+      updateDisplay();
+      updateButtons();
+    }
+
+    function pause() {
+      if (!isRunning) return;
+      
+      clearInterval(intervalId);
+      isPaused = true;
+      isRunning = false;
+      updateButtons();
+    }
+
+    function stop() {
+      clearInterval(intervalId);
+      isRunning = false;
+      isPaused = false;
+    }
+
+    function reset() {
+      stop();
+      remainingSeconds = 0;
+      totalSeconds = 0;
+      timerValueEl.textContent = '00:00:00';
+      timerLabelEl.textContent = '时 : 分 : 秒';
+      progressFillEl.style.width = '0%';
+      document.title = '倒计时器 - WebUtils';
+      updateButtons();
+    }
+
+    function onComplete() {
+      timerValueEl.textContent = '00:00';
+      timerValueEl.style.color = 'var(--accent-green)';
+      progressFillEl.style.width = '100%';
+      
+      // Play sound
+      playSound();
+      
+      // Notification
+      if (Notification.permission === 'granted') {
+        new Notification('倒计时结束', {
+          body: titleEl.value || '时间到！',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⏰</text></svg>'
+        });
+      }
+      
+      setTimeout(function() {
+        timerValueEl.style.color = 'var(--accent-cyan)';
+      }, 3000);
+    }
+
+    function playSound() {
+      var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      var frequencies = [523, 659, 784, 1047];
+      
+      frequencies.forEach(function(freq, i) {
+        var oscillator = audioContext.createOscillator();
+        var gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+        
+        var startTime = audioContext.currentTime + i * 0.15;
+        gainNode.gain.setValueAtTime(0.3, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.3);
+      });
+    }
+
+    function updateButtons() {
+      btnStart.disabled = isRunning;
+      btnPause.disabled = !isRunning;
+      btnStart.textContent = isPaused ? '继续' : '开始';
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        
+        tab.classList.add('active');
+        mode = tab.getAttribute('data-tab');
+        document.getElementById(mode + 'Tab').classList.add('active');
+        
+        reset();
+      });
+    });
+
+    // Preset buttons
+    document.querySelectorAll('.preset-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var seconds = parseInt(btn.getAttribute('data-seconds'));
+        hoursEl.value = Math.floor(seconds / 3600);
+        minutesEl.value = Math.floor((seconds % 3600) / 60);
+        secondsEl.value = seconds % 60;
+      });
+    });
+
+    btnStart.onclick = start;
+    btnPause.onclick = pause;
+    btnReset.onclick = reset;
+
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  </script>
+</body>
+</html>

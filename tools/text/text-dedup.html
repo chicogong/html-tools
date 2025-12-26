@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>文本去重 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .option-group label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .option-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .panel-header label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .panel-header .count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      resize: vertical;
+      transition: all 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    textarea[readonly] {
+      background: var(--bg-surface);
+      cursor: default;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .stat {
+      color: var(--text-secondary);
+    }
+
+    .stat strong {
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success {
+      color: var(--accent-green);
+    }
+
+    .status.success::before {
+      content: '// ';
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>文本去重</h1>
+    <p class="desc">按行去除重复内容，保留唯一行</p>
+
+    <div class="card">
+      <div class="options">
+        <div class="option-group">
+          <input type="checkbox" id="trimLines" checked>
+          <label for="trimLines">去除首尾空白</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="ignoreCase">
+          <label for="ignoreCase">忽略大小写</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="ignoreEmpty" checked>
+          <label for="ignoreEmpty">忽略空行</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="keepOrder" checked>
+          <label for="keepOrder">保持原顺序</label>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header">
+            <label>输入文本</label>
+            <span class="count" id="inputCount">0 行</span>
+          </div>
+          <textarea id="input" placeholder="输入要去重的文本，每行一个..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <label>去重结果</label>
+            <span class="count" id="outputCount">0 行</span>
+          </div>
+          <textarea id="output" readonly placeholder="去重结果将显示在这里..."></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btnDedup">去重</button>
+        <button id="btnCopy">复制结果</button>
+        <button id="btnSwap">↔ 交换</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="stats">
+        <span class="stat">原始: <strong id="statOriginal">0</strong> 行</span>
+        <span class="stat">去重后: <strong id="statUnique">0</strong> 行</span>
+        <span class="stat">移除: <strong id="statRemoved">0</strong> 行</span>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const inputCountEl = document.getElementById('inputCount');
+    const outputCountEl = document.getElementById('outputCount');
+    const statOriginalEl = document.getElementById('statOriginal');
+    const statUniqueEl = document.getElementById('statUnique');
+    const statRemovedEl = document.getElementById('statRemoved');
+    const LS_KEY = 'text_dedup_v1';
+
+    function updateInputCount() {
+      const lines = inputEl.value ? inputEl.value.split('\n').length : 0;
+      inputCountEl.textContent = lines + ' 行';
+    }
+
+    function updateOutputCount() {
+      const lines = outputEl.value ? outputEl.value.split('\n').length : 0;
+      outputCountEl.textContent = lines + ' 行';
+    }
+
+    function dedup() {
+      const text = inputEl.value;
+      if (!text.trim()) {
+        showStatus('请输入文本', 'error');
+        return;
+      }
+
+      const trimLines = document.getElementById('trimLines').checked;
+      const ignoreCase = document.getElementById('ignoreCase').checked;
+      const ignoreEmpty = document.getElementById('ignoreEmpty').checked;
+      const keepOrder = document.getElementById('keepOrder').checked;
+
+      let lines = text.split('\n');
+      const originalCount = lines.length;
+
+      // Process lines
+      if (trimLines) {
+        lines = lines.map(function(line) { return line.trim(); });
+      }
+
+      // Remove duplicates
+      const seen = new Set();
+      const unique = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (ignoreEmpty && line === '') {
+          continue;
+        }
+
+        const key = ignoreCase ? line.toLowerCase() : line;
+        
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(line);
+        }
+      }
+
+      // Sort if not keeping order
+      let result = unique;
+      if (!keepOrder) {
+        result = unique.slice().sort(function(a, b) {
+          return a.localeCompare(b, 'zh-CN');
+        });
+      }
+
+      outputEl.value = result.join('\n');
+      
+      // Update stats
+      const uniqueCount = result.length;
+      const removedCount = originalCount - uniqueCount;
+      
+      statOriginalEl.textContent = originalCount;
+      statUniqueEl.textContent = uniqueCount;
+      statRemovedEl.textContent = removedCount;
+
+      updateOutputCount();
+      saveToStorage();
+      showStatus('去重完成，移除了 ' + removedCount + ' 行重复内容', 'success');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function saveToStorage() {
+      const data = {
+        input: inputEl.value,
+        trimLines: document.getElementById('trimLines').checked,
+        ignoreCase: document.getElementById('ignoreCase').checked,
+        ignoreEmpty: document.getElementById('ignoreEmpty').checked,
+        keepOrder: document.getElementById('keepOrder').checked
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+      try {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          inputEl.value = data.input || '';
+          document.getElementById('trimLines').checked = data.trimLines !== false;
+          document.getElementById('ignoreCase').checked = data.ignoreCase === true;
+          document.getElementById('ignoreEmpty').checked = data.ignoreEmpty !== false;
+          document.getElementById('keepOrder').checked = data.keepOrder !== false;
+          updateInputCount();
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
+    document.getElementById('btnDedup').onclick = dedup;
+
+    document.getElementById('btnCopy').onclick = async function() {
+      if (!outputEl.value) {
+        showStatus('没有内容可复制', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showStatus('已复制到剪贴板', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnSwap').onclick = function() {
+      const temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateInputCount();
+      updateOutputCount();
+      saveToStorage();
+    };
+
+    document.getElementById('btnClear').onclick = function() {
+      inputEl.value = '';
+      outputEl.value = '';
+      statusEl.textContent = '';
+      statOriginalEl.textContent = '0';
+      statUniqueEl.textContent = '0';
+      statRemovedEl.textContent = '0';
+      updateInputCount();
+      updateOutputCount();
+      localStorage.removeItem(LS_KEY);
+    };
+
+    inputEl.addEventListener('input', function() {
+      updateInputCount();
+      saveToStorage();
+    });
+
+    // Checkbox changes
+    document.querySelectorAll('.option-group input[type="checkbox"]').forEach(function(cb) {
+      cb.addEventListener('change', saveToStorage);
+    });
+
+    loadFromStorage();
+  </script>
+</body>
+</html>

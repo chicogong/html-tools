@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>中英文混排校正 - WebUtils</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --accent-cyan: #00f5d4;
+      --accent-blue: #4cc9f0;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .option-group label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .option-group input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .panels { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .panel-header label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .panel-header .info {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 250px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      resize: vertical;
+      transition: all 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+
+    textarea[readonly] {
+      background: var(--bg-surface);
+      cursor: default;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      color: var(--text-secondary);
+    }
+
+    .stat strong {
+      color: var(--accent-cyan);
+    }
+
+    .status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .status.success { color: var(--accent-green); }
+    .status.success::before { content: '// '; }
+
+    .examples {
+      margin-top: 24px;
+    }
+
+    .examples h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .example-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .example-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      display: flex;
+      gap: 16px;
+    }
+
+    .example-item .before {
+      color: var(--text-muted);
+      text-decoration: line-through;
+    }
+
+    .example-item .arrow {
+      color: var(--accent-cyan);
+    }
+
+    .example-item .after {
+      color: var(--accent-green);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回</a>
+
+    <h1>中英文混排校正</h1>
+    <p class="desc">自动在中英文之间添加空格，让排版更美观（盘古之白）</p>
+
+    <div class="card">
+      <div class="options">
+        <div class="option-group">
+          <input type="checkbox" id="spaceCjkEn" checked>
+          <label for="spaceCjkEn">中英文之间加空格</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="spaceCjkNum" checked>
+          <label for="spaceCjkNum">中文与数字之间加空格</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="fixPunctuation" checked>
+          <label for="fixPunctuation">修正标点符号</label>
+        </div>
+        <div class="option-group">
+          <input type="checkbox" id="removeExtraSpaces" checked>
+          <label for="removeExtraSpaces">合并多余空格</label>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header">
+            <label>输入文本</label>
+            <span class="info" id="inputInfo">0 字符</span>
+          </div>
+          <textarea id="input" placeholder="输入中英文混排的文本..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <label>校正结果</label>
+            <span class="info" id="outputInfo">0 字符</span>
+          </div>
+          <textarea id="output" readonly placeholder="校正后的文本将显示在这里..."></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btnFormat">校正排版</button>
+        <button id="btnCopy">复制结果</button>
+        <button id="btnSwap">↔ 交换</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="stats">
+        <span class="stat">添加空格: <strong id="statSpaces">0</strong> 个</span>
+        <span class="stat">修正标点: <strong id="statPunct">0</strong> 个</span>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="examples">
+        <h3>校正示例</h3>
+        <div class="example-list">
+          <div class="example-item">
+            <span class="before">我使用Vue和React开发</span>
+            <span class="arrow">→</span>
+            <span class="after">我使用 Vue 和 React 开发</span>
+          </div>
+          <div class="example-item">
+            <span class="before">共有100个用户</span>
+            <span class="arrow">→</span>
+            <span class="after">共有 100 个用户</span>
+          </div>
+          <div class="example-item">
+            <span class="before">请访问GitHub获取代码</span>
+            <span class="arrow">→</span>
+            <span class="after">请访问 GitHub 获取代码</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a> ·
+      纯前端 · 无服务器 ·
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const inputInfoEl = document.getElementById('inputInfo');
+    const outputInfoEl = document.getElementById('outputInfo');
+    const statSpacesEl = document.getElementById('statSpaces');
+    const statPunctEl = document.getElementById('statPunct');
+    const LS_KEY = 'pangu_spacing_v1';
+
+    // CJK character ranges
+    const CJK = '\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u309f\u30a0-\u30ff\u3100-\u312f\u3200-\u32ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\ufe30-\ufe4f';
+    const CJK_REGEX = new RegExp('[' + CJK + ']');
+
+    // Regex patterns for spacing
+    const PATTERNS = {
+      // CJK followed by half-width content
+      cjkToHalf: new RegExp('([' + CJK + '])([A-Za-z0-9\\[\\(`])', 'g'),
+      // Half-width content followed by CJK
+      halfToCjk: new RegExp('([A-Za-z0-9\\]\\)`])([' + CJK + '])', 'g'),
+      // CJK followed by number
+      cjkToNum: new RegExp('([' + CJK + '])([0-9])', 'g'),
+      // Number followed by CJK
+      numToCjk: new RegExp('([0-9])([' + CJK + '])', 'g')
+    };
+
+    // Punctuation mappings (half-width to full-width for CJK context)
+    const PUNCT_MAP = {
+      ',': '，',
+      '.': '。',
+      '!': '！',
+      '?': '？',
+      ':': '：',
+      ';': '；',
+      '(': '（',
+      ')': '）'
+    };
+
+    function updateInputInfo() {
+      inputInfoEl.textContent = inputEl.value.length + ' 字符';
+    }
+
+    function updateOutputInfo() {
+      outputInfoEl.textContent = outputEl.value.length + ' 字符';
+    }
+
+    function formatText() {
+      var text = inputEl.value;
+      if (!text.trim()) {
+        showStatus('请输入文本', 'error');
+        return;
+      }
+
+      var spaceCjkEn = document.getElementById('spaceCjkEn').checked;
+      var spaceCjkNum = document.getElementById('spaceCjkNum').checked;
+      var fixPunctuation = document.getElementById('fixPunctuation').checked;
+      var removeExtraSpaces = document.getElementById('removeExtraSpaces').checked;
+
+      var spacesAdded = 0;
+      var punctFixed = 0;
+      var result = text;
+
+      // Add spaces between CJK and English
+      if (spaceCjkEn) {
+        var before = result;
+        result = result.replace(PATTERNS.cjkToHalf, '$1 $2');
+        result = result.replace(PATTERNS.halfToCjk, '$1 $2');
+        spacesAdded += countDiff(before, result);
+      }
+
+      // Add spaces between CJK and numbers
+      if (spaceCjkNum) {
+        var before = result;
+        result = result.replace(PATTERNS.cjkToNum, '$1 $2');
+        result = result.replace(PATTERNS.numToCjk, '$1 $2');
+        spacesAdded += countDiff(before, result);
+      }
+
+      // Fix punctuation
+      if (fixPunctuation) {
+        // Replace half-width punctuation in CJK context
+        var chars = result.split('');
+        for (var i = 0; i < chars.length; i++) {
+          var char = chars[i];
+          if (PUNCT_MAP[char]) {
+            // Check if surrounded by CJK
+            var prevCjk = i > 0 && CJK_REGEX.test(chars[i - 1]);
+            var nextCjk = i < chars.length - 1 && CJK_REGEX.test(chars[i + 1]);
+            if (prevCjk || nextCjk) {
+              chars[i] = PUNCT_MAP[char];
+              punctFixed++;
+            }
+          }
+        }
+        result = chars.join('');
+      }
+
+      // Remove extra spaces
+      if (removeExtraSpaces) {
+        result = result.replace(/  +/g, ' ');
+      }
+
+      outputEl.value = result;
+      updateOutputInfo();
+      statSpacesEl.textContent = spacesAdded;
+      statPunctEl.textContent = punctFixed;
+      saveToStorage();
+      showStatus('校正完成，添加了 ' + spacesAdded + ' 个空格', 'success');
+    }
+
+    function countDiff(before, after) {
+      return after.length - before.length;
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    function saveToStorage() {
+      var data = {
+        input: inputEl.value,
+        spaceCjkEn: document.getElementById('spaceCjkEn').checked,
+        spaceCjkNum: document.getElementById('spaceCjkNum').checked,
+        fixPunctuation: document.getElementById('fixPunctuation').checked,
+        removeExtraSpaces: document.getElementById('removeExtraSpaces').checked
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+      try {
+        var saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          var data = JSON.parse(saved);
+          inputEl.value = data.input || '';
+          document.getElementById('spaceCjkEn').checked = data.spaceCjkEn !== false;
+          document.getElementById('spaceCjkNum').checked = data.spaceCjkNum !== false;
+          document.getElementById('fixPunctuation').checked = data.fixPunctuation !== false;
+          document.getElementById('removeExtraSpaces').checked = data.removeExtraSpaces !== false;
+          updateInputInfo();
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
+    document.getElementById('btnFormat').onclick = formatText;
+
+    document.getElementById('btnCopy').onclick = async function() {
+      if (!outputEl.value) {
+        showStatus('没有内容可复制', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showStatus('已复制到剪贴板', 'success');
+      } catch (e) {
+        showStatus('复制失败', 'error');
+      }
+    };
+
+    document.getElementById('btnSwap').onclick = function() {
+      var temp = inputEl.value;
+      inputEl.value = outputEl.value;
+      outputEl.value = temp;
+      updateInputInfo();
+      updateOutputInfo();
+      saveToStorage();
+    };
+
+    document.getElementById('btnClear').onclick = function() {
+      inputEl.value = '';
+      outputEl.value = '';
+      statusEl.textContent = '';
+      statSpacesEl.textContent = '0';
+      statPunctEl.textContent = '0';
+      updateInputInfo();
+      updateOutputInfo();
+      localStorage.removeItem(LS_KEY);
+    };
+
+    inputEl.addEventListener('input', function() {
+      updateInputInfo();
+      saveToStorage();
+    });
+
+    document.querySelectorAll('.option-group input[type="checkbox"]').forEach(function(cb) {
+      cb.addEventListener('change', saveToStorage);
+    });
+
+    loadFromStorage();
+  </script>
+</body>
+</html>

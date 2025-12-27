@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV ⇄ JSON 转换器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary: #06b6d4;
+            --primary-hover: #0891b2;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --editor-bg: #0f172a;
+        }
+
+        [data-theme="light"] {
+            --card-bg: #fff;
+            --border-color: #e2e8f0;
+            --editor-bg: #f8fafc;
+        }
+
+        body {
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            width: 42px;
+            height: 42px;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        @media (max-width: 900px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+            .convert-controls {
+                flex-direction: row !important;
+                justify-content: center;
+            }
+        }
+
+        .editor-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--border-color);
+        }
+
+        .editor-title {
+            font-weight: 600;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .editor-actions button {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .editor-actions button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .editor-body {
+            flex: 1;
+        }
+
+        .editor-body textarea {
+            width: 100%;
+            height: 450px;
+            padding: 1rem;
+            border: none;
+            background: var(--editor-bg);
+            color: inherit;
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            resize: none;
+        }
+
+        .editor-body textarea:focus {
+            outline: none;
+        }
+
+        .editor-footer {
+            padding: 0.5rem 1rem;
+            background: var(--border-color);
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted-color);
+        }
+
+        .convert-controls {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .convert-btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.5rem;
+            background: var(--primary);
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .convert-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
+        }
+
+        .options-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .option-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .option-group select,
+        .option-group input {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background: var(--card-bg);
+            color: inherit;
+        }
+
+        .option-group input[type="text"] {
+            width: 60px;
+        }
+
+        .option-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .status-bar {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-bar.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: var(--success);
+        }
+
+        .status-bar.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .sample-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .sample-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--border-color);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .sample-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .preview-table {
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+
+        .preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .preview-table th {
+            background: var(--border-color);
+            font-weight: 600;
+        }
+
+        .preview-table tr:nth-child(even) {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .file-upload {
+            border: 2px dashed var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload:hover {
+            border-color: var(--primary);
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 CSV ⇄ JSON 转换器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+
+        <div class="options-bar">
+            <div class="option-group">
+                <label>分隔符:</label>
+                <select id="delimiter">
+                    <option value=",">逗号 (,)</option>
+                    <option value=";">分号 (;)</option>
+                    <option value="\t">制表符 (Tab)</option>
+                    <option value="|">竖线 (|)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <input type="checkbox" id="hasHeader" checked>
+                <label for="hasHeader">首行为表头</label>
+            </div>
+            <div class="option-group">
+                <input type="checkbox" id="trimValues" checked>
+                <label for="trimValues">去除空白</label>
+            </div>
+            <div class="option-group">
+                <input type="checkbox" id="skipEmpty">
+                <label for="skipEmpty">跳过空行</label>
+            </div>
+            <div class="sample-buttons">
+                <span style="font-size: 0.875rem; margin-right: 0.5rem;">示例:</span>
+                <button class="sample-btn" onclick="loadSample('users')">用户数据</button>
+                <button class="sample-btn" onclick="loadSample('products')">产品列表</button>
+                <button class="sample-btn" onclick="loadSample('sales')">销售记录</button>
+            </div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📄 CSV</div>
+                    <div class="editor-actions">
+                        <button onclick="copyText('csvInput')">复制</button>
+                        <button onclick="clearText('csvInput')">清除</button>
+                        <button onclick="downloadFile('csv')">下载</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <label class="file-upload">
+                        <input type="file" accept=".csv,.tsv,.txt" onchange="handleFileUpload(event, 'csv')">
+                        📁 点击或拖拽上传 CSV 文件
+                    </label>
+                    <textarea id="csvInput" placeholder="在此输入或粘贴 CSV 数据...&#10;&#10;示例:&#10;name,age,city&#10;张三,25,北京&#10;李四,30,上海" oninput="updateStats('csv')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span id="csvStats">0 字符 | 0 行</span>
+                </div>
+            </div>
+
+            <div class="convert-controls">
+                <button class="convert-btn" onclick="csvToJson()" title="CSV → JSON">→</button>
+                <button class="convert-btn" onclick="jsonToCsv()" title="JSON → CSV">←</button>
+            </div>
+
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📋 JSON</div>
+                    <div class="editor-actions">
+                        <button onclick="formatJSON()">格式化</button>
+                        <button onclick="copyText('jsonInput')">复制</button>
+                        <button onclick="clearText('jsonInput')">清除</button>
+                        <button onclick="downloadFile('json')">下载</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <label class="file-upload">
+                        <input type="file" accept=".json" onchange="handleFileUpload(event, 'json')">
+                        📁 点击或拖拽上传 JSON 文件
+                    </label>
+                    <textarea id="jsonInput" placeholder="在此输入或粘贴 JSON 数组...&#10;&#10;示例:&#10;[&#10;  {&quot;name&quot;: &quot;张三&quot;, &quot;age&quot;: 25}&#10;]" oninput="updateStats('json')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span id="jsonStats">0 字符 | 0 行</span>
+                    <span id="jsonValid"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+
+        <div class="preview-table" id="previewTable"></div>
+    </div>
+
+    <script>
+        // 示例数据
+        const samples = {
+            users: `name,email,age,city,role
+张三,zhangsan@example.com,28,北京,管理员
+李四,lisi@example.com,32,上海,用户
+王五,wangwu@example.com,25,广州,用户
+赵六,zhaoliu@example.com,35,深圳,编辑`,
+            products: `id,name,price,stock,category
+1,笔记本电脑,5999.00,50,电子产品
+2,无线鼠标,129.00,200,配件
+3,机械键盘,399.00,80,配件
+4,显示器,1599.00,30,电子产品
+5,USB-C 转接器,89.00,150,配件`,
+            sales: `date,product,quantity,amount,region
+2024-01-15,笔记本电脑,5,29995.00,华北
+2024-01-15,无线鼠标,20,2580.00,华东
+2024-01-16,机械键盘,10,3990.00,华南
+2024-01-16,显示器,3,4797.00,华北
+2024-01-17,USB-C 转接器,50,4450.00,华东`
+        };
+
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 加载示例
+        function loadSample(type) {
+            document.getElementById('csvInput').value = samples[type];
+            updateStats('csv');
+            csvToJson();
+        }
+
+        // 解析 CSV
+        function parseCSV(csv) {
+            const delimiter = document.getElementById('delimiter').value === '\\t' ? '\t' : document.getElementById('delimiter').value;
+            const hasHeader = document.getElementById('hasHeader').checked;
+            const trimValues = document.getElementById('trimValues').checked;
+            const skipEmpty = document.getElementById('skipEmpty').checked;
+
+            let lines = csv.split(/\r?\n/);
+            if (skipEmpty) {
+                lines = lines.filter(line => line.trim() !== '');
+            }
+
+            if (lines.length === 0) return [];
+
+            const result = [];
+            let headers = [];
+
+            // 解析单行，处理引号
+            function parseLine(line) {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = line[i + 1];
+
+                    if (char === '"') {
+                        if (inQuotes && nextChar === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === delimiter && !inQuotes) {
+                        values.push(trimValues ? current.trim() : current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(trimValues ? current.trim() : current);
+                return values;
+            }
+
+            if (hasHeader && lines.length > 0) {
+                headers = parseLine(lines[0]);
+                lines = lines.slice(1);
+            }
+
+            lines.forEach((line, index) => {
+                if (line.trim() === '' && skipEmpty) return;
+
+                const values = parseLine(line);
+
+                if (hasHeader) {
+                    const obj = {};
+                    headers.forEach((header, i) => {
+                        let value = values[i] || '';
+                        // 尝试转换数字
+                        if (value !== '' && !isNaN(value) && !isNaN(parseFloat(value))) {
+                            value = parseFloat(value);
+                        }
+                        obj[header] = value;
+                    });
+                    result.push(obj);
+                } else {
+                    result.push(values);
+                }
+            });
+
+            return result;
+        }
+
+        // CSV 转 JSON
+        function csvToJson() {
+            const csv = document.getElementById('csvInput').value.trim();
+            if (!csv) {
+                showStatus('请输入 CSV 内容', 'error');
+                return;
+            }
+
+            try {
+                const data = parseCSV(csv);
+                const json = JSON.stringify(data, null, 2);
+                document.getElementById('jsonInput').value = json;
+                updateStats('json');
+                renderPreviewTable(data);
+                showStatus('CSV → JSON 转换成功，共 ' + data.length + ' 条记录', 'success');
+            } catch (e) {
+                showStatus('CSV 解析错误: ' + e.message, 'error');
+            }
+        }
+
+        // JSON 转 CSV
+        function jsonToCsv() {
+            const jsonStr = document.getElementById('jsonInput').value.trim();
+            if (!jsonStr) {
+                showStatus('请输入 JSON 内容', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(jsonStr);
+                if (!Array.isArray(data)) {
+                    showStatus('JSON 必须是数组格式', 'error');
+                    return;
+                }
+
+                if (data.length === 0) {
+                    showStatus('JSON 数组为空', 'error');
+                    return;
+                }
+
+                const delimiter = document.getElementById('delimiter').value === '\\t' ? '\t' : document.getElementById('delimiter').value;
+                const hasHeader = document.getElementById('hasHeader').checked;
+
+                let csv = '';
+
+                // 获取所有键
+                const allKeys = new Set();
+                data.forEach(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        Object.keys(item).forEach(key => allKeys.add(key));
+                    }
+                });
+                const headers = Array.from(allKeys);
+
+                // 转义函数
+                function escapeValue(val) {
+                    if (val === null || val === undefined) return '';
+                    const str = String(val);
+                    if (str.includes(delimiter) || str.includes('"') || str.includes('\n')) {
+                        return '"' + str.replace(/"/g, '""') + '"';
+                    }
+                    return str;
+                }
+
+                // 如果是对象数组
+                if (typeof data[0] === 'object' && !Array.isArray(data[0])) {
+                    if (hasHeader) {
+                        csv += headers.map(escapeValue).join(delimiter) + '\n';
+                    }
+                    data.forEach(item => {
+                        const row = headers.map(key => escapeValue(item[key]));
+                        csv += row.join(delimiter) + '\n';
+                    });
+                } else {
+                    // 如果是简单数组
+                    data.forEach(item => {
+                        if (Array.isArray(item)) {
+                            csv += item.map(escapeValue).join(delimiter) + '\n';
+                        } else {
+                            csv += escapeValue(item) + '\n';
+                        }
+                    });
+                }
+
+                document.getElementById('csvInput').value = csv.trim();
+                updateStats('csv');
+                renderPreviewTable(data);
+                showStatus('JSON → CSV 转换成功，共 ' + data.length + ' 条记录', 'success');
+            } catch (e) {
+                showStatus('JSON 解析错误: ' + e.message, 'error');
+            }
+        }
+
+        // 渲染预览表格
+        function renderPreviewTable(data) {
+            const container = document.getElementById('previewTable');
+            if (!data || data.length === 0) {
+                container.textContent = '';
+                return;
+            }
+
+            const maxRows = 10;
+            const displayData = data.slice(0, maxRows);
+
+            const table = document.createElement('table');
+            
+            // 表头
+            if (typeof data[0] === 'object' && !Array.isArray(data[0])) {
+                const headers = Object.keys(data[0]);
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headers.forEach(h => {
+                    const th = document.createElement('th');
+                    th.textContent = h;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // 数据行
+                const tbody = document.createElement('tbody');
+                displayData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    headers.forEach(h => {
+                        const td = document.createElement('td');
+                        td.textContent = row[h] !== undefined ? String(row[h]) : '';
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+            }
+
+            container.textContent = '';
+            if (data.length > maxRows) {
+                const info = document.createElement('p');
+                info.style.fontSize = '0.75rem';
+                info.style.color = 'var(--muted-color)';
+                info.textContent = '显示前 ' + maxRows + ' 条，共 ' + data.length + ' 条记录';
+                container.appendChild(info);
+            }
+            container.appendChild(table);
+        }
+
+        // 格式化 JSON
+        function formatJSON() {
+            const jsonInput = document.getElementById('jsonInput');
+            try {
+                const obj = JSON.parse(jsonInput.value);
+                jsonInput.value = JSON.stringify(obj, null, 2);
+                updateStats('json');
+            } catch (e) {
+                showStatus('JSON 格式错误', 'error');
+            }
+        }
+
+        // 更新统计
+        function updateStats(type) {
+            const textarea = document.getElementById(type + 'Input');
+            const stats = document.getElementById(type + 'Stats');
+            const content = textarea.value;
+
+            const chars = content.length;
+            const lines = content ? content.split('\n').length : 0;
+            stats.textContent = chars + ' 字符 | ' + lines + ' 行';
+
+            if (type === 'json') {
+                const valid = document.getElementById('jsonValid');
+                if (content.trim()) {
+                    try {
+                        JSON.parse(content);
+                        valid.textContent = '✓ 有效';
+                        valid.style.color = 'var(--success)';
+                    } catch {
+                        valid.textContent = '✗ 无效';
+                        valid.style.color = 'var(--danger)';
+                    }
+                } else {
+                    valid.textContent = '';
+                }
+            }
+        }
+
+        // 文件上传
+        function handleFileUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                document.getElementById(type + 'Input').value = content;
+                updateStats(type);
+                
+                if (type === 'csv') {
+                    csvToJson();
+                } else {
+                    jsonToCsv();
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 显示状态
+        function showStatus(message, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = message;
+            bar.className = 'status-bar ' + type;
+            setTimeout(() => { bar.className = 'status-bar'; }, 3000);
+        }
+
+        // 复制文本
+        function copyText(id) {
+            navigator.clipboard.writeText(document.getElementById(id).value).then(() => {
+                showStatus('已复制到剪贴板', 'success');
+            });
+        }
+
+        // 清除文本
+        function clearText(id) {
+            document.getElementById(id).value = '';
+            updateStats(id.replace('Input', ''));
+            document.getElementById('previewTable').textContent = '';
+        }
+
+        // 下载文件
+        function downloadFile(type) {
+            const content = document.getElementById(type + 'Input').value;
+            if (!content) {
+                showStatus('没有内容可下载', 'error');
+                return;
+            }
+
+            const ext = type === 'csv' ? '.csv' : '.json';
+            const mime = type === 'csv' ? 'text/csv;charset=utf-8' : 'application/json';
+            const blob = new Blob(['\ufeff' + content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data' + ext;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 初始化
+        initTheme();
+        loadSample('users');
+    </script>
+</body>
+</html>

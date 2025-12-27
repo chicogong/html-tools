@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本模板填充器 | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #06b6d4; }
+        body { padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--pico-card-background-color); border-radius: 8px; padding: 1rem; }
+        .panel-title { font-weight: 600; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .panel-title small { font-weight: normal; color: var(--pico-muted-color); }
+        textarea { width: 100%; min-height: 200px; font-family: monospace; font-size: 0.9rem; }
+        .variables { margin-top: 1rem; }
+        .var-item { display: grid; grid-template-columns: 120px 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+        .var-item input { font-size: 0.9rem; padding: 0.4rem 0.6rem; }
+        .var-item .var-name { font-family: monospace; color: var(--primary); font-size: 0.85rem; }
+        .var-item button { padding: 0.4rem 0.6rem; }
+        .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .templates { margin-bottom: 1rem; }
+        .template-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .template-btn { padding: 0.3rem 0.75rem; font-size: 0.85rem; background: var(--pico-muted-border-color); border: none; border-radius: 4px; cursor: pointer; }
+        .template-btn:hover { background: var(--primary); color: white; }
+        .output-section { margin-top: 1rem; }
+        .output-section textarea { min-height: 150px; }
+        .batch-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--pico-muted-border-color); }
+        .batch-data { width: 100%; min-height: 100px; font-family: monospace; font-size: 0.85rem; }
+        .batch-output { max-height: 300px; overflow-y: auto; }
+        .batch-item { padding: 0.5rem; border-bottom: 1px solid var(--pico-muted-border-color); font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; }
+        .help-text { font-size: 0.8rem; color: var(--pico-muted-color); margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 文本模板填充器</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+
+        <div class="templates">
+            <div class="template-list">
+                <button class="template-btn" data-template="email">邮件模板</button>
+                <button class="template-btn" data-template="sql">SQL 语句</button>
+                <button class="template-btn" data-template="code">代码模板</button>
+                <button class="template-btn" data-template="message">通知消息</button>
+                <button class="template-btn" data-template="url">URL 构建</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-title">
+                    模板
+                    <small>使用 {{变量名}} 定义变量</small>
+                </div>
+                <textarea id="templateInput" placeholder="输入模板，使用 {{变量名}} 作为占位符...">尊敬的 {{name}}：
+
+您好！感谢您使用我们的服务。
+
+您的订单号：{{orderNo}}
+订单金额：¥{{amount}}
+下单时间：{{datetime}}
+
+如有问题，请联系客服。
+
+祝好！
+{{company}}</textarea>
+                
+                <div class="variables" id="variables">
+                    <div class="panel-title">变量值</div>
+                </div>
+
+                <div class="btn-row">
+                    <button onclick="fillTemplate()">填充模板</button>
+                    <button onclick="clearVars()" class="outline">清空变量</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">输出结果</div>
+                <textarea id="output" readonly placeholder="填充后的文本将显示在这里..."></textarea>
+                
+                <div class="btn-row">
+                    <button onclick="copyOutput()">📋 复制</button>
+                    <button onclick="downloadOutput()" class="outline">💾 下载</button>
+                </div>
+
+                <div class="batch-section">
+                    <div class="panel-title">批量填充 <small>CSV 格式，首行为变量名</small></div>
+                    <textarea class="batch-data" id="batchData" placeholder="name,orderNo,amount,datetime,company
+张三,ORD001,99.00,2024-01-15,示例公司
+李四,ORD002,199.00,2024-01-16,示例公司"></textarea>
+                    <div class="btn-row">
+                        <button onclick="batchFill()">批量生成</button>
+                        <button onclick="copyBatch()" class="outline">📋 复制全部</button>
+                        <button onclick="downloadBatch()" class="outline">💾 下载</button>
+                    </div>
+                    <div class="batch-output" id="batchOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const presetTemplates = {
+            email: `尊敬的 {{name}}：
+
+您好！感谢您使用我们的服务。
+
+您的订单号：{{orderNo}}
+订单金额：¥{{amount}}
+
+如有问题，请联系客服。
+
+祝好！
+{{company}}`,
+            sql: `INSERT INTO {{table}} ({{columns}}) VALUES ({{values}});
+
+SELECT * FROM {{table}} WHERE {{condition}};
+
+UPDATE {{table}} SET {{field}} = '{{value}}' WHERE id = {{id}};`,
+            code: `/**
+ * {{description}}
+ * @param {{paramType}} {{paramName}} - {{paramDesc}}
+ * @returns {{returnType}}
+ */
+function {{functionName}}({{paramName}}) {
+    // TODO: implement
+    return {{defaultReturn}};
+}`,
+            message: `【{{appName}}】您的验证码是 {{code}}，{{minutes}} 分钟内有效，请勿泄露给他人。`,
+            url: `{{protocol}}://{{domain}}/{{path}}?id={{id}}&token={{token}}&timestamp={{timestamp}}`
+        };
+
+        let variables = {};
+
+        function parseVariables(template) {
+            const regex = /\{\{(\w+)\}\}/g;
+            const vars = new Set();
+            let match;
+            while ((match = regex.exec(template)) !== null) {
+                vars.add(match[1]);
+            }
+            return [...vars];
+        }
+
+        function renderVariables() {
+            const template = document.getElementById('templateInput').value;
+            const vars = parseVariables(template);
+            const container = document.getElementById('variables');
+            
+            // Keep existing values
+            const oldVars = { ...variables };
+            variables = {};
+            
+            let html = '<div class="panel-title">变量值</div>';
+            vars.forEach(v => {
+                variables[v] = oldVars[v] || '';
+                html += `
+                    <div class="var-item">
+                        <span class="var-name">{{${v}}}</span>
+                        <input type="text" data-var="${v}" value="${escapeHtml(variables[v])}" placeholder="输入值...">
+                        <button onclick="insertNow('${v}')" title="插入当前时间">⏰</button>
+                    </div>
+                `;
+            });
+            
+            if (vars.length === 0) {
+                html += '<div class="help-text">模板中未发现变量，请使用 {{变量名}} 格式定义</div>';
+            }
+            
+            container.innerHTML = html;
+
+            // Add listeners
+            container.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    variables[e.target.dataset.var] = e.target.value;
+                    fillTemplate();
+                });
+            });
+        }
+
+        function fillTemplate() {
+            let template = document.getElementById('templateInput').value;
+            let output = template;
+            
+            for (const [key, value] of Object.entries(variables)) {
+                output = output.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+            }
+            
+            document.getElementById('output').value = output;
+        }
+
+        function insertNow(varName) {
+            const now = new Date();
+            const formatted = now.toLocaleString('zh-CN');
+            variables[varName] = formatted;
+            document.querySelector(`input[data-var="${varName}"]`).value = formatted;
+            fillTemplate();
+        }
+
+        function clearVars() {
+            for (const key in variables) {
+                variables[key] = '';
+            }
+            renderVariables();
+            fillTemplate();
+        }
+
+        function copyOutput() {
+            navigator.clipboard.writeText(document.getElementById('output').value);
+            event.target.textContent = '✓ 已复制';
+            setTimeout(() => event.target.textContent = '📋 复制', 2000);
+        }
+
+        function downloadOutput() {
+            const blob = new Blob([document.getElementById('output').value], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'output.txt';
+            a.click();
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                headers.forEach((h, j) => row[h] = values[j] || '');
+                data.push(row);
+            }
+            
+            return data;
+        }
+
+        function batchFill() {
+            const template = document.getElementById('templateInput').value;
+            const csvData = document.getElementById('batchData').value;
+            const data = parseCSV(csvData);
+            
+            if (data.length === 0) {
+                document.getElementById('batchOutput').innerHTML = '<div class="help-text">请输入有效的 CSV 数据</div>';
+                return;
+            }
+            
+            const results = data.map((row, i) => {
+                let output = template;
+                for (const [key, value] of Object.entries(row)) {
+                    output = output.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+                }
+                return output;
+            });
+            
+            document.getElementById('batchOutput').innerHTML = results.map((r, i) => 
+                `<div class="batch-item"><strong>#${i + 1}</strong>\n${escapeHtml(r)}</div>`
+            ).join('');
+            
+            window.batchResults = results;
+        }
+
+        function copyBatch() {
+            if (window.batchResults) {
+                navigator.clipboard.writeText(window.batchResults.join('\n\n---\n\n'));
+                event.target.textContent = '✓ 已复制';
+                setTimeout(() => event.target.textContent = '📋 复制全部', 2000);
+            }
+        }
+
+        function downloadBatch() {
+            if (window.batchResults) {
+                const blob = new Blob([window.batchResults.join('\n\n---\n\n')], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'batch_output.txt';
+                a.click();
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Template presets
+        document.querySelectorAll('.template-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.getElementById('templateInput').value = presetTemplates[btn.dataset.template];
+                renderVariables();
+                fillTemplate();
+            };
+        });
+
+        // Auto parse on template change
+        document.getElementById('templateInput').addEventListener('input', () => {
+            renderVariables();
+            fillTemplate();
+        });
+
+        // Theme toggle
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('themeToggle').onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+        };
+
+        // Initialize
+        renderVariables();
+    </script>
+</body>
+</html>

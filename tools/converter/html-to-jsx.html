@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to JSX Converter | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .options-section {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        .options-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .option-item label {
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        
+        .option-item input[type="checkbox"] {
+            margin: 0;
+            width: auto;
+        }
+        
+        .converter-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (max-width: 900px) {
+            .converter-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .panel-badge {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .panel-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        textarea {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 400px;
+            tab-size: 2;
+        }
+        
+        .info-section {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .conversion-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .conversion-table th,
+        .conversion-table td {
+            padding: 0.5rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .conversion-table th {
+            background: var(--pico-background-color);
+            font-weight: 600;
+        }
+        
+        .conversion-table code {
+            background: var(--pico-background-color);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: var(--success-color);
+        }
+        
+        .toast.error {
+            background: var(--error-color);
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../../index.html" class="logo">HTML Tools</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </header>
+        
+        <main>
+            <h1>HTML to JSX Converter</h1>
+            <p>将 HTML 代码转换为 React JSX 语法</p>
+            
+            <div class="options-section">
+                <div class="options-grid">
+                    <div class="option-item">
+                        <input type="checkbox" id="optCreateFunction" onchange="convert()">
+                        <label for="optCreateFunction">生成函数组件</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optRemoveEmpty" checked onchange="convert()">
+                        <label for="optRemoveEmpty">移除空属性</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optSelfClose" checked onchange="convert()">
+                        <label for="optSelfClose">自闭合空标签</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optPreserveComments" onchange="convert()">
+                        <label for="optPreserveComments">保留注释</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optIndent" checked onchange="convert()">
+                        <label for="optIndent">格式化缩进</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="converter-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            HTML 输入
+                            <span class="panel-badge">HTML</span>
+                        </h3>
+                        <div class="panel-actions">
+                            <button class="btn-small" onclick="loadExample()">示例</button>
+                            <button class="btn-small" onclick="clearInput()">清空</button>
+                        </div>
+                    </div>
+                    <div id="errorMessage" class="error-message"></div>
+                    <textarea id="htmlInput" placeholder="在此粘贴 HTML 代码..." oninput="convert()"></textarea>
+                    <div class="stats">
+                        <span>字符: <strong id="inputChars">0</strong></span>
+                        <span>行数: <strong id="inputLines">0</strong></span>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            JSX 输出
+                            <span class="panel-badge">JSX</span>
+                        </h3>
+                        <div class="panel-actions">
+                            <button class="btn-small" onclick="copyOutput()">复制</button>
+                            <button class="btn-small" onclick="downloadOutput()">下载</button>
+                        </div>
+                    </div>
+                    <textarea id="jsxOutput" readonly placeholder="转换后的 JSX 将显示在这里..."></textarea>
+                    <div class="stats">
+                        <span>字符: <strong id="outputChars">0</strong></span>
+                        <span>行数: <strong id="outputLines">0</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-title">转换规则参考</div>
+                <table class="conversion-table">
+                    <thead>
+                        <tr>
+                            <th>HTML</th>
+                            <th>JSX</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>class="..."</code></td>
+                            <td><code>className="..."</code></td>
+                            <td>class 是 JavaScript 保留字</td>
+                        </tr>
+                        <tr>
+                            <td><code>for="..."</code></td>
+                            <td><code>htmlFor="..."</code></td>
+                            <td>for 是 JavaScript 保留字</td>
+                        </tr>
+                        <tr>
+                            <td><code>style="color: red"</code></td>
+                            <td><code>style={{color: 'red'}}</code></td>
+                            <td>style 需要对象格式</td>
+                        </tr>
+                        <tr>
+                            <td><code>onclick="..."</code></td>
+                            <td><code>onClick={...}</code></td>
+                            <td>事件处理器使用驼峰命名</td>
+                        </tr>
+                        <tr>
+                            <td><code>tabindex="0"</code></td>
+                            <td><code>tabIndex={0}</code></td>
+                            <td>属性名使用驼峰命名</td>
+                        </tr>
+                        <tr>
+                            <td><code>&lt;!-- 注释 --&gt;</code></td>
+                            <td><code>{/* 注释 */}</code></td>
+                            <td>JSX 注释语法</td>
+                        </tr>
+                        <tr>
+                            <td><code>&lt;img&gt;</code></td>
+                            <td><code>&lt;img /&gt;</code></td>
+                            <td>空元素需要自闭合</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // HTML attribute to JSX attribute mapping
+        const attrMap = {
+            'class': 'className',
+            'for': 'htmlFor',
+            'tabindex': 'tabIndex',
+            'readonly': 'readOnly',
+            'maxlength': 'maxLength',
+            'minlength': 'minLength',
+            'cellpadding': 'cellPadding',
+            'cellspacing': 'cellSpacing',
+            'rowspan': 'rowSpan',
+            'colspan': 'colSpan',
+            'usemap': 'useMap',
+            'frameborder': 'frameBorder',
+            'contenteditable': 'contentEditable',
+            'crossorigin': 'crossOrigin',
+            'spellcheck': 'spellCheck',
+            'autocomplete': 'autoComplete',
+            'autocorrect': 'autoCorrect',
+            'autocapitalize': 'autoCapitalize',
+            'autofocus': 'autoFocus',
+            'autoplay': 'autoPlay',
+            'enctype': 'encType',
+            'formaction': 'formAction',
+            'formenctype': 'formEncType',
+            'formmethod': 'formMethod',
+            'formnovalidate': 'formNoValidate',
+            'formtarget': 'formTarget',
+            'novalidate': 'noValidate',
+            'datetime': 'dateTime',
+            'inputmode': 'inputMode',
+            'srcdoc': 'srcDoc',
+            'srcset': 'srcSet',
+            'accesskey': 'accessKey',
+            'charset': 'charSet',
+            'httpequiv': 'httpEquiv',
+            'http-equiv': 'httpEquiv',
+            'acceptcharset': 'acceptCharset',
+            'accept-charset': 'acceptCharset'
+        };
+        
+        // Event handlers mapping
+        const eventMap = {
+            'onclick': 'onClick',
+            'ondblclick': 'onDoubleClick',
+            'onmousedown': 'onMouseDown',
+            'onmouseup': 'onMouseUp',
+            'onmouseover': 'onMouseOver',
+            'onmouseout': 'onMouseOut',
+            'onmousemove': 'onMouseMove',
+            'onmouseenter': 'onMouseEnter',
+            'onmouseleave': 'onMouseLeave',
+            'onkeydown': 'onKeyDown',
+            'onkeyup': 'onKeyUp',
+            'onkeypress': 'onKeyPress',
+            'onfocus': 'onFocus',
+            'onblur': 'onBlur',
+            'onchange': 'onChange',
+            'oninput': 'onInput',
+            'onsubmit': 'onSubmit',
+            'onreset': 'onReset',
+            'onscroll': 'onScroll',
+            'onwheel': 'onWheel',
+            'ondrag': 'onDrag',
+            'ondragstart': 'onDragStart',
+            'ondragend': 'onDragEnd',
+            'ondragenter': 'onDragEnter',
+            'ondragleave': 'onDragLeave',
+            'ondragover': 'onDragOver',
+            'ondrop': 'onDrop',
+            'onload': 'onLoad',
+            'onerror': 'onError',
+            'oncontextmenu': 'onContextMenu',
+            'oncopy': 'onCopy',
+            'oncut': 'onCut',
+            'onpaste': 'onPaste',
+            'ontouchstart': 'onTouchStart',
+            'ontouchmove': 'onTouchMove',
+            'ontouchend': 'onTouchEnd',
+            'ontouchcancel': 'onTouchCancel',
+            'onanimationstart': 'onAnimationStart',
+            'onanimationend': 'onAnimationEnd',
+            'onanimationiteration': 'onAnimationIteration',
+            'ontransitionend': 'onTransitionEnd'
+        };
+        
+        // Self-closing tags
+        const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeIcon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeIcon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        function convert() {
+            const html = document.getElementById('htmlInput').value;
+            const errorEl = document.getElementById('errorMessage');
+            
+            // Update input stats
+            document.getElementById('inputChars').textContent = html.length;
+            document.getElementById('inputLines').textContent = html ? html.split('\n').length : 0;
+            
+            if (!html.trim()) {
+                document.getElementById('jsxOutput').value = '';
+                document.getElementById('outputChars').textContent = 0;
+                document.getElementById('outputLines').textContent = 0;
+                errorEl.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const options = {
+                    createFunction: document.getElementById('optCreateFunction').checked,
+                    removeEmpty: document.getElementById('optRemoveEmpty').checked,
+                    selfClose: document.getElementById('optSelfClose').checked,
+                    preserveComments: document.getElementById('optPreserveComments').checked,
+                    indent: document.getElementById('optIndent').checked
+                };
+                
+                let jsx = convertToJsx(html, options);
+                
+                if (options.createFunction) {
+                    jsx = wrapInComponent(jsx);
+                }
+                
+                document.getElementById('jsxOutput').value = jsx;
+                document.getElementById('outputChars').textContent = jsx.length;
+                document.getElementById('outputLines').textContent = jsx.split('\n').length;
+                errorEl.style.display = 'none';
+                
+            } catch (err) {
+                errorEl.textContent = '转换错误: ' + err.message;
+                errorEl.style.display = 'block';
+                document.getElementById('jsxOutput').value = '';
+            }
+        }
+        
+        function convertToJsx(html, options) {
+            // Handle comments first
+            if (options.preserveComments) {
+                html = html.replace(/<!--([\s\S]*?)-->/g, '{/*$1*/}');
+            } else {
+                html = html.replace(/<!--[\s\S]*?-->/g, '');
+            }
+            
+            // Parse and convert
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<div id="__root__">${html}</div>`, 'text/html');
+            const root = doc.getElementById('__root__');
+            
+            if (!root) {
+                throw new Error('无法解析 HTML');
+            }
+            
+            let result = processNode(root, options, 0);
+            
+            // Remove the wrapper div we added
+            result = result.replace(/^<div id="__root__">\n?/, '').replace(/\n?<\/div>$/, '');
+            
+            // Clean up extra whitespace
+            if (options.indent) {
+                result = formatJsx(result);
+            }
+            
+            return result.trim();
+        }
+        
+        function processNode(node, options, depth) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent;
+                // Preserve meaningful whitespace
+                if (text.trim() === '') {
+                    return text.includes('\n') ? '\n' : (text ? ' ' : '');
+                }
+                return text;
+            }
+            
+            if (node.nodeType === Node.COMMENT_NODE) {
+                if (options.preserveComments) {
+                    return `{/*${node.textContent}*/}`;
+                }
+                return '';
+            }
+            
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return '';
+            }
+            
+            const tagName = node.tagName.toLowerCase();
+            const indent = options.indent ? '  '.repeat(depth) : '';
+            
+            // Process attributes
+            let attrs = [];
+            for (const attr of node.attributes) {
+                if (attr.name === 'id' && attr.value === '__root__') continue;
+                
+                const jsxAttr = convertAttribute(attr.name, attr.value, options);
+                if (jsxAttr) {
+                    attrs.push(jsxAttr);
+                }
+            }
+            
+            const attrString = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+            
+            // Check if self-closing
+            const isSelfClosing = selfClosingTags.includes(tagName);
+            const hasChildren = node.childNodes.length > 0;
+            
+            if (isSelfClosing || (options.selfClose && !hasChildren)) {
+                return `${indent}<${tagName}${attrString} />`;
+            }
+            
+            // Process children
+            let children = '';
+            let hasElementChildren = false;
+            
+            for (const child of node.childNodes) {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    hasElementChildren = true;
+                }
+                children += processNode(child, options, depth + 1);
+            }
+            
+            // Format output
+            if (hasElementChildren && options.indent) {
+                return `${indent}<${tagName}${attrString}>\n${children}\n${indent}</${tagName}>`;
+            }
+            
+            return `${indent}<${tagName}${attrString}>${children.trim()}</${tagName}>`;
+        }
+        
+        function convertAttribute(name, value, options) {
+            const lowerName = name.toLowerCase();
+            
+            // Skip empty attributes if option is set
+            if (options.removeEmpty && value === '') {
+                // But keep boolean attributes
+                if (!['checked', 'disabled', 'readonly', 'required', 'selected', 'hidden', 'multiple', 'autofocus', 'autoplay', 'controls', 'loop', 'muted', 'default', 'defer', 'async', 'novalidate', 'open', 'reversed', 'scoped'].includes(lowerName)) {
+                    return null;
+                }
+            }
+            
+            // Convert attribute name
+            let jsxName = attrMap[lowerName] || eventMap[lowerName] || name;
+            
+            // Handle data-* and aria-* attributes (keep as-is)
+            if (name.startsWith('data-') || name.startsWith('aria-')) {
+                jsxName = name;
+            }
+            
+            // Handle style attribute
+            if (lowerName === 'style') {
+                const styleObj = parseStyleToObject(value);
+                return `style={${JSON.stringify(styleObj)}}`;
+            }
+            
+            // Handle event handlers
+            if (eventMap[lowerName]) {
+                // If it's inline JS, wrap in arrow function
+                if (value && !value.startsWith('{')) {
+                    return `${jsxName}={() => { ${value} }}`;
+                }
+                return `${jsxName}={${value || 'undefined'}}`;
+            }
+            
+            // Handle boolean attributes
+            if (value === '' || value === name || value === 'true') {
+                if (['checked', 'disabled', 'readonly', 'required', 'selected', 'hidden', 'multiple', 'autofocus', 'autoplay', 'controls', 'loop', 'muted', 'default', 'defer', 'async', 'novalidate', 'open', 'reversed', 'scoped'].includes(lowerName)) {
+                    return jsxName;
+                }
+            }
+            
+            // Handle numeric attributes
+            if (['tabindex', 'colspan', 'rowspan', 'size', 'maxlength', 'minlength', 'width', 'height', 'cols', 'rows', 'start', 'step', 'max', 'min'].includes(lowerName)) {
+                const num = parseInt(value, 10);
+                if (!isNaN(num)) {
+                    return `${jsxName}={${num}}`;
+                }
+            }
+            
+            // Regular string attribute
+            return `${jsxName}="${escapeJsxString(value)}"`;
+        }
+        
+        function parseStyleToObject(styleString) {
+            const obj = {};
+            if (!styleString) return obj;
+            
+            styleString.split(';').forEach(rule => {
+                const colonIndex = rule.indexOf(':');
+                if (colonIndex === -1) return;
+                
+                const prop = rule.slice(0, colonIndex).trim();
+                const value = rule.slice(colonIndex + 1).trim();
+                
+                if (prop && value) {
+                    // Convert to camelCase
+                    const camelProp = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                    obj[camelProp] = value;
+                }
+            });
+            
+            return obj;
+        }
+        
+        function escapeJsxString(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/{/g, '&#123;')
+                .replace(/}/g, '&#125;');
+        }
+        
+        function formatJsx(jsx) {
+            // Simple formatting - normalize indentation
+            const lines = jsx.split('\n');
+            let depth = 0;
+            const result = [];
+            
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                
+                // Decrease depth for closing tags
+                if (trimmed.startsWith('</') || trimmed.startsWith('}')) {
+                    depth = Math.max(0, depth - 1);
+                }
+                
+                result.push('  '.repeat(depth) + trimmed);
+                
+                // Increase depth for opening tags (not self-closing)
+                if (trimmed.match(/^<[a-z][^>]*[^/]>$/i) || trimmed === '{') {
+                    depth++;
+                }
+            }
+            
+            return result.join('\n');
+        }
+        
+        function wrapInComponent(jsx) {
+            return `function Component() {
+  return (
+    <>
+${jsx.split('\n').map(line => '      ' + line).join('\n')}
+    </>
+  );
+}
+
+export default Component;`;
+        }
+        
+        function loadExample() {
+            const example = `<div class="container">
+  <header class="header">
+    <h1>Welcome</h1>
+    <nav>
+      <a href="#home" class="nav-link active">Home</a>
+      <a href="#about" class="nav-link">About</a>
+    </nav>
+  </header>
+  
+  <main>
+    <form class="contact-form" onsubmit="handleSubmit()">
+      <label for="name">Name:</label>
+      <input type="text" id="name" class="form-input" placeholder="Enter name" required>
+      
+      <label for="email">Email:</label>
+      <input type="email" id="email" class="form-input" readonly>
+      
+      <textarea id="message" rows="4" style="color: #333; font-size: 14px;"></textarea>
+      
+      <button type="submit" class="btn btn-primary" tabindex="0">
+        Submit
+      </button>
+    </form>
+    
+    <img src="image.jpg" alt="Sample image" class="responsive-img">
+    <br>
+    <hr>
+  </main>
+  
+  <!-- Footer section -->
+  <footer>
+    <p>&copy; 2024</p>
+  </footer>
+</div>`;
+            
+            document.getElementById('htmlInput').value = example;
+            convert();
+        }
+        
+        function clearInput() {
+            document.getElementById('htmlInput').value = '';
+            document.getElementById('jsxOutput').value = '';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('inputChars').textContent = 0;
+            document.getElementById('inputLines').textContent = 0;
+            document.getElementById('outputChars').textContent = 0;
+            document.getElementById('outputLines').textContent = 0;
+        }
+        
+        function copyOutput() {
+            const output = document.getElementById('jsxOutput').value;
+            if (!output) {
+                showToast('没有可复制的内容', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output).then(() => {
+                showToast('已复制到剪贴板', 'success');
+            });
+        }
+        
+        function downloadOutput() {
+            const output = document.getElementById('jsxOutput').value;
+            if (!output) {
+                showToast('没有可下载的内容', 'error');
+                return;
+            }
+            
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Component.jsx';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('文件已下载', 'success');
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        
+        // Initialize
+        initTheme();
+    </script>
+</body>
+</html>

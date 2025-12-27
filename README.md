@@ -3,18 +3,24 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tools](https://img.shields.io/badge/Tools-161+-blue.svg)](https://tools.realtime-ai.chat)
+[![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
+[![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
+[![Vercel](https://img.shields.io/badge/Vercel-deployed-black?logo=vercel)](https://html-tools-jade.vercel.app)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-deployed-orange?logo=cloudflare)](https://htmltools-bkt.pages.dev)
+
 [![GitHub stars](https://img.shields.io/github/stars/chicogong/html-tools?style=social)](https://github.com/chicogong/html-tools/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/chicogong/html-tools?style=social)](https://github.com/chicogong/html-tools/network/members)
-[![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
-[![GitHub Pages](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
+[![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
 
-### 🚀 161 个纯前端在线工具
+### 🚀 161+ 纯前端在线工具集
 
-**单文件 · 零构建 · 可离线 · 数据不上传**
+**单文件 · 零构建 · 可离线 · 隐私优先 · 数据不上传**
 
-一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告。
+一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告、无追踪。
 
-[**🌐 立即体验**](https://tools.realtime-ai.chat) • [贡献指南](#贡献指南) • [添加新工具](#添加新工具)
+[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-161-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
 
 </div>
 

@@ -231,6 +231,30 @@
 | [Claude Skills 精选](tools/ai/claude-skills.html) | Anthropic 官方 Skills 集合，提升 Claude 特定任务表现 |
 
 
+## SEO 与搜索引擎收录
+
+本项目已提交到多个搜索引擎站长平台，方便被搜索引擎收录。
+
+### 已提交平台
+
+| 平台 | 状态 | 验证文件/方式 |
+|------|------|--------------|
+| Google Search Console | ✅ 已验证 | DNS 验证 |
+| Bing Webmaster | ✅ 已验证 | `BingSiteAuth.xml` |
+| 头条搜索站长平台 | ✅ 已验证 | `ByteDanceVerify.html` + meta tag |
+| 百度资源平台 | ✅ 已验证 | meta tag |
+| 搜狗资源平台 | ✅ 已验证 | `sogousiteverification.txt` |
+| IndexNow | ✅ 已配置 | `03bdae3721054dfba79edd66e6157c3f.txt` |
+
+### SEO 相关文件
+
+| 文件 | 用途 |
+|------|------|
+| `sitemap.xml` | 站点地图，包含所有工具页面 |
+| `robots.txt` | 搜索引擎爬虫规则 |
+| `llms.txt` | AI/LLM 友好的网站描述 |
+| `index.html` | 含 Schema.org 结构化数据 (JSON-LD) |
+
 ## 使用方式
 
 ### 在线使用

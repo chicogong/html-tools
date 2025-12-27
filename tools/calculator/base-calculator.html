@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进制计算器 | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #06b6d4; }
+        body { padding: 1rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .panel { background: var(--pico-card-background-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
+        .base-inputs { display: grid; gap: 1rem; }
+        .base-row { display: grid; grid-template-columns: 100px 1fr auto; gap: 0.5rem; align-items: center; }
+        .base-row label { font-weight: 600; font-size: 0.9rem; }
+        .base-row input { font-family: monospace; font-size: 1rem; }
+        .base-row .copy-btn { padding: 0.5rem; background: none; border: 1px solid var(--pico-muted-border-color); border-radius: 4px; cursor: pointer; }
+        .base-row .copy-btn:hover { background: var(--primary); color: white; }
+        .bit-display { margin-top: 1rem; padding: 1rem; background: var(--pico-background-color); border-radius: 6px; }
+        .bit-display h4 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+        .bits { display: flex; flex-wrap: wrap; gap: 2px; font-family: monospace; }
+        .bit-group { display: flex; margin-right: 0.5rem; }
+        .bit { width: 24px; height: 28px; display: flex; align-items: center; justify-content: center; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); cursor: pointer; font-size: 0.9rem; }
+        .bit.one { background: var(--primary); color: white; }
+        .bit:hover { opacity: 0.8; }
+        .bit-labels { display: flex; gap: 2px; margin-top: 2px; }
+        .bit-label { width: 24px; text-align: center; font-size: 0.7rem; color: var(--pico-muted-color); }
+        .calc-section { margin-top: 1.5rem; }
+        .calc-section h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+        .calc-grid { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0.5rem; align-items: center; }
+        .calc-grid select, .calc-grid input { font-family: monospace; }
+        .calc-grid .op { text-align: center; font-size: 1.2rem; font-weight: 600; }
+        .result-row { margin-top: 0.5rem; padding: 0.75rem; background: rgba(6,182,212,0.1); border-radius: 6px; font-family: monospace; }
+        .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .preset-btn { padding: 0.25rem 0.75rem; font-size: 0.85rem; background: var(--pico-muted-border-color); border: none; border-radius: 4px; cursor: pointer; }
+        .preset-btn:hover { background: var(--primary); color: white; }
+        @media (max-width: 600px) {
+            .base-row { grid-template-columns: 80px 1fr; }
+            .base-row .copy-btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔢 进制计算器</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+
+        <div class="panel">
+            <div class="presets">
+                <button class="preset-btn" data-val="255">255</button>
+                <button class="preset-btn" data-val="256">256</button>
+                <button class="preset-btn" data-val="1024">1024</button>
+                <button class="preset-btn" data-val="65535">65535</button>
+                <button class="preset-btn" data-val="16777215">16777215</button>
+                <button class="preset-btn" data-val="2147483647">INT_MAX</button>
+            </div>
+            
+            <div class="base-inputs">
+                <div class="base-row">
+                    <label>十进制 (10)</label>
+                    <input type="text" id="dec" placeholder="0" data-base="10">
+                    <button class="copy-btn" onclick="copyValue('dec')">📋</button>
+                </div>
+                <div class="base-row">
+                    <label>二进制 (2)</label>
+                    <input type="text" id="bin" placeholder="0" data-base="2">
+                    <button class="copy-btn" onclick="copyValue('bin')">📋</button>
+                </div>
+                <div class="base-row">
+                    <label>八进制 (8)</label>
+                    <input type="text" id="oct" placeholder="0" data-base="8">
+                    <button class="copy-btn" onclick="copyValue('oct')">📋</button>
+                </div>
+                <div class="base-row">
+                    <label>十六进制 (16)</label>
+                    <input type="text" id="hex" placeholder="0" data-base="16">
+                    <button class="copy-btn" onclick="copyValue('hex')">📋</button>
+                </div>
+            </div>
+
+            <div class="bit-display">
+                <h4>二进制位显示 (点击切换)</h4>
+                <div class="bits" id="bitDisplay"></div>
+                <div class="bit-labels" id="bitLabels"></div>
+            </div>
+        </div>
+
+        <div class="panel calc-section">
+            <h3>进制运算</h3>
+            <div class="calc-grid">
+                <input type="text" id="calcA" placeholder="操作数 A" value="255">
+                <select id="calcOp">
+                    <option value="add">+</option>
+                    <option value="sub">-</option>
+                    <option value="mul">×</option>
+                    <option value="div">÷</option>
+                    <option value="mod">%</option>
+                    <option value="and">&</option>
+                    <option value="or">|</option>
+                    <option value="xor">^</option>
+                    <option value="shl"><<</option>
+                    <option value="shr">>></option>
+                </select>
+                <input type="text" id="calcB" placeholder="操作数 B" value="1">
+                <span class="op">=</span>
+                <input type="text" id="calcResult" readonly>
+            </div>
+            <div class="result-row" id="calcResultAll"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentValue = 0n;
+        const MAX_BITS = 32;
+
+        function updateAll(value, sourceId) {
+            currentValue = value;
+            if (sourceId !== 'dec') document.getElementById('dec').value = value.toString(10);
+            if (sourceId !== 'bin') document.getElementById('bin').value = value.toString(2);
+            if (sourceId !== 'oct') document.getElementById('oct').value = value.toString(8);
+            if (sourceId !== 'hex') document.getElementById('hex').value = value.toString(16).toUpperCase();
+            updateBitDisplay();
+        }
+
+        function updateBitDisplay() {
+            const display = document.getElementById('bitDisplay');
+            const labels = document.getElementById('bitLabels');
+            const binStr = currentValue.toString(2).padStart(MAX_BITS, '0').slice(-MAX_BITS);
+            
+            let html = '';
+            let labelHtml = '';
+            for (let i = 0; i < MAX_BITS; i++) {
+                if (i > 0 && i % 4 === 0) html += '</div><div class="bit-group">';
+                if (i === 0) html += '<div class="bit-group">';
+                const bit = binStr[i];
+                const pos = MAX_BITS - 1 - i;
+                html += `<div class="bit ${bit === '1' ? 'one' : ''}" data-pos="${pos}">${bit}</div>`;
+            }
+            html += '</div>';
+            display.innerHTML = html;
+
+            // Add click handlers
+            display.querySelectorAll('.bit').forEach(bit => {
+                bit.onclick = () => {
+                    const pos = parseInt(bit.dataset.pos);
+                    currentValue ^= (1n << BigInt(pos));
+                    updateAll(currentValue, null);
+                };
+            });
+
+            // Labels for bit positions
+            labelHtml = '';
+            for (let i = MAX_BITS - 1; i >= 0; i--) {
+                labelHtml += `<span class="bit-label">${i}</span>`;
+            }
+            labels.innerHTML = labelHtml;
+        }
+
+        function parseInput(value, base) {
+            value = value.trim().toLowerCase();
+            if (!value) return 0n;
+            try {
+                // Remove common prefixes
+                if (base === 2) value = value.replace(/^0b/, '');
+                if (base === 8) value = value.replace(/^0o/, '');
+                if (base === 16) value = value.replace(/^0x/, '');
+                return BigInt(parseInt(value, base));
+            } catch {
+                return 0n;
+            }
+        }
+
+        // Input handlers
+        ['dec', 'bin', 'oct', 'hex'].forEach(id => {
+            const input = document.getElementById(id);
+            const base = parseInt(input.dataset.base);
+            input.addEventListener('input', () => {
+                const value = parseInput(input.value, base);
+                updateAll(value, id);
+            });
+        });
+
+        // Preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.onclick = () => {
+                const val = BigInt(btn.dataset.val);
+                updateAll(val, null);
+            };
+        });
+
+        // Calculator
+        function calculate() {
+            const a = parseInput(document.getElementById('calcA').value, 10);
+            const b = parseInput(document.getElementById('calcB').value, 10);
+            const op = document.getElementById('calcOp').value;
+            let result = 0n;
+
+            switch (op) {
+                case 'add': result = a + b; break;
+                case 'sub': result = a - b; break;
+                case 'mul': result = a * b; break;
+                case 'div': result = b !== 0n ? a / b : 0n; break;
+                case 'mod': result = b !== 0n ? a % b : 0n; break;
+                case 'and': result = a & b; break;
+                case 'or': result = a | b; break;
+                case 'xor': result = a ^ b; break;
+                case 'shl': result = a << b; break;
+                case 'shr': result = a >> b; break;
+            }
+
+            document.getElementById('calcResult').value = result.toString();
+            document.getElementById('calcResultAll').innerHTML = 
+                `DEC: ${result.toString(10)} | BIN: ${result.toString(2)} | OCT: ${result.toString(8)} | HEX: ${result.toString(16).toUpperCase()}`;
+        }
+
+        ['calcA', 'calcB', 'calcOp'].forEach(id => {
+            document.getElementById(id).addEventListener('input', calculate);
+            document.getElementById(id).addEventListener('change', calculate);
+        });
+
+        function copyValue(id) {
+            const value = document.getElementById(id).value;
+            navigator.clipboard.writeText(value);
+        }
+
+        // Theme toggle
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('themeToggle').onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+        };
+
+        // Initialize
+        updateAll(255n, null);
+        calculate();
+    </script>
+</body>
+</html>

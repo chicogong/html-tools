@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 实时预览 - 在线工具</title>
+    <meta name="description" content="在线 HTML/CSS/JS 实时预览工具，即时查看代码效果，支持代码分栏编辑">
+    <meta name="keywords" content="html,preview,实时预览,代码编辑,css,javascript,前端">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+    <style>
+        :root {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --html-color: #e34c26;
+            --css-color: #264de4;
+            --js-color: #f7df1e;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        .header h1 {
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: var(--bg-tertiary); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .layout-btns {
+            display: flex;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .layout-btn {
+            padding: 6px 12px;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .layout-btn:not(:last-child) { border-right: 1px solid var(--border-color); }
+        .layout-btn:hover { background: var(--bg-tertiary); }
+        .layout-btn.active {
+            background: var(--accent-color);
+            color: white;
+        }
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .editors-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid var(--border-color);
+            min-height: 0;
+        }
+        .editor-panel:last-child { border-bottom: none; }
+        .editor-header {
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .editor-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .editor-label .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .editor-label.html .dot { background: var(--html-color); }
+        .editor-label.css .dot { background: var(--css-color); }
+        .editor-label.js .dot { background: var(--js-color); }
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .code-editor {
+            width: 100%;
+            height: 100%;
+            padding: 12px;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+        }
+        .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+            min-width: 0;
+        }
+        .preview-header {
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+        .preview-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .preview-frame {
+            flex: 1;
+            border: none;
+            background: white;
+        }
+        .resizer {
+            width: 6px;
+            background: var(--border-color);
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+        .resizer:hover { background: var(--accent-color); }
+
+        /* Layout modes */
+        .main-container.horizontal {
+            flex-direction: row;
+        }
+        .main-container.horizontal .editors-container {
+            flex-direction: column;
+        }
+        .main-container.vertical {
+            flex-direction: column;
+        }
+        .main-container.vertical .editors-container {
+            flex-direction: row;
+            height: 50%;
+        }
+        .main-container.vertical .editor-panel {
+            border-bottom: none;
+            border-right: 1px solid var(--border-color);
+        }
+        .main-container.vertical .preview-container {
+            border-left: none;
+            border-top: 1px solid var(--border-color);
+            height: 50%;
+        }
+        .main-container.vertical .resizer {
+            width: auto;
+            height: 6px;
+            cursor: row-resize;
+        }
+        .console-output {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .console-line {
+            padding: 2px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .console-line.error { color: var(--error-color); }
+        .console-line.warn { color: var(--warning-color); }
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column !important;
+            }
+            .editors-container {
+                flex-direction: column !important;
+                height: 50vh;
+            }
+            .preview-container {
+                border-left: none !important;
+                border-top: 1px solid var(--border-color);
+            }
+            .resizer { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🖼️ HTML 实时预览</h1>
+        <div class="header-actions">
+            <div class="layout-btns">
+                <button class="layout-btn active" onclick="setLayout('horizontal')" title="左右布局">⬜</button>
+                <button class="layout-btn" onclick="setLayout('vertical')" title="上下布局">⬛</button>
+            </div>
+            <button class="btn" onclick="loadExample()">📝 示例</button>
+            <button class="btn" onclick="clearAll()">🗑️ 清空</button>
+            <button class="btn" onclick="downloadHTML()">💾 下载</button>
+            <button class="btn" onclick="toggleTheme()">🌓</button>
+        </div>
+    </div>
+
+    <div class="main-container horizontal" id="mainContainer">
+        <div class="editors-container">
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <span class="editor-label html"><span class="dot"></span>HTML</span>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea class="code-editor" id="htmlEditor" placeholder="输入 HTML 代码..." spellcheck="false"></textarea>
+                </div>
+            </div>
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <span class="editor-label css"><span class="dot"></span>CSS</span>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea class="code-editor" id="cssEditor" placeholder="输入 CSS 代码..." spellcheck="false"></textarea>
+                </div>
+            </div>
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <span class="editor-label js"><span class="dot"></span>JavaScript</span>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea class="code-editor" id="jsEditor" placeholder="输入 JavaScript 代码..." spellcheck="false"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="resizer" id="resizer"></div>
+        <div class="preview-container">
+            <div class="preview-header">
+                <h3>👁️ 预览</h3>
+                <button class="btn" onclick="refreshPreview()">🔄 刷新</button>
+            </div>
+            <iframe class="preview-frame" id="previewFrame" sandbox="allow-scripts allow-modals"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Theme
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        initTheme();
+
+        // Editors
+        const htmlEditor = document.getElementById('htmlEditor');
+        const cssEditor = document.getElementById('cssEditor');
+        const jsEditor = document.getElementById('jsEditor');
+        const previewFrame = document.getElementById('previewFrame');
+
+        let debounceTimer;
+        function updatePreview() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const html = htmlEditor.value;
+                const css = cssEditor.value;
+                const js = jsEditor.value;
+
+                const content = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>${css}</style>
+</head>
+<body>
+    ${html}
+    <script>
+        try {
+            ${js}
+        } catch(e) {
+            console.error(e);
+        }
+    <\/script>
+</body>
+</html>`;
+                
+                previewFrame.srcdoc = content;
+            }, 300);
+        }
+
+        function refreshPreview() {
+            updatePreview();
+        }
+
+        // Event listeners
+        htmlEditor.addEventListener('input', updatePreview);
+        cssEditor.addEventListener('input', updatePreview);
+        jsEditor.addEventListener('input', updatePreview);
+
+        // Tab handling
+        [htmlEditor, cssEditor, jsEditor].forEach(editor => {
+            editor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 2;
+                    updatePreview();
+                }
+            });
+        });
+
+        // Layout
+        function setLayout(mode) {
+            const container = document.getElementById('mainContainer');
+            container.className = 'main-container ' + mode;
+            document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Resizer
+        const resizer = document.getElementById('resizer');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+        });
+
+        function resize(e) {
+            if (!isResizing) return;
+            const container = document.getElementById('mainContainer');
+            const editorsContainer = document.querySelector('.editors-container');
+            const previewContainer = document.querySelector('.preview-container');
+            
+            if (container.classList.contains('horizontal')) {
+                const containerRect = container.getBoundingClientRect();
+                const percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+                editorsContainer.style.flex = `0 0 ${percentage}%`;
+                previewContainer.style.flex = `0 0 ${100 - percentage}%`;
+            }
+        }
+
+        function stopResize() {
+            isResizing = false;
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+        // Load example
+        function loadExample() {
+            htmlEditor.value = `<div class="container">
+  <h1>Hello World!</h1>
+  <p>这是一个 HTML 实时预览示例</p>
+  <button id="btn">点击我</button>
+  <div id="output"></div>
+</div>`;
+
+            cssEditor.value = `.container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  color: #3b82f6;
+  margin-bottom: 10px;
+}
+
+p {
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+button {
+  padding: 12px 24px;
+  font-size: 16px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+#output {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  min-height: 20px;
+}`;
+
+            jsEditor.value = `let count = 0;
+const btn = document.getElementById('btn');
+const output = document.getElementById('output');
+
+btn.addEventListener('click', () => {
+  count++;
+  output.innerHTML = \`你已点击 <strong>\${count}</strong> 次！\`;
+  
+  // 添加动画效果
+  output.style.transform = 'scale(1.05)';
+  setTimeout(() => {
+    output.style.transform = 'scale(1)';
+  }, 150);
+});
+
+console.log('JavaScript 已加载！');`;
+
+            updatePreview();
+        }
+
+        // Clear all
+        function clearAll() {
+            htmlEditor.value = '';
+            cssEditor.value = '';
+            jsEditor.value = '';
+            updatePreview();
+        }
+
+        // Download
+        function downloadHTML() {
+            const html = htmlEditor.value;
+            const css = cssEditor.value;
+            const js = jsEditor.value;
+
+            const content = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Page</title>
+    <style>
+${css}
+    </style>
+</head>
+<body>
+${html}
+    <script>
+${js}
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'page.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Load saved content or example
+        const savedHtml = localStorage.getItem('html-preview-html');
+        if (savedHtml) {
+            htmlEditor.value = savedHtml;
+            cssEditor.value = localStorage.getItem('html-preview-css') || '';
+            jsEditor.value = localStorage.getItem('html-preview-js') || '';
+            updatePreview();
+        } else {
+            loadExample();
+        }
+
+        // Auto-save
+        setInterval(() => {
+            localStorage.setItem('html-preview-html', htmlEditor.value);
+            localStorage.setItem('html-preview-css', cssEditor.value);
+            localStorage.setItem('html-preview-js', jsEditor.value);
+        }, 5000);
+    </script>
+</body>
+</html>

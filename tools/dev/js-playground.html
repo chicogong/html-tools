@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript 在线运行 - JS Playground</title>
+    <meta name="description" content="在线运行和测试 JavaScript 代码，实时查看控制台输出，支持 ES6+ 语法">
+    <meta name="keywords" content="javascript,js,playground,在线运行,代码测试,console,es6">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --accent-color: #f7df1e;
+            --accent-hover: #ffeb3b;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --warn-color: #f59e0b;
+            --info-color: #3b82f6;
+        }
+        [data-theme="light"] {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 {
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h1 .js-logo {
+            background: var(--accent-color);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .theme-toggle, .btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover, .btn:hover { border-color: var(--accent-color); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+            font-weight: 600;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger {
+            border-color: var(--error-color);
+            color: var(--error-color);
+        }
+        .btn-danger:hover {
+            background: var(--error-color);
+            color: #fff;
+        }
+        .back-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .main-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+        @media (max-width: 800px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+        }
+
+        .editor-panel, .output-panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        .output-panel { border-right: none; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .panel-header .stats {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+        }
+        #codeEditor {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-tertiary);
+            border: none;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+        }
+
+        .console-output {
+            flex: 1;
+            background: var(--bg-tertiary);
+            overflow-y: auto;
+            font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+            font-size: 13px;
+        }
+        .console-item {
+            padding: 8px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .console-item:last-child { border-bottom: none; }
+        .console-item .icon {
+            flex-shrink: 0;
+            width: 18px;
+            text-align: center;
+        }
+        .console-item .content {
+            flex: 1;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .console-item.log { color: var(--text-primary); }
+        .console-item.log .icon { color: var(--text-secondary); }
+        .console-item.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+        }
+        .console-item.warn {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warn-color);
+        }
+        .console-item.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--info-color);
+        }
+        .console-item.result {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success-color);
+        }
+        .console-item .type {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .empty-console {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .examples-bar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 15px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+        .example-btn {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .example-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+        }
+
+        .shortcut-hint {
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 5px 15px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+        .shortcut-hint kbd {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid var(--border-color);
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span class="js-logo">JS</span>
+            JavaScript Playground
+        </h1>
+        <div class="header-actions">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="btn" onclick="formatCode()">🎨 格式化</button>
+            <button class="btn btn-primary" onclick="runCode()">▶ 运行</button>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="editor-panel">
+            <div class="examples-bar">
+                <button class="example-btn" onclick="loadExample('hello')">Hello World</button>
+                <button class="example-btn" onclick="loadExample('array')">数组操作</button>
+                <button class="example-btn" onclick="loadExample('async')">异步/Promise</button>
+                <button class="example-btn" onclick="loadExample('fetch')">Fetch API</button>
+                <button class="example-btn" onclick="loadExample('class')">ES6 Class</button>
+                <button class="example-btn" onclick="loadExample('destructure')">解构赋值</button>
+            </div>
+            <div class="panel-header">
+                <span>📝 代码编辑器</span>
+                <span class="stats" id="editorStats">0 行 | 0 字符</span>
+            </div>
+            <div class="editor-container">
+                <textarea id="codeEditor" spellcheck="false" placeholder="// 在这里输入 JavaScript 代码...
+// 按 Ctrl+Enter 或点击运行按钮执行
+
+console.log('Hello, World!');
+"></textarea>
+            </div>
+            <div class="shortcut-hint">
+                <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码 | 
+                <kbd>Ctrl</kbd> + <kbd>S</kbd> 格式化
+            </div>
+        </div>
+
+        <div class="output-panel">
+            <div class="panel-header">
+                <span>📺 控制台输出</span>
+                <button class="btn btn-danger" onclick="clearConsole()" style="padding: 4px 10px; font-size: 12px;">🗑️ 清空</button>
+            </div>
+            <div class="console-output" id="consoleOutput">
+                <div class="empty-console">运行代码后，输出将显示在这里...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const examples = {
+            hello: `// Hello World 示例
+console.log('Hello, World! 🌍');
+console.log('当前时间:', new Date().toLocaleString());
+
+// 不同类型的日志
+console.log('普通日志');
+console.warn('警告信息');
+console.error('错误信息');
+console.info('提示信息');
+
+// 返回值
+'JavaScript is awesome! 🚀'`,
+
+            array: `// 数组操作示例
+const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// map - 映射
+const doubled = numbers.map(n => n * 2);
+console.log('翻倍:', doubled);
+
+// filter - 过滤
+const evens = numbers.filter(n => n % 2 === 0);
+console.log('偶数:', evens);
+
+// reduce - 归约
+const sum = numbers.reduce((acc, n) => acc + n, 0);
+console.log('求和:', sum);
+
+// find - 查找
+const found = numbers.find(n => n > 5);
+console.log('第一个大于5的数:', found);
+
+// some & every
+console.log('是否有大于5的:', numbers.some(n => n > 5));
+console.log('是否全部大于0:', numbers.every(n => n > 0));
+
+// 链式调用
+const result = numbers
+  .filter(n => n % 2 === 0)
+  .map(n => n ** 2)
+  .reduce((acc, n) => acc + n, 0);
+console.log('偶数的平方和:', result);`,
+
+            async: `// 异步编程示例
+console.log('1. 开始执行');
+
+// Promise
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// async/await
+async function demo() {
+  console.log('2. 进入异步函数');
+  
+  await delay(100);
+  console.log('3. 100ms 后');
+  
+  await delay(100);
+  console.log('4. 又 100ms 后');
+  
+  return '异步执行完成! ✨';
+}
+
+// Promise.all
+async function parallel() {
+  const start = Date.now();
+  await Promise.all([
+    delay(100),
+    delay(100),
+    delay(100)
+  ]);
+  console.log(\`并行执行耗时: \${Date.now() - start}ms\`);
+}
+
+demo().then(result => console.log('5.', result));
+parallel();
+
+console.log('注意: 这条会先输出，因为上面是异步的');`,
+
+            fetch: `// Fetch API 示例 (使用公开 API)
+console.log('开始请求数据...');
+
+// 请求随机用户数据
+fetch('https://randomuser.me/api/')
+  .then(response => response.json())
+  .then(data => {
+    const user = data.results[0];
+    console.log('获取到用户数据:');
+    console.log('姓名:', user.name.first, user.name.last);
+    console.log('邮箱:', user.email);
+    console.log('国家:', user.location.country);
+  })
+  .catch(err => console.error('请求失败:', err));
+
+// 使用 async/await
+async function fetchJoke() {
+  try {
+    const res = await fetch('https://official-joke-api.appspot.com/random_joke');
+    const joke = await res.json();
+    console.log('\\n随机笑话:');
+    console.log('Q:', joke.setup);
+    console.log('A:', joke.punchline);
+  } catch (err) {
+    console.error('获取笑话失败');
+  }
+}
+
+fetchJoke();`,
+
+            class: `// ES6 Class 示例
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    console.log(\`\${this.name} 发出声音\`);
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);
+    this.breed = breed;
+  }
+  
+  speak() {
+    console.log(\`\${this.name} 汪汪叫! 🐕\`);
+  }
+  
+  fetch() {
+    console.log(\`\${this.name} 去捡球了!\`);
+  }
+  
+  // Getter
+  get info() {
+    return \`\${this.name} 是一只 \${this.breed}\`;
+  }
+  
+  // 静态方法
+  static species() {
+    return 'Canis familiaris';
+  }
+}
+
+const dog = new Dog('旺财', '金毛');
+dog.speak();
+dog.fetch();
+console.log(dog.info);
+console.log('物种:', Dog.species());
+
+// instanceof
+console.log('dog instanceof Dog:', dog instanceof Dog);
+console.log('dog instanceof Animal:', dog instanceof Animal);`,
+
+            destructure: `// 解构赋值示例
+
+// 数组解构
+const [a, b, ...rest] = [1, 2, 3, 4, 5];
+console.log('数组解构:', a, b, rest);
+
+// 对象解构
+const user = {
+  name: '张三',
+  age: 25,
+  city: '北京',
+  job: {
+    title: '工程师',
+    company: 'Tech Corp'
+  }
+};
+
+const { name, age, city } = user;
+console.log('对象解构:', name, age, city);
+
+// 嵌套解构
+const { job: { title, company } } = user;
+console.log('嵌套解构:', title, company);
+
+// 默认值
+const { country = '中国' } = user;
+console.log('默认值:', country);
+
+// 重命名
+const { name: userName, age: userAge } = user;
+console.log('重命名:', userName, userAge);
+
+// 函数参数解构
+function greet({ name, age }) {
+  console.log(\`你好，\${name}，你今年\${age}岁\`);
+}
+greet(user);
+
+// 交换变量
+let x = 1, y = 2;
+[x, y] = [y, x];
+console.log('交换后:', x, y);`
+        };
+
+        // Theme handling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Console override
+        const consoleOutput = document.getElementById('consoleOutput');
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info
+        };
+
+        function addConsoleItem(type, args) {
+            // Remove empty state
+            const empty = consoleOutput.querySelector('.empty-console');
+            if (empty) empty.remove();
+
+            const item = document.createElement('div');
+            item.className = `console-item ${type}`;
+            
+            const icons = {
+                log: '●',
+                warn: '⚠',
+                error: '✖',
+                info: 'ℹ',
+                result: '←'
+            };
+
+            const content = args.map(arg => {
+                if (arg === null) return 'null';
+                if (arg === undefined) return 'undefined';
+                if (typeof arg === 'object') {
+                    try {
+                        return JSON.stringify(arg, null, 2);
+                    } catch {
+                        return String(arg);
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+
+            item.innerHTML = `
+                <span class="icon">${icons[type]}</span>
+                <span class="content">${escapeHTML(content)}</span>
+            `;
+            
+            consoleOutput.appendChild(item);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;');
+        }
+
+        function setupConsole() {
+            console.log = (...args) => {
+                originalConsole.log(...args);
+                addConsoleItem('log', args);
+            };
+            console.warn = (...args) => {
+                originalConsole.warn(...args);
+                addConsoleItem('warn', args);
+            };
+            console.error = (...args) => {
+                originalConsole.error(...args);
+                addConsoleItem('error', args);
+            };
+            console.info = (...args) => {
+                originalConsole.info(...args);
+                addConsoleItem('info', args);
+            };
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '<div class="empty-console">控制台已清空</div>';
+        }
+
+        // Run code
+        function runCode() {
+            clearConsole();
+            const code = document.getElementById('codeEditor').value;
+            
+            try {
+                // Use Function constructor for better isolation
+                const result = new Function(code)();
+                
+                // Show return value if any
+                if (result !== undefined) {
+                    setTimeout(() => {
+                        addConsoleItem('result', [result]);
+                    }, 0);
+                }
+            } catch (err) {
+                console.error(err.toString());
+            }
+        }
+
+        // Format code (basic)
+        function formatCode() {
+            const editor = document.getElementById('codeEditor');
+            let code = editor.value;
+            
+            // Very basic formatting
+            code = code.replace(/;(?!\n)/g, ';\n');
+            code = code.replace(/\{(?!\n)/g, '{\n');
+            code = code.replace(/(?<!\n)\}/g, '\n}');
+            
+            editor.value = code;
+            updateStats();
+        }
+
+        // Load example
+        function loadExample(name) {
+            document.getElementById('codeEditor').value = examples[name] || '';
+            updateStats();
+            clearConsole();
+        }
+
+        // Update stats
+        function updateStats() {
+            const code = document.getElementById('codeEditor').value;
+            const lines = code.split('\n').length;
+            const chars = code.length;
+            document.getElementById('editorStats').textContent = `${lines} 行 | ${chars} 字符`;
+        }
+
+        // Tab handling
+        document.getElementById('codeEditor').addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 2;
+            }
+            
+            // Ctrl+Enter to run
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                runCode();
+            }
+            
+            // Ctrl+S to format
+            if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault();
+                formatCode();
+            }
+        });
+
+        document.getElementById('codeEditor').addEventListener('input', updateStats);
+
+        // Initialize
+        initTheme();
+        setupConsole();
+        loadExample('hello');
+    </script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片颜色提取器 - 在线工具</title>
+    <meta name="description" content="从图片中提取主色调，生成配色方案，支持复制颜色代码">
+    <meta name="keywords" content="color,extractor,颜色提取,配色,调色板,图片颜色,主色调">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+    <style>
+        :root {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #f472b6;
+            --accent-hover: #ec4899;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .header p { color: var(--text-secondary); }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .upload-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: var(--accent-color);
+            background: var(--bg-tertiary);
+        }
+        .upload-area.dragover {
+            border-color: var(--accent-color);
+            background: var(--bg-tertiary);
+        }
+        .upload-icon { font-size: 3rem; margin-bottom: 15px; }
+        .upload-text { color: var(--text-secondary); margin-bottom: 10px; }
+        .upload-hint { font-size: 0.8rem; color: var(--text-secondary); }
+        #fileInput { display: none; }
+        .main-content {
+            display: none;
+            gap: 20px;
+        }
+        .main-content.active {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .image-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .image-preview {
+            position: relative;
+            background: repeating-conic-gradient(var(--bg-tertiary) 0% 25%, var(--bg-primary) 0% 50%) 50% / 16px 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            cursor: crosshair;
+        }
+        .picked-color {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: none;
+        }
+        .picked-color.active { display: flex; align-items: center; gap: 15px; }
+        .picked-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+        }
+        .picked-info { flex: 1; }
+        .picked-info p { margin-bottom: 4px; font-size: 0.9rem; }
+        .picked-info code {
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .picked-info code:hover { background: var(--accent-color); color: white; }
+        .colors-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .color-count-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .count-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .count-btn:hover { background: var(--bg-tertiary); }
+        .count-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .palette-grid {
+            display: grid;
+            gap: 10px;
+        }
+        .color-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-card:hover {
+            transform: translateX(5px);
+            border-color: var(--accent-color);
+        }
+        .color-swatch {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .color-info { flex: 1; }
+        .color-hex {
+            font-family: monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .color-rgb {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .color-percent {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .export-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .export-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: var(--bg-tertiary); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        canvas { display: none; }
+        @media (max-width: 768px) {
+            .main-content.active { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎨 图片颜色提取器</h1>
+            <p>从图片中提取主色调，生成配色方案</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">点击或拖拽图片到这里</div>
+            <div class="upload-hint">支持 JPG、PNG、GIF、WebP 格式</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="main-content" id="mainContent">
+            <div class="image-section">
+                <div class="section-title">📷 图片预览 <span style="font-weight:normal;font-size:0.8rem;color:var(--text-secondary)">(点击图片取色)</span></div>
+                <div class="image-preview" id="imagePreview">
+                    <img id="previewImg" src="data:," alt="Preview">
+                </div>
+                <div class="picked-color" id="pickedColor">
+                    <div class="picked-swatch" id="pickedSwatch"></div>
+                    <div class="picked-info">
+                        <p>HEX: <code onclick="copyColor(this.textContent)" id="pickedHex">#000000</code></p>
+                        <p>RGB: <code onclick="copyColor(this.textContent)" id="pickedRgb">rgb(0, 0, 0)</code></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="colors-section">
+                <div class="section-title">🎯 提取的颜色</div>
+                <div class="color-count-selector">
+                    <button class="count-btn" onclick="setColorCount(4)">4 色</button>
+                    <button class="count-btn active" onclick="setColorCount(6)">6 色</button>
+                    <button class="count-btn" onclick="setColorCount(8)">8 色</button>
+                    <button class="count-btn" onclick="setColorCount(10)">10 色</button>
+                </div>
+                <div class="palette-grid" id="paletteGrid"></div>
+                
+                <div class="export-section">
+                    <div class="export-btns">
+                        <button class="btn btn-primary" onclick="copyAllColors()">📋 复制全部</button>
+                        <button class="btn" onclick="exportCSS()">🎨 导出 CSS</button>
+                        <button class="btn" onclick="exportJSON()">📄 导出 JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已复制</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Theme
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        initTheme();
+
+        let extractedColors = [];
+        let colorCount = 6;
+        let imageData = null;
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const mainContent = document.getElementById('mainContent');
+        const previewImg = document.getElementById('previewImg');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processImage(file);
+        });
+
+        function processImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.onload = () => {
+                    mainContent.classList.add('active');
+                    uploadArea.style.display = 'none';
+                    extractColors();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function extractColors() {
+            canvas.width = previewImg.naturalWidth;
+            canvas.height = previewImg.naturalHeight;
+            ctx.drawImage(previewImg, 0, 0);
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Simple color quantization using k-means-like approach
+            const pixels = [];
+            const data = imageData.data;
+            const step = Math.max(1, Math.floor(data.length / 4 / 10000)); // Sample pixels
+
+            for (let i = 0; i < data.length; i += 4 * step) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                if (a > 128) { // Skip transparent pixels
+                    pixels.push([r, g, b]);
+                }
+            }
+
+            // Simple quantization: group similar colors
+            extractedColors = quantizeColors(pixels, colorCount);
+            renderPalette();
+        }
+
+        function quantizeColors(pixels, count) {
+            if (pixels.length === 0) return [];
+
+            // Initialize centroids randomly
+            const centroids = [];
+            const used = new Set();
+            while (centroids.length < count && centroids.length < pixels.length) {
+                const idx = Math.floor(Math.random() * pixels.length);
+                const key = pixels[idx].join(',');
+                if (!used.has(key)) {
+                    used.add(key);
+                    centroids.push([...pixels[idx]]);
+                }
+            }
+
+            // K-means iterations
+            for (let iter = 0; iter < 10; iter++) {
+                const clusters = centroids.map(() => []);
+
+                // Assign pixels to nearest centroid
+                for (const pixel of pixels) {
+                    let minDist = Infinity;
+                    let minIdx = 0;
+                    for (let i = 0; i < centroids.length; i++) {
+                        const dist = colorDistance(pixel, centroids[i]);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            minIdx = i;
+                        }
+                    }
+                    clusters[minIdx].push(pixel);
+                }
+
+                // Update centroids
+                for (let i = 0; i < centroids.length; i++) {
+                    if (clusters[i].length > 0) {
+                        centroids[i] = [
+                            Math.round(clusters[i].reduce((s, p) => s + p[0], 0) / clusters[i].length),
+                            Math.round(clusters[i].reduce((s, p) => s + p[1], 0) / clusters[i].length),
+                            Math.round(clusters[i].reduce((s, p) => s + p[2], 0) / clusters[i].length)
+                        ];
+                    }
+                }
+            }
+
+            // Calculate percentages
+            const clusters = centroids.map(() => 0);
+            for (const pixel of pixels) {
+                let minDist = Infinity;
+                let minIdx = 0;
+                for (let i = 0; i < centroids.length; i++) {
+                    const dist = colorDistance(pixel, centroids[i]);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        minIdx = i;
+                    }
+                }
+                clusters[minIdx]++;
+            }
+
+            return centroids.map((c, i) => ({
+                rgb: c,
+                hex: rgbToHex(c[0], c[1], c[2]),
+                percent: Math.round(clusters[i] / pixels.length * 100)
+            })).sort((a, b) => b.percent - a.percent);
+        }
+
+        function colorDistance(c1, c2) {
+            return Math.sqrt(
+                Math.pow(c1[0] - c2[0], 2) +
+                Math.pow(c1[1] - c2[1], 2) +
+                Math.pow(c1[2] - c2[2], 2)
+            );
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('paletteGrid');
+            grid.innerHTML = extractedColors.map((color, i) => `
+                <div class="color-card" onclick="copyColor('${color.hex}')">
+                    <div class="color-swatch" style="background: ${color.hex}"></div>
+                    <div class="color-info">
+                        <div class="color-hex">${color.hex.toUpperCase()}</div>
+                        <div class="color-rgb">rgb(${color.rgb.join(', ')})</div>
+                    </div>
+                    <span class="color-percent">${color.percent}%</span>
+                </div>
+            `).join('');
+        }
+
+        function setColorCount(count) {
+            colorCount = count;
+            document.querySelectorAll('.count-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent === count + ' 色');
+            });
+            if (imageData) extractColors();
+        }
+
+        // Pick color from image
+        previewImg.addEventListener('click', (e) => {
+            const rect = previewImg.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / rect.width * canvas.width);
+            const y = Math.floor((e.clientY - rect.top) / rect.height * canvas.height);
+            
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+            const rgb = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+
+            document.getElementById('pickedSwatch').style.background = hex;
+            document.getElementById('pickedHex').textContent = hex.toUpperCase();
+            document.getElementById('pickedRgb').textContent = rgb;
+            document.getElementById('pickedColor').classList.add('active');
+        });
+
+        function copyColor(text) {
+            navigator.clipboard.writeText(text);
+            showToast('已复制: ' + text);
+        }
+
+        function copyAllColors() {
+            const colors = extractedColors.map(c => c.hex.toUpperCase()).join('\n');
+            navigator.clipboard.writeText(colors);
+            showToast('已复制所有颜色');
+        }
+
+        function exportCSS() {
+            const css = `:root {\n${extractedColors.map((c, i) => 
+                `  --color-${i + 1}: ${c.hex};`
+            ).join('\n')}\n}`;
+            navigator.clipboard.writeText(css);
+            showToast('已复制 CSS 变量');
+        }
+
+        function exportJSON() {
+            const json = JSON.stringify(extractedColors.map(c => ({
+                hex: c.hex,
+                rgb: c.rgb,
+                percent: c.percent
+            })), null, 2);
+            navigator.clipboard.writeText(json);
+            showToast('已复制 JSON');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>

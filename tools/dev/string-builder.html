@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字符串拼接器 - String Builder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; }
+        .panel h3 { margin: 0 0 1rem 0; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .panel h3 .count { font-weight: normal; font-size: 0.8rem; color: var(--pico-muted-color); }
+        .parts-list { max-height: 400px; overflow-y: auto; }
+        .part-item { display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem; background: var(--pico-muted-border-color); border-radius: 6px; margin-bottom: 0.5rem; }
+        .part-item .drag-handle { cursor: grab; opacity: 0.5; }
+        .part-item input { flex: 1; margin: 0; font-family: monospace; font-size: 0.85rem; }
+        .part-item .type-select { width: 80px; margin: 0; font-size: 0.8rem; padding: 0.3rem; }
+        .part-item .remove-btn { background: none; border: none; color: #ef4444; cursor: pointer; padding: 0.25rem; font-size: 1rem; }
+        .add-part { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .add-part input { flex: 1; margin: 0; }
+        .add-part button { margin: 0; }
+        .settings { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+        .settings label { font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+        .settings input, .settings select { margin: 0; width: auto; }
+        .output-area { font-family: monospace; font-size: 0.85rem; min-height: 150px; white-space: pre-wrap; word-break: break-all; background: var(--pico-code-background-color); padding: 1rem; border-radius: 6px; margin-bottom: 1rem; }
+        .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .actions button { margin: 0; }
+        .presets { margin-bottom: 1rem; }
+        .presets button { margin: 0 0.25rem 0.25rem 0; padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+        .template-vars { font-size: 0.8rem; color: var(--pico-muted-color); margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 字符串拼接器</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+        <div class="main-grid">
+            <div class="panel">
+                <h3>字符串片段 <span class="count" id="partCount">0 个</span></h3>
+                <div class="presets">
+                    <button onclick="addPreset('prefix')">前缀</button>
+                    <button onclick="addPreset('suffix')">后缀</button>
+                    <button onclick="addPreset('quote')">引号包裹</button>
+                    <button onclick="addPreset('bracket')">括号包裹</button>
+                    <button onclick="addPreset('newline')">换行符</button>
+                    <button onclick="addPreset('tab')">制表符</button>
+                </div>
+                <div class="parts-list" id="partsList"></div>
+                <div class="add-part">
+                    <input type="text" id="newPartInput" placeholder="输入新片段...">
+                    <button onclick="addPart()" class="primary">添加</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>输出结果</h3>
+                <div class="settings">
+                    <label>分隔符：<input type="text" id="delimiter" value="" style="width:60px;" placeholder="无"></label>
+                    <label>每行个数：<input type="number" id="perLine" value="0" min="0" style="width:60px;"></label>
+                    <label><input type="checkbox" id="addQuotes"> 引号包裹</label>
+                </div>
+                <div class="output-area" id="outputArea"></div>
+                <div class="actions">
+                    <button onclick="copyOutput()" class="primary">复制结果</button>
+                    <button onclick="clearAll()" class="secondary">清空全部</button>
+                    <button onclick="downloadOutput()" class="outline">下载</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let parts = [];
+        const $ = id => document.getElementById(id);
+        function render() {
+            $('partCount').textContent = parts.length + ' 个';
+            $('partsList').innerHTML = parts.map((p, i) => 
+                '<div class="part-item" draggable="true" data-index="'+i+'">'+
+                '<span class="drag-handle">☰</span>'+
+                '<input type="text" value="'+escapeHtml(p)+'" onchange="updatePart('+i+', this.value)">'+
+                '<button class="remove-btn" onclick="removePart('+i+')">×</button>'+
+                '</div>'
+            ).join('');
+            updateOutput();
+            setupDragDrop();
+        }
+        function updateOutput() {
+            const delimiter = $('delimiter').value;
+            const perLine = parseInt($('perLine').value) || 0;
+            const addQuotes = $('addQuotes').checked;
+            let result = parts.map(p => addQuotes ? '"'+p+'"' : p);
+            if (perLine > 0) {
+                const lines = [];
+                for (let i = 0; i < result.length; i += perLine) {
+                    lines.push(result.slice(i, i + perLine).join(delimiter));
+                }
+                $('outputArea').textContent = lines.join('\n');
+            } else {
+                $('outputArea').textContent = result.join(delimiter);
+            }
+        }
+        function addPart(value) {
+            const v = value || $('newPartInput').value.trim();
+            if (v) { parts.push(v); $('newPartInput').value = ''; render(); }
+        }
+        function updatePart(i, v) { parts[i] = v; updateOutput(); }
+        function removePart(i) { parts.splice(i, 1); render(); }
+        function addPreset(type) {
+            switch(type) {
+                case 'prefix': parts.unshift('PREFIX_'); break;
+                case 'suffix': parts.push('_SUFFIX'); break;
+                case 'quote': parts.unshift('"'); parts.push('"'); break;
+                case 'bracket': parts.unshift('('); parts.push(')'); break;
+                case 'newline': parts.push('\\n'); break;
+                case 'tab': parts.push('\\t'); break;
+            }
+            render();
+        }
+        function copyOutput() {
+            navigator.clipboard.writeText($('outputArea').textContent);
+            alert('已复制');
+        }
+        function clearAll() { if(confirm('确定清空?')) { parts = []; render(); } }
+        function downloadOutput() {
+            const blob = new Blob([$('outputArea').textContent], {type:'text/plain'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'string-output.txt'; a.click();
+        }
+        function setupDragDrop() {
+            const items = document.querySelectorAll('.part-item');
+            items.forEach(item => {
+                item.ondragstart = e => { e.dataTransfer.setData('text/plain', item.dataset.index); item.style.opacity = '0.5'; };
+                item.ondragend = () => { item.style.opacity = '1'; };
+                item.ondragover = e => e.preventDefault();
+                item.ondrop = e => {
+                    e.preventDefault();
+                    const from = parseInt(e.dataTransfer.getData('text/plain'));
+                    const to = parseInt(item.dataset.index);
+                    if (from !== to) {
+                        const [moved] = parts.splice(from, 1);
+                        parts.splice(to, 0, moved);
+                        render();
+                    }
+                };
+            });
+        }
+        function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        $('delimiter').oninput = updateOutput;
+        $('perLine').oninput = updateOutput;
+        $('addQuotes').onchange = updateOutput;
+        $('newPartInput').onkeypress = e => { if (e.key === 'Enter') addPart(); };
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        $('themeToggle').onclick = toggleTheme;
+        loadTheme(); render();
+    </script>
+</body>
+</html>

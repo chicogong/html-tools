@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 转换器 - 在线工具</title>
+    <meta name="description" content="在线 SQL 转换工具，支持 SQL 转 JSON、CSV、Markdown 表格等多种格式">
+    <meta name="keywords" content="sql,converter,转换,json,csv,markdown,insert,在线工具">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔀</text></svg>">
+    <style>
+        :root {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+        .header p { color: var(--text-secondary); }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 18px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: var(--bg-tertiary); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 12px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header h3 { font-size: 0.95rem; }
+        .panel-header select {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+        .code-area {
+            width: 100%;
+            min-height: 400px;
+            padding: 15px;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+        }
+        .panel-footer {
+            padding: 10px 15px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+        .panel-footer .btn { padding: 8px 14px; font-size: 0.85rem; }
+        .examples {
+            margin-top: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .examples h4 { font-size: 0.9rem; margin-bottom: 10px; }
+        .example-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .example-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .example-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔀 SQL 转换器</h1>
+            <p>SQL INSERT 语句与其他格式互相转换</p>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn btn-primary" onclick="convert()">🔄 转换</button>
+            <button class="btn" onclick="swapPanels()">↔️ 交换</button>
+            <button class="btn" onclick="clearAll()">🗑️ 清空</button>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>📥 输入</h3>
+                    <select id="inputFormat" onchange="updatePlaceholder()">
+                        <option value="sql">SQL INSERT</option>
+                        <option value="json">JSON 数组</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                <textarea class="code-area" id="inputArea" placeholder="粘贴 SQL INSERT 语句..." oninput="autoConvert()"></textarea>
+                <div class="panel-footer">
+                    <button class="btn" onclick="pasteInput()">📋 粘贴</button>
+                    <button class="btn" onclick="formatInput()">📐 格式化</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>📤 输出</h3>
+                    <select id="outputFormat" onchange="convert()">
+                        <option value="json">JSON 数组</option>
+                        <option value="csv">CSV</option>
+                        <option value="markdown">Markdown 表格</option>
+                        <option value="sql">SQL INSERT</option>
+                        <option value="html">HTML 表格</option>
+                    </select>
+                </div>
+                <textarea class="code-area" id="outputArea" readonly placeholder="转换结果将显示在这里..."></textarea>
+                <div class="panel-footer">
+                    <button class="btn btn-primary" onclick="copyOutput()">📋 复制</button>
+                    <button class="btn" onclick="downloadOutput()">💾 下载</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="examples">
+            <h4>📝 示例数据</h4>
+            <div class="example-btns">
+                <button class="example-btn" onclick="loadExample('users')">用户表</button>
+                <button class="example-btn" onclick="loadExample('products')">商品表</button>
+                <button class="example-btn" onclick="loadExample('orders')">订单表</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved) document.documentElement.setAttribute('data-theme', saved);
+            else if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+                document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        initTheme();
+
+        const examples = {
+            users: `INSERT INTO users (id, name, email, age, created_at) VALUES
+(1, '张三', 'zhangsan@example.com', 28, '2024-01-15'),
+(2, '李四', 'lisi@example.com', 32, '2024-02-20'),
+(3, '王五', 'wangwu@example.com', 25, '2024-03-10');`,
+            products: `INSERT INTO products (id, name, price, category, stock) VALUES
+(101, 'iPhone 15', 7999.00, '手机', 100),
+(102, 'MacBook Pro', 14999.00, '电脑', 50),
+(103, 'AirPods Pro', 1899.00, '配件', 200);`,
+            orders: `INSERT INTO orders (order_id, user_id, amount, status, order_date) VALUES
+('ORD001', 1, 8998.00, 'completed', '2024-03-15'),
+('ORD002', 2, 14999.00, 'shipped', '2024-03-16'),
+('ORD003', 3, 1899.00, 'pending', '2024-03-17');`
+        };
+
+        function loadExample(name) {
+            document.getElementById('inputArea').value = examples[name];
+            document.getElementById('inputFormat').value = 'sql';
+            convert();
+        }
+
+        function updatePlaceholder() {
+            const format = document.getElementById('inputFormat').value;
+            const placeholders = {
+                sql: '粘贴 SQL INSERT 语句...',
+                json: '粘贴 JSON 数组...\n[\n  {"id": 1, "name": "示例"},\n  {"id": 2, "name": "数据"}\n]',
+                csv: '粘贴 CSV 数据...\nid,name,email\n1,张三,test@example.com'
+            };
+            document.getElementById('inputArea').placeholder = placeholders[format];
+        }
+
+        function parseSQL(sql) {
+            const result = { columns: [], rows: [] };
+            
+            // Extract table name and columns
+            const headerMatch = sql.match(/INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)/i);
+            if (!headerMatch) return null;
+            
+            result.table = headerMatch[1];
+            result.columns = headerMatch[2].split(',').map(c => c.trim());
+            
+            // Extract values
+            const valuesMatch = sql.match(/VALUES\s*([\s\S]+)/i);
+            if (!valuesMatch) return null;
+            
+            const valuesStr = valuesMatch[1];
+            const rowMatches = valuesStr.match(/\([^)]+\)/g);
+            
+            if (rowMatches) {
+                for (const rowStr of rowMatches) {
+                    const values = [];
+                    const inner = rowStr.slice(1, -1);
+                    
+                    // Parse values handling strings and numbers
+                    let current = '';
+                    let inString = false;
+                    let stringChar = '';
+                    
+                    for (let i = 0; i < inner.length; i++) {
+                        const char = inner[i];
+                        
+                        if (!inString && (char === "'" || char === '"')) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (inString && char === stringChar) {
+                            inString = false;
+                        } else if (!inString && char === ',') {
+                            values.push(parseValue(current.trim()));
+                            current = '';
+                            continue;
+                        }
+                        current += char;
+                    }
+                    if (current.trim()) values.push(parseValue(current.trim()));
+                    
+                    result.rows.push(values);
+                }
+            }
+            
+            return result;
+        }
+
+        function parseValue(val) {
+            if ((val.startsWith("'") && val.endsWith("'")) || 
+                (val.startsWith('"') && val.endsWith('"'))) {
+                return val.slice(1, -1);
+            }
+            if (val.toLowerCase() === 'null') return null;
+            if (!isNaN(val)) return parseFloat(val);
+            return val;
+        }
+
+        function parseJSON(json) {
+            try {
+                const data = JSON.parse(json);
+                if (!Array.isArray(data) || data.length === 0) return null;
+                
+                const columns = Object.keys(data[0]);
+                const rows = data.map(row => columns.map(col => row[col]));
+                
+                return { columns, rows, table: 'table_name' };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length < 2) return null;
+            
+            const columns = lines[0].split(',').map(c => c.trim());
+            const rows = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => {
+                    v = v.trim();
+                    if (!isNaN(v) && v !== '') return parseFloat(v);
+                    return v;
+                });
+                rows.push(values);
+            }
+            
+            return { columns, rows, table: 'table_name' };
+        }
+
+        function toJSON(data) {
+            const result = data.rows.map(row => {
+                const obj = {};
+                data.columns.forEach((col, i) => {
+                    obj[col] = row[i];
+                });
+                return obj;
+            });
+            return JSON.stringify(result, null, 2);
+        }
+
+        function toCSV(data) {
+            let csv = data.columns.join(',') + '\n';
+            for (const row of data.rows) {
+                csv += row.map(v => {
+                    if (v === null) return '';
+                    if (typeof v === 'string' && (v.includes(',') || v.includes('"'))) {
+                        return '"' + v.replace(/"/g, '""') + '"';
+                    }
+                    return v;
+                }).join(',') + '\n';
+            }
+            return csv.trim();
+        }
+
+        function toMarkdown(data) {
+            let md = '| ' + data.columns.join(' | ') + ' |\n';
+            md += '| ' + data.columns.map(() => '---').join(' | ') + ' |\n';
+            for (const row of data.rows) {
+                md += '| ' + row.map(v => v === null ? '' : v).join(' | ') + ' |\n';
+            }
+            return md.trim();
+        }
+
+        function toSQL(data) {
+            const table = data.table || 'table_name';
+            let sql = `INSERT INTO ${table} (${data.columns.join(', ')}) VALUES\n`;
+            
+            const valueStrings = data.rows.map(row => {
+                const values = row.map(v => {
+                    if (v === null) return 'NULL';
+                    if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+                    return v;
+                });
+                return `(${values.join(', ')})`;
+            });
+            
+            sql += valueStrings.join(',\n') + ';';
+            return sql;
+        }
+
+        function toHTML(data) {
+            let html = '<table border="1" cellpadding="5" cellspacing="0">\n';
+            html += '  <thead>\n    <tr>\n';
+            for (const col of data.columns) {
+                html += `      <th>${col}</th>\n`;
+            }
+            html += '    </tr>\n  </thead>\n  <tbody>\n';
+            for (const row of data.rows) {
+                html += '    <tr>\n';
+                for (const val of row) {
+                    html += `      <td>${val === null ? '' : val}</td>\n`;
+                }
+                html += '    </tr>\n';
+            }
+            html += '  </tbody>\n</table>';
+            return html;
+        }
+
+        function convert() {
+            const input = document.getElementById('inputArea').value.trim();
+            if (!input) {
+                document.getElementById('outputArea').value = '';
+                return;
+            }
+            
+            const inputFormat = document.getElementById('inputFormat').value;
+            const outputFormat = document.getElementById('outputFormat').value;
+            
+            let data;
+            switch (inputFormat) {
+                case 'sql': data = parseSQL(input); break;
+                case 'json': data = parseJSON(input); break;
+                case 'csv': data = parseCSV(input); break;
+            }
+            
+            if (!data) {
+                document.getElementById('outputArea').value = '解析失败，请检查输入格式';
+                return;
+            }
+            
+            let output;
+            switch (outputFormat) {
+                case 'json': output = toJSON(data); break;
+                case 'csv': output = toCSV(data); break;
+                case 'markdown': output = toMarkdown(data); break;
+                case 'sql': output = toSQL(data); break;
+                case 'html': output = toHTML(data); break;
+            }
+            
+            document.getElementById('outputArea').value = output;
+        }
+
+        let autoConvertTimer;
+        function autoConvert() {
+            clearTimeout(autoConvertTimer);
+            autoConvertTimer = setTimeout(convert, 500);
+        }
+
+        function swapPanels() {
+            const inputArea = document.getElementById('inputArea');
+            const outputArea = document.getElementById('outputArea');
+            const inputFormat = document.getElementById('inputFormat');
+            const outputFormat = document.getElementById('outputFormat');
+            
+            const tempValue = inputArea.value;
+            inputArea.value = outputArea.value;
+            outputArea.value = tempValue;
+            
+            const tempFormat = inputFormat.value;
+            inputFormat.value = outputFormat.value;
+            outputFormat.value = tempFormat;
+            
+            updatePlaceholder();
+        }
+
+        function clearAll() {
+            document.getElementById('inputArea').value = '';
+            document.getElementById('outputArea').value = '';
+        }
+
+        async function pasteInput() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('inputArea').value = text;
+                convert();
+            } catch (e) {
+                alert('无法访问剪贴板');
+            }
+        }
+
+        function formatInput() {
+            const format = document.getElementById('inputFormat').value;
+            const input = document.getElementById('inputArea').value;
+            
+            if (format === 'json') {
+                try {
+                    const data = JSON.parse(input);
+                    document.getElementById('inputArea').value = JSON.stringify(data, null, 2);
+                } catch (e) {}
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('outputArea').value;
+            if (output) {
+                navigator.clipboard.writeText(output);
+                alert('已复制');
+            }
+        }
+
+        function downloadOutput() {
+            const output = document.getElementById('outputArea').value;
+            if (!output) return;
+            
+            const format = document.getElementById('outputFormat').value;
+            const extensions = { json: 'json', csv: 'csv', markdown: 'md', sql: 'sql', html: 'html' };
+            
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `data.${extensions[format]}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

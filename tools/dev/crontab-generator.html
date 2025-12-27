@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crontab 生成器 - HTML Tools</title>
+    <meta name="description" content="可视化生成 Cron 表达式，支持常用模板和执行时间预览">
+    <meta name="keywords" content="crontab,cron表达式,定时任务,计划任务,cron生成器">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: #16213e;
+            --text-color: #eee;
+            --border-color: #0f3460;
+            --primary-color: #00d9ff;
+            --secondary-color: #e94560;
+            --hover-color: #00b8d4;
+            --input-bg: #0f3460;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --container-bg: #fff;
+            --text-color: #333;
+            --border-color: #d1d5db;
+            --primary-color: #0284c7;
+            --secondary-color: #dc2626;
+            --hover-color: #0369a1;
+            --input-bg: #f8fafc;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--primary-color);
+        }
+
+        .panel {
+            background: var(--container-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cron-output {
+            background: var(--input-bg);
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .cron-value {
+            font-family: Monaco, Menlo, monospace;
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .cron-desc {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--hover-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-color);
+        }
+
+        .templates {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .template-btn {
+            padding: 12px 15px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+
+        .template-btn:hover {
+            border-color: var(--primary-color);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .template-btn .name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .template-btn .cron {
+            font-family: Monaco, Menlo, monospace;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .field-item {
+            text-align: center;
+        }
+
+        .field-item label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .field-item select {
+            width: 100%;
+            padding: 12px 8px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .field-item select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .field-item input {
+            width: 100%;
+            padding: 12px 8px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            text-align: center;
+            font-family: Monaco, Menlo, monospace;
+        }
+
+        .field-item input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .field-hint {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+
+        .next-runs {
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .next-runs h4 {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .run-list {
+            list-style: none;
+        }
+
+        .run-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-family: Monaco, Menlo, monospace;
+            font-size: 0.9rem;
+        }
+
+        .run-list li:last-child {
+            border-bottom: none;
+        }
+
+        .syntax-help {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .syntax-item {
+            background: var(--input-bg);
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .syntax-item code {
+            color: var(--primary-color);
+            font-family: Monaco, Menlo, monospace;
+        }
+
+        .syntax-item .desc {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .fields-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .templates {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .fields-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    
+    <div class="container">
+        <header>
+            <h1>Crontab 生成器</h1>
+            <p class="subtitle">可视化生成 Cron 定时任务表达式</p>
+        </header>
+
+        <div class="panel">
+            <div class="cron-output">
+                <div class="cron-value" id="cronValue">* * * * *</div>
+                <div class="cron-desc" id="cronDesc">每分钟执行</div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="copyCron()">📋 复制</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">常用模板</h2>
+            <div class="templates">
+                <button class="template-btn" onclick="setTemplate('* * * * *')">
+                    <div class="name">每分钟</div>
+                    <div class="cron">* * * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 * * * *')">
+                    <div class="name">每小时</div>
+                    <div class="cron">0 * * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 0 * * *')">
+                    <div class="name">每天午夜</div>
+                    <div class="cron">0 0 * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 9 * * *')">
+                    <div class="name">每天上午9点</div>
+                    <div class="cron">0 9 * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 9 * * 1-5')">
+                    <div class="name">工作日9点</div>
+                    <div class="cron">0 9 * * 1-5</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 0 * * 0')">
+                    <div class="name">每周日午夜</div>
+                    <div class="cron">0 0 * * 0</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 0 1 * *')">
+                    <div class="name">每月1号</div>
+                    <div class="cron">0 0 1 * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 0 1 1 *')">
+                    <div class="name">每年1月1日</div>
+                    <div class="cron">0 0 1 1 *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('*/5 * * * *')">
+                    <div class="name">每5分钟</div>
+                    <div class="cron">*/5 * * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 */2 * * *')">
+                    <div class="name">每2小时</div>
+                    <div class="cron">0 */2 * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('30 4 * * *')">
+                    <div class="name">每天凌晨4:30</div>
+                    <div class="cron">30 4 * * *</div>
+                </button>
+                <button class="template-btn" onclick="setTemplate('0 0 * * 1')">
+                    <div class="name">每周一午夜</div>
+                    <div class="cron">0 0 * * 1</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">自定义配置</h2>
+            <div class="fields-grid">
+                <div class="field-item">
+                    <label>分钟</label>
+                    <input type="text" id="minute" value="*" oninput="updateCron()">
+                    <div class="field-hint">0-59</div>
+                </div>
+                <div class="field-item">
+                    <label>小时</label>
+                    <input type="text" id="hour" value="*" oninput="updateCron()">
+                    <div class="field-hint">0-23</div>
+                </div>
+                <div class="field-item">
+                    <label>日期</label>
+                    <input type="text" id="day" value="*" oninput="updateCron()">
+                    <div class="field-hint">1-31</div>
+                </div>
+                <div class="field-item">
+                    <label>月份</label>
+                    <input type="text" id="month" value="*" oninput="updateCron()">
+                    <div class="field-hint">1-12</div>
+                </div>
+                <div class="field-item">
+                    <label>星期</label>
+                    <input type="text" id="weekday" value="*" oninput="updateCron()">
+                    <div class="field-hint">0-6 (0=周日)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">下次执行时间</h2>
+            <div class="next-runs">
+                <ul class="run-list" id="nextRuns"></ul>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">语法说明</h2>
+            <div class="syntax-help">
+                <div class="syntax-item">
+                    <code>*</code>
+                    <div class="desc">任意值</div>
+                </div>
+                <div class="syntax-item">
+                    <code>,</code>
+                    <div class="desc">值列表 (1,3,5)</div>
+                </div>
+                <div class="syntax-item">
+                    <code>-</code>
+                    <div class="desc">范围 (1-5)</div>
+                </div>
+                <div class="syntax-item">
+                    <code>/</code>
+                    <div class="desc">步长 (*/5)</div>
+                </div>
+                <div class="syntax-item">
+                    <code>0-59</code>
+                    <div class="desc">分钟范围</div>
+                </div>
+                <div class="syntax-item">
+                    <code>0-23</code>
+                    <div class="desc">小时范围</div>
+                </div>
+                <div class="syntax-item">
+                    <code>1-31</code>
+                    <div class="desc">日期范围</div>
+                </div>
+                <div class="syntax-item">
+                    <code>1-12</code>
+                    <div class="desc">月份范围</div>
+                </div>
+                <div class="syntax-item">
+                    <code>0-6</code>
+                    <div class="desc">星期范围</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Initialize theme
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        function setTemplate(cron) {
+            const parts = cron.split(' ');
+            document.getElementById('minute').value = parts[0] || '*';
+            document.getElementById('hour').value = parts[1] || '*';
+            document.getElementById('day').value = parts[2] || '*';
+            document.getElementById('month').value = parts[3] || '*';
+            document.getElementById('weekday').value = parts[4] || '*';
+            updateCron();
+        }
+
+        function updateCron() {
+            const minute = document.getElementById('minute').value || '*';
+            const hour = document.getElementById('hour').value || '*';
+            const day = document.getElementById('day').value || '*';
+            const month = document.getElementById('month').value || '*';
+            const weekday = document.getElementById('weekday').value || '*';
+
+            const cron = `${minute} ${hour} ${day} ${month} ${weekday}`;
+            document.getElementById('cronValue').textContent = cron;
+            document.getElementById('cronDesc').textContent = describeCron(minute, hour, day, month, weekday);
+            
+            calculateNextRuns(minute, hour, day, month, weekday);
+        }
+
+        function describeCron(minute, hour, day, month, weekday) {
+            const parts = [];
+            
+            // Minute
+            if (minute === '*') {
+                parts.push('每分钟');
+            } else if (minute.includes('/')) {
+                parts.push(`每${minute.split('/')[1]}分钟`);
+            } else if (minute.includes(',')) {
+                parts.push(`在第${minute}分钟`);
+            } else if (minute.includes('-')) {
+                parts.push(`在${minute}分钟`);
+            } else {
+                parts.push(`在第${minute}分钟`);
+            }
+            
+            // Hour
+            if (hour !== '*') {
+                if (hour.includes('/')) {
+                    parts.push(`每${hour.split('/')[1]}小时`);
+                } else if (hour.includes(',')) {
+                    parts.push(`在${hour}点`);
+                } else if (hour.includes('-')) {
+                    parts.push(`在${hour}点`);
+                } else {
+                    parts.push(`在${hour}点`);
+                }
+            }
+            
+            // Day
+            if (day !== '*') {
+                if (day.includes('/')) {
+                    parts.push(`每${day.split('/')[1]}天`);
+                } else {
+                    parts.push(`每月${day}号`);
+                }
+            }
+            
+            // Month
+            if (month !== '*') {
+                const monthNames = ['', '一月', '二月', '三月', '四月', '五月', '六月', 
+                                   '七月', '八月', '九月', '十月', '十一月', '十二月'];
+                if (month.includes(',')) {
+                    parts.push(`在${month}月`);
+                } else if (!month.includes('/') && !month.includes('-')) {
+                    parts.push(`在${monthNames[parseInt(month)] || month + '月'}`);
+                }
+            }
+            
+            // Weekday
+            if (weekday !== '*') {
+                const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                if (weekday === '1-5') {
+                    parts.push('工作日');
+                } else if (weekday === '0,6') {
+                    parts.push('周末');
+                } else if (weekday.includes(',')) {
+                    const days = weekday.split(',').map(d => dayNames[parseInt(d)]).join('、');
+                    parts.push(days);
+                } else if (!weekday.includes('/') && !weekday.includes('-')) {
+                    parts.push(dayNames[parseInt(weekday)] || `星期${weekday}`);
+                }
+            }
+            
+            // Simplify common patterns
+            if (minute === '*' && hour === '*' && day === '*' && month === '*' && weekday === '*') {
+                return '每分钟执行';
+            }
+            if (minute === '0' && hour === '*' && day === '*' && month === '*' && weekday === '*') {
+                return '每小时整点执行';
+            }
+            if (minute === '0' && hour === '0' && day === '*' && month === '*' && weekday === '*') {
+                return '每天午夜执行';
+            }
+            
+            return parts.join(' ') + '执行';
+        }
+
+        function calculateNextRuns(minute, hour, day, month, weekday) {
+            const runs = [];
+            let date = new Date();
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+            
+            for (let i = 0; i < 1000 && runs.length < 5; i++) {
+                date.setMinutes(date.getMinutes() + 1);
+                
+                if (matchesCron(date, minute, hour, day, month, weekday)) {
+                    runs.push(formatDate(date));
+                }
+            }
+            
+            const list = document.getElementById('nextRuns');
+            if (runs.length > 0) {
+                list.innerHTML = runs.map(r => `<li>${r}</li>`).join('');
+            } else {
+                list.innerHTML = '<li>无法计算下次执行时间</li>';
+            }
+        }
+
+        function matchesCron(date, minute, hour, day, month, weekday) {
+            return matchField(date.getMinutes(), minute, 0, 59) &&
+                   matchField(date.getHours(), hour, 0, 23) &&
+                   matchField(date.getDate(), day, 1, 31) &&
+                   matchField(date.getMonth() + 1, month, 1, 12) &&
+                   matchField(date.getDay(), weekday, 0, 6);
+        }
+
+        function matchField(value, field, min, max) {
+            if (field === '*') return true;
+            
+            // Handle step values
+            if (field.includes('/')) {
+                const [range, step] = field.split('/');
+                const stepNum = parseInt(step);
+                if (range === '*') {
+                    return value % stepNum === 0;
+                }
+            }
+            
+            // Handle ranges
+            if (field.includes('-') && !field.includes(',')) {
+                const [start, end] = field.split('-').map(Number);
+                return value >= start && value <= end;
+            }
+            
+            // Handle lists
+            if (field.includes(',')) {
+                const values = field.split(',').map(v => {
+                    if (v.includes('-')) {
+                        const [start, end] = v.split('-').map(Number);
+                        const range = [];
+                        for (let i = start; i <= end; i++) range.push(i);
+                        return range;
+                    }
+                    return [parseInt(v)];
+                }).flat();
+                return values.includes(value);
+            }
+            
+            // Single value
+            return parseInt(field) === value;
+        }
+
+        function formatDate(date) {
+            const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                weekday: 'short'
+            };
+            return date.toLocaleString('zh-CN', options);
+        }
+
+        function copyCron() {
+            const cron = document.getElementById('cronValue').textContent;
+            navigator.clipboard.writeText(cron).then(() => {
+                showToast('已复制: ' + cron);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Initialize
+        updateCron();
+    </script>
+</body>
+</html>

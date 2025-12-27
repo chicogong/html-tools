@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP 请求测试 - API 调试工具</title>
+    <meta name="description" content="在线发送 HTTP 请求，测试 REST API，支持 GET/POST/PUT/DELETE，查看响应头和响应体">
+    <meta name="keywords" content="http,api,rest,postman,请求测试,调试,fetch">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --accent-color: #22c55e;
+            --accent-hover: #16a34a;
+            --method-get: #22c55e;
+            --method-post: #3b82f6;
+            --method-put: #f59e0b;
+            --method-delete: #ef4444;
+        }
+        [data-theme="light"] {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 { font-size: 1.8rem; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .theme-toggle, .btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover, .btn:hover { border-color: var(--accent-color); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .back-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .request-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .method-select {
+            padding: 12px 15px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 100px;
+        }
+        .method-select option { font-weight: 600; }
+        .method-select.get { color: var(--method-get); }
+        .method-select.post { color: var(--method-post); }
+        .method-select.put { color: var(--method-put); }
+        .method-select.delete { color: var(--method-delete); }
+
+        .url-input {
+            flex: 1;
+            padding: 12px 15px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: Monaco, Menlo, monospace;
+        }
+        .url-input:focus { outline: none; border-color: var(--accent-color); }
+
+        .send-btn {
+            padding: 12px 30px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .send-btn:hover { background: var(--accent-hover); }
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--text-primary); }
+        .tab.active {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-bottom-color: var(--bg-secondary);
+        }
+
+        .tab-content {
+            display: none;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 0 8px 8px;
+            padding: 15px;
+        }
+        .tab-content.active { display: block; }
+
+        .params-table {
+            width: 100%;
+        }
+        .param-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .param-row input {
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .param-row input:focus { outline: none; border-color: var(--accent-color); }
+        .param-row button {
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .param-row button:hover { color: #ef4444; border-color: #ef4444; }
+
+        .add-param-btn {
+            padding: 8px 15px;
+            background: var(--bg-tertiary);
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .add-param-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+        .body-textarea {
+            width: 100%;
+            min-height: 150px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        .body-textarea:focus { outline: none; border-color: var(--accent-color); }
+
+        .response-section {
+            margin-top: 25px;
+        }
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .response-header h2 { font-size: 1.2rem; }
+        .response-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+        }
+        .response-stats .stat {
+            padding: 5px 12px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+        .response-stats .status { font-weight: 600; }
+        .response-stats .status.success { color: var(--method-get); }
+        .response-stats .status.error { color: var(--method-delete); }
+
+        .response-body {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .response-body pre {
+            padding: 15px;
+            overflow-x: auto;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        .loading::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 HTTP 请求测试</h1>
+            <div class="header-actions">
+                <a href="../../index.html" class="back-link">← 返回首页</a>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+            </div>
+        </header>
+
+        <div class="request-bar">
+            <select class="method-select get" id="method" onchange="updateMethodColor()">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+            <input type="url" class="url-input" id="url" placeholder="https://api.example.com/endpoint" value="https://jsonplaceholder.typicode.com/posts/1">
+            <button class="send-btn" id="sendBtn" onclick="sendRequest()">发送请求</button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="params">参数</div>
+            <div class="tab" data-tab="headers">请求头</div>
+            <div class="tab" data-tab="body">请求体</div>
+        </div>
+
+        <div class="tab-content active" id="params-tab">
+            <div class="params-table" id="paramsTable">
+                <div class="param-row">
+                    <input type="text" placeholder="参数名">
+                    <input type="text" placeholder="参数值">
+                    <button onclick="removeParam(this)">×</button>
+                </div>
+            </div>
+            <button class="add-param-btn" onclick="addParam('paramsTable')">+ 添加参数</button>
+        </div>
+
+        <div class="tab-content" id="headers-tab">
+            <div class="params-table" id="headersTable">
+                <div class="param-row">
+                    <input type="text" placeholder="Header 名" value="Content-Type">
+                    <input type="text" placeholder="Header 值" value="application/json">
+                    <button onclick="removeParam(this)">×</button>
+                </div>
+            </div>
+            <button class="add-param-btn" onclick="addParam('headersTable')">+ 添加请求头</button>
+        </div>
+
+        <div class="tab-content" id="body-tab">
+            <textarea class="body-textarea" id="requestBody" placeholder="{&quot;key&quot;: &quot;value&quot;}"></textarea>
+        </div>
+
+        <div class="response-section" id="responseSection" style="display: none;">
+            <div class="response-header">
+                <h2>📥 响应</h2>
+                <div class="response-stats">
+                    <span class="stat">状态: <span class="status" id="statusCode">200</span></span>
+                    <span class="stat">耗时: <span id="responseTime">0ms</span></span>
+                    <span class="stat">大小: <span id="responseSize">0 B</span></span>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="response-body">响应体</div>
+                <div class="tab" data-tab="response-headers">响应头</div>
+            </div>
+
+            <div class="tab-content active" id="response-body-tab">
+                <div class="response-body">
+                    <pre id="responseBody"></pre>
+                </div>
+            </div>
+
+            <div class="tab-content" id="response-headers-tab">
+                <div class="response-body">
+                    <pre id="responseHeaders"></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <p>👆 输入 URL 并点击发送请求</p>
+            <p style="margin-top: 10px; font-size: 12px;">支持 GET, POST, PUT, PATCH, DELETE 方法</p>
+        </div>
+    </div>
+
+    <script>
+        // Theme handling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Tab handling
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabGroup = tab.closest('.container').querySelectorAll('.tab');
+                const contentGroup = tab.closest('.container').querySelectorAll('.tab-content');
+                
+                // Find parent container
+                const parent = tab.parentElement;
+                const tabs = parent.querySelectorAll('.tab');
+                const tabId = tab.dataset.tab;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Find corresponding content
+                const contents = parent.nextElementSibling?.classList.contains('tab-content') 
+                    ? [parent.nextElementSibling, parent.nextElementSibling.nextElementSibling].filter(Boolean)
+                    : document.querySelectorAll(`#${tabId}-tab`);
+                
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    if (c.id === tabId + '-tab') {
+                        c.classList.add('active');
+                    } else if (tabs[0].parentElement.nextElementSibling === c || 
+                               tabs[0].parentElement.nextElementSibling?.nextElementSibling === c) {
+                        c.classList.remove('active');
+                    }
+                });
+                
+                document.getElementById(tabId + '-tab')?.classList.add('active');
+                
+                // Handle tab groups
+                if (['params', 'headers', 'body'].includes(tabId)) {
+                    ['params', 'headers', 'body'].forEach(id => {
+                        document.getElementById(id + '-tab').classList.toggle('active', id === tabId);
+                    });
+                }
+                if (['response-body', 'response-headers'].includes(tabId)) {
+                    ['response-body', 'response-headers'].forEach(id => {
+                        document.getElementById(id + '-tab').classList.toggle('active', id === tabId);
+                    });
+                }
+            });
+        });
+
+        // Update method color
+        function updateMethodColor() {
+            const select = document.getElementById('method');
+            select.className = 'method-select ' + select.value.toLowerCase();
+        }
+
+        // Add parameter row
+        function addParam(tableId) {
+            const table = document.getElementById(tableId);
+            const row = document.createElement('div');
+            row.className = 'param-row';
+            row.innerHTML = `
+                <input type="text" placeholder="${tableId === 'headersTable' ? 'Header 名' : '参数名'}">
+                <input type="text" placeholder="${tableId === 'headersTable' ? 'Header 值' : '参数值'}">
+                <button onclick="removeParam(this)">×</button>
+            `;
+            table.appendChild(row);
+        }
+
+        // Remove parameter row
+        function removeParam(btn) {
+            btn.parentElement.remove();
+        }
+
+        // Get params from table
+        function getParamsFromTable(tableId) {
+            const params = {};
+            const rows = document.getElementById(tableId).querySelectorAll('.param-row');
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                const key = inputs[0].value.trim();
+                const value = inputs[1].value.trim();
+                if (key) params[key] = value;
+            });
+            return params;
+        }
+
+        // Format size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Send request
+        async function sendRequest() {
+            const method = document.getElementById('method').value;
+            let url = document.getElementById('url').value;
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (!url) {
+                alert('请输入 URL');
+                return;
+            }
+
+            // Add query params for GET
+            const queryParams = getParamsFromTable('paramsTable');
+            if (Object.keys(queryParams).length > 0) {
+                const params = new URLSearchParams(queryParams);
+                url += (url.includes('?') ? '&' : '?') + params.toString();
+            }
+
+            // Get headers
+            const headers = getParamsFromTable('headersTable');
+
+            // Get body
+            const body = document.getElementById('requestBody').value;
+
+            // Show loading
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中...';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('responseSection').style.display = 'block';
+            document.getElementById('responseBody').innerHTML = '<div class="loading">正在请求...</div>';
+
+            const startTime = Date.now();
+
+            try {
+                const options = {
+                    method,
+                    headers,
+                    mode: 'cors'
+                };
+
+                if (['POST', 'PUT', 'PATCH'].includes(method) && body) {
+                    options.body = body;
+                }
+
+                const response = await fetch(url, options);
+                const endTime = Date.now();
+
+                // Get response text
+                const responseText = await response.text();
+                
+                // Try to parse as JSON
+                let formattedResponse;
+                try {
+                    const json = JSON.parse(responseText);
+                    formattedResponse = JSON.stringify(json, null, 2);
+                } catch {
+                    formattedResponse = responseText;
+                }
+
+                // Update UI
+                const statusEl = document.getElementById('statusCode');
+                statusEl.textContent = `${response.status} ${response.statusText}`;
+                statusEl.className = 'status ' + (response.ok ? 'success' : 'error');
+                
+                document.getElementById('responseTime').textContent = (endTime - startTime) + 'ms';
+                document.getElementById('responseSize').textContent = formatSize(new Blob([responseText]).size);
+                document.getElementById('responseBody').textContent = formattedResponse;
+
+                // Response headers
+                let headersText = '';
+                response.headers.forEach((value, key) => {
+                    headersText += `${key}: ${value}\n`;
+                });
+                document.getElementById('responseHeaders').textContent = headersText || '无法读取响应头 (CORS 限制)';
+
+            } catch (error) {
+                document.getElementById('statusCode').textContent = 'Error';
+                document.getElementById('statusCode').className = 'status error';
+                document.getElementById('responseBody').textContent = `请求失败: ${error.message}\n\n可能原因:\n- URL 不正确\n- CORS 策略限制\n- 网络错误`;
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.textContent = '发送请求';
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                sendRequest();
+            }
+        });
+
+        // Initialize
+        initTheme();
+    </script>
+</body>
+</html>

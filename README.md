@@ -41,7 +41,13 @@
 
 ## 📸 预览
 
-![首页](screenshots/homepage.png)
+**深色模式**
+
+![深色模式](screenshots/homepage-dark.png)
+
+**亮色模式**
+
+![亮色模式](screenshots/homepage-light.png)
 
 ## 🔥 特色工具推荐
 

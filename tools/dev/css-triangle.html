@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS 三角形生成器 | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { padding: 1rem; }
+        .container { max-width: 1000px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+        .controls-panel { background: var(--pico-card-background-color); padding: 1rem; border-radius: 8px; }
+        .controls-panel h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+        .control-group input, .control-group select { width: 100%; margin-bottom: 0; }
+        .control-row { display: flex; gap: 0.5rem; align-items: center; }
+        .control-row input { flex: 1; }
+        .direction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .direction-btn { padding: 0.5rem; text-align: center; border: 2px solid var(--pico-muted-border-color); border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 1.2rem; }
+        .direction-btn:hover { border-color: var(--pico-primary); }
+        .direction-btn.active { border-color: var(--pico-primary); background: var(--pico-primary-background); }
+        .preview-panel { display: flex; flex-direction: column; }
+        .preview-area { flex: 1; background: repeating-conic-gradient(#ccc 0% 25%, white 0% 50%) 50% / 20px 20px; border-radius: 8px; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+        [data-theme="dark"] .preview-area { background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 20px 20px; }
+        .triangle { width: 0; height: 0; transition: all 0.3s; }
+        .code-panel { margin-top: 1rem; }
+        .code-panel h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+        .code-output { position: relative; }
+        .code-output pre { font-family: 'Monaco', 'Menlo', monospace; font-size: 0.8rem; background: var(--pico-card-background-color); padding: 1rem; border-radius: 4px; margin: 0; overflow-x: auto; }
+        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .presets { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .presets button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .color-preview { width: 30px; height: 30px; border-radius: 4px; border: 1px solid var(--pico-muted-border-color); }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🔺 CSS 三角形生成器</h1>
+            <button id="themeToggle" class="outline" style="padding: 0.5rem;">🌓</button>
+        </header>
+
+        <div class="presets">
+            <span style="line-height: 2;">预设：</span>
+            <button class="outline" onclick="applyPreset('arrow-up')">向上箭头</button>
+            <button class="outline" onclick="applyPreset('arrow-right')">向右箭头</button>
+            <button class="outline" onclick="applyPreset('tooltip')">提示框</button>
+            <button class="outline" onclick="applyPreset('corner')">角标</button>
+            <button class="outline" onclick="applyPreset('ribbon')">丝带</button>
+        </div>
+
+        <div class="main-grid">
+            <div class="controls-panel">
+                <h3>方向</h3>
+                <div class="direction-grid">
+                    <div class="direction-btn" data-dir="top-left" onclick="setDirection('top-left')">↖</div>
+                    <div class="direction-btn" data-dir="top" onclick="setDirection('top')">↑</div>
+                    <div class="direction-btn" data-dir="top-right" onclick="setDirection('top-right')">↗</div>
+                    <div class="direction-btn" data-dir="left" onclick="setDirection('left')">←</div>
+                    <div class="direction-btn" data-dir="center" style="visibility: hidden;"></div>
+                    <div class="direction-btn" data-dir="right" onclick="setDirection('right')">→</div>
+                    <div class="direction-btn" data-dir="bottom-left" onclick="setDirection('bottom-left')">↙</div>
+                    <div class="direction-btn active" data-dir="bottom" onclick="setDirection('bottom')">↓</div>
+                    <div class="direction-btn" data-dir="bottom-right" onclick="setDirection('bottom-right')">↘</div>
+                </div>
+
+                <h3 style="margin-top: 1.5rem;">尺寸</h3>
+                <div class="control-group">
+                    <label>宽度 (px)</label>
+                    <input type="range" id="width" min="10" max="200" value="100" oninput="updateTriangle()">
+                    <div class="control-row">
+                        <input type="number" id="widthNum" value="100" min="1" max="500" oninput="syncSlider('width')">
+                        <span>px</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>高度 (px)</label>
+                    <input type="range" id="height" min="10" max="200" value="80" oninput="updateTriangle()">
+                    <div class="control-row">
+                        <input type="number" id="heightNum" value="80" min="1" max="500" oninput="syncSlider('height')">
+                        <span>px</span>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 1.5rem;">颜色</h3>
+                <div class="control-group">
+                    <div class="control-row">
+                        <input type="color" id="color" value="#6366f1" oninput="updateTriangle()">
+                        <input type="text" id="colorText" value="#6366f1" oninput="syncColor()">
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 1.5rem;">等腰三角形</h3>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="isIsosceles" checked onchange="updateTriangle()">
+                        保持等腰
+                    </label>
+                </div>
+            </div>
+
+            <div class="preview-panel">
+                <div class="preview-area">
+                    <div class="triangle" id="triangle"></div>
+                </div>
+
+                <div class="code-panel">
+                    <h3>CSS 代码</h3>
+                    <div class="code-output">
+                        <pre id="cssCode"></pre>
+                        <button class="outline copy-btn" onclick="copyCode()">复制</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let direction = 'bottom';
+        
+        const presets = {
+            'arrow-up': { direction: 'top', width: 60, height: 40, color: '#22c55e' },
+            'arrow-right': { direction: 'right', width: 40, height: 60, color: '#3b82f6' },
+            'tooltip': { direction: 'bottom', width: 20, height: 10, color: '#1f2937' },
+            'corner': { direction: 'top-right', width: 80, height: 80, color: '#ef4444' },
+            'ribbon': { direction: 'bottom-left', width: 100, height: 100, color: '#f59e0b' }
+        };
+
+        function setDirection(dir) {
+            direction = dir;
+            document.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.dir === dir);
+            });
+            updateTriangle();
+        }
+
+        function syncSlider(name) {
+            const num = document.getElementById(name + 'Num').value;
+            document.getElementById(name).value = Math.min(num, 200);
+            updateTriangle();
+        }
+
+        function syncColor() {
+            const colorText = document.getElementById('colorText').value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(colorText)) {
+                document.getElementById('color').value = colorText;
+                updateTriangle();
+            }
+        }
+
+        function updateTriangle() {
+            const width = parseInt(document.getElementById('widthNum').value) || 100;
+            const height = parseInt(document.getElementById('heightNum').value) || 80;
+            const color = document.getElementById('color').value;
+            const isIsosceles = document.getElementById('isIsosceles').checked;
+
+            document.getElementById('width').value = Math.min(width, 200);
+            document.getElementById('height').value = Math.min(height, 200);
+            document.getElementById('colorText').value = color;
+
+            const triangle = document.getElementById('triangle');
+            const halfWidth = isIsosceles ? width / 2 : width;
+            
+            let css = {};
+            
+            switch (direction) {
+                case 'top':
+                    css = {
+                        borderLeft: halfWidth + 'px solid transparent',
+                        borderRight: halfWidth + 'px solid transparent',
+                        borderBottom: height + 'px solid ' + color,
+                        borderTop: 'none'
+                    };
+                    break;
+                case 'bottom':
+                    css = {
+                        borderLeft: halfWidth + 'px solid transparent',
+                        borderRight: halfWidth + 'px solid transparent',
+                        borderTop: height + 'px solid ' + color,
+                        borderBottom: 'none'
+                    };
+                    break;
+                case 'left':
+                    css = {
+                        borderTop: halfWidth + 'px solid transparent',
+                        borderBottom: halfWidth + 'px solid transparent',
+                        borderRight: height + 'px solid ' + color,
+                        borderLeft: 'none'
+                    };
+                    break;
+                case 'right':
+                    css = {
+                        borderTop: halfWidth + 'px solid transparent',
+                        borderBottom: halfWidth + 'px solid transparent',
+                        borderLeft: height + 'px solid ' + color,
+                        borderRight: 'none'
+                    };
+                    break;
+                case 'top-left':
+                    css = {
+                        borderTop: height + 'px solid ' + color,
+                        borderRight: width + 'px solid transparent',
+                        borderBottom: 'none',
+                        borderLeft: 'none'
+                    };
+                    break;
+                case 'top-right':
+                    css = {
+                        borderTop: height + 'px solid ' + color,
+                        borderLeft: width + 'px solid transparent',
+                        borderBottom: 'none',
+                        borderRight: 'none'
+                    };
+                    break;
+                case 'bottom-left':
+                    css = {
+                        borderBottom: height + 'px solid ' + color,
+                        borderRight: width + 'px solid transparent',
+                        borderTop: 'none',
+                        borderLeft: 'none'
+                    };
+                    break;
+                case 'bottom-right':
+                    css = {
+                        borderBottom: height + 'px solid ' + color,
+                        borderLeft: width + 'px solid transparent',
+                        borderTop: 'none',
+                        borderRight: 'none'
+                    };
+                    break;
+            }
+
+            // 应用样式到预览
+            triangle.style.borderTop = css.borderTop || '';
+            triangle.style.borderRight = css.borderRight || '';
+            triangle.style.borderBottom = css.borderBottom || '';
+            triangle.style.borderLeft = css.borderLeft || '';
+
+            // 生成 CSS 代码
+            generateCode(css);
+        }
+
+        function generateCode(css) {
+            let code = '.triangle {\n';
+            code += '  width: 0;\n';
+            code += '  height: 0;\n';
+            
+            if (css.borderTop && css.borderTop !== 'none') {
+                code += '  border-top: ' + css.borderTop + ';\n';
+            }
+            if (css.borderRight && css.borderRight !== 'none') {
+                code += '  border-right: ' + css.borderRight + ';\n';
+            }
+            if (css.borderBottom && css.borderBottom !== 'none') {
+                code += '  border-bottom: ' + css.borderBottom + ';\n';
+            }
+            if (css.borderLeft && css.borderLeft !== 'none') {
+                code += '  border-left: ' + css.borderLeft + ';\n';
+            }
+            
+            code += '}';
+
+            document.getElementById('cssCode').textContent = code;
+        }
+
+        function applyPreset(name) {
+            const preset = presets[name];
+            if (!preset) return;
+
+            document.getElementById('widthNum').value = preset.width;
+            document.getElementById('heightNum').value = preset.height;
+            document.getElementById('color').value = preset.color;
+            document.getElementById('colorText').value = preset.color;
+            setDirection(preset.direction);
+        }
+
+        function copyCode() {
+            const code = document.getElementById('cssCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                setTimeout(() => btn.textContent = '复制', 1500);
+            });
+        }
+
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        
+        themeToggle.addEventListener('click', function() {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+
+        // 初始化
+        updateTriangle();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG to JSX Converter | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .converter-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .converter-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+        
+        .panel-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        textarea {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 400px;
+        }
+        
+        .options-section {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        .options-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .option-item label {
+            margin: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .option-item input[type="checkbox"] {
+            margin: 0;
+            width: auto;
+        }
+        
+        .framework-select {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .framework-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--pico-muted-border-color);
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .framework-btn:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .framework-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        
+        .preview-section {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .preview-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 150px;
+            background: repeating-conic-gradient(#80808020 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+            border-radius: 6px;
+            padding: 1rem;
+        }
+        
+        .preview-container svg {
+            max-width: 100%;
+            max-height: 200px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .stat-item {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--pico-color);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: var(--success-color);
+        }
+        
+        .toast.error {
+            background: var(--error-color);
+        }
+        
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .drop-zone-text {
+            color: var(--pico-muted-color);
+            margin: 0;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../../index.html" class="logo">HTML Tools</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </header>
+        
+        <main>
+            <h1>SVG to JSX Converter</h1>
+            <p>将 SVG 代码转换为 React JSX 或其他框架组件格式</p>
+            
+            <div class="options-section">
+                <div class="options-title">输出框架</div>
+                <div class="framework-select">
+                    <button class="framework-btn active" data-framework="react" onclick="setFramework('react')">React</button>
+                    <button class="framework-btn" data-framework="react-native" onclick="setFramework('react-native')">React Native</button>
+                    <button class="framework-btn" data-framework="vue" onclick="setFramework('vue')">Vue 3</button>
+                    <button class="framework-btn" data-framework="solid" onclick="setFramework('solid')">Solid.js</button>
+                    <button class="framework-btn" data-framework="preact" onclick="setFramework('preact')">Preact</button>
+                </div>
+            </div>
+            
+            <div class="options-section">
+                <div class="options-title">转换选项</div>
+                <div class="options-grid">
+                    <div class="option-item">
+                        <input type="checkbox" id="optIcon" checked onchange="convert()">
+                        <label for="optIcon">生成图标组件</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optTypescript" onchange="convert()">
+                        <label for="optTypescript">TypeScript 类型</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optMemo" onchange="convert()">
+                        <label for="optMemo">使用 memo 优化</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optRef" onchange="convert()">
+                        <label for="optRef">支持 ref 转发</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optRemoveSize" checked onchange="convert()">
+                        <label for="optRemoveSize">移除固定尺寸</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optCurrentColor" checked onchange="convert()">
+                        <label for="optCurrentColor">使用 currentColor</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optRemoveXmlns" checked onchange="convert()">
+                        <label for="optRemoveXmlns">移除 xmlns 属性</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="optPrettier" checked onchange="convert()">
+                        <label for="optPrettier">格式化输出</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="converter-section">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">SVG 输入</h3>
+                        <div class="panel-actions">
+                            <button class="btn-small" onclick="loadExample()">示例</button>
+                            <button class="btn-small" onclick="clearInput()">清空</button>
+                        </div>
+                    </div>
+                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <p class="drop-zone-text">拖拽 SVG 文件到此处，或点击选择文件</p>
+                    </div>
+                    <input type="file" class="file-input" id="fileInput" accept=".svg" onchange="handleFileSelect(event)">
+                    <div id="errorMessage" class="error-message" style="display: none;"></div>
+                    <textarea id="svgInput" placeholder="在此粘贴 SVG 代码..." oninput="convert()"></textarea>
+                </div>
+                
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title" id="outputTitle">JSX 输出</h3>
+                        <div class="panel-actions">
+                            <button class="btn-small" onclick="copyOutput()">复制</button>
+                            <button class="btn-small" onclick="downloadOutput()">下载</button>
+                        </div>
+                    </div>
+                    <textarea id="jsxOutput" readonly placeholder="转换后的代码将显示在这里..."></textarea>
+                </div>
+            </div>
+            
+            <div class="preview-section">
+                <div class="preview-title">SVG 预览</div>
+                <div class="preview-container" id="previewContainer">
+                    <span style="color: var(--pico-muted-color);">等待 SVG 输入...</span>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">原始大小: <span class="stat-value" id="originalSize">0 B</span></div>
+                    <div class="stat-item">输出大小: <span class="stat-value" id="outputSize">0 B</span></div>
+                    <div class="stat-item">元素数量: <span class="stat-value" id="elementCount">0</span></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        let currentFramework = 'react';
+        
+        // Theme functions
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeIcon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeIcon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        // Framework selection
+        function setFramework(framework) {
+            currentFramework = framework;
+            document.querySelectorAll('.framework-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.framework === framework);
+            });
+            
+            const titles = {
+                'react': 'JSX 输出 (React)',
+                'react-native': 'JSX 输出 (React Native)',
+                'vue': 'Vue 3 模板',
+                'solid': 'Solid.js 输出',
+                'preact': 'JSX 输出 (Preact)'
+            };
+            document.getElementById('outputTitle').textContent = titles[framework];
+            
+            // Update options visibility based on framework
+            const memoOption = document.getElementById('optMemo').closest('.option-item');
+            const refOption = document.getElementById('optRef').closest('.option-item');
+            
+            if (framework === 'vue') {
+                memoOption.style.display = 'none';
+                refOption.style.display = 'none';
+            } else {
+                memoOption.style.display = 'flex';
+                refOption.style.display = 'flex';
+            }
+            
+            convert();
+        }
+        
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'image/svg+xml') {
+                readFile(file);
+            } else {
+                showToast('请上传 SVG 文件', 'error');
+            }
+        });
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                readFile(file);
+            }
+        }
+        
+        function readFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('svgInput').value = e.target.result;
+                convert();
+            };
+            reader.readAsText(file);
+        }
+        
+        // SVG attribute to JSX attribute conversion
+        const attrMap = {
+            'class': 'className',
+            'for': 'htmlFor',
+            'tabindex': 'tabIndex',
+            'clip-path': 'clipPath',
+            'clip-rule': 'clipRule',
+            'fill-opacity': 'fillOpacity',
+            'fill-rule': 'fillRule',
+            'stroke-dasharray': 'strokeDasharray',
+            'stroke-dashoffset': 'strokeDashoffset',
+            'stroke-linecap': 'strokeLinecap',
+            'stroke-linejoin': 'strokeLinejoin',
+            'stroke-miterlimit': 'strokeMiterlimit',
+            'stroke-opacity': 'strokeOpacity',
+            'stroke-width': 'strokeWidth',
+            'font-family': 'fontFamily',
+            'font-size': 'fontSize',
+            'font-style': 'fontStyle',
+            'font-weight': 'fontWeight',
+            'text-anchor': 'textAnchor',
+            'text-decoration': 'textDecoration',
+            'dominant-baseline': 'dominantBaseline',
+            'alignment-baseline': 'alignmentBaseline',
+            'xlink:href': 'xlinkHref',
+            'xml:space': 'xmlSpace',
+            'stop-color': 'stopColor',
+            'stop-opacity': 'stopOpacity'
+        };
+        
+        function convertAttrName(name, framework) {
+            if (framework === 'vue') {
+                return name; // Vue uses original attribute names
+            }
+            return attrMap[name] || name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        }
+        
+        function escapeJsx(str) {
+            return str.replace(/"/g, '&quot;');
+        }
+        
+        function convert() {
+            const svg = document.getElementById('svgInput').value.trim();
+            const errorEl = document.getElementById('errorMessage');
+            
+            if (!svg) {
+                document.getElementById('jsxOutput').value = '';
+                document.getElementById('previewContainer').innerHTML = '<span style="color: var(--pico-muted-color);">等待 SVG 输入...</span>';
+                updateStats(0, 0, 0);
+                errorEl.style.display = 'none';
+                return;
+            }
+            
+            try {
+                // Parse SVG
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svg, 'image/svg+xml');
+                const parseError = doc.querySelector('parsererror');
+                
+                if (parseError) {
+                    throw new Error('SVG 解析错误: ' + parseError.textContent.slice(0, 100));
+                }
+                
+                const svgEl = doc.querySelector('svg');
+                if (!svgEl) {
+                    throw new Error('未找到有效的 SVG 元素');
+                }
+                
+                errorEl.style.display = 'none';
+                
+                // Preview
+                document.getElementById('previewContainer').innerHTML = svg;
+                
+                // Get options
+                const options = {
+                    icon: document.getElementById('optIcon').checked,
+                    typescript: document.getElementById('optTypescript').checked,
+                    memo: document.getElementById('optMemo').checked,
+                    ref: document.getElementById('optRef').checked,
+                    removeSize: document.getElementById('optRemoveSize').checked,
+                    currentColor: document.getElementById('optCurrentColor').checked,
+                    removeXmlns: document.getElementById('optRemoveXmlns').checked,
+                    prettier: document.getElementById('optPrettier').checked
+                };
+                
+                // Convert
+                let output;
+                switch (currentFramework) {
+                    case 'react':
+                    case 'preact':
+                        output = convertToReact(svgEl, options, currentFramework);
+                        break;
+                    case 'react-native':
+                        output = convertToReactNative(svgEl, options);
+                        break;
+                    case 'vue':
+                        output = convertToVue(svgEl, options);
+                        break;
+                    case 'solid':
+                        output = convertToSolid(svgEl, options);
+                        break;
+                }
+                
+                document.getElementById('jsxOutput').value = output;
+                
+                // Stats
+                const elementCount = svgEl.querySelectorAll('*').length + 1;
+                updateStats(svg.length, output.length, elementCount);
+                
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+                document.getElementById('jsxOutput').value = '';
+            }
+        }
+        
+        function convertToReact(svgEl, options, framework = 'react') {
+            const processedSvg = processSvgElement(svgEl.cloneNode(true), options, 'react');
+            const jsxContent = elementToJsx(processedSvg, options, 2);
+            
+            const componentName = 'IconComponent';
+            const importStatement = framework === 'preact' 
+                ? "import { h } from 'preact';"
+                : "import React from 'react';";
+            
+            let propsType = '';
+            let propsParam = 'props';
+            let spreadProps = '{...props}';
+            
+            if (options.typescript) {
+                if (options.icon) {
+                    propsType = framework === 'preact'
+                        ? 'interface IconProps extends JSX.SVGAttributes<SVGSVGElement> {\n  size?: number | string;\n  color?: string;\n}\n\n'
+                        : 'interface IconProps extends React.SVGProps<SVGSVGElement> {\n  size?: number | string;\n  color?: string;\n}\n\n';
+                    propsParam = '{ size = 24, color = "currentColor", ...props }: IconProps';
+                } else {
+                    propsType = framework === 'preact'
+                        ? 'type IconProps = JSX.SVGAttributes<SVGSVGElement>;\n\n'
+                        : 'type IconProps = React.SVGProps<SVGSVGElement>;\n\n';
+                    propsParam = 'props: IconProps';
+                }
+            } else if (options.icon) {
+                propsParam = '{ size = 24, color = "currentColor", ...props }';
+            }
+            
+            let component;
+            if (options.ref && framework === 'react') {
+                const refType = options.typescript ? '<SVGSVGElement, IconProps>' : '';
+                component = `const ${componentName} = React.forwardRef${refType}((${propsParam}, ref) => (\n${jsxContent}\n));`;
+            } else {
+                const funcKeyword = options.typescript ? 'const' : 'function';
+                const arrow = options.typescript ? ' = (' : '(';
+                const arrowEnd = options.typescript ? ') =>' : ')';
+                
+                if (options.typescript) {
+                    component = `const ${componentName} = (${propsParam}) => (\n${jsxContent}\n);`;
+                } else {
+                    component = `function ${componentName}(${propsParam}) {\n  return (\n${jsxContent}\n  );\n}`;
+                }
+            }
+            
+            if (options.memo && framework === 'react') {
+                component = `const ${componentName}Base = ${options.ref ? `React.forwardRef((${propsParam}, ref) => (\n${jsxContent}\n))` : `(${propsParam}) => (\n${jsxContent}\n)`};\n\nconst ${componentName} = React.memo(${componentName}Base);`;
+            }
+            
+            let output = `${importStatement}\n\n${propsType}${component}\n\nexport default ${componentName};`;
+            
+            if (options.prettier) {
+                output = formatCode(output);
+            }
+            
+            return output;
+        }
+        
+        function convertToReactNative(svgEl, options) {
+            const processedSvg = processSvgElement(svgEl.cloneNode(true), options, 'react-native');
+            
+            const componentName = 'IconComponent';
+            let imports = "import React from 'react';\nimport Svg, { ";
+            
+            // Collect used elements
+            const usedElements = new Set();
+            function collectElements(el) {
+                const tagName = el.tagName.toLowerCase();
+                if (tagName !== 'svg') {
+                    usedElements.add(tagName.charAt(0).toUpperCase() + tagName.slice(1));
+                }
+                Array.from(el.children).forEach(collectElements);
+            }
+            collectElements(processedSvg);
+            
+            imports += Array.from(usedElements).join(', ') + " } from 'react-native-svg';";
+            
+            const jsxContent = elementToJsxRN(processedSvg, options, 2);
+            
+            let propsType = '';
+            let propsParam = 'props';
+            
+            if (options.typescript) {
+                propsType = "import { SvgProps } from 'react-native-svg';\n\ninterface IconProps extends SvgProps {\n  size?: number;\n  color?: string;\n}\n\n";
+                propsParam = '{ size = 24, color = "currentColor", ...props }: IconProps';
+            } else if (options.icon) {
+                propsParam = '{ size = 24, color = "currentColor", ...props }';
+            }
+            
+            let component = `const ${componentName} = (${propsParam}) => (\n${jsxContent}\n);`;
+            
+            if (options.memo) {
+                component = `const ${componentName}Base = (${propsParam}) => (\n${jsxContent}\n);\n\nconst ${componentName} = React.memo(${componentName}Base);`;
+            }
+            
+            let output = `${imports}\n${propsType ? '\n' + propsType : '\n\n'}${component}\n\nexport default ${componentName};`;
+            
+            if (options.prettier) {
+                output = formatCode(output);
+            }
+            
+            return output;
+        }
+        
+        function convertToVue(svgEl, options) {
+            const processedSvg = processSvgElement(svgEl.cloneNode(true), options, 'vue');
+            const templateContent = elementToVue(processedSvg, options, 2);
+            
+            let script = '';
+            if (options.typescript) {
+                script = `\n<script setup lang="ts">\ninterface Props {\n  size?: number | string;\n  color?: string;\n}\n\nwithDefaults(defineProps<Props>(), {\n  size: 24,\n  color: 'currentColor'\n});\n</script>`;
+            } else if (options.icon) {
+                script = `\n<script setup>\ndefineProps({\n  size: {\n    type: [Number, String],\n    default: 24\n  },\n  color: {\n    type: String,\n    default: 'currentColor'\n  }\n});\n</script>`;
+            }
+            
+            let output = `<template>\n${templateContent}\n</template>${script}`;
+            
+            return output;
+        }
+        
+        function convertToSolid(svgEl, options) {
+            const processedSvg = processSvgElement(svgEl.cloneNode(true), options, 'solid');
+            const jsxContent = elementToJsx(processedSvg, options, 2);
+            
+            const componentName = 'IconComponent';
+            
+            let propsType = '';
+            let propsParam = 'props';
+            
+            if (options.typescript) {
+                propsType = "import { JSX } from 'solid-js';\n\ninterface IconProps extends JSX.SvgSVGAttributes<SVGSVGElement> {\n  size?: number | string;\n  color?: string;\n}\n\n";
+                propsParam = 'props: IconProps';
+            }
+            
+            const component = `const ${componentName} = (${propsParam}) => {\n  const { size = 24, color = "currentColor", ...rest } = props;\n  return (\n${jsxContent}\n  );\n};`;
+            
+            let output = `${propsType}${component}\n\nexport default ${componentName};`;
+            
+            if (options.prettier) {
+                output = formatCode(output);
+            }
+            
+            return output;
+        }
+        
+        function processSvgElement(svgEl, options, framework) {
+            // Remove xmlns if needed
+            if (options.removeXmlns) {
+                svgEl.removeAttribute('xmlns');
+                svgEl.removeAttribute('xmlns:xlink');
+            }
+            
+            // Remove or adjust size attributes
+            if (options.removeSize) {
+                svgEl.removeAttribute('width');
+                svgEl.removeAttribute('height');
+            }
+            
+            // Convert colors to currentColor
+            if (options.currentColor) {
+                function processColors(el) {
+                    const fill = el.getAttribute('fill');
+                    const stroke = el.getAttribute('stroke');
+                    
+                    if (fill && fill !== 'none' && fill !== 'currentColor' && !fill.startsWith('url(')) {
+                        el.setAttribute('fill', 'currentColor');
+                    }
+                    if (stroke && stroke !== 'none' && stroke !== 'currentColor' && !stroke.startsWith('url(')) {
+                        el.setAttribute('stroke', 'currentColor');
+                    }
+                    
+                    Array.from(el.children).forEach(processColors);
+                }
+                processColors(svgEl);
+            }
+            
+            return svgEl;
+        }
+        
+        function elementToJsx(el, options, indent = 0) {
+            const spaces = ' '.repeat(indent);
+            const tagName = el.tagName.toLowerCase();
+            
+            let attrs = [];
+            
+            // Process attributes
+            for (const attr of el.attributes) {
+                let name = convertAttrName(attr.name, 'react');
+                let value = attr.value;
+                
+                // Skip certain attributes
+                if (name === 'xmlns' && options.removeXmlns) continue;
+                
+                // Handle style attribute
+                if (name === 'style') {
+                    const styleObj = parseStyleToObject(value);
+                    attrs.push(`style={${JSON.stringify(styleObj)}}`);
+                } else {
+                    attrs.push(`${name}="${escapeJsx(value)}"`);
+                }
+            }
+            
+            // Add props spread for root svg element
+            if (tagName === 'svg') {
+                if (options.icon) {
+                    attrs.unshift('width={size}', 'height={size}', 'fill={color}');
+                }
+                if (options.ref) {
+                    attrs.push('ref={ref}');
+                }
+                attrs.push('{...props}');
+            }
+            
+            const attrString = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+            
+            if (el.children.length === 0) {
+                const text = el.textContent.trim();
+                if (text) {
+                    return `${spaces}<${tagName}${attrString}>${text}</${tagName}>`;
+                }
+                return `${spaces}<${tagName}${attrString} />`;
+            }
+            
+            let children = [];
+            for (const child of el.children) {
+                children.push(elementToJsx(child, options, indent + 2));
+            }
+            
+            return `${spaces}<${tagName}${attrString}>\n${children.join('\n')}\n${spaces}</${tagName}>`;
+        }
+        
+        function elementToJsxRN(el, options, indent = 0) {
+            const spaces = ' '.repeat(indent);
+            let tagName = el.tagName.toLowerCase();
+            
+            // Convert to React Native SVG component names
+            if (tagName === 'svg') {
+                tagName = 'Svg';
+            } else {
+                tagName = tagName.charAt(0).toUpperCase() + tagName.slice(1);
+            }
+            
+            let attrs = [];
+            
+            for (const attr of el.attributes) {
+                let name = convertAttrName(attr.name, 'react');
+                let value = attr.value;
+                
+                if (name === 'xmlns' && options.removeXmlns) continue;
+                
+                if (name === 'style') {
+                    const styleObj = parseStyleToObject(value);
+                    attrs.push(`style={${JSON.stringify(styleObj)}}`);
+                } else {
+                    attrs.push(`${name}="${escapeJsx(value)}"`);
+                }
+            }
+            
+            if (el.tagName.toLowerCase() === 'svg') {
+                if (options.icon) {
+                    attrs.unshift('width={size}', 'height={size}', 'fill={color}');
+                }
+                attrs.push('{...props}');
+            }
+            
+            const attrString = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+            
+            if (el.children.length === 0) {
+                const text = el.textContent.trim();
+                if (text) {
+                    return `${spaces}<${tagName}${attrString}>${text}</${tagName}>`;
+                }
+                return `${spaces}<${tagName}${attrString} />`;
+            }
+            
+            let children = [];
+            for (const child of el.children) {
+                children.push(elementToJsxRN(child, options, indent + 2));
+            }
+            
+            return `${spaces}<${tagName}${attrString}>\n${children.join('\n')}\n${spaces}</${tagName}>`;
+        }
+        
+        function elementToVue(el, options, indent = 0) {
+            const spaces = ' '.repeat(indent);
+            const tagName = el.tagName.toLowerCase();
+            
+            let attrs = [];
+            
+            for (const attr of el.attributes) {
+                let name = attr.name;
+                let value = attr.value;
+                
+                if (name === 'xmlns' && options.removeXmlns) continue;
+                
+                attrs.push(`${name}="${value}"`);
+            }
+            
+            if (tagName === 'svg' && options.icon) {
+                attrs.unshift(':width="size"', ':height="size"', ':fill="color"');
+            }
+            
+            const attrString = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
+            
+            if (el.children.length === 0) {
+                const text = el.textContent.trim();
+                if (text) {
+                    return `${spaces}<${tagName}${attrString}>${text}</${tagName}>`;
+                }
+                return `${spaces}<${tagName}${attrString} />`;
+            }
+            
+            let children = [];
+            for (const child of el.children) {
+                children.push(elementToVue(child, options, indent + 2));
+            }
+            
+            return `${spaces}<${tagName}${attrString}>\n${children.join('\n')}\n${spaces}</${tagName}>`;
+        }
+        
+        function parseStyleToObject(styleString) {
+            const obj = {};
+            styleString.split(';').forEach(rule => {
+                const [prop, value] = rule.split(':').map(s => s.trim());
+                if (prop && value) {
+                    const camelProp = prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                    obj[camelProp] = value;
+                }
+            });
+            return obj;
+        }
+        
+        function formatCode(code) {
+            // Basic formatting - add newlines and proper indentation
+            return code
+                .replace(/;\s*/g, ';\n')
+                .replace(/{\s*\n\s*\n/g, '{\n')
+                .replace(/\n\s*\n\s*\n/g, '\n\n');
+        }
+        
+        function updateStats(original, output, elements) {
+            document.getElementById('originalSize').textContent = formatBytes(original);
+            document.getElementById('outputSize').textContent = formatBytes(output);
+            document.getElementById('elementCount').textContent = elements;
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            if (bytes < 1024) return bytes + ' B';
+            return (bytes / 1024).toFixed(1) + ' KB';
+        }
+        
+        function loadExample() {
+            const example = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <line x1="12" y1="8" x2="12" y2="12"/>
+  <line x1="12" y1="16" x2="12.01" y2="16"/>
+</svg>`;
+            document.getElementById('svgInput').value = example;
+            convert();
+        }
+        
+        function clearInput() {
+            document.getElementById('svgInput').value = '';
+            document.getElementById('jsxOutput').value = '';
+            document.getElementById('previewContainer').innerHTML = '<span style="color: var(--pico-muted-color);">等待 SVG 输入...</span>';
+            document.getElementById('errorMessage').style.display = 'none';
+            updateStats(0, 0, 0);
+        }
+        
+        function copyOutput() {
+            const output = document.getElementById('jsxOutput').value;
+            if (!output) {
+                showToast('没有可复制的内容', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output).then(() => {
+                showToast('已复制到剪贴板', 'success');
+            });
+        }
+        
+        function downloadOutput() {
+            const output = document.getElementById('jsxOutput').value;
+            if (!output) {
+                showToast('没有可下载的内容', 'error');
+                return;
+            }
+            
+            const extensions = {
+                'react': 'jsx',
+                'react-native': 'jsx',
+                'vue': 'vue',
+                'solid': 'jsx',
+                'preact': 'jsx'
+            };
+            
+            const ext = extensions[currentFramework];
+            const tsExt = document.getElementById('optTypescript').checked ? 'tsx' : ext;
+            const finalExt = currentFramework === 'vue' ? 'vue' : tsExt;
+            
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `IconComponent.${finalExt}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('文件已下载', 'success');
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+        
+        // Initialize
+        initTheme();
+    </script>
+</body>
+</html>

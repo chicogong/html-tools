@@ -8,7 +8,7 @@
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![GitHub Pages](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
 
-### 🚀 132 个纯前端在线工具
+### 🚀 161 个纯前端在线工具
 
 **单文件 · 零构建 · 可离线 · 数据不上传**
 
@@ -30,7 +30,7 @@
 | **离线使用** | ✅ 下载 HTML 即可离线用 | ❌ 必须联网 |
 | **无需构建** | ✅ 单文件架构，直接打开 | ❌ 需要 npm/webpack 构建 |
 | **加载速度** | ✅ 极快（无框架开销） | ⚠️ 较慢（React/Vue 加载）|
-| **工具数量** | ✅ 132+ 个工具 | ⚠️ 通常 50-80 个 |
+| **工具数量** | ✅ 161+ 个工具 | ⚠️ 通常 50-80 个 |
 | **开源免费** | ✅ MIT 协议，完全开源 | ⚠️ 部分闭源或有限制 |
 
 ## 📸 预览
@@ -68,7 +68,7 @@
 </tr>
 </table>
 
-[**查看全部 132 个工具 ↓**](#工具列表-132-个)
+[**查看全部 161 个工具 ↓**](#工具列表-161-个)
 
 ---
 
@@ -84,9 +84,9 @@
 | Surge | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
-## 工具列表 (132 个)
+## 工具列表 (161 个)
 
-### 开发工具 (48 个)
+### 开发工具 (61 个)
 
 | 工具 | 描述 |
 |------|------|
@@ -138,8 +138,21 @@
 | [URL 解析器](tools/dev/url-parser.html) | 解析 URL 各组成部分，提取查询参数 |
 | [XML 格式化](tools/dev/xml-formatter.html) | XML 格式化和验证 |
 | [XML ⇄ JSON 转换](tools/dev/xml-json.html) | XML 与 JSON 格式互转 |
+| [HTML 格式化](tools/dev/html-formatter.html) | HTML 代码格式化、压缩和美化 |
+| [JavaScript 格式化](tools/dev/js-formatter.html) | JavaScript 代码格式化、压缩和美化 |
+| [JSON Diff 对比](tools/dev/json-diff.html) | 智能对比两个 JSON 的结构和值差异 |
+| [Border Radius 生成器](tools/dev/css-border-radius.html) | CSS 圆角可视化生成器 |
+| [Flexbox 可视化编辑器](tools/dev/flexbox-playground.html) | 可视化调整 Flexbox 布局属性，实时预览效果 |
+| [色盲模拟器](tools/dev/color-blindness.html) | 模拟不同类型色盲用户看到的颜色效果 |
+| [CSS 动画生成器](tools/dev/css-animation.html) | 可视化创建 CSS 关键帧动画，一键生成代码 |
+| [.gitignore 生成器](tools/dev/gitignore-generator.html) | 选择编程语言和框架，快速生成 .gitignore 文件 |
+| [Punycode 转换器](tools/dev/punycode.html) | 国际化域名 (IDN) 与 Punycode 编码互转 |
+| [字符集转换器](tools/dev/charset-converter.html) | 文本编码转换，支持 UTF-8/16、Hex、URL 编码等格式 |
+| [HTML 模板生成器](tools/dev/html-template.html) | 生成 HTML5 页面模板，支持多种布局和 CSS 框架 |
+| [README 生成器](tools/dev/readme-generator.html) | 快速生成项目 README.md，支持徽章、特性、安装说明等 |
+| [License 生成器](tools/dev/license-generator.html) | 生成开源许可证文件，支持 MIT、Apache、GPL 等协议 |
 
-### 文本工具 (17 个)
+### 文本工具 (23 个)
 
 | 工具 | 描述 |
 |------|------|
@@ -162,8 +175,12 @@
 | [Markdown 预览](tools/text/markdown-preview.html) | 实时 Markdown 预览，支持 GFM 语法，可导出 HTML |
 | [NATO 字母表](tools/text/nato-alphabet.html) | NATO 音标字母表转换 |
 | [Slugify 工具](tools/text/slugify.html) | 生成 URL slug |
+| [HTML ⇄ Markdown 转换](tools/text/html-markdown.html) | HTML 与 Markdown 双向转换，支持表格、代码块、链接等 |
+| [Markdown 表格生成器](tools/text/markdown-table.html) | 可视化编辑 Markdown 表格，支持导入 CSV 数据 |
+| [文本对比增强版](tools/text/text-compare.html) | 增强版文本对比，支持分栏/统一视图，忽略大小写和空白 |
+| [文本模板填充器](tools/text/template-filler.html) | 文本模板变量填充，支持批量生成和 CSV 导入 |
 
-### 时间工具 (8 个)
+### 时间工具 (9 个)
 
 | 工具 | 描述 |
 |------|------|
@@ -175,8 +192,9 @@
 | [时区转换器](tools/time/timezone-converter.html) | 在不同时区之间转换时间 |
 | [世界时钟](tools/time/world-clock.html) | 世界时钟 |
 | [Cron 表达式解析](tools/time/cron-parser.html) | 解析 Cron 表达式，展示可读描述和下次执行时间 |
+| [秒表计时器](tools/time/stopwatch.html) | 在线秒表，支持计次、暂停、毫秒精度显示 |
 
-### 生成器 (13 个)
+### 生成器 (14 个)
 
 | 工具 | 描述 |
 |------|------|
@@ -193,6 +211,7 @@
 | [Open Graph 预览器](tools/generator/og-preview.html) | Open Graph 预览 |
 | [UUID/ULID 生成器](tools/generator/uuid-generator.html) | 生成 UUID v4/v7 和 ULID，支持批量生成 |
 | [WiFi 二维码生成器](tools/generator/wifi-qrcode.html) | WiFi 二维码生成 |
+| [二维码扫描器](tools/generator/qrcode-scanner.html) | 在线二维码扫描器，支持摄像头扫描和图片上传 |
 
 ### 媒体工具 (16 个)
 
@@ -213,6 +232,7 @@
 | [ICO 图标查看器](tools/media/ico-viewer.html) | 查看和提取 ICO 文件中的所有图标尺寸 |
 | [SVG 渲染器](tools/media/svg-render.html) | 将 SVG 代码渲染为 PNG/JPEG 图片 |
 | [SVG 占位图生成器](tools/media/svg-placeholder.html) | SVG 占位图生成 |
+| [截图美化工具](tools/media/screenshot-beautifier.html) | 给截图添加精美背景、阴影和圆角，一键生成分享图片 |
 
 ### 隐私安全 (8 个)
 
@@ -245,7 +265,7 @@
 | [User Agent 解析器](tools/network/user-agent.html) | User-Agent 检测 |
 | [设备信息](tools/network/device-info.html) | 查看设备、浏览器和系统的详细信息 |
 
-### 计算器 (6 个)
+### 计算器 (9 个)
 
 | 工具 | 描述 |
 |------|------|
@@ -255,28 +275,37 @@
 | [宽高比计算器](tools/calculator/aspect-ratio.html) | 计算屏幕/图片宽高比，支持常见比例换算 |
 | [位运算计算器](tools/calculator/bitwise-calculator.html) | 位运算计算器 |
 | [数学表达式计算器](tools/calculator/math-evaluator.html) | 计算复杂数学表达式，支持函数和常量 |
+| [BMI 计算器](tools/calculator/bmi-calculator.html) | 计算身体质量指数，评估体重健康状况 |
+| [贷款计算器](tools/calculator/loan-calculator.html) | 计算贷款月供、总利息，支持两种还款方式 |
+| [进制计算器](tools/calculator/base-calculator.html) | 多进制转换和位运算计算器，支持可视化位操作 |
 
-### 转换器 (2 个)
+### 转换器 (5 个)
 
 | 工具 | 描述 |
 |------|------|
 | [单位转换器](tools/converter/unit-converter.html) | 长度、重量、温度、面积等多种单位换算 |
 | [文件大小计算器](tools/converter/file-size.html) | 文件大小单位转换 |
+| [JSON ⇄ YAML 转换](tools/converter/json-yaml.html) | JSON 和 YAML 双向转换，支持格式化和压缩 |
+| [CSV ⇄ JSON 转换](tools/converter/csv-json.html) | CSV 和 JSON 双向转换，支持表格预览 |
+| [cURL to Code](tools/converter/curl-to-code.html) | 将 cURL 命令转换为多种编程语言代码 |
 
-### 提取器 (2 个)
+### 提取器 (3 个)
 
 | 工具 | 描述 |
 |------|------|
 | [链接提取器](tools/extractor/link-extractor.html) | 从文本提取链接 |
 | [文本信息提取器](tools/extractor/text-extractor.html) | 提取文本中的特定内容 |
+| [正则提取器](tools/extractor/regex-extractor.html) | 使用正则表达式批量提取文本内容，支持导出 CSV |
 
-### AI 工具 (3 个)
+### AI 工具 (5 个)
 
 | 工具 | 描述 |
 |------|------|
 | [Prompt 模板库](tools/ai/prompt-templates.html) | AI 提示词模板库 |
 | [Token 计数器](tools/ai/token-counter.html) | 估算 AI 模型 Token 数量 |
 | [Claude Skills 精选](tools/ai/claude-skills.html) | Anthropic 官方 Skills 集合，提升 Claude 特定任务表现 |
+| [MCP 配置指南](tools/ai/mcp-guide.html) | Model Context Protocol 配置教程与热门服务器 |
+| [MCP 客户端大全](tools/ai/mcp-clients.html) | 支持 MCP 的 AI 客户端、IDE 和开发工具汇总 |
 
 
 ## SEO 与搜索引擎收录

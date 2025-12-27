@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JSON Diff 对比 - WebUtils</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="JSON 差异对比工具，智能对比两个 JSON 的结构和值差异" />
+  <meta name="keywords" content="json diff 对比 比较 差异 compare" />
+  <meta name="author" content="WebUtils" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/dev/json-diff.html" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="JSON Diff 对比 - WebUtils" />
+  <meta property="og:description" content="JSON 差异对比工具，智能对比两个 JSON 的结构和值差异" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tools.realtime-ai.chat/tools/dev/json-diff.html" />
+  <meta property="og:site_name" content="WebUtils" />
+  <meta property="og:locale" content="zh_CN" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="JSON Diff 对比 - WebUtils" />
+  <meta name="twitter:description" content="JSON 差异对比工具，智能对比两个 JSON 的结构和值差异" />
+  <!-- OG Image -->
+  <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:image:type" content="image/png" />
+  <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #fff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --shadow: 0 2px 8px rgb(0 0 0 / 8%);
+      --radius: 8px;
+      --added-bg: #d4edda;
+      --removed-bg: #f8d7da;
+      --modified-bg: #fff3cd;
+    }
+    [data-theme="dark"] {
+      --bg: #0a0a0f;
+      --card-bg: #1a1a24;
+      --text: #e8e8ed;
+      --text-muted: #8888a0;
+      --border: #2a2a3a;
+      --shadow: 0 2px 8px rgb(0 0 0 / 30%);
+      --added-bg: #1e4620;
+      --removed-bg: #4a1a1a;
+      --modified-bg: #4a4a1a;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+    }
+
+    .desc {
+      color: var(--text-muted);
+      margin: 0 0 24px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      color: #fff;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (width <= 768px) {
+      .panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      color: var(--text);
+      resize: vertical;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgb(13 110 253 / 15%);
+    }
+
+    .status {
+      font-size: 0.85rem;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .status.success {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .result-section {
+      margin-top: 20px;
+    }
+
+    .result-section h3 {
+      font-size: 1rem;
+      margin: 0 0 12px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+
+    .legend-color.added { background: var(--added-bg); }
+    .legend-color.removed { background: var(--removed-bg); }
+    .legend-color.modified { background: var(--modified-bg); }
+
+    .diff-result {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      max-height: 500px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .diff-line {
+      padding: 2px 8px;
+      margin: 1px 0;
+      border-radius: 3px;
+    }
+
+    .diff-line.added {
+      background: var(--added-bg);
+    }
+
+    .diff-line.removed {
+      background: var(--removed-bg);
+    }
+
+    .diff-line.modified {
+      background: var(--modified-bg);
+    }
+
+    .summary {
+      display: flex;
+      gap: 20px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">☀️</button>
+    <h1>JSON Diff 对比</h1>
+    <p class="desc">智能对比两个 JSON 的结构和值差异，纯本地处理</p>
+
+    <div class="card">
+      <div class="btn-row">
+        <button id="btnCompare" class="primary">对比</button>
+        <button id="btnSwap">交换</button>
+        <button id="btnFormat">格式化</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <label for="inputLeft">原始 JSON</label>
+          <textarea id="inputLeft" placeholder="粘贴第一个 JSON..."></textarea>
+        </div>
+        <div class="panel">
+          <label for="inputRight">目标 JSON</label>
+          <textarea id="inputRight" placeholder="粘贴第二个 JSON..."></textarea>
+        </div>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="result-section" id="resultSection" style="display: none;">
+        <h3>对比结果</h3>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color added"></div>
+            <span>新增</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color removed"></div>
+            <span>删除</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color modified"></div>
+            <span>修改</span>
+          </div>
+        </div>
+        <div class="diff-result" id="diffResult"></div>
+        <div class="summary" id="summary"></div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
+      · 纯前端工具 · 无服务器 · 
+      <a href="../../index.html">WebUtils</a>
+    </footer>
+  </div>
+
+  <script>
+    var inputLeftEl = document.getElementById('inputLeft');
+    var inputRightEl = document.getElementById('inputRight');
+    var statusEl = document.getElementById('status');
+    var resultSectionEl = document.getElementById('resultSection');
+    var diffResultEl = document.getElementById('diffResult');
+    var summaryEl = document.getElementById('summary');
+
+    var LS_KEY = 'json_diff_v1';
+
+    // 深度比较两个 JSON
+    function compareJson(left, right, path) {
+      path = path || '';
+      var diffs = [];
+
+      // 类型不同
+      var leftType = getType(left);
+      var rightType = getType(right);
+
+      if (leftType !== rightType) {
+        diffs.push({
+          type: 'modified',
+          path: path || '(root)',
+          oldValue: left,
+          newValue: right
+        });
+        return diffs;
+      }
+
+      // 数组比较
+      if (leftType === 'array') {
+        var maxLen = Math.max(left.length, right.length);
+        for (var i = 0; i < maxLen; i++) {
+          var itemPath = path + '[' + i + ']';
+          if (i >= left.length) {
+            diffs.push({
+              type: 'added',
+              path: itemPath,
+              newValue: right[i]
+            });
+          } else if (i >= right.length) {
+            diffs.push({
+              type: 'removed',
+              path: itemPath,
+              oldValue: left[i]
+            });
+          } else {
+            diffs = diffs.concat(compareJson(left[i], right[i], itemPath));
+          }
+        }
+        return diffs;
+      }
+
+      // 对象比较
+      if (leftType === 'object') {
+        var allKeys = new Set();
+        Object.keys(left).forEach(function(k) { allKeys.add(k); });
+        Object.keys(right).forEach(function(k) { allKeys.add(k); });
+
+        allKeys.forEach(function(key) {
+          var keyPath = path ? path + '.' + key : key;
+          if (!(key in left)) {
+            diffs.push({
+              type: 'added',
+              path: keyPath,
+              newValue: right[key]
+            });
+          } else if (!(key in right)) {
+            diffs.push({
+              type: 'removed',
+              path: keyPath,
+              oldValue: left[key]
+            });
+          } else {
+            diffs = diffs.concat(compareJson(left[key], right[key], keyPath));
+          }
+        });
+        return diffs;
+      }
+
+      // 原始值比较
+      if (left !== right) {
+        diffs.push({
+          type: 'modified',
+          path: path || '(root)',
+          oldValue: left,
+          newValue: right
+        });
+      }
+
+      return diffs;
+    }
+
+    function getType(val) {
+      if (val === null) return 'null';
+      if (Array.isArray(val)) return 'array';
+      return typeof val;
+    }
+
+    function formatValue(val) {
+      if (typeof val === 'string') {
+        return '"' + val + '"';
+      }
+      if (typeof val === 'object') {
+        return JSON.stringify(val, null, 2);
+      }
+      return String(val);
+    }
+
+    function compare() {
+      var leftText = inputLeftEl.value.trim();
+      var rightText = inputRightEl.value.trim();
+
+      if (!leftText || !rightText) {
+        showStatus('请输入两个 JSON 进行对比', 'error');
+        resultSectionEl.style.display = 'none';
+        return;
+      }
+
+      var left, right;
+      try {
+        left = JSON.parse(leftText);
+      } catch (e) {
+        showStatus('原始 JSON 解析错误: ' + e.message, 'error');
+        resultSectionEl.style.display = 'none';
+        return;
+      }
+
+      try {
+        right = JSON.parse(rightText);
+      } catch (e) {
+        showStatus('目标 JSON 解析错误: ' + e.message, 'error');
+        resultSectionEl.style.display = 'none';
+        return;
+      }
+
+      var diffs = compareJson(left, right);
+
+      if (diffs.length === 0) {
+        showStatus('两个 JSON 完全相同', 'success');
+        resultSectionEl.style.display = 'none';
+        return;
+      }
+
+      // 使用安全的 DOM 方法渲染差异
+      diffResultEl.textContent = '';
+      var addedCount = 0;
+      var removedCount = 0;
+      var modifiedCount = 0;
+
+      diffs.forEach(function(diff) {
+        var line = document.createElement('div');
+        line.className = 'diff-line ' + diff.type;
+
+        var pathSpan = document.createElement('span');
+        pathSpan.className = 'diff-path';
+        pathSpan.textContent = diff.path;
+        line.appendChild(pathSpan);
+
+        line.appendChild(document.createTextNode(': '));
+
+        var valueSpan = document.createElement('span');
+        valueSpan.className = 'diff-value';
+
+        if (diff.type === 'added') {
+          addedCount++;
+          valueSpan.textContent = '+ ' + formatValue(diff.newValue);
+        } else if (diff.type === 'removed') {
+          removedCount++;
+          valueSpan.textContent = '- ' + formatValue(diff.oldValue);
+        } else {
+          modifiedCount++;
+          valueSpan.textContent = formatValue(diff.oldValue) + ' → ' + formatValue(diff.newValue);
+        }
+
+        line.appendChild(valueSpan);
+        diffResultEl.appendChild(line);
+      });
+
+      summaryEl.textContent = '共 ' + diffs.length + ' 处差异: ' + 
+        addedCount + ' 新增, ' + 
+        removedCount + ' 删除, ' + 
+        modifiedCount + ' 修改';
+      
+      resultSectionEl.style.display = 'block';
+      showStatus('对比完成', 'success');
+      saveToStorage();
+    }
+
+    function swap() {
+      var temp = inputLeftEl.value;
+      inputLeftEl.value = inputRightEl.value;
+      inputRightEl.value = temp;
+      saveToStorage();
+      showStatus('已交换', 'success');
+    }
+
+    function formatInputs() {
+      try {
+        if (inputLeftEl.value.trim()) {
+          var left = JSON.parse(inputLeftEl.value);
+          inputLeftEl.value = JSON.stringify(left, null, 2);
+        }
+      } catch (e) {
+        showStatus('原始 JSON 格式化失败: ' + e.message, 'error');
+        return;
+      }
+
+      try {
+        if (inputRightEl.value.trim()) {
+          var right = JSON.parse(inputRightEl.value);
+          inputRightEl.value = JSON.stringify(right, null, 2);
+        }
+      } catch (e) {
+        showStatus('目标 JSON 格式化失败: ' + e.message, 'error');
+        return;
+      }
+
+      saveToStorage();
+      showStatus('格式化成功', 'success');
+    }
+
+    function clearAll() {
+      inputLeftEl.value = '';
+      inputRightEl.value = '';
+      resultSectionEl.style.display = 'none';
+      localStorage.removeItem(LS_KEY);
+      showStatus('已清空', 'success');
+    }
+
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    // localStorage
+    function loadFromStorage() {
+      var saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        try {
+          var data = JSON.parse(saved);
+          inputLeftEl.value = data.left || '';
+          inputRightEl.value = data.right || '';
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        left: inputLeftEl.value,
+        right: inputRightEl.value
+      }));
+    }
+
+    // 事件绑定
+    document.getElementById('btnCompare').onclick = compare;
+    document.getElementById('btnSwap').onclick = swap;
+    document.getElementById('btnFormat').onclick = formatInputs;
+    document.getElementById('btnClear').onclick = clearAll;
+
+    inputLeftEl.addEventListener('input', saveToStorage);
+    inputRightEl.addEventListener('input', saveToStorage);
+
+    // 初始化
+    loadFromStorage();
+
+    function toggleTheme() {
+      var html = document.documentElement;
+      var btn = document.querySelector('.theme-toggle');
+      var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      var saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        var btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

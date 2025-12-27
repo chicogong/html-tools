@@ -312,6 +312,112 @@ git push
 - **设计风格**: 赛博朋克/暗色主题为主,带有霓虹渐变和发光效果
 - **响应式**: 使用 `clamp()` 和媒体查询适配移动端
 
+## SEO 优化模板
+
+### 面包屑导航 (Breadcrumb Navigation)
+
+为了提升 SEO 和用户体验,工具页面应该包含面包屑导航。参考实现: `tools/dev/json-formatter.html`
+
+**1. 在 `<head>` 中添加 JSON-LD BreadcrumbList Schema:**
+
+```html
+<!-- JSON-LD BreadcrumbList Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "首页",
+      "item": "https://tools.realtime-ai.chat/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "开发工具",  <!-- 根据工具类别修改: dev/text/time/generator/privacy/media 等 -->
+      "item": "https://tools.realtime-ai.chat/#dev"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "JSON 格式化",  <!-- 修改为实际工具名称 -->
+      "item": "https://tools.realtime-ai.chat/tools/dev/json-formatter.html"
+    }
+  ]
+}
+</script>
+```
+
+**2. 在 `<style>` 中添加面包屑 CSS (放在 `.back-link` 样式前):**
+
+```css
+/* Breadcrumb Navigation */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb a:hover {
+  color: var(--accent-cyan);
+}
+
+.breadcrumb-separator {
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+```
+
+**3. 在 `<body>` 中替换 `.back-link` 为面包屑导航:**
+
+```html
+<!-- 旧版本: -->
+<a href="../../index.html" class="back-link">← 返回</a>
+
+<!-- 新版本: -->
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="../../index.html">首页</a>
+  <span class="breadcrumb-separator">/</span>
+  <a href="../../index.html#dev">开发工具</a>  <!-- 修改类别: #dev #text #time #generator #privacy #media 等 -->
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-current">JSON 格式化</span>  <!-- 修改为实际工具名称 -->
+</nav>
+```
+
+**类别对照表:**
+- `dev` → 开发工具
+- `text` → 文本工具
+- `time` → 时间工具
+- `generator` → 生成器
+- `privacy` → 隐私工具
+- `media` → 媒体工具
+- `security` → 安全工具
+- `network` → 网络工具
+- `calculator` → 计算器
+- `converter` → 转换器
+- `extractor` → 提取器
+- `ai` → AI 工具
+
 ## CI/CD 和部署
 
 - **Lint CI**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint

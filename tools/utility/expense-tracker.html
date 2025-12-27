@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记账本 - 简单收支记录</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #3b82f6; --income: #22c55e; --expense: #ef4444; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .summary-card { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; text-align: center; }
+        .summary-card .label { font-size: 0.8rem; color: var(--pico-muted-color); margin-bottom: 0.25rem; }
+        .summary-card .value { font-size: 1.5rem; font-weight: 700; }
+        .summary-card.balance .value { color: var(--primary); }
+        .summary-card.income .value { color: var(--income); }
+        .summary-card.expense .value { color: var(--expense); }
+        .add-form { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem; }
+        .form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+        .form-row .form-group { flex: 1; min-width: 100px; }
+        .form-row .form-group label { display: block; font-size: 0.8rem; margin-bottom: 0.25rem; }
+        .form-row .form-group input, .form-row .form-group select { margin: 0; }
+        .form-row button { margin: 0; }
+        .type-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .type-btn { flex: 1; padding: 0.5rem; border: 2px solid var(--pico-muted-border-color); background: transparent; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .type-btn.income.active { border-color: var(--income); background: rgba(34,197,94,0.1); color: var(--income); }
+        .type-btn.expense.active { border-color: var(--expense); background: rgba(239,68,68,0.1); color: var(--expense); }
+        .records-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .record-item { background: var(--pico-card-background-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem; }
+        .record-icon { font-size: 1.5rem; width: 40px; text-align: center; }
+        .record-info { flex: 1; }
+        .record-info .title { font-weight: 500; }
+        .record-info .meta { font-size: 0.75rem; color: var(--pico-muted-color); }
+        .record-amount { font-weight: 700; font-size: 1.1rem; }
+        .record-amount.income { color: var(--income); }
+        .record-amount.expense { color: var(--expense); }
+        .record-actions button { padding: 0.25rem 0.5rem; margin: 0; font-size: 0.7rem; }
+        .empty-state { text-align: center; padding: 2rem; color: var(--pico-muted-color); }
+        @media (max-width: 600px) { .summary { grid-template-columns: 1fr; } .form-row { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 记账本</h1>
+            <div><button id="exportBtn" class="secondary">导出</button> <button id="themeToggle" class="outline">🌙</button></div>
+        </header>
+        <div class="summary">
+            <div class="summary-card balance"><div class="label">本月结余</div><div class="value" id="balance">¥0</div></div>
+            <div class="summary-card income"><div class="label">本月收入</div><div class="value" id="totalIncome">¥0</div></div>
+            <div class="summary-card expense"><div class="label">本月支出</div><div class="value" id="totalExpense">¥0</div></div>
+        </div>
+        <div class="add-form">
+            <div class="type-toggle">
+                <button class="type-btn expense active" data-type="expense">支出</button>
+                <button class="type-btn income" data-type="income">收入</button>
+            </div>
+            <form id="recordForm">
+                <div class="form-row">
+                    <div class="form-group" style="flex:1.5;"><label>金额 *</label><input type="number" id="amount" step="0.01" min="0" required placeholder="0.00"></div>
+                    <div class="form-group" style="flex:1.5;"><label>分类</label><select id="category"></select></div>
+                    <div class="form-group" style="flex:2;"><label>备注</label><input type="text" id="note" placeholder="可选"></div>
+                    <div class="form-group" style="flex:1.5;"><label>日期</label><input type="date" id="date"></div>
+                    <button type="submit" class="primary">添加</button>
+                </div>
+            </form>
+        </div>
+        <div class="records-list" id="recordsList"></div>
+    </div>
+    <script>
+        const expenseCats = [{icon:'🍔',name:'餐饮'},{icon:'🚗',name:'交通'},{icon:'🛒',name:'购物'},{icon:'🏠',name:'居住'},{icon:'📱',name:'通讯'},{icon:'🎮',name:'娱乐'},{icon:'💊',name:'医疗'},{icon:'📚',name:'教育'},{icon:'📦',name:'其他'}];
+        const incomeCats = [{icon:'💵',name:'工资'},{icon:'🎁',name:'奖金'},{icon:'📈',name:'投资'},{icon:'💰',name:'兼职'},{icon:'📦',name:'其他'}];
+        let records = [], currentType = 'expense';
+        const $ = id => document.getElementById(id);
+        function init() { loadData(); initDate(); renderCategories(); render(); setupEvents(); loadTheme(); }
+        function loadData() { records = JSON.parse(localStorage.getItem('expenseRecords') || '[]'); }
+        function saveData() { localStorage.setItem('expenseRecords', JSON.stringify(records)); }
+        function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+        function initDate() { $('date').value = new Date().toISOString().split('T')[0]; }
+        function renderCategories() {
+            const cats = currentType === 'expense' ? expenseCats : incomeCats;
+            $('category').innerHTML = cats.map(c => '<option value="'+c.name+'">'+c.icon+' '+c.name+'</option>').join('');
+        }
+        function render() {
+            const now = new Date(), month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+            const monthRecords = records.filter(r => r.date.startsWith(month));
+            const income = monthRecords.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0);
+            const expense = monthRecords.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+            $('totalIncome').textContent = '¥' + income.toFixed(2);
+            $('totalExpense').textContent = '¥' + expense.toFixed(2);
+            $('balance').textContent = '¥' + (income - expense).toFixed(2);
+            const list = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+            if (!list.length) { $('recordsList').innerHTML = '<div class="empty-state">暂无记录</div>'; return; }
+            const allCats = [...expenseCats, ...incomeCats];
+            $('recordsList').innerHTML = list.map(r => {
+                const cat = allCats.find(c => c.name === r.category) || { icon: '📦' };
+                return '<div class="record-item"><div class="record-icon">'+cat.icon+'</div><div class="record-info"><div class="title">'+r.category+(r.note?' · '+r.note:'')+'</div><div class="meta">'+r.date+'</div></div><div class="record-amount '+r.type+'">'+(r.type==='income'?'+':'-')+'¥'+r.amount.toFixed(2)+'</div><div class="record-actions"><button onclick="deleteRecord(\''+r.id+'\')" class="outline secondary">删除</button></div></div>';
+            }).join('');
+        }
+        function setupEvents() {
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                btn.onclick = () => { document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); currentType = btn.dataset.type; renderCategories(); };
+            });
+            $('recordForm').onsubmit = e => { e.preventDefault(); records.push({ id: genId(), type: currentType, amount: parseFloat($('amount').value), category: $('category').value, note: $('note').value, date: $('date').value }); saveData(); $('amount').value = ''; $('note').value = ''; render(); };
+            $('exportBtn').onclick = () => { const blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'expense-'+new Date().toISOString().split('T')[0]+'.json'; a.click(); };
+            $('themeToggle').onclick = toggleTheme;
+        }
+        window.deleteRecord = id => { if (confirm('确定删除?')) { records = records.filter(r => r.id !== id); saveData(); render(); } };
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        init();
+    </script>
+</body>
+</html>

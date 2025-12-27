@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>习惯追踪器 - 每日习惯打卡</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #8b5cf6; --success: #22c55e; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; text-align: center; }
+        .stat-card .icon { font-size: 1.5rem; }
+        .stat-card .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat-card .label { font-size: 0.75rem; color: var(--pico-muted-color); }
+        .habits-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+        .habit-card { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 1rem; }
+        .habit-icon { font-size: 1.75rem; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; }
+        .habit-info { flex: 1; min-width: 0; }
+        .habit-name { font-weight: 600; font-size: 1rem; }
+        .habit-streak { font-size: 0.8rem; color: var(--pico-muted-color); }
+        .check-btn { width: 45px; height: 45px; border-radius: 50%; border: 3px solid var(--pico-muted-border-color); background: transparent; cursor: pointer; font-size: 1.25rem; transition: all 0.2s; }
+        .check-btn:hover { border-color: var(--success); }
+        .check-btn.checked { border-color: var(--success); background: var(--success); color: white; }
+        .habit-menu button { padding: 0.4rem; background: transparent; border: none; cursor: pointer; opacity: 0.5; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--pico-card-background-color); border-radius: 10px; padding: 1.5rem; max-width: 400px; width: 90%; }
+        .modal h2 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+        .form-group { margin-bottom: 0.75rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; font-weight: 500; }
+        .form-group input, .form-group select { margin: 0; }
+        .icon-picker { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.4rem; margin-top: 0.4rem; }
+        .icon-option { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; border: 2px solid var(--pico-muted-border-color); border-radius: 6px; cursor: pointer; }
+        .icon-option:hover, .icon-option.selected { border-color: var(--primary); background: rgba(139,92,246,0.1); }
+        .btn-group { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+        .empty-state { text-align: center; padding: 2rem; color: var(--pico-muted-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ 习惯追踪器</h1>
+            <div><button id="addHabitBtn" class="primary">+ 新习惯</button> <button id="themeToggle" class="outline">🌙</button></div>
+        </header>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="icon">🎯</div><div class="value" id="totalHabits">0</div><div class="label">习惯总数</div></div>
+            <div class="stat-card"><div class="icon">✅</div><div class="value" id="todayCompleted">0/0</div><div class="label">今日完成</div></div>
+            <div class="stat-card"><div class="icon">🔥</div><div class="value" id="longestStreak">0</div><div class="label">最长连续</div></div>
+        </div>
+        <h3 style="margin-bottom:0.75rem;font-size:1rem;">今日习惯 <span id="todayDate" style="font-weight:normal;font-size:0.85rem;color:var(--pico-muted-color);"></span></h3>
+        <div class="habits-list" id="habitsList"></div>
+    </div>
+    <div class="modal-overlay" id="habitModal">
+        <div class="modal">
+            <h2 id="habitModalTitle">添加新习惯</h2>
+            <form id="habitForm">
+                <input type="hidden" id="habitId">
+                <div class="form-group"><label>习惯名称 *</label><input type="text" id="habitName" required placeholder="如：每天阅读30分钟"></div>
+                <div class="form-group"><label>选择图标</label><div class="icon-picker" id="iconPicker"></div></div>
+                <div class="btn-group"><button type="button" class="secondary" id="cancelHabitBtn">取消</button><button type="submit" class="primary">保存</button></div>
+            </form>
+        </div>
+    </div>
+    <script>
+        const icons = ['📚','🏃','💪','🧘','💧','🥗','😴','✍️','🎵','🎨','💻','🌱','🧹','💊','🚭','📱'];
+        let habits = [], completions = {}, selectedIcon = '📚';
+        const $ = id => document.getElementById(id);
+        function init() { loadData(); renderIconPicker(); render(); setupEvents(); loadTheme(); $('todayDate').textContent = new Date().toLocaleDateString('zh-CN', {month:'long',day:'numeric',weekday:'long'}); }
+        function loadData() { habits = JSON.parse(localStorage.getItem('habits') || '[]'); completions = JSON.parse(localStorage.getItem('habitCompletions') || '{}'); }
+        function saveData() { localStorage.setItem('habits', JSON.stringify(habits)); localStorage.setItem('habitCompletions', JSON.stringify(completions)); }
+        function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+        function getDateKey(d = new Date()) { return d.toISOString().split('T')[0]; }
+        function renderIconPicker() { $('iconPicker').innerHTML = icons.map(i => '<div class="icon-option '+(i===selectedIcon?'selected':'')+'" data-icon="'+i+'">'+i+'</div>').join(''); }
+        function calcStreak(hid) { let s = 0; const today = new Date(); for (let i = 0; i < 365; i++) { const d = new Date(today); d.setDate(d.getDate() - i); if (completions[getDateKey(d)]?.[hid]) s++; else if (i > 0) break; } return s; }
+        function render() {
+            const todayKey = getDateKey();
+            $('totalHabits').textContent = habits.length;
+            const done = habits.filter(h => completions[todayKey]?.[h.id]).length;
+            $('todayCompleted').textContent = done + '/' + habits.length;
+            let maxStreak = 0; habits.forEach(h => { const s = calcStreak(h.id); if (s > maxStreak) maxStreak = s; });
+            $('longestStreak').textContent = maxStreak;
+            if (!habits.length) { $('habitsList').innerHTML = '<div class="empty-state"><p>还没有习惯，点击"新习惯"开始！</p></div>'; return; }
+            $('habitsList').innerHTML = habits.map(h => {
+                const checked = completions[todayKey]?.[h.id], streak = calcStreak(h.id);
+                return '<div class="habit-card"><div class="habit-icon" style="background:'+h.color+'20;color:'+(h.color||'#8b5cf6')+'">'+h.icon+'</div><div class="habit-info"><div class="habit-name">'+h.name+'</div><div class="habit-streak">'+(streak>0?'🔥 连续 '+streak+' 天':'开始你的连续记录！')+'</div></div><button class="check-btn '+(checked?'checked':'')+'" onclick="toggleHabit(\''+h.id+'\')">'+(checked?'✓':'')+'</button><div class="habit-menu"><button onclick="deleteHabit(\''+h.id+'\')">🗑️</button></div></div>';
+            }).join('');
+        }
+        function setupEvents() {
+            $('addHabitBtn').onclick = () => { $('habitForm').reset(); $('habitId').value = ''; selectedIcon = '📚'; renderIconPicker(); $('habitModal').classList.add('show'); };
+            $('habitForm').onsubmit = e => { e.preventDefault(); const id = $('habitId').value; const h = { id: id || genId(), name: $('habitName').value, icon: selectedIcon, color: '#8b5cf6' }; if (id) { const i = habits.findIndex(x=>x.id===id); if (i!==-1) habits[i] = h; } else habits.push(h); saveData(); render(); $('habitModal').classList.remove('show'); };
+            $('cancelHabitBtn').onclick = () => $('habitModal').classList.remove('show');
+            $('iconPicker').onclick = e => { const o = e.target.closest('.icon-option'); if (o) { selectedIcon = o.dataset.icon; renderIconPicker(); } };
+            $('themeToggle').onclick = toggleTheme;
+            $('habitModal').onclick = e => { if (e.target.id === 'habitModal') $('habitModal').classList.remove('show'); };
+        }
+        window.toggleHabit = id => { const k = getDateKey(); if (!completions[k]) completions[k] = {}; completions[k][id] = !completions[k][id]; saveData(); render(); };
+        window.deleteHabit = id => { if (confirm('确定删除?')) { habits = habits.filter(h=>h.id!==id); saveData(); render(); } };
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        init();
+    </script>
+</body>
+</html>

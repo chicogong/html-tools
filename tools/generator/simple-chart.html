@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易图表生成器 - Simple Chart</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .theme-toggle { background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; cursor: pointer; }
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1rem; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1rem; border: 1px solid var(--muted-border-color); }
+        .panel h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+        .chart-types { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .chart-types button { padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid var(--muted-border-color); background: transparent; cursor: pointer; }
+        .chart-types button.active { border-color: var(--primary-color); background: rgba(139,92,246,0.1); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th, .data-table td { padding: 0.5rem; border: 1px solid var(--muted-border-color); }
+        .data-table input { width: 100%; border: none; background: transparent; text-align: center; }
+        .chart-container { min-height: 400px; display: flex; align-items: center; justify-content: center; }
+        .chart-container canvas { max-width: 100%; }
+        .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .actions button { flex: 1; }
+        .color-list { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+        .color-list input { width: 30px; height: 30px; padding: 0; border: none; cursor: pointer; border-radius: 4px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 简易图表生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </header>
+        <div class="main-grid">
+            <div class="panel">
+                <h3>⚙️ 设置</h3>
+                <div class="chart-types">
+                    <button class="active" onclick="setChartType('bar')">📊 柱状</button>
+                    <button onclick="setChartType('line')">📈 折线</button>
+                    <button onclick="setChartType('pie')">🥧 饼图</button>
+                    <button onclick="setChartType('doughnut')">🍩 环形</button>
+                </div>
+                <div class="form-group">
+                    <label>图表标题</label>
+                    <input type="text" id="chartTitle" value="数据统计" oninput="renderChart()">
+                </div>
+                <div class="form-group">
+                    <label>数据 (每行一个，格式: 标签,数值)</label>
+                    <textarea id="dataInput" rows="8" oninput="renderChart()">一月,120
+二月,150
+三月,180
+四月,140
+五月,200
+六月,175</textarea>
+                </div>
+                <div class="form-group">
+                    <label>颜色方案</label>
+                    <div class="color-list" id="colorList"></div>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="showLegend" checked onchange="renderChart()"> 显示图例</label>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="showValues" checked onchange="renderChart()"> 显示数值</label>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>👁️ 预览</h3>
+                <div class="chart-container">
+                    <canvas id="chart"></canvas>
+                </div>
+                <div class="actions">
+                    <button onclick="downloadChart('png')">💾 下载 PNG</button>
+                    <button onclick="downloadChart('jpg')">💾 下载 JPG</button>
+                    <button onclick="copyChart()">📋 复制</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let chartType = 'bar';
+        let colors = ['#8b5cf6','#ec4899','#06b6d4','#10b981','#f59e0b','#ef4444','#6366f1','#84cc16'];
+        const canvas = document.getElementById('chart');
+        const ctx = canvas.getContext('2d');
+        
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); renderColorList(); renderChart(); });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); renderChart(); }
+        
+        function setChartType(type) {
+            chartType = type;
+            document.querySelectorAll('.chart-types button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderChart();
+        }
+        
+        function renderColorList() {
+            document.getElementById('colorList').innerHTML = colors.map((c, i) => 
+                '<input type="color" value="' + c + '" onchange="colors[' + i + ']=this.value;renderChart()">'
+            ).join('');
+        }
+        
+        function parseData() {
+            const lines = document.getElementById('dataInput').value.trim().split('\n');
+            const labels = [], values = [];
+            lines.forEach(line => {
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    labels.push(parts[0].trim());
+                    values.push(parseFloat(parts[1]) || 0);
+                }
+            });
+            return { labels, values };
+        }
+        
+        function renderChart() {
+            const { labels, values } = parseData();
+            const title = document.getElementById('chartTitle').value;
+            const showLegend = document.getElementById('showLegend').checked;
+            const showValues = document.getElementById('showValues').checked;
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            
+            canvas.width = 600;
+            canvas.height = 400;
+            ctx.fillStyle = isDark ? '#1a1a2e' : '#ffffff';
+            ctx.fillRect(0, 0, 600, 400);
+            
+            ctx.fillStyle = isDark ? '#ffffff' : '#333333';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(title, 300, 30);
+            
+            if (chartType === 'pie' || chartType === 'doughnut') {
+                drawPieChart(labels, values, showLegend, showValues, isDark);
+            } else if (chartType === 'line') {
+                drawLineChart(labels, values, showLegend, showValues, isDark);
+            } else {
+                drawBarChart(labels, values, showLegend, showValues, isDark);
+            }
+        }
+        
+        function drawBarChart(labels, values, showLegend, showValues, isDark) {
+            const max = Math.max(...values) * 1.2;
+            const barWidth = 400 / labels.length - 20;
+            const startX = 100, startY = 350;
+            
+            ctx.strokeStyle = isDark ? '#444' : '#ddd';
+            ctx.beginPath();
+            ctx.moveTo(startX, 50);
+            ctx.lineTo(startX, startY);
+            ctx.lineTo(550, startY);
+            ctx.stroke();
+            
+            labels.forEach((label, i) => {
+                const barHeight = (values[i] / max) * 280;
+                const x = startX + 20 + i * (barWidth + 20);
+                const y = startY - barHeight;
+                
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(x, y, barWidth, barHeight);
+                
+                ctx.fillStyle = isDark ? '#aaa' : '#666';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x + barWidth / 2, startY + 20);
+                
+                if (showValues) {
+                    ctx.fillStyle = isDark ? '#fff' : '#333';
+                    ctx.fillText(values[i], x + barWidth / 2, y - 5);
+                }
+            });
+        }
+        
+        function drawLineChart(labels, values, showLegend, showValues, isDark) {
+            const max = Math.max(...values) * 1.2;
+            const startX = 100, startY = 350, width = 450, height = 280;
+            const stepX = width / (labels.length - 1);
+            
+            ctx.strokeStyle = isDark ? '#444' : '#ddd';
+            ctx.beginPath();
+            ctx.moveTo(startX, 50);
+            ctx.lineTo(startX, startY);
+            ctx.lineTo(550, startY);
+            ctx.stroke();
+            
+            ctx.strokeStyle = colors[0];
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            const points = labels.map((label, i) => ({
+                x: startX + i * stepX,
+                y: startY - (values[i] / max) * height,
+                label, value: values[i]
+            }));
+            
+            points.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.stroke();
+            
+            points.forEach((p, i) => {
+                ctx.fillStyle = colors[0];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = isDark ? '#aaa' : '#666';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.label, p.x, startY + 20);
+                
+                if (showValues) {
+                    ctx.fillStyle = isDark ? '#fff' : '#333';
+                    ctx.fillText(p.value, p.x, p.y - 10);
+                }
+            });
+        }
+        
+        function drawPieChart(labels, values, showLegend, showValues, isDark) {
+            const total = values.reduce((a, b) => a + b, 0);
+            const cx = 250, cy = 210, r = 120;
+            let startAngle = -Math.PI / 2;
+            
+            values.forEach((v, i) => {
+                const sliceAngle = (v / total) * Math.PI * 2;
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fill();
+                
+                if (chartType === 'doughnut') {
+                    ctx.fillStyle = isDark ? '#1a1a2e' : '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                if (showValues) {
+                    const midAngle = startAngle + sliceAngle / 2;
+                    const labelR = chartType === 'doughnut' ? r * 0.75 : r * 0.65;
+                    const lx = cx + Math.cos(midAngle) * labelR;
+                    const ly = cy + Math.sin(midAngle) * labelR;
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(Math.round(v / total * 100) + '%', lx, ly);
+                }
+                startAngle += sliceAngle;
+            });
+            
+            if (showLegend) {
+                labels.forEach((label, i) => {
+                    ctx.fillStyle = colors[i % colors.length];
+                    ctx.fillRect(420, 60 + i * 25, 15, 15);
+                    ctx.fillStyle = isDark ? '#fff' : '#333';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(label, 440, 72 + i * 25);
+                });
+            }
+        }
+        
+        function downloadChart(format) {
+            const link = document.createElement('a');
+            link.download = 'chart.' + format;
+            link.href = canvas.toDataURL('image/' + (format === 'jpg' ? 'jpeg' : 'png'), 0.95);
+            link.click();
+            showToast('图表已下载');
+        }
+        
+        async function copyChart() {
+            try {
+                const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+                showToast('图表已复制');
+            } catch (e) { showToast('复制失败'); }
+        }
+        
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+    </script>
+</body>
+</html>

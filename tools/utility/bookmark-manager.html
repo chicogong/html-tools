@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>书签管理器 - 在线书签收藏夹</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #3b82f6; --success: #22c55e; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .header-actions { display: flex; gap: 0.5rem; }
+        .toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 200px; }
+        .search-box input { margin: 0; }
+        .main-content { display: grid; grid-template-columns: 220px 1fr; gap: 1rem; }
+        @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; } }
+        .sidebar { background: var(--pico-card-background-color); border-radius: 8px; padding: 1rem; height: fit-content; }
+        .sidebar h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+        .folder-list { list-style: none; padding: 0; margin: 0; }
+        .folder-item { display: flex; align-items: center; padding: 0.5rem; border-radius: 4px; cursor: pointer; gap: 0.5rem; }
+        .folder-item:hover { background: var(--pico-muted-border-color); }
+        .folder-item.active { background: var(--primary); color: white; }
+        .folder-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+        .folder-item .count { font-size: 0.75rem; opacity: 0.7; }
+        .bookmarks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+        .bookmark-card { background: var(--pico-card-background-color); border-radius: 8px; padding: 1rem; }
+        .bookmark-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .bookmark-card .header { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+        .bookmark-card .favicon { width: 32px; height: 32px; border-radius: 4px; }
+        .bookmark-card .info { flex: 1; min-width: 0; }
+        .bookmark-card .title { font-weight: 600; font-size: 0.95rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bookmark-card .title a { color: inherit; text-decoration: none; }
+        .bookmark-card .title a:hover { text-decoration: underline; }
+        .bookmark-card .url { font-size: 0.7rem; color: var(--pico-muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bookmark-card .tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.5rem; }
+        .tag { font-size: 0.65rem; padding: 0.1rem 0.4rem; background: var(--pico-muted-border-color); border-radius: 10px; }
+        .bookmark-card .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--pico-muted-border-color); }
+        .bookmark-card .actions button { padding: 0.25rem 0.5rem; margin: 0; font-size: 0.7rem; }
+        .empty-state { text-align: center; padding: 3rem; color: var(--pico-muted-color); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--pico-card-background-color); border-radius: 8px; padding: 1.5rem; max-width: 450px; width: 90%; }
+        .modal h2 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+        .form-group { margin-bottom: 0.75rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { margin: 0; font-size: 0.9rem; }
+        .btn-group { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+        .stats-bar { display: flex; gap: 2rem; padding: 0.75rem 1rem; background: var(--pico-card-background-color); border-radius: 8px; margin-bottom: 1rem; }
+        .stat-item .value { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .stat-item .label { font-size: 0.75rem; color: var(--pico-muted-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 书签管理器</h1>
+            <div class="header-actions">
+                <button id="addBookmarkBtn" class="primary">+ 添加书签</button>
+                <button id="exportBtn" class="secondary">导出</button>
+                <button id="themeToggle" class="outline">🌙</button>
+            </div>
+        </header>
+        <div class="stats-bar">
+            <div class="stat-item"><div class="value" id="totalBookmarks">0</div><div class="label">书签总数</div></div>
+            <div class="stat-item"><div class="value" id="totalFolders">0</div><div class="label">文件夹</div></div>
+            <div class="stat-item"><div class="value" id="totalTags">0</div><div class="label">标签</div></div>
+        </div>
+        <div class="toolbar">
+            <div class="search-box"><input type="search" id="searchInput" placeholder="搜索书签..."></div>
+            <select id="sortSelect" style="margin:0;width:auto;">
+                <option value="newest">最新添加</option>
+                <option value="oldest">最早添加</option>
+                <option value="alpha">按名称</option>
+            </select>
+        </div>
+        <div class="main-content">
+            <aside class="sidebar">
+                <h3>文件夹 <button id="addFolderBtn" class="outline" style="padding:0.15rem 0.4rem;margin:0;font-size:0.7rem;">+</button></h3>
+                <ul class="folder-list" id="folderList"></ul>
+            </aside>
+            <main><div id="bookmarksContainer" class="bookmarks-grid"></div></main>
+        </div>
+    </div>
+    <div class="modal-overlay" id="bookmarkModal">
+        <div class="modal">
+            <h2 id="bookmarkModalTitle">添加书签</h2>
+            <form id="bookmarkForm">
+                <input type="hidden" id="bookmarkId">
+                <div class="form-group"><label>URL *</label><input type="url" id="bookmarkUrl" required placeholder="https://"></div>
+                <div class="form-group"><label>标题 *</label><input type="text" id="bookmarkTitle" required></div>
+                <div class="form-group"><label>描述</label><textarea id="bookmarkDescription" rows="2"></textarea></div>
+                <div class="form-group"><label>文件夹</label><select id="bookmarkFolder"><option value="">未分类</option></select></div>
+                <div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="bookmarkTags" placeholder="标签1, 标签2"></div>
+                <div class="btn-group"><button type="button" class="secondary" id="cancelBookmarkBtn">取消</button><button type="submit" class="primary">保存</button></div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-overlay" id="folderModal">
+        <div class="modal">
+            <h2>添加文件夹</h2>
+            <form id="folderForm">
+                <input type="hidden" id="folderId">
+                <div class="form-group"><label>名称 *</label><input type="text" id="folderName" required></div>
+                <div class="form-group"><label>图标</label><input type="text" id="folderIcon" placeholder="📁" maxlength="2"></div>
+                <div class="btn-group"><button type="button" class="secondary" id="cancelFolderBtn">取消</button><button type="submit" class="primary">保存</button></div>
+            </form>
+        </div>
+    </div>
+    <script>
+        let bookmarks = [], folders = [], currentFolder = null, searchQuery = '', sortOrder = 'newest';
+        const $ = id => document.getElementById(id);
+        function init() { loadData(); render(); setupEvents(); loadTheme(); }
+        function loadData() {
+            bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            folders = JSON.parse(localStorage.getItem('bookmarkFolders') || '[]');
+            if (!folders.length) { folders = [{id:'1',name:'工作',icon:'💼'},{id:'2',name:'学习',icon:'📖'},{id:'3',name:'娱乐',icon:'🎮'}]; saveData(); }
+        }
+        function saveData() { localStorage.setItem('bookmarks', JSON.stringify(bookmarks)); localStorage.setItem('bookmarkFolders', JSON.stringify(folders)); }
+        function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function getFavicon(url) { try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`; } catch { return ''; } }
+        function render() { renderFolders(); renderBookmarks(); updateStats(); }
+        function renderFolders() {
+            const all = bookmarks.length, uncat = bookmarks.filter(b => !b.folderId).length;
+            let h = `<li class="folder-item ${currentFolder===null?'active':''}" data-folder=""><span class="name">📚 全部</span><span class="count">${all}</span></li>`;
+            h += `<li class="folder-item ${currentFolder===''?'active':''}" data-folder="uncat"><span class="name">📄 未分类</span><span class="count">${uncat}</span></li>`;
+            folders.forEach(f => { const c = bookmarks.filter(b => b.folderId === f.id).length; h += `<li class="folder-item ${currentFolder===f.id?'active':''}" data-folder="${f.id}"><span class="name">${f.icon||'📁'} ${escapeHtml(f.name)}</span><span class="count">${c}</span></li>`; });
+            $('folderList').innerHTML = h;
+            $('bookmarkFolder').innerHTML = '<option value="">未分类</option>' + folders.map(f => `<option value="${f.id}">${f.icon} ${escapeHtml(f.name)}</option>`).join('');
+        }
+        function renderBookmarks() {
+            let list = [...bookmarks];
+            if (currentFolder === '') list = list.filter(b => !b.folderId);
+            else if (currentFolder) list = list.filter(b => b.folderId === currentFolder);
+            if (searchQuery) { const q = searchQuery.toLowerCase(); list = list.filter(b => b.title.toLowerCase().includes(q) || b.url.toLowerCase().includes(q) || (b.tags||[]).some(t => t.toLowerCase().includes(q))); }
+            list.sort((a,b) => sortOrder==='newest' ? b.createdAt-a.createdAt : sortOrder==='oldest' ? a.createdAt-b.createdAt : a.title.localeCompare(b.title));
+            if (!list.length) { $('bookmarksContainer').innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>暂无书签</p></div>'; return; }
+            $('bookmarksContainer').innerHTML = list.map(b => `<div class="bookmark-card"><div class="header"><img class="favicon" src="${getFavicon(b.url)}" onerror="this.style.display='none'"><div class="info"><h4 class="title"><a href="${escapeHtml(b.url)}" target="_blank">${escapeHtml(b.title)}</a></h4><div class="url">${escapeHtml(b.url)}</div></div></div>${b.tags?.length ? `<div class="tags">${b.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}<div class="actions"><button onclick="window.open('${escapeHtml(b.url)}')" class="outline">打开</button><button onclick="copyUrl('${escapeHtml(b.url)}')" class="outline">复制</button><button onclick="editBookmark('${b.id}')" class="outline">编辑</button><button onclick="deleteBookmark('${b.id}')" class="outline secondary">删除</button></div></div>`).join('');
+        }
+        function updateStats() {
+            $('totalBookmarks').textContent = bookmarks.length;
+            $('totalFolders').textContent = folders.length;
+            const tags = new Set(); bookmarks.forEach(b => (b.tags||[]).forEach(t => tags.add(t)));
+            $('totalTags').textContent = tags.size;
+        }
+        function setupEvents() {
+            $('addBookmarkBtn').onclick = () => { $('bookmarkModalTitle').textContent = '添加书签'; $('bookmarkForm').reset(); $('bookmarkId').value = ''; $('bookmarkModal').classList.add('show'); };
+            $('bookmarkForm').onsubmit = e => { e.preventDefault(); const id = $('bookmarkId').value; const b = { id: id || genId(), url: $('bookmarkUrl').value, title: $('bookmarkTitle').value, description: $('bookmarkDescription').value, folderId: $('bookmarkFolder').value, tags: $('bookmarkTags').value.split(',').map(t=>t.trim()).filter(t=>t), createdAt: id ? bookmarks.find(x=>x.id===id)?.createdAt || Date.now() : Date.now() }; if (id) { const i = bookmarks.findIndex(x=>x.id===id); if (i!==-1) bookmarks[i] = b; } else bookmarks.push(b); saveData(); render(); $('bookmarkModal').classList.remove('show'); };
+            $('cancelBookmarkBtn').onclick = () => $('bookmarkModal').classList.remove('show');
+            $('addFolderBtn').onclick = () => { $('folderForm').reset(); $('folderId').value = ''; $('folderIcon').value = '📁'; $('folderModal').classList.add('show'); };
+            $('folderForm').onsubmit = e => { e.preventDefault(); const id = $('folderId').value; const f = { id: id || genId(), name: $('folderName').value, icon: $('folderIcon').value || '📁' }; if (id) { const i = folders.findIndex(x=>x.id===id); if (i!==-1) folders[i] = f; } else folders.push(f); saveData(); render(); $('folderModal').classList.remove('show'); };
+            $('cancelFolderBtn').onclick = () => $('folderModal').classList.remove('show');
+            $('folderList').onclick = e => { const item = e.target.closest('.folder-item'); if (item) { const f = item.dataset.folder; currentFolder = f === '' ? null : f === 'uncat' ? '' : f; render(); } };
+            $('searchInput').oninput = e => { searchQuery = e.target.value; renderBookmarks(); };
+            $('sortSelect').onchange = e => { sortOrder = e.target.value; renderBookmarks(); };
+            $('exportBtn').onclick = () => { const data = { bookmarks, folders, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `bookmarks-${new Date().toISOString().split('T')[0]}.json`; a.click(); };
+            $('themeToggle').onclick = toggleTheme;
+            document.querySelectorAll('.modal-overlay').forEach(m => m.onclick = e => { if (e.target === m) m.classList.remove('show'); });
+        }
+        window.editBookmark = id => { const b = bookmarks.find(x=>x.id===id); if (!b) return; $('bookmarkModalTitle').textContent = '编辑书签'; $('bookmarkId').value = id; $('bookmarkUrl').value = b.url; $('bookmarkTitle').value = b.title; $('bookmarkDescription').value = b.description || ''; $('bookmarkFolder').value = b.folderId || ''; $('bookmarkTags').value = (b.tags||[]).join(', '); $('bookmarkModal').classList.add('show'); };
+        window.deleteBookmark = id => { if (confirm('确定删除?')) { bookmarks = bookmarks.filter(b=>b.id!==id); saveData(); render(); } };
+        window.copyUrl = url => { navigator.clipboard.writeText(url); alert('已复制'); };
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        init();
+    </script>
+</body>
+</html>

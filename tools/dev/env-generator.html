@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.env 文件生成器 - Env Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .theme-toggle { background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; cursor: pointer; }
+        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--muted-border-color); margin-bottom: 1rem; }
+        .panel h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .templates { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .templates button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+        .env-list { max-height: 400px; overflow-y: auto; }
+        .env-item { display: grid; grid-template-columns: 150px 1fr auto; gap: 0.5rem; align-items: center; padding: 0.5rem; background: var(--code-background-color); border-radius: 8px; margin-bottom: 0.5rem; }
+        .env-item input { font-family: monospace; font-size: 0.85rem; }
+        .env-item .key { font-weight: 500; }
+        .env-item .remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem; padding: 0.25rem; }
+        .add-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .add-row input { flex: 1; }
+        .output { font-family: monospace; font-size: 0.85rem; min-height: 200px; white-space: pre-wrap; background: var(--code-background-color); padding: 1rem; border-radius: 8px; overflow: auto; }
+        .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .actions button { flex: 1; }
+        .stats { font-size: 0.8rem; color: var(--muted-color); margin-top: 0.5rem; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ .env 文件生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </header>
+        <div class="panel">
+            <h3>📋 模板</h3>
+            <div class="templates">
+                <button onclick="loadTemplate('node')">Node.js</button>
+                <button onclick="loadTemplate('nextjs')">Next.js</button>
+                <button onclick="loadTemplate('react')">React</button>
+                <button onclick="loadTemplate('django')">Django</button>
+                <button onclick="loadTemplate('laravel')">Laravel</button>
+                <button onclick="loadTemplate('docker')">Docker</button>
+                <button onclick="loadTemplate('database')">Database</button>
+                <button onclick="loadTemplate('aws')">AWS</button>
+            </div>
+        </div>
+        <div class="panel">
+            <h3>✏️ 编辑变量</h3>
+            <div class="env-list" id="envList"></div>
+            <div class="add-row">
+                <input type="text" id="newKey" placeholder="KEY_NAME" onkeypress="if(event.key==='Enter')addEnv()">
+                <input type="text" id="newValue" placeholder="value" onkeypress="if(event.key==='Enter')addEnv()">
+                <button onclick="addEnv()">➕ 添加</button>
+            </div>
+            <div class="stats" id="stats"></div>
+        </div>
+        <div class="panel">
+            <h3>📄 生成结果</h3>
+            <div class="output" id="output"></div>
+            <div class="actions">
+                <button onclick="copyOutput()">📋 复制</button>
+                <button onclick="downloadEnv('.env')">💾 下载 .env</button>
+                <button onclick="downloadEnv('.env.example')">💾 下载 .env.example</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let envVars = [];
+        
+        const templates = {
+            node: [
+                ['NODE_ENV', 'development'],
+                ['PORT', '3000'],
+                ['HOST', 'localhost'],
+                ['LOG_LEVEL', 'debug'],
+                ['SECRET_KEY', ''],
+            ],
+            nextjs: [
+                ['NEXT_PUBLIC_API_URL', 'http://localhost:3000/api'],
+                ['NEXT_PUBLIC_SITE_URL', 'http://localhost:3000'],
+                ['DATABASE_URL', ''],
+                ['NEXTAUTH_SECRET', ''],
+                ['NEXTAUTH_URL', 'http://localhost:3000'],
+            ],
+            react: [
+                ['REACT_APP_API_URL', 'http://localhost:3000/api'],
+                ['REACT_APP_ENV', 'development'],
+                ['REACT_APP_VERSION', '1.0.0'],
+                ['GENERATE_SOURCEMAP', 'false'],
+            ],
+            django: [
+                ['DEBUG', 'True'],
+                ['SECRET_KEY', ''],
+                ['ALLOWED_HOSTS', 'localhost,127.0.0.1'],
+                ['DATABASE_URL', 'sqlite:///db.sqlite3'],
+                ['STATIC_URL', '/static/'],
+            ],
+            laravel: [
+                ['APP_NAME', 'Laravel'],
+                ['APP_ENV', 'local'],
+                ['APP_KEY', ''],
+                ['APP_DEBUG', 'true'],
+                ['APP_URL', 'http://localhost'],
+                ['DB_CONNECTION', 'mysql'],
+                ['DB_HOST', '127.0.0.1'],
+                ['DB_PORT', '3306'],
+                ['DB_DATABASE', 'laravel'],
+                ['DB_USERNAME', 'root'],
+                ['DB_PASSWORD', ''],
+            ],
+            docker: [
+                ['COMPOSE_PROJECT_NAME', 'myapp'],
+                ['DOCKER_REGISTRY', ''],
+                ['IMAGE_TAG', 'latest'],
+                ['RESTART_POLICY', 'unless-stopped'],
+            ],
+            database: [
+                ['DB_HOST', 'localhost'],
+                ['DB_PORT', '5432'],
+                ['DB_NAME', 'mydb'],
+                ['DB_USER', 'user'],
+                ['DB_PASSWORD', ''],
+                ['DB_SSL', 'false'],
+                ['REDIS_URL', 'redis://localhost:6379'],
+            ],
+            aws: [
+                ['AWS_ACCESS_KEY_ID', ''],
+                ['AWS_SECRET_ACCESS_KEY', ''],
+                ['AWS_REGION', 'us-east-1'],
+                ['AWS_S3_BUCKET', ''],
+                ['AWS_CLOUDFRONT_URL', ''],
+            ],
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); render(); });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        
+        function loadTemplate(name) {
+            envVars = templates[name].map(([k, v]) => ({ key: k, value: v }));
+            render();
+            showToast('已加载 ' + name + ' 模板');
+        }
+        
+        function render() {
+            document.getElementById('envList').innerHTML = envVars.map((e, i) =>
+                '<div class="env-item">' +
+                    '<input class="key" value="' + escapeHtml(e.key) + '" onchange="updateEnv(' + i + ',\'key\',this.value)">' +
+                    '<input value="' + escapeHtml(e.value) + '" onchange="updateEnv(' + i + ',\'value\',this.value)" placeholder="值">' +
+                    '<button class="remove" onclick="removeEnv(' + i + ')">×</button>' +
+                '</div>'
+            ).join('');
+            
+            const output = envVars.map(e => e.key + '=' + (e.value.includes(' ') ? '"' + e.value + '"' : e.value)).join('\n');
+            document.getElementById('output').textContent = output || '# 暂无环境变量';
+            document.getElementById('stats').textContent = '共 ' + envVars.length + ' 个变量';
+        }
+        
+        function addEnv() {
+            const key = document.getElementById('newKey').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+            const value = document.getElementById('newValue').value;
+            if (key) {
+                envVars.push({ key, value });
+                document.getElementById('newKey').value = '';
+                document.getElementById('newValue').value = '';
+                render();
+            }
+        }
+        
+        function updateEnv(i, field, value) {
+            envVars[i][field] = field === 'key' ? value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') : value;
+            render();
+        }
+        
+        function removeEnv(i) { envVars.splice(i, 1); render(); }
+        
+        function copyOutput() {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output);
+            showToast('已复制到剪贴板');
+        }
+        
+        function downloadEnv(filename) {
+            const output = document.getElementById('output').textContent;
+            const blob = new Blob([output], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            showToast('已下载 ' + filename);
+        }
+        
+        function escapeHtml(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 表格生成器 - HTML Tools</title>
+    <meta name="description" content="可视化生成 HTML 表格代码，支持自定义行列、样式和内容编辑">
+    <meta name="keywords" content="HTML表格,table生成器,表格代码,可视化表格">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: #16213e;
+            --text-color: #eee;
+            --border-color: #0f3460;
+            --primary-color: #00d9ff;
+            --secondary-color: #e94560;
+            --hover-color: #00b8d4;
+            --input-bg: #0f3460;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --container-bg: #fff;
+            --text-color: #333;
+            --border-color: #d1d5db;
+            --primary-color: #0284c7;
+            --secondary-color: #dc2626;
+            --hover-color: #0369a1;
+            --input-bg: #f8fafc;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--primary-color);
+        }
+
+        .panel {
+            background: var(--container-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-item label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .control-item input,
+        .control-item select {
+            padding: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+        }
+
+        .control-item input:focus,
+        .control-item select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--hover-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-color);
+        }
+
+        .table-editor {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .editable-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 400px;
+        }
+
+        .editable-table th,
+        .editable-table td {
+            border: 1px solid var(--border-color);
+            padding: 0;
+            min-width: 100px;
+        }
+
+        .editable-table th {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .editable-table input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .editable-table input:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: -2px;
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .editable-table th input {
+            color: white;
+            font-weight: 600;
+        }
+
+        .editable-table th input:focus {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 5px;
+            padding: 5px;
+            justify-content: center;
+        }
+
+        .row-actions button {
+            padding: 5px 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .row-actions button:hover {
+            border-color: var(--primary-color);
+        }
+
+        .code-output {
+            position: relative;
+        }
+
+        .code-output textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-family: Monaco, Menlo, monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .code-output textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .preview-section {
+            padding: 20px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .preview-section table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .preview-section th,
+        .preview-section td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .preview-section th {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .preview-section tr:nth-child(even) {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px 6px 0 0;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    
+    <div class="container">
+        <header>
+            <h1>HTML 表格生成器</h1>
+            <p class="subtitle">可视化创建和编辑 HTML 表格</p>
+        </header>
+
+        <div class="panel">
+            <h2 class="panel-title">表格设置</h2>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <label>行数</label>
+                    <input type="number" id="rows" value="4" min="1" max="50" onchange="regenerateTable()">
+                </div>
+                <div class="control-item">
+                    <label>列数</label>
+                    <input type="number" id="cols" value="4" min="1" max="20" onchange="regenerateTable()">
+                </div>
+                <div class="control-item">
+                    <label>包含表头</label>
+                    <select id="hasHeader" onchange="regenerateTable()">
+                        <option value="true">是</option>
+                        <option value="false">否</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>输出格式</label>
+                    <select id="outputFormat" onchange="generateCode()">
+                        <option value="html">HTML</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="regenerateTable()">重新生成</button>
+                <button class="btn btn-secondary" onclick="addRow()">+ 添加行</button>
+                <button class="btn btn-secondary" onclick="addColumn()">+ 添加列</button>
+                <button class="btn btn-secondary" onclick="clearTable()">清空内容</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">编辑表格</h2>
+            <p style="margin-bottom:15px;opacity:0.7;font-size:0.9rem;">直接点击单元格编辑内容，修改后自动更新代码</p>
+            <div class="table-editor">
+                <table class="editable-table" id="editableTable"></table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title">输出</h2>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('code')">代码</button>
+                <button class="tab-btn" onclick="switchTab('preview')">预览</button>
+            </div>
+            
+            <div id="codeTab" class="tab-content active">
+                <div class="code-output">
+                    <textarea id="codeOutput" readonly></textarea>
+                </div>
+                <div class="btn-row" style="margin-top:15px;">
+                    <button class="btn btn-primary" onclick="copyCode()">📋 复制代码</button>
+                    <button class="btn btn-secondary" onclick="downloadCode()">💾 下载</button>
+                </div>
+            </div>
+            
+            <div id="previewTab" class="tab-content">
+                <div class="preview-section" id="previewSection"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let tableData = [];
+        let hasHeader = true;
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Initialize theme
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        function regenerateTable() {
+            const rows = parseInt(document.getElementById('rows').value) || 4;
+            const cols = parseInt(document.getElementById('cols').value) || 4;
+            hasHeader = document.getElementById('hasHeader').value === 'true';
+
+            tableData = [];
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    if (i === 0 && hasHeader) {
+                        row.push('标题 ' + (j + 1));
+                    } else {
+                        row.push('内容 ' + (i + 1) + '-' + (j + 1));
+                    }
+                }
+                tableData.push(row);
+            }
+
+            renderTable();
+            generateCode();
+        }
+
+        function renderTable() {
+            const table = document.getElementById('editableTable');
+            let html = '';
+
+            tableData.forEach((row, rowIndex) => {
+                html += '<tr>';
+                row.forEach((cell, colIndex) => {
+                    const tag = (rowIndex === 0 && hasHeader) ? 'th' : 'td';
+                    html += `<${tag}>
+                        <input type="text" value="${escapeHtml(cell)}" 
+                               onchange="updateCell(${rowIndex}, ${colIndex}, this.value)"
+                               onkeydown="handleKeydown(event, ${rowIndex}, ${colIndex})">
+                    </${tag}>`;
+                });
+                html += `<td class="row-actions">
+                    <button onclick="deleteRow(${rowIndex})" title="删除行">🗑️</button>
+                </td>`;
+                html += '</tr>';
+            });
+
+            table.innerHTML = html;
+        }
+
+        function updateCell(row, col, value) {
+            tableData[row][col] = value;
+            generateCode();
+        }
+
+        function handleKeydown(event, row, col) {
+            const inputs = document.querySelectorAll('.editable-table input');
+            const currentIndex = row * (tableData[0].length) + col;
+            
+            if (event.key === 'Tab') {
+                // Default tab behavior
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const nextRow = row + 1;
+                if (nextRow < tableData.length) {
+                    const nextIndex = nextRow * tableData[0].length + col;
+                    inputs[nextIndex]?.focus();
+                }
+            }
+        }
+
+        function addRow() {
+            const cols = tableData[0]?.length || parseInt(document.getElementById('cols').value);
+            const newRow = [];
+            for (let i = 0; i < cols; i++) {
+                newRow.push('');
+            }
+            tableData.push(newRow);
+            document.getElementById('rows').value = tableData.length;
+            renderTable();
+            generateCode();
+        }
+
+        function addColumn() {
+            tableData.forEach((row, index) => {
+                if (index === 0 && hasHeader) {
+                    row.push('新标题');
+                } else {
+                    row.push('');
+                }
+            });
+            document.getElementById('cols').value = tableData[0].length;
+            renderTable();
+            generateCode();
+        }
+
+        function deleteRow(index) {
+            if (tableData.length <= 1) {
+                showToast('至少保留一行');
+                return;
+            }
+            tableData.splice(index, 1);
+            document.getElementById('rows').value = tableData.length;
+            renderTable();
+            generateCode();
+        }
+
+        function clearTable() {
+            tableData = tableData.map((row, rowIndex) => 
+                row.map((_, colIndex) => {
+                    if (rowIndex === 0 && hasHeader) {
+                        return '标题 ' + (colIndex + 1);
+                    }
+                    return '';
+                })
+            );
+            renderTable();
+            generateCode();
+        }
+
+        function generateCode() {
+            const format = document.getElementById('outputFormat').value;
+            let code = '';
+
+            switch (format) {
+                case 'html':
+                    code = generateHTML();
+                    break;
+                case 'markdown':
+                    code = generateMarkdown();
+                    break;
+                case 'csv':
+                    code = generateCSV();
+                    break;
+            }
+
+            document.getElementById('codeOutput').value = code;
+            updatePreview();
+        }
+
+        function generateHTML() {
+            let html = '<table>\n';
+            
+            tableData.forEach((row, rowIndex) => {
+                if (rowIndex === 0 && hasHeader) {
+                    html += '  <thead>\n    <tr>\n';
+                    row.forEach(cell => {
+                        html += `      <th>${escapeHtml(cell)}</th>\n`;
+                    });
+                    html += '    </tr>\n  </thead>\n  <tbody>\n';
+                } else {
+                    if (rowIndex === 1 && hasHeader) {
+                        // tbody already opened
+                    } else if (rowIndex === 0 && !hasHeader) {
+                        html += '  <tbody>\n';
+                    }
+                    html += '    <tr>\n';
+                    row.forEach(cell => {
+                        html += `      <td>${escapeHtml(cell)}</td>\n`;
+                    });
+                    html += '    </tr>\n';
+                }
+            });
+            
+            html += '  </tbody>\n</table>';
+            return html;
+        }
+
+        function generateMarkdown() {
+            let md = '';
+            
+            tableData.forEach((row, rowIndex) => {
+                md += '| ' + row.map(cell => cell.replace(/\|/g, '\\|')).join(' | ') + ' |\n';
+                
+                if (rowIndex === 0 && hasHeader) {
+                    md += '| ' + row.map(() => '---').join(' | ') + ' |\n';
+                }
+            });
+            
+            return md;
+        }
+
+        function generateCSV() {
+            return tableData.map(row => 
+                row.map(cell => {
+                    if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+                        return '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell;
+                }).join(',')
+            ).join('\n');
+        }
+
+        function updatePreview() {
+            const preview = document.getElementById('previewSection');
+            preview.innerHTML = generateHTML();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tab === 'code') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('codeTab').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('previewTab').classList.add('active');
+            }
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeOutput').value;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('代码已复制');
+            });
+        }
+
+        function downloadCode() {
+            const code = document.getElementById('codeOutput').value;
+            const format = document.getElementById('outputFormat').value;
+            const extensions = { html: 'html', markdown: 'md', csv: 'csv' };
+            
+            const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `table.${extensions[format]}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('文件已下载');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Initialize
+        regenerateTable();
+    </script>
+</body>
+</html>

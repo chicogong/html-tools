@@ -1,149 +1,646 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Token 计数器 - WebUtils</title>
-  <!-- SEO Meta Tags -->
-  <meta name="description" content="估算 AI 模型 Token 数量" />
-  <meta name="keywords" content="token 计数器" />
-  <meta name="author" content="WebUtils" />
-  <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/ai/token-counter.html" />
-  
-  <!-- Open Graph -->
-  <meta property="og:title" content="Token 计数器 - WebUtils" />
-  <meta property="og:description" content="估算 AI 模型 Token 数量" />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://tools.realtime-ai.chat/tools/ai/token-counter.html" />
-  <meta property="og:site_name" content="WebUtils" />
-  <meta property="og:locale" content="zh_CN" />
-  
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Token 计数器 - WebUtils" />
-  <meta name="twitter:description" content="估算 AI 模型 Token 数量" />
-  <!-- OG Image -->
-  <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
-  <meta property="og:image:width" content="1280" />
-  <meta property="og:image:height" content="640" />
-  <meta property="og:image:type" content="image/png" />
-  <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token 计数器 - AI 文本分词统计</title>
+    <meta name="description" content="在线计算文本的 Token 数量，支持 GPT-4、Claude、DeepSeek 等主流 AI 模型的分词统计和费用估算">
+    <meta name="keywords" content="token counter,token计数,AI分词,GPT token,Claude token,tiktoken">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --accent-color: #4f46e5;
+            --accent-hover: #6366f1;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        [data-theme="light"] {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 { font-size: 1.8rem; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .theme-toggle:hover { border-color: var(--accent-color); }
+        .back-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-pink:#f472b6;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}[data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(244,114,182,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(244,114,182,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}.container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}.back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--text-secondary);text-decoration:none;font-size:.9rem;margin-bottom:2rem;padding:.5rem .75rem;border-radius:var(--radius-sm);transition:all .2s}.back-link:hover{color:var(--accent-pink);background:var(--bg-card)}.theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}.theme-toggle:hover{transform:scale(1.1)}h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.subtitle{color:var(--text-secondary);margin-bottom:2rem}.card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}.form-group{margin-bottom:1rem}.form-group label{display:block;color:var(--text-secondary);font-size:.85rem;margin-bottom:.5rem}.form-group select{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary)}textarea{width:100%;height:200px;padding:1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:.9rem;resize:vertical}textarea:focus{outline:none;border-color:var(--accent-pink)}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-top:1.5rem}.stat-item{background:var(--bg-surface);border-radius:var(--radius-md);padding:1rem;text-align:center}.stat-item .label{font-size:.75rem;color:var(--text-muted);margin-bottom:.25rem}.stat-item .value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;color:var(--accent-pink)}.cost-section{margin-top:1.5rem;padding:1rem;background:var(--bg-surface);border-radius:var(--radius-md)}.cost-section h3{font-size:.9rem;color:var(--text-secondary);margin-bottom:.75rem}.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}.cost-item{display:flex;justify-content:space-between;padding:.5rem;border-radius:var(--radius-sm);background:var(--bg-card)}.cost-item .model{color:var(--text-secondary);font-size:.85rem}.cost-item .price{color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:.85rem}footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}footer a{color:var(--accent-pink);text-decoration:none}
-  </style>
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+
+        .input-section textarea {
+            width: 100%;
+            height: 400px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+        .input-section textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        .input-section textarea::placeholder { color: var(--text-secondary); }
+
+        .input-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover { border-color: var(--accent-color); }
+
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+        .model-selector select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .model-selector select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .stat-item {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-item.full-width { grid-column: 1 / -1; }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .cost-breakdown { margin-top: 15px; }
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+        .cost-item:last-child { border-bottom: none; }
+        .cost-label { color: var(--text-secondary); }
+        .cost-value { font-weight: 600; }
+
+        .info-section {
+            margin-top: 30px;
+        }
+        .info-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .info-card h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .info-table th, .info-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .info-table th {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .info-table tr:last-child td { border-bottom: none; }
+
+        .token-visualization {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .token-visualization .token {
+            display: inline-block;
+            padding: 2px 6px;
+            margin: 2px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .token-visualization .token:nth-child(4n+1) { background: rgba(79, 70, 229, 0.3); }
+        .token-visualization .token:nth-child(4n+2) { background: rgba(34, 197, 94, 0.3); }
+        .token-visualization .token:nth-child(4n+3) { background: rgba(245, 158, 11, 0.3); }
+        .token-visualization .token:nth-child(4n+4) { background: rgba(239, 68, 68, 0.3); }
+
+        .note {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+    </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <a href="../../index.html" class="back-link">← 返回</a>
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-    <h1>Token 计数器</h1>
-    <p class="subtitle">估算文本的 Token 数量和 API 调用成本</p>
+    <div class="container">
+        <header>
+            <h1>🔢 Token 计数器</h1>
+            <div class="header-actions">
+                <a href="../../index.html" class="back-link">← 返回首页</a>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+            </div>
+        </header>
 
-    <div class="card">
-      <div class="form-group">
-        <label>分词器</label>
-        <select id="tokenizer" onchange="count()">
-          <option value="gpt4">GPT-4 / GPT-3.5 (cl100k_base)</option>
-          <option value="claude">Claude (估算)</option>
-          <option value="simple">简单估算 (字符/4)</option>
-        </select>
-      </div>
-      <textarea id="input" placeholder="输入文本..." oninput="count()">Hello, world! 你好，世界！这是一个 Token 计数器。</textarea>
+        <div class="main-grid">
+            <div class="input-section card">
+                <div class="card-title">输入文本</div>
+                <textarea id="inputText" placeholder="在这里输入或粘贴你要计算 Token 的文本...
 
-      <div class="stats">
-        <div class="stat-item">
-          <div class="label">Token 数</div>
-          <div class="value" id="tokenCount">0</div>
-        </div>
-        <div class="stat-item">
-          <div class="label">字符数</div>
-          <div class="value" id="charCount">0</div>
-        </div>
-        <div class="stat-item">
-          <div class="label">单词数</div>
-          <div class="value" id="wordCount">0</div>
-        </div>
-        <div class="stat-item">
-          <div class="label">行数</div>
-          <div class="value" id="lineCount">0</div>
-        </div>
-      </div>
+支持:
+- 普通文本
+- 代码片段
+- JSON/Markdown 等格式
+- 中英文混合内容
 
-      <div class="cost-section">
-        <h3>估算成本 (输入)</h3>
-        <div class="cost-grid" id="costGrid"></div>
-      </div>
+Token 会实时计算并显示在右侧。"></textarea>
+                <div class="input-actions">
+                    <button class="btn btn-primary" onclick="countTokens()">📊 计算 Token</button>
+                    <button class="btn btn-secondary" onclick="clearInput()">🗑️ 清空</button>
+                    <button class="btn btn-secondary" onclick="loadSample()">📝 加载示例</button>
+                    <button class="btn btn-secondary" onclick="pasteFromClipboard()">📋 粘贴</button>
+                </div>
+
+                <div class="token-visualization" id="tokenVisualization" style="display: none;">
+                    <div class="card-title">Token 可视化</div>
+                    <div id="tokenDisplay"></div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card model-selector">
+                    <div class="card-title">选择模型</div>
+                    <select id="modelSelect" onchange="countTokens()">
+                        <optgroup label="OpenAI">
+                            <option value="gpt-4o">GPT-4o / GPT-4o mini</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        </optgroup>
+                        <optgroup label="Anthropic">
+                            <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                            <option value="claude-3-opus">Claude 3 Opus</option>
+                            <option value="claude-3-haiku">Claude 3 Haiku</option>
+                        </optgroup>
+                        <optgroup label="DeepSeek">
+                            <option value="deepseek-v3">DeepSeek V3</option>
+                            <option value="deepseek-r1">DeepSeek R1</option>
+                        </optgroup>
+                        <optgroup label="Google">
+                            <option value="gemini-2.0">Gemini 2.0 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">统计结果</div>
+                    <div class="stats-grid">
+                        <div class="stat-item full-width">
+                            <div class="stat-value" id="tokenCount">0</div>
+                            <div class="stat-label">Token 数量</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="charCount">0</div>
+                            <div class="stat-label">字符数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="wordCount">0</div>
+                            <div class="stat-label">单词/词数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="lineCount">0</div>
+                            <div class="stat-label">行数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="ratio">0</div>
+                            <div class="stat-label">字符/Token 比</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">💰 费用估算</div>
+                    <div class="cost-breakdown">
+                        <div class="cost-item">
+                            <span class="cost-label">输入费用</span>
+                            <span class="cost-value" id="inputCost">$0.0000</span>
+                        </div>
+                        <div class="cost-item">
+                            <span class="cost-label">输出费用 (估算)</span>
+                            <span class="cost-value" id="outputCost">$0.0000</span>
+                        </div>
+                        <div class="cost-item">
+                            <span class="cost-label">总计</span>
+                            <span class="cost-value" id="totalCost">$0.0000</span>
+                        </div>
+                    </div>
+                    <div class="note">
+                        * 输出费用按输入 Token 的 50% 估算
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-card">
+                <h3>📚 模型定价参考 (每百万 Token)</h3>
+                <table class="info-table">
+                    <thead>
+                        <tr>
+                            <th>模型</th>
+                            <th>输入价格</th>
+                            <th>输出价格</th>
+                            <th>上下文窗口</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>GPT-4o</td>
+                            <td>$2.50</td>
+                            <td>$10.00</td>
+                            <td>128K</td>
+                        </tr>
+                        <tr>
+                            <td>GPT-4o mini</td>
+                            <td>$0.15</td>
+                            <td>$0.60</td>
+                            <td>128K</td>
+                        </tr>
+                        <tr>
+                            <td>Claude 3.5 Sonnet</td>
+                            <td>$3.00</td>
+                            <td>$15.00</td>
+                            <td>200K</td>
+                        </tr>
+                        <tr>
+                            <td>Claude 3 Opus</td>
+                            <td>$15.00</td>
+                            <td>$75.00</td>
+                            <td>200K</td>
+                        </tr>
+                        <tr>
+                            <td>DeepSeek V3</td>
+                            <td>$0.27</td>
+                            <td>$1.10</td>
+                            <td>64K</td>
+                        </tr>
+                        <tr>
+                            <td>DeepSeek R1</td>
+                            <td>$0.55</td>
+                            <td>$2.19</td>
+                            <td>64K</td>
+                        </tr>
+                        <tr>
+                            <td>Gemini 2.0 Flash</td>
+                            <td>$0.10</td>
+                            <td>$0.40</td>
+                            <td>1M</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <footer>
-      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-  <script>
-    // Simple token estimation (real tokenization would require a library like tiktoken)
-    function estimateTokens(text, method) {
-      if (!text) return 0;
-      
-      switch (method) {
-        case 'gpt4':
-          // GPT-4 uses cl100k_base tokenizer
-          // English: ~1 token per 4 chars, Chinese: ~1-2 tokens per char
-          const englishChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
-          const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-          return Math.ceil(englishChars / 4 + chineseChars * 1.5);
-        
-        case 'claude':
-          // Claude uses a similar tokenizer
-          const engChars = text.replace(/[\u4e00-\u9fff]/g, '').length;
-          const chnChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-          return Math.ceil(engChars / 3.5 + chnChars * 1.3);
-        
-        case 'simple':
-        default:
-          return Math.ceil(text.length / 4);
-      }
-    }
+    <script>
+        // Model pricing per million tokens
+        const MODEL_PRICING = {
+            'gpt-4o': { input: 2.50, output: 10.00 },
+            'gpt-4-turbo': { input: 10.00, output: 30.00 },
+            'gpt-4': { input: 30.00, output: 60.00 },
+            'gpt-3.5-turbo': { input: 0.50, output: 1.50 },
+            'claude-3.5-sonnet': { input: 3.00, output: 15.00 },
+            'claude-3-opus': { input: 15.00, output: 75.00 },
+            'claude-3-haiku': { input: 0.25, output: 1.25 },
+            'deepseek-v3': { input: 0.27, output: 1.10 },
+            'deepseek-r1': { input: 0.55, output: 2.19 },
+            'gemini-2.0': { input: 0.10, output: 0.40 },
+            'gemini-1.5-pro': { input: 1.25, output: 5.00 }
+        };
 
-    const PRICING = [
-      { model: 'GPT-4o', input: 2.50, output: 10.00 },
-      { model: 'GPT-4 Turbo', input: 10.00, output: 30.00 },
-      { model: 'GPT-3.5 Turbo', input: 0.50, output: 1.50 },
-      { model: 'Claude 3.5 Sonnet', input: 3.00, output: 15.00 },
-      { model: 'Claude 3 Haiku', input: 0.25, output: 1.25 },
-    ];
+        // Token estimation ratios (characters per token)
+        const TOKEN_RATIOS = {
+            'gpt-4o': { en: 4.0, zh: 1.5 },
+            'gpt-4-turbo': { en: 4.0, zh: 1.5 },
+            'gpt-4': { en: 4.0, zh: 1.5 },
+            'gpt-3.5-turbo': { en: 4.0, zh: 1.5 },
+            'claude-3.5-sonnet': { en: 4.0, zh: 1.8 },
+            'claude-3-opus': { en: 4.0, zh: 1.8 },
+            'claude-3-haiku': { en: 4.0, zh: 1.8 },
+            'deepseek-v3': { en: 4.0, zh: 2.0 },
+            'deepseek-r1': { en: 4.0, zh: 2.0 },
+            'gemini-2.0': { en: 4.0, zh: 1.8 },
+            'gemini-1.5-pro': { en: 4.0, zh: 1.8 }
+        };
 
-    function count() {
-      const text = document.getElementById('input').value;
-      const method = document.getElementById('tokenizer').value;
-      
-      const tokens = estimateTokens(text, method);
-      const chars = text.length;
-      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-      const lines = text ? text.split('\n').length : 0;
+        // Theme handling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
 
-      document.getElementById('tokenCount').textContent = tokens.toLocaleString();
-      document.getElementById('charCount').textContent = chars.toLocaleString();
-      document.getElementById('wordCount').textContent = words.toLocaleString();
-      document.getElementById('lineCount').textContent = lines.toLocaleString();
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
 
-      // Update cost estimates
-      const costGrid = document.getElementById('costGrid');
-      costGrid.innerHTML = PRICING.map(p => {
-        const cost = (tokens / 1000000) * p.input;
-        return `<div class="cost-item">
-          <span class="model">${p.model}</span>
-          <span class="price">$${cost < 0.01 ? cost.toFixed(6) : cost.toFixed(4)}</span>
-        </div>`;
-      }).join('');
-    }
+        // Estimate tokens based on character analysis
+        function estimateTokens(text, model) {
+            if (!text) return 0;
+            
+            const ratios = TOKEN_RATIOS[model] || TOKEN_RATIOS['gpt-4o'];
+            
+            // Count Chinese and non-Chinese characters
+            const chineseChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+            const otherChars = text.length - chineseChars;
+            
+            // Estimate tokens
+            const chineseTokens = chineseChars / ratios.zh;
+            const otherTokens = otherChars / ratios.en;
+            
+            return Math.ceil(chineseTokens + otherTokens);
+        }
 
-    count();
+        // Tokenize text for visualization (simplified)
+        function tokenizeForVisualization(text) {
+            const tokens = [];
+            let current = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                // Chinese character - each is roughly a token
+                if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+                    if (current) {
+                        tokens.push(current);
+                        current = '';
+                    }
+                    tokens.push(char);
+                }
+                // Whitespace
+                else if (/\s/.test(char)) {
+                    if (current) {
+                        tokens.push(current);
+                        current = '';
+                    }
+                    if (char === '\n') {
+                        tokens.push('⏎');
+                    }
+                }
+                // Punctuation
+                else if (/[^\w]/.test(char)) {
+                    if (current) {
+                        tokens.push(current);
+                        current = '';
+                    }
+                    tokens.push(char);
+                }
+                // Regular characters
+                else {
+                    current += char;
+                    // Split long words
+                    if (current.length >= 4) {
+                        tokens.push(current);
+                        current = '';
+                    }
+                }
+            }
+            
+            if (current) {
+                tokens.push(current);
+            }
+            
+            return tokens;
+        }
 
-    function toggleTheme(){const html=document.documentElement;const btn=document.querySelector('.theme-toggle');const next=html.getAttribute('data-theme')==='light'?'dark':'light';html.setAttribute('data-theme',next);btn.textContent=next==='light'?'☀️':'🌙';localStorage.setItem('theme',next);}(function(){const saved=localStorage.getItem('theme');if(saved){document.documentElement.setAttribute('data-theme',saved);const btn=document.querySelector('.theme-toggle');if(btn)btn.textContent=saved==='light'?'☀️':'🌙';}})();
-  </script>
+        // Count tokens and update UI
+        function countTokens() {
+            const text = document.getElementById('inputText').value;
+            const model = document.getElementById('modelSelect').value;
+            
+            // Basic stats
+            const charCount = text.length;
+            const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const lineCount = text ? text.split('\n').length : 0;
+            
+            // Token estimation
+            const tokenCount = estimateTokens(text, model);
+            const ratio = tokenCount > 0 ? (charCount / tokenCount).toFixed(1) : 0;
+            
+            // Update stats display
+            document.getElementById('tokenCount').textContent = tokenCount.toLocaleString();
+            document.getElementById('charCount').textContent = charCount.toLocaleString();
+            document.getElementById('wordCount').textContent = wordCount.toLocaleString();
+            document.getElementById('lineCount').textContent = lineCount.toLocaleString();
+            document.getElementById('ratio').textContent = ratio;
+            
+            // Calculate costs
+            const pricing = MODEL_PRICING[model];
+            const inputCost = (tokenCount / 1000000) * pricing.input;
+            const outputCost = (tokenCount * 0.5 / 1000000) * pricing.output;
+            const totalCost = inputCost + outputCost;
+            
+            document.getElementById('inputCost').textContent = '$' + inputCost.toFixed(6);
+            document.getElementById('outputCost').textContent = '$' + outputCost.toFixed(6);
+            document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(6);
+            
+            // Token visualization
+            if (text && text.length < 2000) {
+                const tokens = tokenizeForVisualization(text);
+                const display = document.getElementById('tokenDisplay');
+                display.innerHTML = tokens.map(t => 
+                    `<span class="token">${t.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                ).join('');
+                document.getElementById('tokenVisualization').style.display = 'block';
+            } else {
+                document.getElementById('tokenVisualization').style.display = 'none';
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            countTokens();
+        }
+
+        function loadSample() {
+            const samples = [
+                `你好，我是一个 AI 助手。今天我来帮你了解 Token 是什么。
+
+Token 是大语言模型处理文本的基本单位。对于英文，一个 Token 大约是 4 个字符或 3/4 个单词。对于中文，一个汉字通常对应 1-2 个 Token。
+
+Here's an example in English: "Hello, world!" might be tokenized as ["Hello", ",", " world", "!"].
+
+费用计算公式: 总费用 = (输入Token × 输入单价) + (输出Token × 输出单价)`,
+
+                `const calculateTokenCost = (tokens, model) => {
+    const pricing = {
+        'gpt-4o': { input: 2.50, output: 10.00 },
+        'claude-3.5-sonnet': { input: 3.00, output: 15.00 },
+        'deepseek-v3': { input: 0.27, output: 1.10 }
+    };
+    
+    const price = pricing[model];
+    return {
+        inputCost: (tokens.input / 1000000) * price.input,
+        outputCost: (tokens.output / 1000000) * price.output
+    };
+};`,
+
+                `# API 请求示例
+
+## Python
+\`\`\`python
+import openai
+
+response = openai.ChatCompletion.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "你是一个有帮助的助手"},
+        {"role": "user", "content": "解释什么是 Token"}
+    ]
+)
+\`\`\`
+
+## 费用估算
+- 输入: ~50 tokens × $2.50/1M = $0.000125
+- 输出: ~200 tokens × $10.00/1M = $0.002
+- 总计: ~$0.002125`
+            ];
+            
+            document.getElementById('inputText').value = samples[Math.floor(Math.random() * samples.length)];
+            countTokens();
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('inputText').value = text;
+                countTokens();
+            } catch (err) {
+                alert('无法访问剪贴板，请手动粘贴');
+            }
+        }
+
+        // Auto-count on input
+        document.getElementById('inputText').addEventListener('input', countTokens);
+
+        // Initialize
+        initTheme();
+        countTokens();
+    </script>
 </body>
 </html>

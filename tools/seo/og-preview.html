@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenGraph 预览生成器 - 社交分享卡片预览</title>
+    <meta name="description" content="在线预览和生成 OpenGraph 元标签，查看链接在微信、Twitter、Facebook、LinkedIn 等平台的分享效果">
+    <meta name="keywords" content="opengraph,og标签,社交分享,twitter card,微信分享,meta标签生成器">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --accent-color: #4f46e5;
+            --accent-hover: #6366f1;
+        }
+        [data-theme="light"] {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 { font-size: 1.8rem; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .theme-toggle, .btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover, .btn:hover { border-color: var(--accent-color); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .back-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1000px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .char-count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 4px;
+        }
+        .char-count.warning { color: #f59e0b; }
+        .char-count.error { color: #ef4444; }
+
+        .image-upload {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .image-upload:hover { border-color: var(--accent-color); }
+        .image-upload.has-image { padding: 10px; }
+        .image-upload img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 6px;
+        }
+        .image-upload input { display: none; }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .preview-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .preview-tab {
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .preview-tab:hover { border-color: var(--accent-color); }
+        .preview-tab.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* Platform-specific preview styles */
+        .preview-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Twitter/X Card */
+        .twitter-card {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 504px;
+        }
+        .twitter-card .card-image {
+            aspect-ratio: 1.91 / 1;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        .twitter-card .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .twitter-card .card-content {
+            padding: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+        .twitter-card .card-domain {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .twitter-card .card-title {
+            font-size: 15px;
+            font-weight: 400;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .twitter-card .card-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Facebook Card */
+        .facebook-card {
+            font-family: Helvetica, Arial, sans-serif;
+            max-width: 500px;
+            border: 1px solid #dddfe2;
+        }
+        [data-theme="dark"] .facebook-card { border-color: var(--border-color); }
+        .facebook-card .card-image {
+            aspect-ratio: 1.91 / 1;
+            background: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        [data-theme="dark"] .facebook-card .card-image { background: var(--bg-secondary); }
+        .facebook-card .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .facebook-card .card-content {
+            padding: 10px 12px;
+            background: #f0f2f5;
+        }
+        [data-theme="dark"] .facebook-card .card-content { background: var(--bg-secondary); }
+        .facebook-card .card-domain {
+            font-size: 12px;
+            color: #65676b;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        [data-theme="dark"] .facebook-card .card-domain { color: var(--text-secondary); }
+        .facebook-card .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1c1e21;
+            margin-bottom: 4px;
+        }
+        [data-theme="dark"] .facebook-card .card-title { color: var(--text-primary); }
+        .facebook-card .card-description {
+            font-size: 14px;
+            color: #65676b;
+        }
+        [data-theme="dark"] .facebook-card .card-description { color: var(--text-secondary); }
+
+        /* LinkedIn Card */
+        .linkedin-card {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 552px;
+            border-radius: 8px;
+        }
+        .linkedin-card .card-image {
+            aspect-ratio: 1.91 / 1;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .linkedin-card .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .linkedin-card .card-content {
+            padding: 12px 16px;
+        }
+        .linkedin-card .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .linkedin-card .card-domain {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* WeChat Card */
+        .wechat-card {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+            max-width: 360px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        [data-theme="dark"] .wechat-card { background: var(--bg-secondary); }
+        .wechat-card .card-header {
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        [data-theme="dark"] .wechat-card .card-header { border-color: var(--border-color); }
+        .wechat-card .card-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            background: #07c160;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+        .wechat-card .card-sender {
+            font-size: 14px;
+            color: #576b95;
+        }
+        .wechat-card .card-body {
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+        }
+        .wechat-card .card-thumb {
+            width: 60px;
+            height: 60px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        [data-theme="dark"] .wechat-card .card-thumb { background: var(--bg-tertiary); }
+        .wechat-card .card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .wechat-card .card-info { flex: 1; }
+        .wechat-card .card-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        [data-theme="dark"] .wechat-card .card-title { color: var(--text-primary); }
+        .wechat-card .card-description {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Code output */
+        .code-section { margin-top: 20px; }
+        .code-section pre {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .code-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .tip {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 OpenGraph 预览生成器</h1>
+            <div class="header-actions">
+                <a href="../../index.html" class="back-link">← 返回首页</a>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <div class="input-section">
+                <div class="card">
+                    <div class="card-title">📝 内容设置</div>
+                    
+                    <div class="form-group">
+                        <label>页面 URL *</label>
+                        <input type="url" id="ogUrl" placeholder="https://example.com/page" value="https://example.com/my-article">
+                    </div>
+
+                    <div class="form-group">
+                        <label>标题 (og:title) *</label>
+                        <input type="text" id="ogTitle" placeholder="页面标题" maxlength="95" value="这是一篇关于 OpenGraph 的精彩文章">
+                        <div class="char-count" id="titleCount">0/95</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>描述 (og:description)</label>
+                        <textarea id="ogDescription" placeholder="页面描述" maxlength="300">OpenGraph 协议可以让你的网页在社交平台分享时展示丰富的预览卡片，包括标题、描述和图片。</textarea>
+                        <div class="char-count" id="descCount">0/300</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>网站名称 (og:site_name)</label>
+                        <input type="text" id="ogSiteName" placeholder="网站名称" value="我的博客">
+                    </div>
+
+                    <div class="form-group">
+                        <label>内容类型</label>
+                        <select id="ogType">
+                            <option value="website">website - 网站</option>
+                            <option value="article" selected>article - 文章</option>
+                            <option value="product">product - 产品</option>
+                            <option value="video">video - 视频</option>
+                            <option value="music">music - 音乐</option>
+                            <option value="book">book - 书籍</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>预览图片 (og:image) - 推荐 1200×630</label>
+                        <div class="image-upload" id="imageUpload" onclick="document.getElementById('imageInput').click()">
+                            <div class="upload-hint">
+                                📷 点击上传图片或输入 URL<br>
+                                <small>支持 JPG, PNG, WebP</small>
+                            </div>
+                            <input type="file" id="imageInput" accept="image/*">
+                        </div>
+                        <input type="url" id="ogImage" placeholder="或输入图片 URL" style="margin-top: 10px;" value="https://picsum.photos/1200/630">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Twitter 卡片类型</label>
+                        <select id="twitterCard">
+                            <option value="summary_large_image" selected>summary_large_image - 大图</option>
+                            <option value="summary">summary - 小图</option>
+                        </select>
+                    </div>
+
+                    <div class="tip">
+                        💡 建议：标题不超过 60 字符，描述不超过 155 字符以获得最佳显示效果
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="card">
+                    <div class="card-title">👁️ 预览效果</div>
+                    
+                    <div class="preview-tabs">
+                        <div class="preview-tab active" data-platform="twitter">
+                            <span>𝕏</span> Twitter/X
+                        </div>
+                        <div class="preview-tab" data-platform="facebook">
+                            <span>f</span> Facebook
+                        </div>
+                        <div class="preview-tab" data-platform="linkedin">
+                            <span>in</span> LinkedIn
+                        </div>
+                        <div class="preview-tab" data-platform="wechat">
+                            <span>💬</span> 微信
+                        </div>
+                    </div>
+
+                    <div id="previewContainer" style="margin-top: 20px;">
+                        <!-- Preview cards will be rendered here -->
+                    </div>
+                </div>
+
+                <div class="card code-section">
+                    <div class="card-title">📋 生成的 Meta 标签</div>
+                    <pre id="codeOutput"></pre>
+                    <div class="code-actions">
+                        <button class="btn btn-primary" onclick="copyCode()">📋 复制代码</button>
+                        <button class="btn" onclick="downloadHTML()">💾 下载 HTML</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPlatform = 'twitter';
+        let uploadedImage = null;
+
+        // Theme handling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Platform tabs
+        document.querySelectorAll('.preview-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentPlatform = tab.dataset.platform;
+                updatePreview();
+            });
+        });
+
+        // Image upload
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedImage = e.target.result;
+                    document.getElementById('ogImage').value = '';
+                    const upload = document.getElementById('imageUpload');
+                    upload.classList.add('has-image');
+                    upload.innerHTML = `<img src="${uploadedImage}" alt="Preview">`;
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Get form values
+        function getFormData() {
+            return {
+                url: document.getElementById('ogUrl').value || 'https://example.com',
+                title: document.getElementById('ogTitle').value || '页面标题',
+                description: document.getElementById('ogDescription').value || '',
+                siteName: document.getElementById('ogSiteName').value || '',
+                type: document.getElementById('ogType').value,
+                image: uploadedImage || document.getElementById('ogImage').value || '',
+                twitterCard: document.getElementById('twitterCard').value
+            };
+        }
+
+        // Extract domain from URL
+        function getDomain(url) {
+            try {
+                return new URL(url).hostname;
+            } catch {
+                return 'example.com';
+            }
+        }
+
+        // Update preview
+        function updatePreview() {
+            const data = getFormData();
+            const domain = getDomain(data.url);
+            const container = document.getElementById('previewContainer');
+
+            const imageHTML = data.image 
+                ? `<img src="${data.image}" alt="Preview" onerror="this.parentElement.innerHTML='📷 图片加载失败'">`
+                : '📷 无图片';
+
+            const previews = {
+                twitter: `
+                    <div class="preview-card twitter-card">
+                        <div class="card-image">${imageHTML}</div>
+                        <div class="card-content">
+                            <div class="card-domain">${domain}</div>
+                            <div class="card-title">${data.title}</div>
+                            <div class="card-description">${data.description}</div>
+                        </div>
+                    </div>
+                `,
+                facebook: `
+                    <div class="preview-card facebook-card">
+                        <div class="card-image">${imageHTML}</div>
+                        <div class="card-content">
+                            <div class="card-domain">${domain}</div>
+                            <div class="card-title">${data.title}</div>
+                            <div class="card-description">${data.description}</div>
+                        </div>
+                    </div>
+                `,
+                linkedin: `
+                    <div class="preview-card linkedin-card">
+                        <div class="card-image">${imageHTML}</div>
+                        <div class="card-content">
+                            <div class="card-title">${data.title}</div>
+                            <div class="card-domain">${domain}</div>
+                        </div>
+                    </div>
+                `,
+                wechat: `
+                    <div class="preview-card wechat-card">
+                        <div class="card-header">
+                            <div class="card-avatar">好</div>
+                            <div class="card-sender">好友</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-thumb">${data.image ? `<img src="${data.image}" alt="">` : '📷'}</div>
+                            <div class="card-info">
+                                <div class="card-title">${data.title}</div>
+                                <div class="card-description">${data.siteName || domain}</div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            };
+
+            container.innerHTML = previews[currentPlatform];
+            updateCode();
+            updateCharCounts();
+        }
+
+        // Update character counts
+        function updateCharCounts() {
+            const title = document.getElementById('ogTitle').value;
+            const desc = document.getElementById('ogDescription').value;
+            
+            const titleCount = document.getElementById('titleCount');
+            titleCount.textContent = `${title.length}/95`;
+            titleCount.className = 'char-count' + (title.length > 60 ? (title.length > 95 ? ' error' : ' warning') : '');
+            
+            const descCount = document.getElementById('descCount');
+            descCount.textContent = `${desc.length}/300`;
+            descCount.className = 'char-count' + (desc.length > 155 ? (desc.length > 300 ? ' error' : ' warning') : '');
+        }
+
+        // Generate meta tags code
+        function updateCode() {
+            const data = getFormData();
+            
+            let code = `<!-- Open Graph / Facebook -->\n`;
+            code += `<meta property="og:type" content="${data.type}">\n`;
+            code += `<meta property="og:url" content="${data.url}">\n`;
+            code += `<meta property="og:title" content="${escapeHTML(data.title)}">\n`;
+            if (data.description) {
+                code += `<meta property="og:description" content="${escapeHTML(data.description)}">\n`;
+            }
+            if (data.image) {
+                code += `<meta property="og:image" content="${data.image}">\n`;
+            }
+            if (data.siteName) {
+                code += `<meta property="og:site_name" content="${escapeHTML(data.siteName)}">\n`;
+            }
+            
+            code += `\n<!-- Twitter -->\n`;
+            code += `<meta property="twitter:card" content="${data.twitterCard}">\n`;
+            code += `<meta property="twitter:url" content="${data.url}">\n`;
+            code += `<meta property="twitter:title" content="${escapeHTML(data.title)}">\n`;
+            if (data.description) {
+                code += `<meta property="twitter:description" content="${escapeHTML(data.description)}">\n`;
+            }
+            if (data.image) {
+                code += `<meta property="twitter:image" content="${data.image}">\n`;
+            }
+
+            document.getElementById('codeOutput').textContent = code;
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeOutput').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target;
+                btn.textContent = '✓ 已复制';
+                setTimeout(() => btn.textContent = '📋 复制代码', 2000);
+            });
+        }
+
+        function downloadHTML() {
+            const data = getFormData();
+            const code = document.getElementById('codeOutput').textContent;
+            
+            const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHTML(data.title)}</title>
+    <meta name="description" content="${escapeHTML(data.description)}">
+    
+${code}
+</head>
+<body>
+    <h1>${escapeHTML(data.title)}</h1>
+    <p>${escapeHTML(data.description)}</p>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Add input listeners
+        ['ogUrl', 'ogTitle', 'ogDescription', 'ogSiteName', 'ogType', 'ogImage', 'twitterCard'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updatePreview);
+        });
+
+        // Initialize
+        initTheme();
+        updatePreview();
+    </script>
+</body>
+</html>

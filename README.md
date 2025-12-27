@@ -41,13 +41,23 @@
 
 ## 📸 预览
 
-**深色模式**
+<details open>
+<summary><b>桌面端</b></summary>
 
 ![深色模式](screenshots/homepage-dark.png)
 
-**亮色模式**
-
 ![亮色模式](screenshots/homepage-light.png)
+
+</details>
+
+<details>
+<summary><b>移动端</b></summary>
+
+<p align="center">
+  <img src="screenshots/homepage-mobile.png" width="375" alt="移动端">
+</p>
+
+</details>
 
 ## 🔥 特色工具推荐
 

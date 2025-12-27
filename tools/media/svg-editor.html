@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG 编辑器 - 在线工具</title>
+    <meta name="description" content="在线 SVG 编辑器，实时预览 SVG 代码，支持代码高亮和常用图形模板">
+    <meta name="keywords" content="svg,editor,编辑器,矢量图,在线工具,代码预览">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
+    <style>
+        :root {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #ec4899;
+            --accent-hover: #db2777;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: var(--bg-tertiary); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 250px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+        .sidebar-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .template-item {
+            aspect-ratio: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .template-item:hover {
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+        }
+        .template-item svg {
+            width: 60%;
+            height: 60%;
+        }
+        .color-picker-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-row label {
+            font-size: 0.85rem;
+            min-width: 60px;
+        }
+        .color-row input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .color-row input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .editor-header {
+            padding: 10px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .code-editor {
+            flex: 1;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+        .preview-container {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+        }
+        .preview-header {
+            padding: 10px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .preview-bg-btns {
+            display: flex;
+            gap: 5px;
+        }
+        .preview-bg-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .preview-bg-btn.white { background: white; }
+        .preview-bg-btn.gray { background: #9ca3af; }
+        .preview-bg-btn.dark { background: #1f2937; }
+        .preview-bg-btn.checker {
+            background: repeating-conic-gradient(#ccc 0% 25%, white 0% 50%) 50% / 16px 16px;
+        }
+        .preview-bg-btn.active { border-color: var(--accent-color); border-width: 2px; }
+        .preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: auto;
+        }
+        .preview-area.bg-white { background: white; }
+        .preview-area.bg-gray { background: #9ca3af; }
+        .preview-area.bg-dark { background: #1f2937; }
+        .preview-area.bg-checker {
+            background: repeating-conic-gradient(#ccc 0% 25%, white 0% 50%) 50% / 16px 16px;
+        }
+        .preview-svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .preview-info {
+            padding: 10px 15px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .error-msg {
+            padding: 10px;
+            background: #fee2e2;
+            color: #991b1b;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        [data-theme="dark"] .error-msg {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        @media (max-width: 900px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .preview-container { width: 100%; border-left: none; border-top: 1px solid var(--border-color); height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✏️ SVG 编辑器</h1>
+        <div class="header-actions">
+            <button class="btn" onclick="formatSvg()">📐 格式化</button>
+            <button class="btn" onclick="copySvg()">📋 复制</button>
+            <button class="btn" onclick="downloadSvg()">💾 下载 SVG</button>
+            <button class="btn" onclick="downloadPng()">🖼️ 下载 PNG</button>
+            <button class="btn" onclick="toggleTheme()">🌓</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">📦 图形模板</div>
+                <div class="templates-grid" id="templatesGrid"></div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">🎨 快速设置</div>
+                <div class="color-picker-group">
+                    <div class="color-row">
+                        <label>填充色</label>
+                        <input type="color" id="fillColor" value="#3b82f6" onchange="updateColors()">
+                    </div>
+                    <div class="color-row">
+                        <label>描边色</label>
+                        <input type="color" id="strokeColor" value="#1e40af" onchange="updateColors()">
+                    </div>
+                    <div class="color-row">
+                        <label>描边宽</label>
+                        <input type="number" id="strokeWidth" value="2" min="0" max="20" onchange="updateColors()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-header">📝 SVG 代码</div>
+            <textarea class="code-editor" id="svgEditor" spellcheck="false" placeholder="输入 SVG 代码..."></textarea>
+        </div>
+
+        <div class="preview-container">
+            <div class="preview-header">
+                <span>👁️ 预览</span>
+                <div class="preview-bg-btns">
+                    <button class="preview-bg-btn checker active" onclick="setBg('checker')" title="透明背景"></button>
+                    <button class="preview-bg-btn white" onclick="setBg('white')" title="白色背景"></button>
+                    <button class="preview-bg-btn gray" onclick="setBg('gray')" title="灰色背景"></button>
+                    <button class="preview-bg-btn dark" onclick="setBg('dark')" title="深色背景"></button>
+                </div>
+            </div>
+            <div class="preview-area bg-checker" id="previewArea">
+                <div id="svgPreview"></div>
+            </div>
+            <div class="preview-info" id="previewInfo">尺寸: - × -</div>
+        </div>
+    </div>
+
+    <script>
+        // Theme
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        initTheme();
+
+        // Templates
+        const templates = [
+            { name: '圆形', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/></svg>' },
+            { name: '矩形', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="8" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/></svg>' },
+            { name: '三角形', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,10 90,90 10,90" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/></svg>' },
+            { name: '星形', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/></svg>' },
+            { name: '心形', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 88 C20 60 5 40 20 25 C35 10 50 25 50 25 C50 25 65 10 80 25 C95 40 80 60 50 88Z" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/></svg>' },
+            { name: '箭头', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 50 L70 50 L70 30 L95 50 L70 70 L70 50" fill="#3b82f6" stroke="#1e40af" stroke-width="2"/></svg>' },
+            { name: '勾选', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20 50 L40 70 L80 30" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+            { name: '加号', svg: '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 20 V80 M20 50 H80" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/></svg>' },
+        ];
+
+        const editor = document.getElementById('svgEditor');
+        const preview = document.getElementById('svgPreview');
+        const previewInfo = document.getElementById('previewInfo');
+
+        function renderTemplates() {
+            const grid = document.getElementById('templatesGrid');
+            grid.innerHTML = templates.map((t, i) => `
+                <div class="template-item" onclick="loadTemplate(${i})" title="${t.name}">
+                    ${t.svg}
+                </div>
+            `).join('');
+        }
+
+        function loadTemplate(index) {
+            editor.value = formatSvgCode(templates[index].svg);
+            updatePreview();
+        }
+
+        function formatSvgCode(svg) {
+            // Simple formatting
+            return svg
+                .replace(/></g, '>\n<')
+                .replace(/(\w+)="([^"]*)" /g, '$1="$2"\n  ')
+                .trim();
+        }
+
+        function updatePreview() {
+            const svgCode = editor.value.trim();
+            if (!svgCode) {
+                preview.innerHTML = '<div class="error-msg">请输入 SVG 代码</div>';
+                previewInfo.textContent = '尺寸: - × -';
+                return;
+            }
+
+            try {
+                // Parse and validate SVG
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgCode, 'image/svg+xml');
+                const errorNode = doc.querySelector('parsererror');
+                
+                if (errorNode) {
+                    preview.innerHTML = '<div class="error-msg">SVG 语法错误</div>';
+                    return;
+                }
+
+                const svgElement = doc.querySelector('svg');
+                if (!svgElement) {
+                    preview.innerHTML = '<div class="error-msg">未找到 SVG 元素</div>';
+                    return;
+                }
+
+                // Display preview
+                preview.innerHTML = svgCode;
+                const renderedSvg = preview.querySelector('svg');
+                if (renderedSvg) {
+                    renderedSvg.style.maxWidth = '100%';
+                    renderedSvg.style.maxHeight = '100%';
+                    
+                    // Get dimensions
+                    const viewBox = renderedSvg.getAttribute('viewBox');
+                    const width = renderedSvg.getAttribute('width') || (viewBox ? viewBox.split(' ')[2] : '-');
+                    const height = renderedSvg.getAttribute('height') || (viewBox ? viewBox.split(' ')[3] : '-');
+                    previewInfo.textContent = `尺寸: ${width} × ${height}`;
+                }
+            } catch (e) {
+                preview.innerHTML = `<div class="error-msg">错误: ${e.message}</div>`;
+            }
+        }
+
+        function updateColors() {
+            const fill = document.getElementById('fillColor').value;
+            const stroke = document.getElementById('strokeColor').value;
+            const strokeWidth = document.getElementById('strokeWidth').value;
+
+            let svg = editor.value;
+            svg = svg.replace(/fill="[^"]*"/g, `fill="${fill}"`);
+            svg = svg.replace(/stroke="[^"]*"/g, `stroke="${stroke}"`);
+            svg = svg.replace(/stroke-width="[^"]*"/g, `stroke-width="${strokeWidth}"`);
+            
+            editor.value = svg;
+            updatePreview();
+        }
+
+        function formatSvg() {
+            editor.value = formatSvgCode(editor.value);
+        }
+
+        function copySvg() {
+            navigator.clipboard.writeText(editor.value);
+            alert('已复制 SVG 代码');
+        }
+
+        function downloadSvg() {
+            const blob = new Blob([editor.value], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'image.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadPng() {
+            const svgElement = preview.querySelector('svg');
+            if (!svgElement) {
+                alert('没有可下载的 SVG');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            const img = new Image();
+            
+            img.onload = function() {
+                canvas.width = img.width || 200;
+                canvas.height = img.height || 200;
+                ctx.drawImage(img, 0, 0);
+                
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = 'image.png';
+                a.click();
+            };
+            
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        }
+
+        function setBg(type) {
+            const area = document.getElementById('previewArea');
+            area.className = 'preview-area bg-' + type;
+            
+            document.querySelectorAll('.preview-bg-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.classList.contains(type));
+            });
+        }
+
+        // Event listener
+        editor.addEventListener('input', updatePreview);
+
+        // Initialize
+        renderTemplates();
+        loadTemplate(0);
+    </script>
+</body>
+</html>

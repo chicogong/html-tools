@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小费/AA计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-card: 1.5rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .result-card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-card);
+            margin-top: 1.5rem;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .result-row:last-child {
+            border-bottom: none;
+        }
+        .result-label {
+            color: var(--pico-muted-color);
+        }
+        .result-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .highlight {
+            color: var(--pico-primary);
+            font-size: 1.3rem;
+        }
+        .tip-presets {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .tip-presets button {
+            flex: 1;
+            min-width: 60px;
+            padding: 0.5rem;
+            margin: 0;
+        }
+        .tip-presets button.active {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 480px) {
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>💰 小费/AA计算器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+
+        <article>
+            <label for="billAmount">
+                账单金额
+                <input type="number" id="billAmount" placeholder="请输入账单金额" min="0" step="0.01" oninput="calculate()">
+            </label>
+
+            <label>小费比例</label>
+            <div class="tip-presets">
+                <button onclick="setTipPercent(10)">10%</button>
+                <button onclick="setTipPercent(15)" class="active">15%</button>
+                <button onclick="setTipPercent(18)">18%</button>
+                <button onclick="setTipPercent(20)">20%</button>
+                <button onclick="setTipPercent(25)">25%</button>
+            </div>
+
+            <label for="customTip">
+                自定义小费比例 (%)
+                <input type="number" id="customTip" value="15" min="0" max="100" step="1" oninput="calculate()">
+            </label>
+
+            <label for="peopleCount">
+                用餐人数
+                <input type="number" id="peopleCount" value="1" min="1" step="1" oninput="calculate()">
+            </label>
+        </article>
+
+        <div class="result-card">
+            <h3>计算结果</h3>
+            <div class="result-row">
+                <span class="result-label">小费金额</span>
+                <span class="result-value" id="tipAmount">¥0.00</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">总金额（含小费）</span>
+                <span class="result-value" id="totalAmount">¥0.00</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">每人应付（含小费）</span>
+                <span class="result-value highlight" id="perPerson">¥0.00</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">每人小费</span>
+                <span class="result-value" id="tipPerPerson">¥0.00</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        // 设置预设小费比例
+        function setTipPercent(percent) {
+            document.getElementById('customTip').value = percent;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.tip-presets button').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.textContent) === percent) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            calculate();
+        }
+
+        // 计算
+        function calculate() {
+            const billAmount = parseFloat(document.getElementById('billAmount').value) || 0;
+            const tipPercent = parseFloat(document.getElementById('customTip').value) || 0;
+            const peopleCount = parseInt(document.getElementById('peopleCount').value) || 1;
+
+            const tipAmount = billAmount * (tipPercent / 100);
+            const totalAmount = billAmount + tipAmount;
+            const perPerson = totalAmount / peopleCount;
+            const tipPerPerson = tipAmount / peopleCount;
+
+            document.getElementById('tipAmount').textContent = '¥' + tipAmount.toFixed(2);
+            document.getElementById('totalAmount').textContent = '¥' + totalAmount.toFixed(2);
+            document.getElementById('perPerson').textContent = '¥' + perPerson.toFixed(2);
+            document.getElementById('tipPerPerson').textContent = '¥' + tipPerPerson.toFixed(2);
+
+            // 更新预设按钮状态
+            document.querySelectorAll('.tip-presets button').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.textContent) === tipPercent) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // 初始计算
+        calculate();
+    </script>
+</body>
+</html>

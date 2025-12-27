@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>链接分析器 - SEO工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-primary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: flex-end;
+        }
+        .input-row .field {
+            flex: 1;
+        }
+        .input-row label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stat-card h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--pico-primary);
+        }
+        .stat-card p {
+            margin: 0.5rem 0 0 0;
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+        }
+        .stat-card.internal h3 { color: #3b82f6; }
+        .stat-card.external h3 { color: #8b5cf6; }
+        .stat-card.nofollow h3 { color: #f59e0b; }
+        .stat-card.broken h3 { color: #ef4444; }
+        
+        .link-section {
+            margin-bottom: 2rem;
+        }
+        .link-section h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .link-table {
+            width: 100%;
+            font-size: 0.9rem;
+        }
+        .link-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: var(--pico-muted-border-color);
+        }
+        .link-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            word-break: break-all;
+        }
+        .link-table tr:hover td {
+            background: var(--pico-card-background-color);
+        }
+        
+        .anchor-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .anchor-tag {
+            padding: 0.35rem 0.75rem;
+            background: var(--pico-muted-border-color);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .anchor-count {
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .badge-internal { background: #dbeafe; color: #1d4ed8; }
+        .badge-external { background: #ede9fe; color: #6d28d9; }
+        .badge-nofollow { background: #fef3c7; color: #92400e; }
+        .badge-blank { background: #f3f4f6; color: #4b5563; }
+        [data-theme="dark"] .badge-internal { background: #1e3a5f; color: #93c5fd; }
+        [data-theme="dark"] .badge-external { background: #2e1065; color: #c4b5fd; }
+        [data-theme="dark"] .badge-nofollow { background: #422006; color: #fcd34d; }
+        [data-theme="dark"] .badge-blank { background: #374151; color: #d1d5db; }
+        
+        .tips {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            border-left: 4px solid var(--pico-primary);
+        }
+        .tips h4 {
+            margin-top: 0;
+        }
+        .tips ul {
+            margin-bottom: 0;
+        }
+        
+        .ratio-bar {
+            display: flex;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        .ratio-internal {
+            background: #3b82f6;
+        }
+        .ratio-external {
+            background: #8b5cf6;
+        }
+        .ratio-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .filter-tabs button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-card-background-color);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .filter-tabs button.active {
+            background: var(--pico-primary);
+            color: white;
+            border-color: var(--pico-primary);
+        }
+        
+        .empty-message {
+            padding: 2rem;
+            text-align: center;
+            color: var(--pico-muted-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🔗 链接分析器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+
+        <article>
+            <h3>输入HTML代码</h3>
+            <div class="input-row">
+                <div class="field">
+                    <label for="baseUrl">当前页面URL（用于判断内链/外链）</label>
+                    <input type="text" id="baseUrl" placeholder="https://example.com">
+                </div>
+            </div>
+            <textarea id="htmlInput" placeholder="在此粘贴包含链接的HTML代码...
+
+示例：
+<a href='/about'>关于我们</a>
+<a href='https://example.com/product'>产品页面</a>
+<a href='https://other-site.com' target='_blank' rel='nofollow'>外部链接</a>
+<a href='#section'>页面锚点</a>"></textarea>
+            <button onclick="analyzeLinks()">分析链接</button>
+        </article>
+
+        <div id="results" style="display: none;">
+            <h3>📊 统计概览</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="totalLinks">0</h3>
+                    <p>总链接数</p>
+                </div>
+                <div class="stat-card internal">
+                    <h3 id="internalLinks">0</h3>
+                    <p>内部链接</p>
+                </div>
+                <div class="stat-card external">
+                    <h3 id="externalLinks">0</h3>
+                    <p>外部链接</p>
+                </div>
+                <div class="stat-card nofollow">
+                    <h3 id="nofollowLinks">0</h3>
+                    <p>Nofollow</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="uniqueDomains">0</h3>
+                    <p>独立域名</p>
+                </div>
+            </div>
+
+            <h4>📈 内外链比例</h4>
+            <article>
+                <div class="ratio-bar">
+                    <div class="ratio-internal" id="internalBar" style="width: 50%;"></div>
+                    <div class="ratio-external" id="externalBar" style="width: 50%;"></div>
+                </div>
+                <div class="ratio-labels">
+                    <span>内链: <span id="internalPercent">50%</span></span>
+                    <span>外链: <span id="externalPercent">50%</span></span>
+                </div>
+            </article>
+
+            <div class="link-section">
+                <h4>🏷️ 锚文本统计</h4>
+                <div class="anchor-cloud" id="anchorCloud">
+                    <span class="empty-message">暂无数据</span>
+                </div>
+            </div>
+
+            <div class="link-section">
+                <h4>📋 链接详情</h4>
+                <div class="filter-tabs">
+                    <button class="active" onclick="filterLinks('all')">全部</button>
+                    <button onclick="filterLinks('internal')">内链</button>
+                    <button onclick="filterLinks('external')">外链</button>
+                    <button onclick="filterLinks('nofollow')">Nofollow</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="link-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">链接地址</th>
+                                <th style="width: 30%;">锚文本</th>
+                                <th style="width: 30%;">属性</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linkTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tips">
+                <h4>💡 SEO建议</h4>
+                <ul>
+                    <li><strong>内外链比例：</strong>建议内链数量多于外链，合理比例为3:1到5:1</li>
+                    <li><strong>锚文本：</strong>使用描述性的锚文本，避免"点击这里"等无意义文字</li>
+                    <li><strong>Nofollow：</strong>广告链接、用户生成内容中的链接应添加nofollow</li>
+                    <li><strong>新窗口：</strong>外部链接建议使用target="_blank"并添加rel="noopener"</li>
+                    <li><strong>链接深度：</strong>重要页面应该在网站首页3次点击内可达</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+
+        let allLinks = [];
+        let currentFilter = 'all';
+
+        function getDomain(url) {
+            try {
+                if (url.startsWith('//')) {
+                    url = 'https:' + url;
+                }
+                const urlObj = new URL(url, 'https://example.com');
+                return urlObj.hostname;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function isInternalLink(href, baseUrl) {
+            if (!href) return false;
+            
+            // 锚点链接
+            if (href.startsWith('#')) return true;
+            
+            // 相对路径
+            if (href.startsWith('/') && !href.startsWith('//')) return true;
+            if (!href.includes('://') && !href.startsWith('//')) return true;
+            
+            // 绝对路径，比较域名
+            if (baseUrl) {
+                const baseDomain = getDomain(baseUrl);
+                const linkDomain = getDomain(href);
+                if (baseDomain && linkDomain) {
+                    return baseDomain === linkDomain || linkDomain.endsWith('.' + baseDomain);
+                }
+            }
+            
+            return false;
+        }
+
+        function filterLinks(filter) {
+            currentFilter = filter;
+            
+            // 更新标签状态
+            document.querySelectorAll('.filter-tabs button').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderLinkTable();
+        }
+
+        function createLinkRow(link) {
+            const row = document.createElement('tr');
+            row.setAttribute('data-type', link.type);
+            
+            const hrefCell = document.createElement('td');
+            hrefCell.textContent = link.href || '(空链接)';
+            
+            const anchorCell = document.createElement('td');
+            anchorCell.textContent = link.anchor || '(无锚文本)';
+            
+            const attrCell = document.createElement('td');
+            
+            // 类型徽章
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'badge badge-' + link.type;
+            typeBadge.textContent = link.type === 'internal' ? '内链' : '外链';
+            attrCell.appendChild(typeBadge);
+            
+            // nofollow徽章
+            if (link.nofollow) {
+                const nfBadge = document.createElement('span');
+                nfBadge.className = 'badge badge-nofollow';
+                nfBadge.textContent = 'nofollow';
+                nfBadge.style.marginLeft = '0.25rem';
+                attrCell.appendChild(nfBadge);
+            }
+            
+            // target="_blank"徽章
+            if (link.blank) {
+                const blankBadge = document.createElement('span');
+                blankBadge.className = 'badge badge-blank';
+                blankBadge.textContent = '_blank';
+                blankBadge.style.marginLeft = '0.25rem';
+                attrCell.appendChild(blankBadge);
+            }
+            
+            row.appendChild(hrefCell);
+            row.appendChild(anchorCell);
+            row.appendChild(attrCell);
+            
+            return row;
+        }
+
+        function renderLinkTable() {
+            const tbody = document.getElementById('linkTableBody');
+            tbody.textContent = '';
+            
+            let filtered = allLinks;
+            if (currentFilter === 'internal') {
+                filtered = allLinks.filter(function(l) { return l.type === 'internal'; });
+            } else if (currentFilter === 'external') {
+                filtered = allLinks.filter(function(l) { return l.type === 'external'; });
+            } else if (currentFilter === 'nofollow') {
+                filtered = allLinks.filter(function(l) { return l.nofollow; });
+            }
+            
+            if (filtered.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 3;
+                cell.style.textAlign = 'center';
+                cell.style.color = 'var(--pico-muted-color)';
+                cell.textContent = '没有找到符合条件的链接';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                return;
+            }
+            
+            filtered.forEach(function(link) {
+                tbody.appendChild(createLinkRow(link));
+            });
+        }
+
+        function renderAnchorCloud(anchors) {
+            const cloud = document.getElementById('anchorCloud');
+            cloud.textContent = '';
+            
+            // 转换为数组并排序
+            const sortedAnchors = Object.entries(anchors)
+                .filter(function(a) { return a[0].trim(); })
+                .sort(function(a, b) { return b[1] - a[1]; })
+                .slice(0, 20);
+            
+            if (sortedAnchors.length === 0) {
+                const msg = document.createElement('span');
+                msg.className = 'empty-message';
+                msg.textContent = '没有发现有效的锚文本';
+                cloud.appendChild(msg);
+                return;
+            }
+            
+            sortedAnchors.forEach(function(item) {
+                var anchor = item[0];
+                var count = item[1];
+                const tag = document.createElement('span');
+                tag.className = 'anchor-tag';
+                
+                const text = document.createElement('span');
+                text.textContent = anchor;
+                
+                const countBadge = document.createElement('span');
+                countBadge.className = 'anchor-count';
+                countBadge.textContent = count;
+                
+                tag.appendChild(text);
+                tag.appendChild(countBadge);
+                cloud.appendChild(tag);
+            });
+        }
+
+        function analyzeLinks() {
+            const html = document.getElementById('htmlInput').value;
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!html.trim()) {
+                alert('请输入HTML代码');
+                return;
+            }
+
+            // 解析链接标签
+            const linkRegex = /<a\s+([^>]*)>([\s\S]*?)<\/a>/gi;
+            allLinks = [];
+            const anchors = {};
+            const domains = new Set();
+            let match;
+            
+            while ((match = linkRegex.exec(html)) !== null) {
+                const attrs = match[1];
+                const anchorText = match[2].replace(/<[^>]+>/g, '').trim();
+                
+                // 提取属性
+                const hrefMatch = attrs.match(/href\s*=\s*["']([^"']*)["']/i);
+                const relMatch = attrs.match(/rel\s*=\s*["']([^"']*)["']/i);
+                const targetMatch = attrs.match(/target\s*=\s*["']([^"']*)["']/i);
+                
+                const href = hrefMatch ? hrefMatch[1] : '';
+                const rel = relMatch ? relMatch[1].toLowerCase() : '';
+                const target = targetMatch ? targetMatch[1] : '';
+                
+                const isInternal = isInternalLink(href, baseUrl);
+                
+                const link = {
+                    href: href,
+                    anchor: anchorText,
+                    type: isInternal ? 'internal' : 'external',
+                    nofollow: rel.includes('nofollow'),
+                    blank: target === '_blank'
+                };
+                
+                allLinks.push(link);
+                
+                // 统计锚文本
+                if (anchorText) {
+                    anchors[anchorText] = (anchors[anchorText] || 0) + 1;
+                }
+                
+                // 统计外部域名
+                if (!isInternal && href) {
+                    const domain = getDomain(href);
+                    if (domain) domains.add(domain);
+                }
+            }
+
+            // 统计
+            const total = allLinks.length;
+            const internal = allLinks.filter(function(l) { return l.type === 'internal'; }).length;
+            const external = allLinks.filter(function(l) { return l.type === 'external'; }).length;
+            const nofollow = allLinks.filter(function(l) { return l.nofollow; }).length;
+
+            // 更新统计显示
+            document.getElementById('totalLinks').textContent = total;
+            document.getElementById('internalLinks').textContent = internal;
+            document.getElementById('externalLinks').textContent = external;
+            document.getElementById('nofollowLinks').textContent = nofollow;
+            document.getElementById('uniqueDomains').textContent = domains.size;
+
+            // 更新比例条
+            if (total > 0) {
+                const internalPercent = Math.round((internal / total) * 100);
+                const externalPercent = 100 - internalPercent;
+                document.getElementById('internalBar').style.width = internalPercent + '%';
+                document.getElementById('externalBar').style.width = externalPercent + '%';
+                document.getElementById('internalPercent').textContent = internalPercent + '%';
+                document.getElementById('externalPercent').textContent = externalPercent + '%';
+            } else {
+                document.getElementById('internalBar').style.width = '50%';
+                document.getElementById('externalBar').style.width = '50%';
+                document.getElementById('internalPercent').textContent = '0%';
+                document.getElementById('externalPercent').textContent = '0%';
+            }
+
+            // 渲染锚文本云
+            renderAnchorCloud(anchors);
+
+            // 渲染链接表格
+            currentFilter = 'all';
+            document.querySelectorAll('.filter-tabs button').forEach(function(btn, index) {
+                btn.classList.toggle('active', index === 0);
+            });
+            renderLinkTable();
+
+            document.getElementById('results').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

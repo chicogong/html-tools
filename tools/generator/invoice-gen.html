@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发票/收据生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #1095c1;
+            --danger-color: #c10016;
+        }
+        
+        body {
+            padding: 1rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+        }
+        
+        .container-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .item-row input {
+            margin-bottom: 0;
+        }
+        
+        .btn-remove {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-remove:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-add {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .summary-row.total {
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-bottom: none;
+            border-top: 2px solid var(--pico-muted-border-color);
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        /* 预览样式 */
+        .preview-container {
+            background: white;
+            color: #333;
+            padding: 2rem;
+            border-radius: var(--pico-border-radius);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .invoice-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .invoice-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .invoice-header .invoice-no {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .invoice-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-block h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .info-block p {
+            margin: 0.25rem 0;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+        
+        .invoice-table th {
+            background: #f5f5f5;
+            color: #333;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .invoice-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+        
+        .invoice-table .text-right {
+            text-align: right;
+        }
+        
+        .invoice-summary {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .summary-table {
+            width: 250px;
+        }
+        
+        .summary-table .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            color: #555;
+        }
+        
+        .summary-table .row.total {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #333;
+            border-top: 2px solid #333;
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+        }
+        
+        .invoice-footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .stamp-area {
+            margin-top: 2rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .stamp-box {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.8rem;
+        }
+        
+        /* 打印样式 */
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+            
+            .preview-container {
+                box-shadow: none;
+                padding: 0;
+            }
+            
+            .invoice-table th {
+                background: #f5f5f5 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .item-row .item-name {
+                grid-column: span 2;
+            }
+        }
+        
+        .item-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 0.5rem;
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            margin-bottom: 0.5rem;
+            padding: 0 0.25rem;
+        }
+        
+        @media (max-width: 600px) {
+            .item-header {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="header no-print">
+            <h1>📄 发票/收据生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+        
+        <div class="container-grid no-print">
+            <!-- 左侧：表单输入 -->
+            <div>
+                <!-- 发票类型 -->
+                <div class="card">
+                    <h3>📋 发票信息</h3>
+                    <div class="form-row">
+                        <label>
+                            发票类型
+                            <select id="invoiceType" onchange="updatePreview()">
+                                <option value="invoice">发票</option>
+                                <option value="receipt">收据</option>
+                                <option value="quote">报价单</option>
+                            </select>
+                        </label>
+                        <label>
+                            发票编号
+                            <input type="text" id="invoiceNo" placeholder="INV-001" onchange="updatePreview()">
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label>
+                            开票日期
+                            <input type="date" id="invoiceDate" onchange="updatePreview()">
+                        </label>
+                        <label>
+                            到期日期
+                            <input type="date" id="dueDate" onchange="updatePreview()">
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 卖方信息 -->
+                <div class="card">
+                    <h3>🏢 卖方信息</h3>
+                    <label>
+                        公司名称
+                        <input type="text" id="sellerName" placeholder="您的公司名称" onchange="updatePreview()">
+                    </label>
+                    <label>
+                        地址
+                        <input type="text" id="sellerAddress" placeholder="公司地址" onchange="updatePreview()">
+                    </label>
+                    <div class="form-row">
+                        <label>
+                            电话
+                            <input type="text" id="sellerPhone" placeholder="联系电话" onchange="updatePreview()">
+                        </label>
+                        <label>
+                            税号
+                            <input type="text" id="sellerTaxId" placeholder="纳税人识别号" onchange="updatePreview()">
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 买方信息 -->
+                <div class="card">
+                    <h3>👤 买方信息</h3>
+                    <label>
+                        客户名称
+                        <input type="text" id="buyerName" placeholder="客户/公司名称" onchange="updatePreview()">
+                    </label>
+                    <label>
+                        地址
+                        <input type="text" id="buyerAddress" placeholder="客户地址" onchange="updatePreview()">
+                    </label>
+                    <div class="form-row">
+                        <label>
+                            电话
+                            <input type="text" id="buyerPhone" placeholder="联系电话" onchange="updatePreview()">
+                        </label>
+                        <label>
+                            税号
+                            <input type="text" id="buyerTaxId" placeholder="纳税人识别号" onchange="updatePreview()">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：商品和汇总 -->
+            <div>
+                <!-- 商品列表 -->
+                <div class="card">
+                    <h3>📦 商品/服务明细</h3>
+                    <div class="item-header">
+                        <span>名称</span>
+                        <span>数量</span>
+                        <span>单价</span>
+                        <span>小计</span>
+                        <span></span>
+                    </div>
+                    <div id="itemList"></div>
+                    <button class="btn-add secondary" onclick="addItem()">+ 添加商品</button>
+                </div>
+                
+                <!-- 税率和汇总 -->
+                <div class="card">
+                    <h3>💰 金额汇总</h3>
+                    <div class="form-row">
+                        <label>
+                            税率 (%)
+                            <input type="number" id="taxRate" value="13" min="0" max="100" step="0.1" onchange="updatePreview()">
+                        </label>
+                        <label>
+                            折扣 (%)
+                            <input type="number" id="discount" value="0" min="0" max="100" step="0.1" onchange="updatePreview()">
+                        </label>
+                    </div>
+                    <div id="summarySection">
+                        <div class="summary-row">
+                            <span>小计</span>
+                            <span id="subtotal">¥0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>折扣</span>
+                            <span id="discountAmount">-¥0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>税额</span>
+                            <span id="taxAmount">¥0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>总计</span>
+                            <span id="totalAmount">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 备注 -->
+                <div class="card">
+                    <h3>📝 备注</h3>
+                    <textarea id="notes" rows="3" placeholder="付款方式、银行账号等信息..." onchange="updatePreview()"></textarea>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <button onclick="printInvoice()">🖨️ 打印</button>
+                    <button onclick="exportPDF()" class="secondary">📥 导出PDF</button>
+                    <button onclick="saveData()" class="contrast">💾 保存数据</button>
+                    <button onclick="loadData()" class="outline">📂 加载数据</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 发票预览 -->
+        <div class="card no-print" style="margin-top: 1rem;">
+            <h3>👁️ 预览</h3>
+        </div>
+        
+        <div class="preview-container" id="invoicePreview">
+            <!-- 预览内容将通过JS生成 -->
+        </div>
+    </main>
+    
+    <!-- html2pdf库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        // 商品列表数据
+        let items = [];
+        let itemIdCounter = 0;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置默认日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('invoiceDate').value = today;
+            
+            // 设置到期日期为30天后
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+            document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
+            
+            // 生成发票编号
+            document.getElementById('invoiceNo').value = 'INV-' + Date.now().toString().slice(-6);
+            
+            // 添加初始商品行
+            addItem();
+            
+            // 加载保存的主题
+            const savedTheme = localStorage.getItem('invoice-theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+            
+            updatePreview();
+        });
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('invoice-theme', newTheme);
+        }
+        
+        // 转义HTML特殊字符防止XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 添加商品行
+        function addItem() {
+            const id = itemIdCounter++;
+            items.push({ id, name: '', quantity: 1, price: 0 });
+            renderItems();
+        }
+        
+        // 删除商品行
+        function removeItem(id) {
+            items = items.filter(item => item.id !== id);
+            if (items.length === 0) {
+                addItem();
+            } else {
+                renderItems();
+                updatePreview();
+            }
+        }
+        
+        // 更新商品数据
+        function updateItem(id, field, value) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                if (field === 'quantity' || field === 'price') {
+                    item[field] = parseFloat(value) || 0;
+                } else {
+                    item[field] = value;
+                }
+            }
+            updateSubtotals();
+            updatePreview();
+        }
+        
+        // 渲染商品列表
+        function renderItems() {
+            const container = document.getElementById('itemList');
+            container.textContent = '';
+            
+            items.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'item-name';
+                nameInput.placeholder = '商品名称';
+                nameInput.value = item.name;
+                nameInput.addEventListener('change', () => updateItem(item.id, 'name', nameInput.value));
+                
+                const qtyInput = document.createElement('input');
+                qtyInput.type = 'number';
+                qtyInput.placeholder = '数量';
+                qtyInput.min = '0';
+                qtyInput.step = '1';
+                qtyInput.value = item.quantity;
+                qtyInput.addEventListener('change', () => updateItem(item.id, 'quantity', qtyInput.value));
+                
+                const priceInput = document.createElement('input');
+                priceInput.type = 'number';
+                priceInput.placeholder = '单价';
+                priceInput.min = '0';
+                priceInput.step = '0.01';
+                priceInput.value = item.price;
+                priceInput.addEventListener('change', () => updateItem(item.id, 'price', priceInput.value));
+                
+                const subtotalInput = document.createElement('input');
+                subtotalInput.type = 'text';
+                subtotalInput.readOnly = true;
+                subtotalInput.value = '¥' + (item.quantity * item.price).toFixed(2);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove';
+                removeBtn.title = '删除';
+                removeBtn.textContent = '✕';
+                removeBtn.addEventListener('click', () => removeItem(item.id));
+                
+                row.appendChild(nameInput);
+                row.appendChild(qtyInput);
+                row.appendChild(priceInput);
+                row.appendChild(subtotalInput);
+                row.appendChild(removeBtn);
+                
+                container.appendChild(row);
+            });
+        }
+        
+        // 更新小计显示
+        function updateSubtotals() {
+            const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+            const discountRate = parseFloat(document.getElementById('discount').value) || 0;
+            const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+            
+            const discountAmount = subtotal * discountRate / 100;
+            const afterDiscount = subtotal - discountAmount;
+            const taxAmount = afterDiscount * taxRate / 100;
+            const total = afterDiscount + taxAmount;
+            
+            document.getElementById('subtotal').textContent = '¥' + subtotal.toFixed(2);
+            document.getElementById('discountAmount').textContent = '-¥' + discountAmount.toFixed(2);
+            document.getElementById('taxAmount').textContent = '¥' + taxAmount.toFixed(2);
+            document.getElementById('totalAmount').textContent = '¥' + total.toFixed(2);
+        }
+        
+        // 更新预览
+        function updatePreview() {
+            updateSubtotals();
+            
+            const invoiceType = document.getElementById('invoiceType').value;
+            const typeNames = { invoice: '发票', receipt: '收据', quote: '报价单' };
+            const typeName = typeNames[invoiceType];
+            
+            const invoiceNo = document.getElementById('invoiceNo').value || '-';
+            const invoiceDate = document.getElementById('invoiceDate').value || '-';
+            const dueDate = document.getElementById('dueDate').value || '-';
+            
+            const sellerName = document.getElementById('sellerName').value || '未填写';
+            const sellerAddress = document.getElementById('sellerAddress').value || '';
+            const sellerPhone = document.getElementById('sellerPhone').value || '';
+            const sellerTaxId = document.getElementById('sellerTaxId').value || '';
+            
+            const buyerName = document.getElementById('buyerName').value || '未填写';
+            const buyerAddress = document.getElementById('buyerAddress').value || '';
+            const buyerPhone = document.getElementById('buyerPhone').value || '';
+            const buyerTaxId = document.getElementById('buyerTaxId').value || '';
+            
+            const notes = document.getElementById('notes').value || '';
+            
+            const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+            const discountRate = parseFloat(document.getElementById('discount').value) || 0;
+            const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+            
+            const discountAmount = subtotal * discountRate / 100;
+            const afterDiscount = subtotal - discountAmount;
+            const taxAmount = afterDiscount * taxRate / 100;
+            const total = afterDiscount + taxAmount;
+            
+            // 使用DOM API安全构建预览
+            const preview = document.getElementById('invoicePreview');
+            preview.textContent = '';
+            
+            // 发票头部
+            const header = document.createElement('div');
+            header.className = 'invoice-header';
+            const h2 = document.createElement('h2');
+            h2.textContent = typeName;
+            const pNo = document.createElement('p');
+            pNo.className = 'invoice-no';
+            pNo.textContent = '编号: ' + invoiceNo;
+            header.appendChild(h2);
+            header.appendChild(pNo);
+            preview.appendChild(header);
+            
+            // 卖方买方信息
+            const infoSection = document.createElement('div');
+            infoSection.className = 'invoice-info';
+            
+            const sellerBlock = document.createElement('div');
+            sellerBlock.className = 'info-block';
+            const sellerTitle = document.createElement('h4');
+            sellerTitle.textContent = '卖方';
+            sellerBlock.appendChild(sellerTitle);
+            const sellerNameP = document.createElement('p');
+            const sellerNameStrong = document.createElement('strong');
+            sellerNameStrong.textContent = sellerName;
+            sellerNameP.appendChild(sellerNameStrong);
+            sellerBlock.appendChild(sellerNameP);
+            if (sellerAddress) {
+                const p = document.createElement('p');
+                p.textContent = sellerAddress;
+                sellerBlock.appendChild(p);
+            }
+            if (sellerPhone) {
+                const p = document.createElement('p');
+                p.textContent = '电话: ' + sellerPhone;
+                sellerBlock.appendChild(p);
+            }
+            if (sellerTaxId) {
+                const p = document.createElement('p');
+                p.textContent = '税号: ' + sellerTaxId;
+                sellerBlock.appendChild(p);
+            }
+            
+            const buyerBlock = document.createElement('div');
+            buyerBlock.className = 'info-block';
+            const buyerTitle = document.createElement('h4');
+            buyerTitle.textContent = '买方';
+            buyerBlock.appendChild(buyerTitle);
+            const buyerNameP = document.createElement('p');
+            const buyerNameStrong = document.createElement('strong');
+            buyerNameStrong.textContent = buyerName;
+            buyerNameP.appendChild(buyerNameStrong);
+            buyerBlock.appendChild(buyerNameP);
+            if (buyerAddress) {
+                const p = document.createElement('p');
+                p.textContent = buyerAddress;
+                buyerBlock.appendChild(p);
+            }
+            if (buyerPhone) {
+                const p = document.createElement('p');
+                p.textContent = '电话: ' + buyerPhone;
+                buyerBlock.appendChild(p);
+            }
+            if (buyerTaxId) {
+                const p = document.createElement('p');
+                p.textContent = '税号: ' + buyerTaxId;
+                buyerBlock.appendChild(p);
+            }
+            
+            infoSection.appendChild(sellerBlock);
+            infoSection.appendChild(buyerBlock);
+            preview.appendChild(infoSection);
+            
+            // 日期信息
+            const dateSection = document.createElement('div');
+            dateSection.className = 'invoice-info';
+            const dateBlock1 = document.createElement('div');
+            dateBlock1.className = 'info-block';
+            const dateP1 = document.createElement('p');
+            const dateStrong1 = document.createElement('strong');
+            dateStrong1.textContent = '开票日期: ';
+            dateP1.appendChild(dateStrong1);
+            dateP1.appendChild(document.createTextNode(invoiceDate));
+            dateBlock1.appendChild(dateP1);
+            
+            const dateBlock2 = document.createElement('div');
+            dateBlock2.className = 'info-block';
+            const dateP2 = document.createElement('p');
+            const dateStrong2 = document.createElement('strong');
+            dateStrong2.textContent = '到期日期: ';
+            dateP2.appendChild(dateStrong2);
+            dateP2.appendChild(document.createTextNode(dueDate));
+            dateBlock2.appendChild(dateP2);
+            
+            dateSection.appendChild(dateBlock1);
+            dateSection.appendChild(dateBlock2);
+            preview.appendChild(dateSection);
+            
+            // 商品表格
+            const table = document.createElement('table');
+            table.className = 'invoice-table';
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['商品/服务', '数量', '单价', '金额'].forEach((text, i) => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                if (i > 0) th.className = 'text-right';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            const tbody = document.createElement('tbody');
+            const validItems = items.filter(item => item.name);
+            if (validItems.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 4;
+                td.style.textAlign = 'center';
+                td.style.color = '#999';
+                td.textContent = '暂无商品';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            } else {
+                validItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const td1 = document.createElement('td');
+                    td1.textContent = item.name;
+                    const td2 = document.createElement('td');
+                    td2.className = 'text-right';
+                    td2.textContent = item.quantity;
+                    const td3 = document.createElement('td');
+                    td3.className = 'text-right';
+                    td3.textContent = '¥' + item.price.toFixed(2);
+                    const td4 = document.createElement('td');
+                    td4.className = 'text-right';
+                    td4.textContent = '¥' + (item.quantity * item.price).toFixed(2);
+                    tr.appendChild(td1);
+                    tr.appendChild(td2);
+                    tr.appendChild(td3);
+                    tr.appendChild(td4);
+                    tbody.appendChild(tr);
+                });
+            }
+            table.appendChild(tbody);
+            preview.appendChild(table);
+            
+            // 汇总
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'invoice-summary';
+            const summaryTable = document.createElement('div');
+            summaryTable.className = 'summary-table';
+            
+            const row1 = document.createElement('div');
+            row1.className = 'row';
+            const span1a = document.createElement('span');
+            span1a.textContent = '小计';
+            const span1b = document.createElement('span');
+            span1b.textContent = '¥' + subtotal.toFixed(2);
+            row1.appendChild(span1a);
+            row1.appendChild(span1b);
+            summaryTable.appendChild(row1);
+            
+            if (discountRate > 0) {
+                const row2 = document.createElement('div');
+                row2.className = 'row';
+                const span2a = document.createElement('span');
+                span2a.textContent = '折扣 (' + discountRate + '%)';
+                const span2b = document.createElement('span');
+                span2b.textContent = '-¥' + discountAmount.toFixed(2);
+                row2.appendChild(span2a);
+                row2.appendChild(span2b);
+                summaryTable.appendChild(row2);
+            }
+            
+            const row3 = document.createElement('div');
+            row3.className = 'row';
+            const span3a = document.createElement('span');
+            span3a.textContent = '税额 (' + taxRate + '%)';
+            const span3b = document.createElement('span');
+            span3b.textContent = '¥' + taxAmount.toFixed(2);
+            row3.appendChild(span3a);
+            row3.appendChild(span3b);
+            summaryTable.appendChild(row3);
+            
+            const row4 = document.createElement('div');
+            row4.className = 'row total';
+            const span4a = document.createElement('span');
+            span4a.textContent = '总计';
+            const span4b = document.createElement('span');
+            span4b.textContent = '¥' + total.toFixed(2);
+            row4.appendChild(span4a);
+            row4.appendChild(span4b);
+            summaryTable.appendChild(row4);
+            
+            summaryDiv.appendChild(summaryTable);
+            preview.appendChild(summaryDiv);
+            
+            // 备注
+            if (notes) {
+                const footer = document.createElement('div');
+                footer.className = 'invoice-footer';
+                const notesP = document.createElement('p');
+                const notesStrong = document.createElement('strong');
+                notesStrong.textContent = '备注: ';
+                notesP.appendChild(notesStrong);
+                notesP.appendChild(document.createTextNode(notes));
+                footer.appendChild(notesP);
+                preview.appendChild(footer);
+            }
+            
+            // 盖章区
+            const stampArea = document.createElement('div');
+            stampArea.className = 'stamp-area';
+            const stampBox = document.createElement('div');
+            stampBox.className = 'stamp-box';
+            stampBox.textContent = '盖章处';
+            stampArea.appendChild(stampBox);
+            preview.appendChild(stampArea);
+        }
+        
+        // 打印发票
+        function printInvoice() {
+            window.print();
+        }
+        
+        // 导出PDF
+        function exportPDF() {
+            const element = document.getElementById('invoicePreview');
+            const invoiceNo = document.getElementById('invoiceNo').value || 'invoice';
+            
+            const opt = {
+                margin: 10,
+                filename: invoiceNo + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(element).save();
+        }
+        
+        // 保存数据到本地
+        function saveData() {
+            const data = {
+                invoiceType: document.getElementById('invoiceType').value,
+                invoiceNo: document.getElementById('invoiceNo').value,
+                invoiceDate: document.getElementById('invoiceDate').value,
+                dueDate: document.getElementById('dueDate').value,
+                sellerName: document.getElementById('sellerName').value,
+                sellerAddress: document.getElementById('sellerAddress').value,
+                sellerPhone: document.getElementById('sellerPhone').value,
+                sellerTaxId: document.getElementById('sellerTaxId').value,
+                buyerName: document.getElementById('buyerName').value,
+                buyerAddress: document.getElementById('buyerAddress').value,
+                buyerPhone: document.getElementById('buyerPhone').value,
+                buyerTaxId: document.getElementById('buyerTaxId').value,
+                taxRate: document.getElementById('taxRate').value,
+                discount: document.getElementById('discount').value,
+                notes: document.getElementById('notes').value,
+                items: items
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'invoice-' + (data.invoiceNo || 'data') + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 从文件加载数据
+        function loadData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            
+                            document.getElementById('invoiceType').value = data.invoiceType || 'invoice';
+                            document.getElementById('invoiceNo').value = data.invoiceNo || '';
+                            document.getElementById('invoiceDate').value = data.invoiceDate || '';
+                            document.getElementById('dueDate').value = data.dueDate || '';
+                            document.getElementById('sellerName').value = data.sellerName || '';
+                            document.getElementById('sellerAddress').value = data.sellerAddress || '';
+                            document.getElementById('sellerPhone').value = data.sellerPhone || '';
+                            document.getElementById('sellerTaxId').value = data.sellerTaxId || '';
+                            document.getElementById('buyerName').value = data.buyerName || '';
+                            document.getElementById('buyerAddress').value = data.buyerAddress || '';
+                            document.getElementById('buyerPhone').value = data.buyerPhone || '';
+                            document.getElementById('buyerTaxId').value = data.buyerTaxId || '';
+                            document.getElementById('taxRate').value = data.taxRate || 13;
+                            document.getElementById('discount').value = data.discount || 0;
+                            document.getElementById('notes').value = data.notes || '';
+                            
+                            if (data.items && data.items.length > 0) {
+                                items = data.items;
+                                itemIdCounter = Math.max(...items.map(i => i.id)) + 1;
+                            }
+                            
+                            renderItems();
+                            updatePreview();
+                            
+                            alert('数据加载成功！');
+                        } catch (err) {
+                            alert('文件格式错误，请选择有效的JSON文件');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>

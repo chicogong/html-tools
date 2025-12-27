@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全头检测器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--pico-primary);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .input-section {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .input-section textarea {
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .score-section {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+        
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            padding: 8px;
+            background: conic-gradient(var(--score-color) calc(var(--score) * 1%), var(--pico-secondary-background) 0);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        
+        .score-value {
+            font-size: 3rem;
+            font-weight: 700;
+            z-index: 1;
+        }
+        
+        .score-label {
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+            z-index: 1;
+        }
+        
+        .score-grade {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+        
+        .grade-A { color: var(--success-color); }
+        .grade-B { color: #22c55e; }
+        .grade-C { color: var(--warning-color); }
+        .grade-D { color: #f97316; }
+        .grade-F { color: var(--error-color); }
+        
+        .results-section {
+            margin-top: 2rem;
+        }
+        
+        .header-card {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .header-card-header {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .header-card-header.present {
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .header-card-header.missing {
+            border-left: 4px solid var(--error-color);
+        }
+        
+        .header-card-header.warning {
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .header-info {
+            flex: 1;
+        }
+        
+        .header-name {
+            font-weight: 700;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header-desc {
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.25rem;
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .status-present {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+        
+        .status-missing {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+        }
+        
+        .status-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+        
+        .header-card-body {
+            padding: 0 1.5rem 1.5rem;
+            display: none;
+        }
+        
+        .header-card-body.expanded {
+            display: block;
+        }
+        
+        .current-value {
+            background: var(--pico-secondary-background);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin-bottom: 1rem;
+        }
+        
+        .recommendation {
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        
+        .recommendation h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+        }
+        
+        .recommendation code {
+            display: block;
+            background: var(--pico-secondary-background);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            word-break: break-all;
+            margin-top: 0.5rem;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+        
+        .toggle-btn.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .summary-item {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .summary-value.success { color: var(--success-color); }
+        .summary-value.warning { color: var(--warning-color); }
+        .summary-value.danger { color: var(--error-color); }
+        
+        .summary-label {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        
+        @media (max-width: 768px) {
+            .header-card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    
+    <main class="container">
+        <header>
+            <h1>🔒 安全头检测器</h1>
+            <p>检测 HTTP 响应头中的安全配置，提供改进建议</p>
+        </header>
+        
+        <section class="input-section">
+            <label for="headersInput">粘贴 HTTP 响应头</label>
+            <textarea id="headersInput" placeholder="HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Strict-Transport-Security: max-age=31536000
+Content-Security-Policy: default-src 'self'
+..."></textarea>
+            
+            <div class="btn-group">
+                <button onclick="analyzeHeaders()">🔍 检测安全头</button>
+                <button class="secondary" onclick="loadSample('good')">✅ 安全示例</button>
+                <button class="secondary" onclick="loadSample('bad')">❌ 不安全示例</button>
+                <button class="secondary" onclick="clearAll()">🗑️ 清空</button>
+            </div>
+        </section>
+        
+        <section class="score-section" id="scoreSection" style="display: none;">
+            <div class="score-circle" id="scoreCircle">
+                <span class="score-value" id="scoreValue">0</span>
+                <span class="score-label">安全评分</span>
+            </div>
+            <div class="score-grade" id="scoreGrade"></div>
+            
+            <div class="summary-grid" id="summaryGrid"></div>
+        </section>
+        
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <h3>📋 详细检测结果</h3>
+            <div id="headersContainer"></div>
+        </section>
+    </main>
+    
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        
+        // 安全头配置
+        const securityHeaders = [
+            {
+                name: 'Strict-Transport-Security',
+                importance: 'critical',
+                weight: 20,
+                description: 'HSTS - 强制浏览器使用 HTTPS 连接',
+                recommendation: 'max-age=31536000; includeSubDomains; preload',
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置 HSTS，网站容易受到降级攻击' };
+                    var maxAge = value.match(/max-age=(\d+)/i);
+                    if (!maxAge || parseInt(maxAge[1]) < 31536000) {
+                        return { status: 'warning', message: 'max-age 建议至少设置为 31536000（1年）' };
+                    }
+                    if (value.toLowerCase().indexOf('includesubdomains') === -1) {
+                        return { status: 'warning', message: '建议添加 includeSubDomains 保护子域名' };
+                    }
+                    return { status: 'present', message: 'HSTS 配置正确' };
+                }
+            },
+            {
+                name: 'Content-Security-Policy',
+                importance: 'critical',
+                weight: 25,
+                description: 'CSP - 防止 XSS 和数据注入攻击',
+                recommendation: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'",
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置 CSP，网站容易受到 XSS 攻击' };
+                    if (value.indexOf("'unsafe-eval'") !== -1) {
+                        return { status: 'warning', message: "包含 'unsafe-eval'，存在安全风险" };
+                    }
+                    if (value.indexOf('default-src') === -1 && value.indexOf('script-src') === -1) {
+                        return { status: 'warning', message: 'CSP 策略不完整，建议至少设置 default-src 或 script-src' };
+                    }
+                    return { status: 'present', message: 'CSP 已配置' };
+                }
+            },
+            {
+                name: 'X-Content-Type-Options',
+                importance: 'high',
+                weight: 10,
+                description: '防止浏览器 MIME 类型嗅探',
+                recommendation: 'nosniff',
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置，浏览器可能错误解析文件类型' };
+                    if (value.toLowerCase() !== 'nosniff') {
+                        return { status: 'warning', message: '值应该设置为 nosniff' };
+                    }
+                    return { status: 'present', message: '已正确设置为 nosniff' };
+                }
+            },
+            {
+                name: 'X-Frame-Options',
+                importance: 'high',
+                weight: 10,
+                description: '防止点击劫持攻击',
+                recommendation: 'DENY 或 SAMEORIGIN',
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置，页面可能被恶意网站嵌入 iframe' };
+                    var upper = value.toUpperCase();
+                    if (upper !== 'DENY' && upper !== 'SAMEORIGIN' && upper.indexOf('ALLOW-FROM') !== 0) {
+                        return { status: 'warning', message: '无效值，应为 DENY、SAMEORIGIN 或 ALLOW-FROM' };
+                    }
+                    return { status: 'present', message: '已正确配置' };
+                }
+            },
+            {
+                name: 'X-XSS-Protection',
+                importance: 'medium',
+                weight: 5,
+                description: '启用浏览器内置 XSS 过滤器',
+                recommendation: '1; mode=block',
+                validate: function(value) {
+                    if (!value) return { status: 'warning', message: '未设置（注意：现代浏览器已弃用，推荐使用 CSP）' };
+                    if (value === '0') {
+                        return { status: 'warning', message: 'XSS 过滤器已禁用' };
+                    }
+                    if (value.indexOf('mode=block') === -1) {
+                        return { status: 'warning', message: '建议添加 mode=block' };
+                    }
+                    return { status: 'present', message: '已启用 XSS 过滤器' };
+                }
+            },
+            {
+                name: 'Referrer-Policy',
+                importance: 'medium',
+                weight: 10,
+                description: '控制 Referer 头的发送策略',
+                recommendation: 'strict-origin-when-cross-origin',
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置，可能泄露敏感 URL 信息' };
+                    var validPolicies = ['no-referrer', 'no-referrer-when-downgrade', 'origin', 'origin-when-cross-origin', 'same-origin', 'strict-origin', 'strict-origin-when-cross-origin', 'unsafe-url'];
+                    if (validPolicies.indexOf(value.toLowerCase()) === -1) {
+                        return { status: 'warning', message: '无效的策略值' };
+                    }
+                    if (value.toLowerCase() === 'unsafe-url') {
+                        return { status: 'warning', message: 'unsafe-url 会泄露完整 URL，存在隐私风险' };
+                    }
+                    return { status: 'present', message: '已正确配置' };
+                }
+            },
+            {
+                name: 'Permissions-Policy',
+                importance: 'medium',
+                weight: 10,
+                description: '控制浏览器功能的使用权限',
+                recommendation: 'geolocation=(), microphone=(), camera=()',
+                validate: function(value) {
+                    if (!value) return { status: 'missing', message: '未设置，无法限制敏感浏览器功能' };
+                    return { status: 'present', message: '已配置权限策略' };
+                }
+            },
+            {
+                name: 'X-Permitted-Cross-Domain-Policies',
+                importance: 'low',
+                weight: 5,
+                description: '控制 Adobe Flash 和 PDF 的跨域策略',
+                recommendation: 'none',
+                validate: function(value) {
+                    if (!value) return { status: 'warning', message: '未设置（如果不使用 Flash/PDF 可忽略）' };
+                    return { status: 'present', message: '已配置' };
+                }
+            },
+            {
+                name: 'Cache-Control',
+                importance: 'medium',
+                weight: 5,
+                description: '控制敏感页面的缓存策略',
+                recommendation: 'no-store（对于敏感页面）',
+                validate: function(value) {
+                    if (!value) return { status: 'warning', message: '未设置缓存策略' };
+                    return { status: 'present', message: '已设置缓存策略' };
+                }
+            }
+        ];
+        
+        // 检查的危险头
+        const dangerousHeaders = [
+            {
+                name: 'Server',
+                description: '服务器软件信息',
+                validate: function(value) {
+                    if (value) return { status: 'warning', message: '暴露服务器信息，建议移除或隐藏' };
+                    return null;
+                }
+            },
+            {
+                name: 'X-Powered-By',
+                description: '后端技术栈信息',
+                validate: function(value) {
+                    if (value) return { status: 'warning', message: '暴露技术栈信息，强烈建议移除' };
+                    return null;
+                }
+            }
+        ];
+        
+        function loadSample(type) {
+            var samples = {
+                good: 'HTTP/1.1 200 OK\nContent-Type: text/html; charset=UTF-8\nStrict-Transport-Security: max-age=31536000; includeSubDomains; preload\nContent-Security-Policy: default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: https:; font-src \'self\'\nX-Content-Type-Options: nosniff\nX-Frame-Options: DENY\nX-XSS-Protection: 1; mode=block\nReferrer-Policy: strict-origin-when-cross-origin\nPermissions-Policy: geolocation=(), microphone=(), camera=()\nCache-Control: no-store',
+                bad: 'HTTP/1.1 200 OK\nContent-Type: text/html\nServer: Apache/2.4.41 (Ubuntu)\nX-Powered-By: PHP/7.4.3\nCache-Control: max-age=3600'
+            };
+            
+            document.getElementById('headersInput').value = samples[type];
+        }
+        
+        function clearAll() {
+            document.getElementById('headersInput').value = '';
+            document.getElementById('scoreSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+        
+        function analyzeHeaders() {
+            var input = document.getElementById('headersInput').value.trim();
+            if (!input) {
+                alert('请输入 HTTP 响应头');
+                return;
+            }
+            
+            // 解析响应头
+            var headers = {};
+            var lines = input.split('\n');
+            lines.forEach(function(line) {
+                var trimmed = line.trim();
+                if (!trimmed || trimmed.match(/^HTTP\/[\d.]+\s+\d+/)) return;
+                
+                var colonIndex = trimmed.indexOf(':');
+                if (colonIndex > 0) {
+                    var name = trimmed.substring(0, colonIndex).trim();
+                    var value = trimmed.substring(colonIndex + 1).trim();
+                    headers[name.toLowerCase()] = { originalName: name, value: value };
+                }
+            });
+            
+            // 检测结果
+            var results = [];
+            var totalWeight = 0;
+            var earnedWeight = 0;
+            
+            securityHeaders.forEach(function(sh) {
+                var headerData = headers[sh.name.toLowerCase()];
+                var value = headerData ? headerData.value : null;
+                var validation = sh.validate(value);
+                
+                totalWeight += sh.weight;
+                if (validation.status === 'present') {
+                    earnedWeight += sh.weight;
+                } else if (validation.status === 'warning') {
+                    earnedWeight += sh.weight * 0.5;
+                }
+                
+                results.push({
+                    name: sh.name,
+                    importance: sh.importance,
+                    description: sh.description,
+                    recommendation: sh.recommendation,
+                    currentValue: value,
+                    status: validation.status,
+                    message: validation.message
+                });
+            });
+            
+            // 检查危险头
+            dangerousHeaders.forEach(function(dh) {
+                var headerData = headers[dh.name.toLowerCase()];
+                var value = headerData ? headerData.value : null;
+                var validation = dh.validate(value);
+                
+                if (validation) {
+                    results.push({
+                        name: dh.name,
+                        importance: 'info',
+                        description: dh.description,
+                        recommendation: '建议移除此响应头',
+                        currentValue: value,
+                        status: validation.status,
+                        message: validation.message
+                    });
+                    earnedWeight -= 5; // 扣分
+                }
+            });
+            
+            var score = Math.max(0, Math.min(100, Math.round((earnedWeight / totalWeight) * 100)));
+            
+            renderResults(score, results);
+        }
+        
+        function renderResults(score, results) {
+            // 显示评分
+            document.getElementById('scoreSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            var scoreCircle = document.getElementById('scoreCircle');
+            var scoreColor;
+            var grade;
+            
+            if (score >= 90) {
+                scoreColor = 'var(--success-color)';
+                grade = 'A';
+            } else if (score >= 75) {
+                scoreColor = '#22c55e';
+                grade = 'B';
+            } else if (score >= 60) {
+                scoreColor = 'var(--warning-color)';
+                grade = 'C';
+            } else if (score >= 40) {
+                scoreColor = '#f97316';
+                grade = 'D';
+            } else {
+                scoreColor = 'var(--error-color)';
+                grade = 'F';
+            }
+            
+            scoreCircle.style.setProperty('--score', score);
+            scoreCircle.style.setProperty('--score-color', scoreColor);
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('scoreValue').style.color = scoreColor;
+            
+            var gradeEl = document.getElementById('scoreGrade');
+            gradeEl.textContent = '等级: ' + grade;
+            gradeEl.className = 'score-grade grade-' + grade;
+            
+            // 统计
+            var stats = {
+                present: results.filter(function(r) { return r.status === 'present'; }).length,
+                warning: results.filter(function(r) { return r.status === 'warning'; }).length,
+                missing: results.filter(function(r) { return r.status === 'missing'; }).length
+            };
+            
+            var summaryGrid = document.getElementById('summaryGrid');
+            summaryGrid.textContent = '';
+            
+            var summaryItems = [
+                { value: stats.present, label: '已配置', class: 'success' },
+                { value: stats.warning, label: '需改进', class: 'warning' },
+                { value: stats.missing, label: '缺失', class: 'danger' }
+            ];
+            
+            summaryItems.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'summary-item';
+                
+                var value = document.createElement('div');
+                value.className = 'summary-value ' + item.class;
+                value.textContent = item.value;
+                
+                var label = document.createElement('div');
+                label.className = 'summary-label';
+                label.textContent = item.label;
+                
+                div.appendChild(value);
+                div.appendChild(label);
+                summaryGrid.appendChild(div);
+            });
+            
+            // 详细结果
+            var container = document.getElementById('headersContainer');
+            container.textContent = '';
+            
+            // 按状态排序：missing > warning > present
+            results.sort(function(a, b) {
+                var order = { missing: 0, warning: 1, present: 2 };
+                return order[a.status] - order[b.status];
+            });
+            
+            results.forEach(function(result) {
+                var card = document.createElement('div');
+                card.className = 'header-card';
+                
+                var header = document.createElement('div');
+                header.className = 'header-card-header ' + result.status;
+                
+                var info = document.createElement('div');
+                info.className = 'header-info';
+                
+                var name = document.createElement('div');
+                name.className = 'header-name';
+                var icon = result.status === 'present' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
+                name.textContent = icon + ' ' + result.name;
+                
+                var desc = document.createElement('div');
+                desc.className = 'header-desc';
+                desc.textContent = result.description;
+                
+                info.appendChild(name);
+                info.appendChild(desc);
+                
+                var badge = document.createElement('span');
+                badge.className = 'status-badge status-' + result.status;
+                badge.textContent = result.status === 'present' ? '已配置' : result.status === 'warning' ? '需改进' : '缺失';
+                
+                var toggleBtn = document.createElement('button');
+                toggleBtn.className = 'toggle-btn';
+                toggleBtn.textContent = '▼';
+                toggleBtn.onclick = function() {
+                    var body = card.querySelector('.header-card-body');
+                    body.classList.toggle('expanded');
+                    this.classList.toggle('expanded');
+                };
+                
+                header.appendChild(info);
+                header.appendChild(badge);
+                header.appendChild(toggleBtn);
+                
+                var body = document.createElement('div');
+                body.className = 'header-card-body';
+                
+                if (result.currentValue) {
+                    var currentLabel = document.createElement('strong');
+                    currentLabel.textContent = '当前值：';
+                    body.appendChild(currentLabel);
+                    
+                    var currentValue = document.createElement('div');
+                    currentValue.className = 'current-value';
+                    currentValue.textContent = result.currentValue;
+                    body.appendChild(currentValue);
+                }
+                
+                var messageP = document.createElement('p');
+                messageP.textContent = result.message;
+                body.appendChild(messageP);
+                
+                if (result.status !== 'present') {
+                    var rec = document.createElement('div');
+                    rec.className = 'recommendation';
+                    
+                    var recTitle = document.createElement('h4');
+                    recTitle.textContent = '💡 推荐配置';
+                    
+                    var recCode = document.createElement('code');
+                    recCode.textContent = result.name + ': ' + result.recommendation;
+                    
+                    rec.appendChild(recTitle);
+                    rec.appendChild(recCode);
+                    body.appendChild(rec);
+                }
+                
+                card.appendChild(header);
+                card.appendChild(body);
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>

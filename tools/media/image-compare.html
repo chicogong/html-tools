@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片对比滑块</title>
+    <title>图片对比滑块 - Before/After对比工具</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+        }
+        
         body {
             min-height: 100vh;
             padding: 1rem;
@@ -21,61 +26,123 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
         }
         
-        .upload-grid {
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .upload-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
             margin-bottom: 2rem;
         }
         
-        @media (max-width: 600px) {
-            .upload-grid {
+        @media (max-width: 768px) {
+            .upload-section {
                 grid-template-columns: 1fr;
             }
         }
         
-        .drop-zone {
-            border: 3px dashed var(--pico-muted-border-color);
-            border-radius: var(--pico-border-radius);
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
             padding: 2rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--pico-primary);
-            background: var(--pico-primary-focus);
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
         }
         
-        .drop-zone-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
+        .upload-zone.has-image {
+            padding: 0;
+            border-style: solid;
         }
         
-        .drop-zone.has-image {
-            padding: 0.5rem;
+        .upload-zone input {
+            display: none;
         }
         
-        .drop-zone.has-image img {
-            max-width: 100%;
-            max-height: 150px;
+        .upload-zone .preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            max-height: 200px;
+            border-radius: var(--border-radius);
+        }
+        
+        .upload-zone .label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 12px;
             border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .upload-zone .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            display: none;
+        }
+        
+        .upload-zone.has-image .remove-btn {
+            display: block;
         }
         
         .compare-container {
             position: relative;
             width: 100%;
             max-width: 900px;
-            margin: 0 auto;
+            margin: 0 auto 2rem;
             overflow: hidden;
-            border-radius: var(--pico-border-radius);
-            background: var(--pico-card-background-color);
-            user-select: none;
+            border-radius: var(--border-radius);
+            background: #f0f0f0;
+            min-height: 400px;
+            display: none;
+        }
+        
+        [data-theme="dark"] .compare-container {
+            background: #2a2a2a;
+        }
+        
+        .compare-container.visible {
+            display: block;
+        }
+        
+        .compare-wrapper {
+            position: relative;
+            width: 100%;
         }
         
         .compare-image {
@@ -84,19 +151,23 @@
             height: auto;
         }
         
-        .compare-overlay {
+        .compare-before {
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
             height: 100%;
             overflow: hidden;
         }
         
-        .compare-overlay img {
+        .compare-before img {
             display: block;
+            width: 100%;
             height: 100%;
-            width: auto;
-            max-width: none;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         
         .compare-slider {
@@ -106,149 +177,213 @@
             width: 4px;
             background: white;
             cursor: ew-resize;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
             z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         }
         
-        .compare-slider::before {
+        .compare-slider::before,
+        .compare-slider::after {
             content: '';
             position: absolute;
             top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            background: white;
-            border-radius: 50%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        .compare-slider::before {
+            left: -8px;
+            transform: translateY(-50%);
+            border-width: 10px 8px 10px 0;
+            border-color: transparent white transparent transparent;
         }
         
         .compare-slider::after {
-            content: '◀ ▶';
+            right: -8px;
+            transform: translateY(-50%);
+            border-width: 10px 0 10px 8px;
+            border-color: transparent transparent transparent white;
+        }
+        
+        .compare-handle {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 12px;
+            width: 44px;
+            height: 44px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
             color: #333;
-            white-space: nowrap;
         }
         
         .compare-label {
             position: absolute;
-            bottom: 10px;
-            padding: 5px 15px;
-            background: rgba(0,0,0,0.7);
+            top: 16px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            border-radius: 20px;
+            border-radius: 4px;
             font-size: 14px;
-            z-index: 5;
+            pointer-events: none;
         }
         
         .compare-label.before {
-            left: 10px;
+            left: 16px;
         }
         
         .compare-label.after {
-            right: 10px;
-        }
-        
-        .placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 400px;
-            color: var(--pico-muted-color);
-        }
-        
-        .placeholder-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
+            right: 16px;
         }
         
         .controls {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
-            justify-content: center;
-            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .mode-buttons {
+            display: flex;
+            gap: 0.5rem;
             flex-wrap: wrap;
         }
         
-        .orientation-btns {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .orientation-btn {
+        .mode-btn {
             padding: 0.5rem 1rem;
-            border: 2px solid var(--pico-muted-border-color);
-            border-radius: var(--pico-border-radius);
-            cursor: pointer;
+            border: 1px solid var(--pico-muted-border-color);
             background: var(--pico-background-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
             transition: all 0.2s;
         }
         
-        .orientation-btn:hover, .orientation-btn.active {
-            border-color: var(--pico-primary);
-            background: var(--pico-primary-focus);
+        .mode-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
         }
         
-        .slider-position {
+        .actions {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
-        .slider-position input {
-            width: 150px;
+        .empty-state {
+            text-align: center;
+            color: var(--pico-muted-color);
+            padding: 3rem;
         }
         
-        /* 垂直模式 */
-        .compare-container.vertical .compare-overlay {
-            top: auto;
-            bottom: 0;
-            left: 0;
+        /* Horizontal mode */
+        .compare-container.horizontal .compare-slider {
             width: 100%;
-            height: auto;
-        }
-        
-        .compare-container.vertical .compare-overlay img {
-            width: 100%;
-            height: auto;
-        }
-        
-        .compare-container.vertical .compare-slider {
-            left: 0;
-            right: 0;
-            width: auto;
             height: 4px;
             cursor: ns-resize;
         }
         
-        .compare-container.vertical .compare-slider::after {
-            content: '▲ ▼';
+        .compare-container.horizontal .compare-slider::before,
+        .compare-container.horizontal .compare-slider::after {
+            top: auto;
+            left: 50%;
         }
         
-        .compare-container.vertical .compare-label.before {
-            top: 10px;
-            bottom: auto;
+        .compare-container.horizontal .compare-slider::before {
+            top: -8px;
+            transform: translateX(-50%);
+            border-width: 0 10px 8px 10px;
+            border-color: transparent transparent white transparent;
+        }
+        
+        .compare-container.horizontal .compare-slider::after {
+            bottom: -8px;
+            top: auto;
+            transform: translateX(-50%);
+            border-width: 8px 10px 0 10px;
+            border-color: white transparent transparent transparent;
+        }
+        
+        .compare-container.horizontal .compare-label.before {
+            top: 16px;
             left: 50%;
             transform: translateX(-50%);
         }
         
-        .compare-container.vertical .compare-label.after {
-            bottom: 10px;
+        .compare-container.horizontal .compare-label.after {
+            bottom: 16px;
+            top: auto;
+            left: 50%;
             right: auto;
-            left: 50%;
             transform: translateX(-50%);
         }
         
-        .btn-group {
+        /* Blend mode */
+        .compare-container.blend .compare-slider,
+        .compare-container.blend .compare-label {
+            display: none;
+        }
+        
+        /* Side by side mode */
+        .compare-container.side-by-side {
+            display: none;
+        }
+        
+        .compare-container.side-by-side.visible {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+        
+        .side-by-side-image {
+            position: relative;
+        }
+        
+        .side-by-side-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .side-by-side-image .label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .zoom-container {
             display: flex;
+            align-items: center;
             gap: 0.5rem;
-            justify-content: center;
-            margin-top: 1rem;
+        }
+        
+        #zoomSlider {
+            flex: 1;
+        }
+        
+        .opacity-slider-container {
+            display: none;
+        }
+        
+        .blend .opacity-slider-container {
+            display: block;
         }
     </style>
 </head>
@@ -256,148 +391,239 @@
     <div class="container">
         <header>
             <h1>图片对比滑块</h1>
-            <button id="themeToggle" class="outline">🌙 暗色模式</button>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
         </header>
         
-        <div class="upload-grid">
-            <div class="drop-zone" id="dropZone1" data-slot="before">
-                <div class="drop-zone-icon">📷</div>
-                <p><strong>前图片（Before）</strong></p>
-                <small>点击或拖拽上传</small>
-                <input type="file" id="fileInput1" accept="image/*" hidden>
-            </div>
-            <div class="drop-zone" id="dropZone2" data-slot="after">
-                <div class="drop-zone-icon">📷</div>
-                <p><strong>后图片（After）</strong></p>
-                <small>点击或拖拽上传</small>
-                <input type="file" id="fileInput2" accept="image/*" hidden>
-            </div>
-        </div>
-        
-        <article>
-            <div id="compareWrapper">
-                <div class="placeholder" id="placeholder">
-                    <div class="placeholder-icon">🔀</div>
-                    <p>请上传两张图片进行对比</p>
-                    <p><small>建议使用相同尺寸的图片以获得最佳效果</small></p>
+        <main>
+            <div class="upload-section">
+                <div class="upload-zone" id="beforeZone">
+                    <span class="label">Before</span>
+                    <p>点击或拖拽上传"前"图片</p>
+                    <input type="file" id="beforeInput" accept="image/*">
+                    <button class="remove-btn" onclick="removeImage('before', event)">x</button>
                 </div>
                 
-                <div class="compare-container" id="compareContainer" style="display: none;">
-                    <img class="compare-image" id="afterImage" alt="After">
-                    <div class="compare-overlay" id="compareOverlay">
-                        <img id="beforeImage" alt="Before">
-                    </div>
-                    <div class="compare-slider" id="compareSlider"></div>
-                    <div class="compare-label before">Before</div>
-                    <div class="compare-label after">After</div>
+                <div class="upload-zone" id="afterZone">
+                    <span class="label">After</span>
+                    <p>点击或拖拽上传"后"图片</p>
+                    <input type="file" id="afterInput" accept="image/*">
+                    <button class="remove-btn" onclick="removeImage('after', event)">x</button>
                 </div>
             </div>
             
             <div class="controls">
-                <div class="orientation-btns">
-                    <button class="orientation-btn active" data-orientation="horizontal">↔️ 水平</button>
-                    <button class="orientation-btn" data-orientation="vertical">↕️ 垂直</button>
+                <div class="control-group">
+                    <label>对比模式</label>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="vertical">左右滑动</button>
+                        <button class="mode-btn" data-mode="horizontal">上下滑动</button>
+                        <button class="mode-btn" data-mode="blend">透明度混合</button>
+                        <button class="mode-btn" data-mode="side-by-side">并排对比</button>
+                    </div>
                 </div>
                 
-                <div class="slider-position">
-                    <span>位置：</span>
-                    <input type="range" id="sliderPosition" min="0" max="100" value="50">
-                    <span id="positionValue">50%</span>
+                <div class="control-group opacity-slider-container" id="opacityControl">
+                    <label for="opacitySlider">透明度: <span id="opacityValue">50</span>%</label>
+                    <input type="range" id="opacitySlider" min="0" max="100" value="50">
+                </div>
+                
+                <div class="control-group">
+                    <label>缩放</label>
+                    <div class="zoom-container">
+                        <button class="outline" onclick="adjustZoom(-10)">-</button>
+                        <input type="range" id="zoomSlider" min="50" max="200" value="100">
+                        <button class="outline" onclick="adjustZoom(10)">+</button>
+                        <span id="zoomValue">100%</span>
+                    </div>
                 </div>
             </div>
             
-            <div class="btn-group">
-                <button id="swapBtn" class="secondary">🔄 交换图片</button>
-                <button id="resetBtn" class="outline">↩️ 重置位置</button>
+            <!-- Slider compare container -->
+            <div class="compare-container" id="compareContainer">
+                <div class="compare-wrapper" id="compareWrapper">
+                    <img class="compare-image" id="afterImage" alt="After">
+                    <div class="compare-before" id="compareBefore">
+                        <img id="beforeImage" alt="Before">
+                    </div>
+                    <div class="compare-slider" id="compareSlider">
+                        <div class="compare-handle">&#8596;</div>
+                    </div>
+                    <span class="compare-label before">Before</span>
+                    <span class="compare-label after">After</span>
+                </div>
             </div>
-        </article>
+            
+            <!-- Side by side container -->
+            <div class="compare-container side-by-side" id="sideBySideContainer">
+                <div class="side-by-side-image">
+                    <img id="sideBySideBefore" alt="Before">
+                    <span class="label">Before</span>
+                </div>
+                <div class="side-by-side-image">
+                    <img id="sideBySideAfter" alt="After">
+                    <span class="label">After</span>
+                </div>
+            </div>
+            
+            <div class="empty-state" id="emptyState">
+                <p>请上传两张图片进行对比</p>
+            </div>
+            
+            <div class="actions">
+                <button id="downloadBtn" disabled>下载对比图</button>
+                <button id="swapBtn" class="secondary" disabled>交换图片</button>
+                <button id="resetBtn" class="outline secondary">重置</button>
+            </div>
+        </main>
     </div>
     
     <script>
-        // 主题切换
-        const themeToggle = document.getElementById('themeToggle');
-        const html = document.documentElement;
-        
+        // Theme toggle
         function toggleTheme() {
+            const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             html.setAttribute('data-theme', newTheme);
-            themeToggle.textContent = newTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
             localStorage.setItem('theme', newTheme);
         }
         
-        themeToggle.addEventListener('click', toggleTheme);
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
         
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            html.setAttribute('data-theme', savedTheme);
-            themeToggle.textContent = savedTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
-        }
-        
-        // 状态
-        let beforeSrc = null;
-        let afterSrc = null;
-        let orientation = 'horizontal';
-        let sliderPosition = 50;
-        
+        // DOM Elements
+        const beforeZone = document.getElementById('beforeZone');
+        const afterZone = document.getElementById('afterZone');
+        const beforeInput = document.getElementById('beforeInput');
+        const afterInput = document.getElementById('afterInput');
         const compareContainer = document.getElementById('compareContainer');
-        const compareOverlay = document.getElementById('compareOverlay');
+        const sideBySideContainer = document.getElementById('sideBySideContainer');
+        const compareWrapper = document.getElementById('compareWrapper');
+        const compareBefore = document.getElementById('compareBefore');
         const compareSlider = document.getElementById('compareSlider');
         const beforeImage = document.getElementById('beforeImage');
         const afterImage = document.getElementById('afterImage');
-        const placeholder = document.getElementById('placeholder');
+        const sideBySideBefore = document.getElementById('sideBySideBefore');
+        const sideBySideAfter = document.getElementById('sideBySideAfter');
+        const emptyState = document.getElementById('emptyState');
+        const opacitySlider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+        const opacityControl = document.getElementById('opacityControl');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = document.getElementById('zoomValue');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const swapBtn = document.getElementById('swapBtn');
+        const resetBtn = document.getElementById('resetBtn');
         
-        // 文件上传
-        function setupDropZone(dropZone, fileInput, slot) {
-            dropZone.addEventListener('click', () => fileInput.click());
-            
-            dropZone.addEventListener('dragover', e => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-            
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('dragover');
-            });
-            
-            dropZone.addEventListener('drop', e => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                if (e.dataTransfer.files[0]) {
-                    loadImage(e.dataTransfer.files[0], slot, dropZone);
+        // State
+        let beforeSrc = null;
+        let afterSrc = null;
+        let currentMode = 'vertical';
+        let sliderPosition = 50;
+        let isDragging = false;
+        
+        // Setup upload zones
+        [
+            { zone: beforeZone, input: beforeInput, type: 'before' },
+            { zone: afterZone, input: afterInput, type: 'after' }
+        ].forEach(({ zone, input, type }) => {
+            zone.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('remove-btn')) {
+                    input.click();
                 }
             });
-            
-            fileInput.addEventListener('change', e => {
-                if (e.target.files[0]) {
-                    loadImage(e.target.files[0], slot, dropZone);
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0], type);
                 }
             });
-        }
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], type);
+                }
+            });
+        });
         
-        setupDropZone(document.getElementById('dropZone1'), document.getElementById('fileInput1'), 'before');
-        setupDropZone(document.getElementById('dropZone2'), document.getElementById('fileInput2'), 'after');
+        // Mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                setMode(btn.dataset.mode);
+            });
+        });
         
-        function loadImage(file, slot, dropZone) {
+        // Opacity slider
+        opacitySlider.addEventListener('input', () => {
+            opacityValue.textContent = opacitySlider.value;
+            if (currentMode === 'blend') {
+                compareBefore.style.opacity = opacitySlider.value / 100;
+            }
+        });
+        
+        // Zoom slider
+        zoomSlider.addEventListener('input', updateZoom);
+        
+        // Buttons
+        downloadBtn.addEventListener('click', downloadCompare);
+        swapBtn.addEventListener('click', swapImages);
+        resetBtn.addEventListener('click', resetAll);
+        
+        // Slider interaction
+        compareSlider.addEventListener('mousedown', startDrag);
+        compareSlider.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        // Click on compare container to move slider
+        compareWrapper.addEventListener('click', (e) => {
+            if (e.target === compareSlider || compareSlider.contains(e.target)) return;
+            const rect = compareWrapper.getBoundingClientRect();
+            if (currentMode === 'vertical') {
+                sliderPosition = ((e.clientX - rect.left) / rect.width) * 100;
+            } else if (currentMode === 'horizontal') {
+                sliderPosition = ((e.clientY - rect.top) / rect.height) * 100;
+            }
+            updateSlider();
+        });
+        
+        function handleFile(file, type) {
+            if (!file.type.startsWith('image/')) return;
+            
             const reader = new FileReader();
-            reader.onload = e => {
-                if (slot === 'before') {
-                    beforeSrc = e.target.result;
-                } else {
-                    afterSrc = e.target.result;
-                }
+            reader.onload = (e) => {
+                const src = e.target.result;
+                const zone = type === 'before' ? beforeZone : afterZone;
                 
-                // 更新 dropzone 预览
-                dropZone.classList.add('has-image');
-                const existingImg = dropZone.querySelector('img');
-                if (existingImg) {
-                    existingImg.src = e.target.result;
+                // Update preview
+                let preview = zone.querySelector('.preview');
+                if (!preview) {
+                    preview = document.createElement('img');
+                    preview.className = 'preview';
+                    zone.appendChild(preview);
+                    
+                    // Hide text
+                    const p = zone.querySelector('p');
+                    if (p) p.style.display = 'none';
+                }
+                preview.src = src;
+                zone.classList.add('has-image');
+                
+                if (type === 'before') {
+                    beforeSrc = src;
                 } else {
-                    dropZone.textContent = '';
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.alt = slot;
-                    dropZone.appendChild(img);
+                    afterSrc = src;
                 }
                 
                 updateCompare();
@@ -405,154 +631,271 @@
             reader.readAsDataURL(file);
         }
         
+        function removeImage(type, event) {
+            event.stopPropagation();
+            const zone = type === 'before' ? beforeZone : afterZone;
+            const input = type === 'before' ? beforeInput : afterInput;
+            
+            const preview = zone.querySelector('.preview');
+            if (preview) preview.remove();
+            
+            const p = zone.querySelector('p');
+            if (p) p.style.display = '';
+            
+            zone.classList.remove('has-image');
+            input.value = '';
+            
+            if (type === 'before') {
+                beforeSrc = null;
+            } else {
+                afterSrc = null;
+            }
+            
+            updateCompare();
+        }
+        
         function updateCompare() {
-            if (beforeSrc && afterSrc) {
+            const hasImages = beforeSrc && afterSrc;
+            
+            if (hasImages) {
                 beforeImage.src = beforeSrc;
                 afterImage.src = afterSrc;
+                sideBySideBefore.src = beforeSrc;
+                sideBySideAfter.src = afterSrc;
                 
-                placeholder.style.display = 'none';
-                compareContainer.style.display = 'block';
-                
-                // 等待图片加载完成后更新滑块位置
-                afterImage.onload = () => {
-                    updateSliderPosition(sliderPosition);
-                };
+                emptyState.style.display = 'none';
+                setMode(currentMode);
+            } else {
+                compareContainer.classList.remove('visible');
+                sideBySideContainer.classList.remove('visible');
+                emptyState.style.display = 'block';
             }
+            
+            downloadBtn.disabled = !hasImages;
+            swapBtn.disabled = !hasImages;
         }
         
-        function updateSliderPosition(percent) {
-            sliderPosition = percent;
+        function setMode(mode) {
+            currentMode = mode;
             
-            if (orientation === 'horizontal') {
-                compareOverlay.style.width = percent + '%';
-                compareOverlay.style.height = '100%';
-                compareSlider.style.left = percent + '%';
-                compareSlider.style.top = '0';
-                
-                // 确保 before 图片宽度与容器一致
-                const containerWidth = compareContainer.offsetWidth;
-                beforeImage.style.width = containerWidth + 'px';
-                beforeImage.style.height = 'auto';
-            } else {
-                compareOverlay.style.height = (100 - percent) + '%';
-                compareOverlay.style.width = '100%';
-                compareSlider.style.top = percent + '%';
-                compareSlider.style.left = '0';
-                
-                // 确保 before 图片高度与容器一致
-                beforeImage.style.width = '100%';
-                beforeImage.style.height = 'auto';
-            }
+            compareContainer.classList.remove('vertical', 'horizontal', 'blend', 'visible');
+            sideBySideContainer.classList.remove('visible');
+            opacityControl.style.display = 'none';
             
-            document.getElementById('sliderPosition').value = percent;
-            document.getElementById('positionValue').textContent = Math.round(percent) + '%';
-        }
-        
-        // 拖动滑块
-        let isDragging = false;
-        
-        compareSlider.addEventListener('mousedown', e => {
-            isDragging = true;
-            e.preventDefault();
-        });
-        
-        document.addEventListener('mousemove', e => {
-            if (!isDragging) return;
-            
-            const rect = compareContainer.getBoundingClientRect();
-            let percent;
-            
-            if (orientation === 'horizontal') {
-                percent = ((e.clientX - rect.left) / rect.width) * 100;
-            } else {
-                percent = ((e.clientY - rect.top) / rect.height) * 100;
-            }
-            
-            percent = Math.max(0, Math.min(100, percent));
-            updateSliderPosition(percent);
-        });
-        
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-        
-        // 触摸支持
-        compareSlider.addEventListener('touchstart', e => {
-            isDragging = true;
-            e.preventDefault();
-        });
-        
-        document.addEventListener('touchmove', e => {
-            if (!isDragging) return;
-            
-            const touch = e.touches[0];
-            const rect = compareContainer.getBoundingClientRect();
-            let percent;
-            
-            if (orientation === 'horizontal') {
-                percent = ((touch.clientX - rect.left) / rect.width) * 100;
-            } else {
-                percent = ((touch.clientY - rect.top) / rect.height) * 100;
-            }
-            
-            percent = Math.max(0, Math.min(100, percent));
-            updateSliderPosition(percent);
-        });
-        
-        document.addEventListener('touchend', () => {
-            isDragging = false;
-        });
-        
-        // 位置滑块
-        document.getElementById('sliderPosition').addEventListener('input', e => {
-            updateSliderPosition(parseInt(e.target.value));
-        });
-        
-        // 方向切换
-        document.querySelectorAll('.orientation-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.orientation-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                orientation = btn.dataset.orientation;
-                
-                if (orientation === 'vertical') {
-                    compareContainer.classList.add('vertical');
-                } else {
-                    compareContainer.classList.remove('vertical');
-                }
-                
-                updateSliderPosition(50);
-            });
-        });
-        
-        // 交换图片
-        document.getElementById('swapBtn').addEventListener('click', () => {
             if (!beforeSrc || !afterSrc) return;
             
+            if (mode === 'side-by-side') {
+                sideBySideContainer.classList.add('visible');
+            } else {
+                compareContainer.classList.add(mode, 'visible');
+                
+                if (mode === 'blend') {
+                    compareBefore.style.clipPath = 'none';
+                    compareBefore.style.opacity = opacitySlider.value / 100;
+                    opacityControl.style.display = 'block';
+                } else {
+                    compareBefore.style.opacity = 1;
+                    updateSlider();
+                }
+            }
+        }
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const rect = compareWrapper.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            if (currentMode === 'vertical') {
+                sliderPosition = ((clientX - rect.left) / rect.width) * 100;
+            } else if (currentMode === 'horizontal') {
+                sliderPosition = ((clientY - rect.top) / rect.height) * 100;
+            }
+            
+            sliderPosition = Math.max(0, Math.min(100, sliderPosition));
+            updateSlider();
+        }
+        
+        function stopDrag() {
+            isDragging = false;
+        }
+        
+        function updateSlider() {
+            if (currentMode === 'vertical') {
+                compareSlider.style.left = sliderPosition + '%';
+                compareSlider.style.top = '0';
+                compareSlider.style.width = '4px';
+                compareSlider.style.height = '100%';
+                compareBefore.style.clipPath = 'inset(0 ' + (100 - sliderPosition) + '% 0 0)';
+            } else if (currentMode === 'horizontal') {
+                compareSlider.style.top = sliderPosition + '%';
+                compareSlider.style.left = '0';
+                compareSlider.style.width = '100%';
+                compareSlider.style.height = '4px';
+                compareBefore.style.clipPath = 'inset(0 0 ' + (100 - sliderPosition) + '% 0)';
+            }
+        }
+        
+        function updateZoom() {
+            const zoom = zoomSlider.value;
+            zoomValue.textContent = zoom + '%';
+            compareContainer.style.transform = 'scale(' + (zoom / 100) + ')';
+            compareContainer.style.transformOrigin = 'center top';
+            sideBySideContainer.style.transform = 'scale(' + (zoom / 100) + ')';
+            sideBySideContainer.style.transformOrigin = 'center top';
+        }
+        
+        function adjustZoom(delta) {
+            const newValue = Math.max(50, Math.min(200, parseInt(zoomSlider.value) + delta));
+            zoomSlider.value = newValue;
+            updateZoom();
+        }
+        
+        function swapImages() {
             const temp = beforeSrc;
             beforeSrc = afterSrc;
             afterSrc = temp;
             
-            // 更新预览
-            const dropZone1 = document.getElementById('dropZone1');
-            const dropZone2 = document.getElementById('dropZone2');
-            const img1 = dropZone1.querySelector('img');
-            const img2 = dropZone2.querySelector('img');
-            
-            if (img1 && img2) {
-                const tempSrc = img1.src;
-                img1.src = img2.src;
-                img2.src = tempSrc;
+            // Update previews
+            const beforePreview = beforeZone.querySelector('.preview');
+            const afterPreview = afterZone.querySelector('.preview');
+            if (beforePreview && afterPreview) {
+                beforePreview.src = beforeSrc;
+                afterPreview.src = afterSrc;
             }
             
             updateCompare();
-        });
+        }
         
-        // 重置位置
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            updateSliderPosition(50);
-        });
+        function resetAll() {
+            beforeSrc = null;
+            afterSrc = null;
+            
+            [beforeZone, afterZone].forEach(zone => {
+                const preview = zone.querySelector('.preview');
+                if (preview) preview.remove();
+                const p = zone.querySelector('p');
+                if (p) p.style.display = '';
+                zone.classList.remove('has-image');
+            });
+            
+            beforeInput.value = '';
+            afterInput.value = '';
+            sliderPosition = 50;
+            zoomSlider.value = 100;
+            opacitySlider.value = 50;
+            
+            updateCompare();
+            updateZoom();
+        }
+        
+        function downloadCompare() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const beforeImg = new Image();
+            const afterImg = new Image();
+            
+            beforeImg.onload = () => {
+                afterImg.onload = () => {
+                    const width = Math.max(beforeImg.width, afterImg.width);
+                    const height = Math.max(beforeImg.height, afterImg.height);
+                    
+                    if (currentMode === 'side-by-side') {
+                        canvas.width = width * 2 + 4;
+                        canvas.height = height;
+                        
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                        ctx.drawImage(afterImg, width + 4, 0, width, height);
+                    } else if (currentMode === 'blend') {
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        ctx.drawImage(afterImg, 0, 0, width, height);
+                        ctx.globalAlpha = opacitySlider.value / 100;
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                    } else {
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // Draw after image
+                        ctx.drawImage(afterImg, 0, 0, width, height);
+                        
+                        // Clip and draw before image
+                        ctx.save();
+                        ctx.beginPath();
+                        if (currentMode === 'vertical') {
+                            ctx.rect(0, 0, width * sliderPosition / 100, height);
+                        } else {
+                            ctx.rect(0, 0, width, height * sliderPosition / 100);
+                        }
+                        ctx.clip();
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                        ctx.restore();
+                        
+                        // Draw slider line
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        if (currentMode === 'vertical') {
+                            const x = width * sliderPosition / 100;
+                            ctx.moveTo(x, 0);
+                            ctx.lineTo(x, height);
+                        } else {
+                            const y = height * sliderPosition / 100;
+                            ctx.moveTo(0, y);
+                            ctx.lineTo(width, y);
+                        }
+                        ctx.stroke();
+                    }
+                    
+                    // Add labels
+                    ctx.globalAlpha = 1;
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    
+                    if (currentMode === 'side-by-side') {
+                        ctx.fillRect(10, 10, 60, 24);
+                        ctx.fillRect(width + 14, 10, 50, 24);
+                        ctx.fillStyle = 'white';
+                        ctx.fillText('Before', 16, 27);
+                        ctx.fillText('After', width + 20, 27);
+                    } else {
+                        ctx.fillRect(10, 10, 60, 24);
+                        ctx.fillRect(canvas.width - 60, 10, 50, 24);
+                        ctx.fillStyle = 'white';
+                        ctx.fillText('Before', 16, 27);
+                        ctx.fillText('After', canvas.width - 54, 27);
+                    }
+                    
+                    const link = document.createElement('a');
+                    link.download = 'compare_' + Date.now() + '.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+                afterImg.src = afterSrc;
+            };
+            beforeImg.src = beforeSrc;
+        }
+        
+        // Initialize
+        updateSlider();
     </script>
 </body>
 </html>

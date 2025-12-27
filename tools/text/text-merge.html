@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多行文本合并器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-compact: 0.5rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        
+        .merge-options {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .options-grid label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .options-grid input,
+        .options-grid select {
+            margin-bottom: 0;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin: 0;
+            width: auto;
+        }
+        
+        .editor-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .editor-section > label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .merge-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        
+        .merge-buttons button {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .stats-panel {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .stats-panel h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem;
+            background: var(--pico-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .help-section {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+        }
+        
+        .help-section h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+        }
+        
+        .help-section ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        
+        .help-section li {
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--pico-border-radius);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>多行文本合并器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+        
+        <div class="merge-options">
+            <div class="options-grid">
+                <div>
+                    <label for="separator">合并分隔符</label>
+                    <select id="separator">
+                        <option value="">无分隔符</option>
+                        <option value=" ">空格</option>
+                        <option value=", " selected>逗号+空格</option>
+                        <option value=",">逗号</option>
+                        <option value=";">分号</option>
+                        <option value="|">竖线</option>
+                        <option value="\t">Tab制表符</option>
+                        <option value="\n">换行符</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="customSeparator">自定义分隔符</label>
+                    <input type="text" id="customSeparator" placeholder="输入自定义分隔符" disabled>
+                </div>
+                <div>
+                    <label for="prefix">前缀</label>
+                    <input type="text" id="prefix" placeholder='例如: "'>
+                </div>
+                <div>
+                    <label for="suffix">后缀</label>
+                    <input type="text" id="suffix" placeholder='例如: "'>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="trimLines" checked>
+                    去除每行首尾空白
+                </label>
+                <label>
+                    <input type="checkbox" id="removeEmpty" checked>
+                    移除空行
+                </label>
+                <label>
+                    <input type="checkbox" id="removeDuplicates">
+                    去除重复行
+                </label>
+                <label>
+                    <input type="checkbox" id="sortLines">
+                    排序后合并
+                </label>
+                <label>
+                    <input type="checkbox" id="wrapQuotes">
+                    每项加引号
+                </label>
+            </div>
+        </div>
+        
+        <div class="editor-section">
+            <label for="input">输入文本 (多行)</label>
+            <textarea id="input" placeholder="输入要合并的多行文本...&#10;&#10;每行将被合并成一行&#10;例如：&#10;苹果&#10;香蕉&#10;橙子&#10;&#10;合并后：苹果, 香蕉, 橙子"></textarea>
+            <div class="action-buttons">
+                <button class="secondary" onclick="clearInput()">清空输入</button>
+                <button class="secondary" onclick="pasteFromClipboard()">粘贴</button>
+            </div>
+        </div>
+        
+        <div class="merge-buttons">
+            <button onclick="mergeLines()">合并成一行</button>
+            <button onclick="splitToLines()">拆分成多行</button>
+            <button onclick="mergeAlternate()">交替合并</button>
+            <button onclick="mergeWithNumber()">带序号合并</button>
+        </div>
+        
+        <div class="editor-section">
+            <label for="output">输出结果</label>
+            <textarea id="output" readonly placeholder="合并结果将显示在这里..."></textarea>
+            <div class="action-buttons">
+                <button class="secondary" onclick="copyOutput()">复制结果</button>
+                <button class="secondary" onclick="useAsInput()">作为输入</button>
+                <button class="secondary" onclick="clearOutput()">清空输出</button>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <h3>统计信息</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="inputLines">0</div>
+                    <div class="stat-label">输入行数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="inputChars">0</div>
+                    <div class="stat-label">输入字符数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="outputLines">0</div>
+                    <div class="stat-label">输出行数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="outputChars">0</div>
+                    <div class="stat-label">输出字符数</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="help-section">
+            <h3>功能说明</h3>
+            <ul>
+                <li><strong>合并成一行</strong>：将多行文本用分隔符连接成一行</li>
+                <li><strong>拆分成多行</strong>：将单行文本按分隔符拆分成多行</li>
+                <li><strong>交替合并</strong>：将输入文本按每N行合并为一组</li>
+                <li><strong>带序号合并</strong>：合并时为每项添加序号</li>
+                <li><strong>前缀/后缀</strong>：为每项添加前后缀，如引号包裹</li>
+            </ul>
+        </div>
+    </main>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // 启用/禁用自定义分隔符
+        document.getElementById('separator').addEventListener('change', function() {
+            document.getElementById('customSeparator').disabled = this.value !== 'custom';
+        });
+        
+        // 获取分隔符
+        function getSeparator() {
+            const select = document.getElementById('separator');
+            const custom = document.getElementById('customSeparator');
+            
+            if (select.value === 'custom') {
+                return custom.value;
+            }
+            
+            if (select.value === '\\t') return '\t';
+            if (select.value === '\\n') return '\n';
+            return select.value;
+        }
+        
+        // 处理输入文本
+        function processInput() {
+            let lines = document.getElementById('input').value.split('\n');
+            
+            if (document.getElementById('trimLines').checked) {
+                lines = lines.map(line => line.trim());
+            }
+            
+            if (document.getElementById('removeEmpty').checked) {
+                lines = lines.filter(line => line.length > 0);
+            }
+            
+            if (document.getElementById('removeDuplicates').checked) {
+                lines = [...new Set(lines)];
+            }
+            
+            if (document.getElementById('sortLines').checked) {
+                lines = lines.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+            }
+            
+            return lines;
+        }
+        
+        // 添加前后缀
+        function wrapItem(item) {
+            const prefix = document.getElementById('prefix').value;
+            const suffix = document.getElementById('suffix').value;
+            const wrapQuotes = document.getElementById('wrapQuotes').checked;
+            
+            let result = item;
+            if (wrapQuotes) {
+                result = '"' + result + '"';
+            }
+            return prefix + result + suffix;
+        }
+        
+        // 合并成一行
+        function mergeLines() {
+            const lines = processInput();
+            if (lines.length === 0) {
+                showToast('没有可合并的内容');
+                return;
+            }
+            
+            const separator = getSeparator();
+            const result = lines.map(wrapItem).join(separator);
+            
+            document.getElementById('output').value = result;
+            updateStats();
+            showToast('已合并 ' + lines.length + ' 行');
+        }
+        
+        // 拆分成多行
+        function splitToLines() {
+            const input = document.getElementById('input').value.trim();
+            if (!input) {
+                showToast('请输入要拆分的文本');
+                return;
+            }
+            
+            const separator = getSeparator();
+            if (!separator) {
+                showToast('请选择分隔符');
+                return;
+            }
+            
+            let items = input.split(separator);
+            
+            if (document.getElementById('trimLines').checked) {
+                items = items.map(item => item.trim());
+            }
+            
+            if (document.getElementById('removeEmpty').checked) {
+                items = items.filter(item => item.length > 0);
+            }
+            
+            const result = items.map(wrapItem).join('\n');
+            document.getElementById('output').value = result;
+            updateStats();
+            showToast('已拆分成 ' + items.length + ' 行');
+        }
+        
+        // 交替合并
+        function mergeAlternate() {
+            const lines = processInput();
+            if (lines.length === 0) {
+                showToast('没有可合并的内容');
+                return;
+            }
+            
+            const groupSize = parseInt(prompt('每组行数：', '2')) || 2;
+            if (groupSize < 1) return;
+            
+            const separator = getSeparator();
+            const groups = [];
+            
+            for (let i = 0; i < lines.length; i += groupSize) {
+                const group = lines.slice(i, i + groupSize).map(wrapItem);
+                groups.push(group.join(separator));
+            }
+            
+            document.getElementById('output').value = groups.join('\n');
+            updateStats();
+            showToast('已合并成 ' + groups.length + ' 组');
+        }
+        
+        // 带序号合并
+        function mergeWithNumber() {
+            const lines = processInput();
+            if (lines.length === 0) {
+                showToast('没有可合并的内容');
+                return;
+            }
+            
+            const separator = getSeparator();
+            const numbered = lines.map((line, index) => {
+                return (index + 1) + '. ' + wrapItem(line);
+            });
+            
+            document.getElementById('output').value = numbered.join(separator || '\n');
+            updateStats();
+            showToast('已添加序号并合并');
+        }
+        
+        // 更新统计信息
+        function updateStats() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output').value;
+            
+            const inputLines = input ? input.split('\n').length : 0;
+            const outputLines = output ? output.split('\n').length : 0;
+            
+            document.getElementById('inputLines').textContent = inputLines;
+            document.getElementById('inputChars').textContent = input.length;
+            document.getElementById('outputLines').textContent = outputLines;
+            document.getElementById('outputChars').textContent = output.length;
+        }
+        
+        // 复制输出
+        function copyOutput() {
+            const output = document.getElementById('output').value;
+            if (output) {
+                navigator.clipboard.writeText(output).then(() => {
+                    showToast('已复制到剪贴板');
+                });
+            }
+        }
+        
+        // 作为输入使用
+        function useAsInput() {
+            const output = document.getElementById('output').value;
+            if (output) {
+                document.getElementById('input').value = output;
+                document.getElementById('output').value = '';
+                updateStats();
+            }
+        }
+        
+        // 清空输入
+        function clearInput() {
+            document.getElementById('input').value = '';
+            updateStats();
+        }
+        
+        // 清空输出
+        function clearOutput() {
+            document.getElementById('output').value = '';
+            updateStats();
+        }
+        
+        // 从剪贴板粘贴
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('input').value = text;
+                updateStats();
+                showToast('已粘贴');
+            } catch (err) {
+                showToast('无法访问剪贴板');
+            }
+        }
+        
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // 初始化主题
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+        
+        // 监听输入变化
+        document.getElementById('input').addEventListener('input', updateStats);
+        document.getElementById('output').addEventListener('input', updateStats);
+    </script>
+</body>
+</html>

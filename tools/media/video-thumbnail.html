@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频缩略图提取器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --video-bg: #000;
+            --thumbnail-border: #3498db;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .drop-zone {
+            border: 2px dashed var(--muted-color);
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            transition: border-color 0.3s, background 0.3s;
+            margin-bottom: 2rem;
+        }
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: var(--primary-focus);
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+        @media (max-width: 1000px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .video-container {
+            background: var(--video-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-height: 500px;
+            display: block;
+        }
+        .video-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            background: var(--card-background-color);
+            flex-wrap: wrap;
+        }
+        .video-controls button {
+            margin: 0;
+            padding: 0.5rem 1rem;
+        }
+        .timeline {
+            flex: 1;
+            min-width: 200px;
+        }
+        .timeline input {
+            width: 100%;
+            margin: 0;
+        }
+        .time-display {
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .capture-options {
+            background: var(--card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .capture-options h4 {
+            margin-top: 0;
+        }
+        .option-group {
+            margin-bottom: 1rem;
+        }
+        .option-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .option-group input, .option-group select {
+            width: 100%;
+            margin: 0;
+        }
+        .size-inputs {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .size-inputs input {
+            width: 80px;
+        }
+        .batch-options {
+            background: var(--card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .batch-options h4 {
+            margin-top: 0;
+        }
+        .thumbnails-container {
+            margin-top: 2rem;
+            display: none;
+        }
+        .thumbnails-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .thumbnails-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .thumbnail-item {
+            background: var(--card-background-color);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .thumbnail-item img {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .thumbnail-item img:hover {
+            transform: scale(1.02);
+        }
+        .thumbnail-item.selected {
+            outline: 3px solid var(--thumbnail-border);
+        }
+        .thumbnail-info {
+            padding: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .thumbnail-time {
+            font-family: monospace;
+        }
+        .thumbnail-actions button {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        .progress-container {
+            margin: 1rem 0;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--muted-border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.2s;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .video-info {
+            background: var(--card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+        .info-item {
+            text-align: center;
+        }
+        .info-value {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--muted-color);
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🎬 视频缩略图提取器</h1>
+            <button id="themeToggle" class="outline">🌙 暗色模式</button>
+        </header>
+
+        <div class="drop-zone" id="dropZone">
+            <p>拖拽视频文件到此处，或点击选择文件</p>
+            <p style="color: var(--muted-color); font-size: 0.9rem;">支持 MP4、WebM、OGV 等浏览器支持的视频格式</p>
+            <input type="file" id="fileInput" accept="video/*" style="display: none;">
+            <button onclick="document.getElementById('fileInput').click()">选择视频</button>
+        </div>
+
+        <div class="video-info" id="videoInfo">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-value" id="videoName">-</div>
+                    <div class="info-label">文件名</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="videoDuration">00:00</div>
+                    <div class="info-label">时长</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="videoResolution">-</div>
+                    <div class="info-label">分辨率</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="videoSize">-</div>
+                    <div class="info-label">文件大小</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div>
+                <div class="video-container" id="videoContainer">
+                    <video id="videoPlayer" controls></video>
+                    <div class="video-controls">
+                        <button onclick="captureFrame()">📷 截取当前帧</button>
+                        <button onclick="stepBackward()" class="secondary outline">⏪ -1帧</button>
+                        <button onclick="stepForward()" class="secondary outline">⏩ +1帧</button>
+                        <div class="time-display">
+                            <span id="currentTime">00:00.000</span> / <span id="totalTime">00:00.000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">准备中...</div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="capture-options">
+                    <h4>⚙️ 截图设置</h4>
+                    
+                    <div class="option-group">
+                        <label>输出尺寸</label>
+                        <select id="sizeMode">
+                            <option value="original">原始尺寸</option>
+                            <option value="custom">自定义尺寸</option>
+                            <option value="720p">720p (1280×720)</option>
+                            <option value="1080p">1080p (1920×1080)</option>
+                            <option value="480p">480p (854×480)</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group hidden" id="customSizeGroup">
+                        <label>自定义尺寸</label>
+                        <div class="size-inputs">
+                            <input type="number" id="customWidth" value="1280" min="1">
+                            <span>×</span>
+                            <input type="number" id="customHeight" value="720" min="1">
+                        </div>
+                        <label style="margin-top: 0.5rem;">
+                            <input type="checkbox" id="keepAspectRatio" checked>
+                            保持宽高比
+                        </label>
+                    </div>
+
+                    <div class="option-group">
+                        <label>输出格式</label>
+                        <select id="outputFormat">
+                            <option value="png">PNG (无损)</option>
+                            <option value="jpeg">JPEG</option>
+                            <option value="webp">WebP</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group" id="qualityGroup">
+                        <label>质量: <span id="qualityValue">90%</span></label>
+                        <input type="range" id="quality" min="1" max="100" value="90">
+                    </div>
+                </div>
+
+                <div class="batch-options">
+                    <h4>📦 批量提取</h4>
+                    
+                    <div class="option-group">
+                        <label>提取模式</label>
+                        <select id="batchMode">
+                            <option value="interval">按时间间隔</option>
+                            <option value="count">按数量均分</option>
+                            <option value="keyframes">场景变化检测</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group" id="intervalGroup">
+                        <label>时间间隔 (秒)</label>
+                        <input type="number" id="interval" value="5" min="0.1" step="0.1">
+                    </div>
+
+                    <div class="option-group hidden" id="countGroup">
+                        <label>提取数量</label>
+                        <input type="number" id="count" value="10" min="1" max="100">
+                    </div>
+
+                    <button onclick="batchExtract()" id="batchBtn" disabled style="width: 100%;">🚀 开始批量提取</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="thumbnails-container" id="thumbnailsContainer">
+            <div class="thumbnails-header">
+                <h3>📸 已提取的缩略图 (<span id="thumbnailCount">0</span>)</h3>
+                <div>
+                    <button onclick="downloadSelected()" class="outline" id="downloadSelectedBtn" disabled>💾 下载选中</button>
+                    <button onclick="downloadAll()" class="contrast" id="downloadAllBtn" disabled>📦 全部下载</button>
+                    <button onclick="clearThumbnails()" class="secondary outline">🗑️ 清空</button>
+                </div>
+            </div>
+            <div class="thumbnails-grid" id="thumbnailsGrid"></div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        function setTheme(dark) {
+            html.setAttribute('data-theme', dark ? 'dark' : 'light');
+            themeToggle.textContent = dark ? '☀️ 亮色模式' : '🌙 暗色模式';
+            localStorage.setItem('theme', dark ? 'dark' : 'light');
+        }
+        
+        themeToggle.addEventListener('click', () => {
+            setTheme(html.getAttribute('data-theme') !== 'dark');
+        });
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme === 'dark');
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme(true);
+        }
+
+        // Variables
+        let videoFile = null;
+        let thumbnails = [];
+        const video = document.getElementById('videoPlayer');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Elements
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const sizeMode = document.getElementById('sizeMode');
+        const batchMode = document.getElementById('batchMode');
+        const qualitySlider = document.getElementById('quality');
+        const outputFormat = document.getElementById('outputFormat');
+
+        // Event listeners
+        qualitySlider.addEventListener('input', () => {
+            document.getElementById('qualityValue').textContent = qualitySlider.value + '%';
+        });
+
+        sizeMode.addEventListener('change', () => {
+            document.getElementById('customSizeGroup').classList.toggle('hidden', sizeMode.value !== 'custom');
+        });
+
+        batchMode.addEventListener('change', () => {
+            document.getElementById('intervalGroup').classList.toggle('hidden', batchMode.value !== 'interval');
+            document.getElementById('countGroup').classList.toggle('hidden', batchMode.value !== 'count');
+        });
+
+        outputFormat.addEventListener('change', () => {
+            document.getElementById('qualityGroup').classList.toggle('hidden', outputFormat.value === 'png');
+        });
+
+        // File handling
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) loadVideo(e.target.files[0]);
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) loadVideo(e.dataTransfer.files[0]);
+        });
+
+        function loadVideo(file) {
+            videoFile = file;
+            const url = URL.createObjectURL(file);
+            video.src = url;
+            
+            video.onloadedmetadata = () => {
+                document.getElementById('videoContainer').style.display = 'block';
+                document.getElementById('videoInfo').style.display = 'block';
+                document.getElementById('batchBtn').disabled = false;
+                
+                document.getElementById('videoName').textContent = file.name;
+                document.getElementById('videoDuration').textContent = formatTime(video.duration);
+                document.getElementById('videoResolution').textContent = video.videoWidth + '×' + video.videoHeight;
+                document.getElementById('videoSize').textContent = formatFileSize(file.size);
+                document.getElementById('totalTime').textContent = formatTimeMs(video.duration);
+                
+                // Set custom size defaults
+                document.getElementById('customWidth').value = video.videoWidth;
+                document.getElementById('customHeight').value = video.videoHeight;
+            };
+            
+            video.ontimeupdate = () => {
+                document.getElementById('currentTime').textContent = formatTimeMs(video.currentTime);
+            };
+        }
+
+        function stepForward() {
+            video.currentTime = Math.min(video.duration, video.currentTime + 1/30);
+        }
+
+        function stepBackward() {
+            video.currentTime = Math.max(0, video.currentTime - 1/30);
+        }
+
+        function getOutputDimensions() {
+            const mode = sizeMode.value;
+            let width, height;
+            
+            switch (mode) {
+                case 'original':
+                    width = video.videoWidth;
+                    height = video.videoHeight;
+                    break;
+                case 'custom':
+                    width = parseInt(document.getElementById('customWidth').value);
+                    height = parseInt(document.getElementById('customHeight').value);
+                    if (document.getElementById('keepAspectRatio').checked) {
+                        const ratio = video.videoWidth / video.videoHeight;
+                        height = Math.round(width / ratio);
+                    }
+                    break;
+                case '720p':
+                    width = 1280; height = 720;
+                    break;
+                case '1080p':
+                    width = 1920; height = 1080;
+                    break;
+                case '480p':
+                    width = 854; height = 480;
+                    break;
+            }
+            
+            return { width, height };
+        }
+
+        function captureFrame() {
+            if (video.readyState < 2) return;
+            
+            const dims = getOutputDimensions();
+            canvas.width = dims.width;
+            canvas.height = dims.height;
+            
+            ctx.drawImage(video, 0, 0, dims.width, dims.height);
+            
+            const format = outputFormat.value;
+            const quality = qualitySlider.value / 100;
+            const mimeType = 'image/' + format;
+            const dataUrl = canvas.toDataURL(mimeType, quality);
+            
+            addThumbnail(dataUrl, video.currentTime);
+        }
+
+        function addThumbnail(dataUrl, time) {
+            const thumbnail = {
+                id: Date.now() + Math.random(),
+                dataUrl: dataUrl,
+                time: time,
+                selected: false
+            };
+            
+            thumbnails.push(thumbnail);
+            renderThumbnails();
+            
+            document.getElementById('thumbnailsContainer').style.display = 'block';
+        }
+
+        function renderThumbnails() {
+            const grid = document.getElementById('thumbnailsGrid');
+            grid.replaceChildren();
+            
+            thumbnails.forEach((thumb, index) => {
+                const item = document.createElement('div');
+                item.className = 'thumbnail-item' + (thumb.selected ? ' selected' : '');
+                
+                const img = document.createElement('img');
+                img.src = thumb.dataUrl;
+                img.alt = 'Thumbnail at ' + formatTimeMs(thumb.time);
+                img.addEventListener('click', () => toggleSelect(index));
+                
+                const info = document.createElement('div');
+                info.className = 'thumbnail-info';
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'thumbnail-time';
+                timeSpan.textContent = formatTimeMs(thumb.time);
+                
+                const actions = document.createElement('div');
+                actions.className = 'thumbnail-actions';
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'outline';
+                downloadBtn.textContent = '💾';
+                downloadBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    downloadThumbnail(index);
+                });
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'secondary outline';
+                deleteBtn.textContent = '✕';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteThumbnail(index);
+                });
+                
+                const seekBtn = document.createElement('button');
+                seekBtn.className = 'outline';
+                seekBtn.textContent = '🎯';
+                seekBtn.title = '跳转到此时间';
+                seekBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    video.currentTime = thumb.time;
+                });
+                
+                actions.appendChild(seekBtn);
+                actions.appendChild(downloadBtn);
+                actions.appendChild(deleteBtn);
+                
+                info.appendChild(timeSpan);
+                info.appendChild(actions);
+                
+                item.appendChild(img);
+                item.appendChild(info);
+                grid.appendChild(item);
+            });
+            
+            document.getElementById('thumbnailCount').textContent = thumbnails.length;
+            document.getElementById('downloadAllBtn').disabled = thumbnails.length === 0;
+            
+            const selectedCount = thumbnails.filter(t => t.selected).length;
+            document.getElementById('downloadSelectedBtn').disabled = selectedCount === 0;
+        }
+
+        function toggleSelect(index) {
+            thumbnails[index].selected = !thumbnails[index].selected;
+            renderThumbnails();
+        }
+
+        function deleteThumbnail(index) {
+            thumbnails.splice(index, 1);
+            renderThumbnails();
+        }
+
+        function downloadThumbnail(index) {
+            const thumb = thumbnails[index];
+            const format = outputFormat.value;
+            const link = document.createElement('a');
+            link.download = 'thumbnail_' + formatTimeMs(thumb.time).replace(/[:.]/g, '-') + '.' + format;
+            link.href = thumb.dataUrl;
+            link.click();
+        }
+
+        async function downloadSelected() {
+            const selected = thumbnails.filter(t => t.selected);
+            if (selected.length === 0) return;
+            
+            if (selected.length === 1) {
+                const index = thumbnails.indexOf(selected[0]);
+                downloadThumbnail(index);
+            } else {
+                await downloadAsZip(selected);
+            }
+        }
+
+        async function downloadAll() {
+            if (thumbnails.length === 0) return;
+            
+            if (thumbnails.length === 1) {
+                downloadThumbnail(0);
+            } else {
+                await downloadAsZip(thumbnails);
+            }
+        }
+
+        async function downloadAsZip(items) {
+            const zip = new JSZip();
+            const format = outputFormat.value;
+            
+            items.forEach((thumb, i) => {
+                const filename = 'thumbnail_' + (i + 1).toString().padStart(3, '0') + '_' + 
+                                formatTimeMs(thumb.time).replace(/[:.]/g, '-') + '.' + format;
+                const base64 = thumb.dataUrl.split(',')[1];
+                zip.file(filename, base64, { base64: true });
+            });
+            
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.download = 'thumbnails.zip';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function clearThumbnails() {
+            thumbnails = [];
+            renderThumbnails();
+        }
+
+        async function batchExtract() {
+            if (!video.duration) return;
+            
+            const mode = batchMode.value;
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressContainer.style.display = 'block';
+            
+            let times = [];
+            
+            if (mode === 'interval') {
+                const interval = parseFloat(document.getElementById('interval').value);
+                for (let t = 0; t < video.duration; t += interval) {
+                    times.push(t);
+                }
+            } else if (mode === 'count') {
+                const count = parseInt(document.getElementById('count').value);
+                const interval = video.duration / (count + 1);
+                for (let i = 1; i <= count; i++) {
+                    times.push(i * interval);
+                }
+            } else if (mode === 'keyframes') {
+                // Simple scene change detection
+                times = await detectSceneChanges();
+            }
+            
+            for (let i = 0; i < times.length; i++) {
+                progressFill.style.width = ((i + 1) / times.length * 100) + '%';
+                progressText.textContent = '提取中... ' + (i + 1) + ' / ' + times.length;
+                
+                await seekAndCapture(times[i]);
+            }
+            
+            progressContainer.style.display = 'none';
+        }
+
+        function seekAndCapture(time) {
+            return new Promise((resolve) => {
+                video.currentTime = time;
+                video.onseeked = () => {
+                    captureFrame();
+                    setTimeout(resolve, 50);
+                };
+            });
+        }
+
+        async function detectSceneChanges() {
+            const times = [0];
+            const sampleInterval = 0.5;
+            const threshold = 30;
+            
+            let prevImageData = null;
+            const smallCanvas = document.createElement('canvas');
+            smallCanvas.width = 64;
+            smallCanvas.height = 36;
+            const smallCtx = smallCanvas.getContext('2d');
+            
+            for (let t = 0; t < video.duration; t += sampleInterval) {
+                await new Promise(resolve => {
+                    video.currentTime = t;
+                    video.onseeked = () => {
+                        smallCtx.drawImage(video, 0, 0, 64, 36);
+                        const imageData = smallCtx.getImageData(0, 0, 64, 36);
+                        
+                        if (prevImageData) {
+                            const diff = calculateDifference(prevImageData.data, imageData.data);
+                            if (diff > threshold) {
+                                times.push(t);
+                            }
+                        }
+                        
+                        prevImageData = imageData;
+                        resolve();
+                    };
+                });
+            }
+            
+            return times.slice(0, 50); // Limit to 50 frames
+        }
+
+        function calculateDifference(data1, data2) {
+            let diff = 0;
+            const len = Math.min(data1.length, data2.length);
+            
+            for (let i = 0; i < len; i += 4) {
+                diff += Math.abs(data1[i] - data2[i]); // R
+                diff += Math.abs(data1[i + 1] - data2[i + 1]); // G
+                diff += Math.abs(data1[i + 2] - data2[i + 2]); // B
+            }
+            
+            return diff / (len / 4) / 3;
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+        }
+
+        function formatTimeMs(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return mins.toString().padStart(2, '0') + ':' + 
+                   secs.toString().padStart(2, '0') + '.' + 
+                   ms.toString().padStart(3, '0');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>

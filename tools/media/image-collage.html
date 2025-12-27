@@ -3,160 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片拼接器</title>
+    <title>图片拼接器 - 多图合并工具</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
         :root {
-            --preview-bg: #f0f0f0;
+            --primary-color: #667eea;
+            --border-radius: 8px;
         }
-        [data-theme="dark"] {
-            --preview-bg: #2a2a2a;
-        }
+        
         body {
             min-height: 100vh;
-            padding: 20px;
+            padding: 1rem;
         }
+        
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
+        
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
         }
-        .main-content {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 2rem;
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
         }
-        @media (max-width: 900px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .control-group {
-            padding: 1rem;
-            background: var(--pico-card-background-color);
-            border-radius: 8px;
-        }
-        .control-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-        .preview-area {
-            background: var(--preview-bg);
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 500px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
-        #collageCanvas {
-            max-width: 100%;
-            border: 1px dashed var(--pico-muted-border-color);
-            background: white;
-        }
+        
         .upload-zone {
             border: 2px dashed var(--pico-muted-border-color);
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             padding: 2rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
         }
-        .upload-zone:hover {
-            border-color: var(--pico-primary);
-            background: var(--pico-primary-focus);
-        }
+        
+        .upload-zone:hover,
         .upload-zone.dragover {
-            border-color: var(--pico-primary);
-            background: var(--pico-primary-focus);
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
         }
-        .image-list {
-            display: flex;
-            flex-direction: column;
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 0.5rem;
-            max-height: 300px;
-            overflow-y: auto;
+            margin-bottom: 1rem;
         }
-        .image-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            background: var(--pico-card-background-color);
-            border-radius: 4px;
-            cursor: move;
-        }
-        .image-item img {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 4px;
-        }
-        .image-item .name {
-            flex: 1;
-            font-size: 0.8rem;
+        
+        .preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--border-radius);
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            cursor: grab;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
         }
-        .image-item .remove {
-            padding: 0.2rem 0.5rem;
-            font-size: 0.8rem;
+        
+        .preview-item:hover {
+            border-color: var(--primary-color);
         }
-        .btn-group {
+        
+        .preview-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+        }
+        
+        .preview-item .index-badge {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .layout-options {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .layout-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-background-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .layout-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .canvas-container {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+        
+        [data-theme="dark"] .canvas-container {
+            background: #2a2a2a;
+        }
+        
+        #collageCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .actions {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
         }
-        .range-value {
-            font-weight: bold;
-            color: var(--pico-primary);
-        }
-        .layout-options {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+        
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
             gap: 0.5rem;
         }
-        .layout-option {
-            padding: 0.5rem;
-            text-align: center;
-            border: 2px solid var(--pico-muted-border-color);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-        .layout-option:hover {
-            border-color: var(--pico-primary);
-        }
-        .layout-option.active {
-            border-color: var(--pico-primary);
-            background: var(--pico-primary-focus);
-        }
-        .color-inputs {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .color-inputs input[type="color"] {
+        
+        .color-input-wrapper input[type="color"] {
             width: 50px;
-            height: 35px;
+            height: 38px;
             padding: 2px;
-            cursor: pointer;
+            border-radius: var(--border-radius);
         }
-        .drop-hint {
+        
+        .empty-state {
             color: var(--pico-muted-color);
-            font-size: 0.9rem;
+            text-align: center;
+            padding: 3rem;
         }
     </style>
 </head>
@@ -164,492 +200,414 @@
     <div class="container">
         <header>
             <h1>图片拼接器</h1>
-            <button id="themeToggle" class="outline">切换主题</button>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
         </header>
-
-        <div class="main-content">
-            <div class="sidebar">
+        
+        <main>
+            <div class="upload-zone" id="uploadZone">
+                <p>点击或拖拽图片到此处上传</p>
+                <p><small>支持 JPG、PNG、WebP 等格式，可选择多张图片</small></p>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+            
+            <div class="preview-grid" id="previewGrid"></div>
+            
+            <div class="controls">
                 <div class="control-group">
-                    <label>上传图片</label>
-                    <div class="upload-zone" id="uploadZone">
-                        <p>点击或拖拽图片到此处</p>
-                        <p class="drop-hint">支持 JPG, PNG, WebP</p>
-                        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>已添加图片 (拖动排序)</label>
-                    <div class="image-list" id="imageList"></div>
-                </div>
-
-                <div class="control-group">
-                    <label>布局方式</label>
+                    <label>排列方式</label>
                     <div class="layout-options">
-                        <div class="layout-option active" data-layout="grid">网格</div>
-                        <div class="layout-option" data-layout="horizontal">横向</div>
-                        <div class="layout-option" data-layout="vertical">纵向</div>
-                        <div class="layout-option" data-layout="2x2">2x2</div>
-                        <div class="layout-option" data-layout="3x3">3x3</div>
-                        <div class="layout-option" data-layout="masonry">瀑布流</div>
+                        <button class="layout-btn active" data-layout="horizontal">横向排列</button>
+                        <button class="layout-btn" data-layout="vertical">纵向排列</button>
+                        <button class="layout-btn" data-layout="grid">网格排列</button>
                     </div>
                 </div>
-
+                
                 <div class="control-group">
-                    <label>列数: <span class="range-value" id="columnsValue">2</span></label>
-                    <input type="range" id="columns" min="1" max="6" value="2">
+                    <label for="columns">网格列数</label>
+                    <input type="number" id="columns" min="1" max="10" value="2">
                 </div>
-
+                
                 <div class="control-group">
-                    <label>间距: <span class="range-value" id="gapValue">10</span>px</label>
-                    <input type="range" id="gap" min="0" max="50" value="10">
+                    <label for="spacing">图片间距 (px)</label>
+                    <input type="number" id="spacing" min="0" max="100" value="10">
                 </div>
-
+                
                 <div class="control-group">
-                    <label>圆角: <span class="range-value" id="radiusValue">0</span>px</label>
-                    <input type="range" id="radius" min="0" max="50" value="0">
-                </div>
-
-                <div class="control-group">
-                    <label>背景颜色</label>
-                    <div class="color-inputs">
+                    <label for="bgColor">背景颜色</label>
+                    <div class="color-input-wrapper">
                         <input type="color" id="bgColor" value="#ffffff">
-                        <input type="text" id="bgColorText" value="#ffffff" maxlength="7">
+                        <input type="text" id="bgColorText" value="#ffffff" style="width: 100px;">
                     </div>
                 </div>
-
+                
                 <div class="control-group">
-                    <label>输出宽度: <span class="range-value" id="outputWidthValue">1200</span>px</label>
-                    <input type="range" id="outputWidth" min="400" max="3000" value="1200" step="100">
+                    <label for="maxWidth">最大宽度 (px)</label>
+                    <input type="number" id="maxWidth" min="100" max="5000" value="1920">
                 </div>
-
+                
                 <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="equalSize" checked>
-                        等比缩放图片
-                    </label>
+                    <label for="quality">输出质量</label>
+                    <input type="range" id="quality" min="0.1" max="1" step="0.1" value="0.9">
+                    <small id="qualityValue">90%</small>
                 </div>
             </div>
-
-            <div class="preview-area">
-                <canvas id="collageCanvas" width="800" height="600"></canvas>
-                <div class="btn-group">
-                    <button id="generateBtn">生成拼接图</button>
-                    <button id="clearBtn" class="secondary">清除所有</button>
-                    <button id="downloadPng" class="outline">下载 PNG</button>
-                    <button id="downloadJpg" class="outline">下载 JPG</button>
+            
+            <div class="canvas-container">
+                <canvas id="collageCanvas"></canvas>
+                <div class="empty-state" id="emptyState">
+                    <p>请先上传图片</p>
                 </div>
             </div>
-        </div>
+            
+            <div class="actions">
+                <button id="generateBtn" disabled>生成拼接图</button>
+                <button id="downloadBtn" class="secondary" disabled>下载图片</button>
+                <button id="clearBtn" class="outline secondary">清空所有</button>
+            </div>
+        </main>
     </div>
-
+    
     <script>
         // Theme toggle
-        var themeToggle = document.getElementById('themeToggle');
-        themeToggle.addEventListener('click', function() {
-            var html = document.documentElement;
-            var currentTheme = html.getAttribute('data-theme');
-            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
-        });
-
-        // Elements
-        var canvas = document.getElementById('collageCanvas');
-        var ctx = canvas.getContext('2d');
-        var uploadZone = document.getElementById('uploadZone');
-        var fileInput = document.getElementById('fileInput');
-        var imageList = document.getElementById('imageList');
-        var columnsInput = document.getElementById('columns');
-        var gapInput = document.getElementById('gap');
-        var radiusInput = document.getElementById('radius');
-        var bgColor = document.getElementById('bgColor');
-        var bgColorText = document.getElementById('bgColorText');
-        var outputWidth = document.getElementById('outputWidth');
-        var equalSize = document.getElementById('equalSize');
-
-        var images = [];
-        var currentLayout = 'grid';
-        var draggedItem = null;
-
-        // Layout selection
-        document.querySelectorAll('.layout-option').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.layout-option').forEach(function(b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                currentLayout = btn.dataset.layout;
-                generateCollage();
-            });
-        });
-
-        // Sync color inputs
-        bgColor.addEventListener('input', function() {
-            bgColorText.value = bgColor.value;
-            generateCollage();
-        });
-        bgColorText.addEventListener('input', function() {
-            if (/^#[0-9A-Fa-f]{6}$/.test(bgColorText.value)) {
-                bgColor.value = bgColorText.value;
-                generateCollage();
-            }
-        });
-
-        // Update range values
-        var rangeInputs = [
-            { input: columnsInput, display: 'columnsValue' },
-            { input: gapInput, display: 'gapValue' },
-            { input: radiusInput, display: 'radiusValue' },
-            { input: outputWidth, display: 'outputWidthValue' }
-        ];
-
-        rangeInputs.forEach(function(item) {
-            item.input.addEventListener('input', function() {
-                document.getElementById(item.display).textContent = item.input.value;
-                generateCollage();
-            });
-        });
-
-        equalSize.addEventListener('change', generateCollage);
-
-        // File upload
-        uploadZone.addEventListener('click', function() {
-            fileInput.click();
-        });
-
-        uploadZone.addEventListener('dragover', function(e) {
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // State
+        let images = [];
+        let currentLayout = 'horizontal';
+        
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewGrid = document.getElementById('previewGrid');
+        const canvas = document.getElementById('collageCanvas');
+        const ctx = canvas.getContext('2d');
+        const emptyState = document.getElementById('emptyState');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const columnsInput = document.getElementById('columns');
+        const spacingInput = document.getElementById('spacing');
+        const bgColorInput = document.getElementById('bgColor');
+        const bgColorText = document.getElementById('bgColorText');
+        const maxWidthInput = document.getElementById('maxWidth');
+        const qualityInput = document.getElementById('quality');
+        const qualityValue = document.getElementById('qualityValue');
+        
+        // Event Listeners
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZone.classList.add('dragover');
         });
-
-        uploadZone.addEventListener('dragleave', function() {
+        uploadZone.addEventListener('dragleave', () => {
             uploadZone.classList.remove('dragover');
         });
-
-        uploadZone.addEventListener('drop', function(e) {
+        uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
             handleFiles(e.dataTransfer.files);
         });
-
-        fileInput.addEventListener('change', function() {
-            handleFiles(fileInput.files);
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        
+        // Layout buttons
+        document.querySelectorAll('.layout-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+            });
         });
-
+        
+        // Color sync
+        bgColorInput.addEventListener('input', () => {
+            bgColorText.value = bgColorInput.value;
+        });
+        bgColorText.addEventListener('input', () => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(bgColorText.value)) {
+                bgColorInput.value = bgColorText.value;
+            }
+        });
+        
+        // Quality display
+        qualityInput.addEventListener('input', () => {
+            qualityValue.textContent = Math.round(qualityInput.value * 100) + '%';
+        });
+        
+        // Buttons
+        generateBtn.addEventListener('click', generateCollage);
+        downloadBtn.addEventListener('click', downloadImage);
+        clearBtn.addEventListener('click', clearAll);
+        
+        // Handle file upload
         function handleFiles(files) {
-            Array.from(files).forEach(function(file) {
-                if (file.type.startsWith('image/')) {
-                    var reader = new FileReader();
-                    reader.onload = function(e) {
-                        var img = new Image();
-                        img.onload = function() {
-                            images.push({
-                                img: img,
-                                name: file.name,
-                                src: e.target.result
-                            });
-                            updateImageList();
-                            generateCollage();
-                        };
-                        img.src = e.target.result;
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        images.push({
+                            img: img,
+                            src: e.target.result,
+                            name: file.name
+                        });
+                        updatePreview();
+                        updateButtons();
                     };
-                    reader.readAsDataURL(file);
-                }
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             });
         }
-
-        // Update image list
-        function updateImageList() {
-            imageList.textContent = '';
-            images.forEach(function(item, index) {
-                var div = document.createElement('div');
-                div.className = 'image-item';
+        
+        // Update preview grid
+        function updatePreview() {
+            previewGrid.replaceChildren();
+            images.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
                 div.draggable = true;
                 div.dataset.index = index;
-
-                var img = document.createElement('img');
+                
+                const img = document.createElement('img');
                 img.src = item.src;
+                img.alt = item.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '\u00d7';
+                removeBtn.addEventListener('click', () => removeImage(index));
+                
+                const indexBadge = document.createElement('span');
+                indexBadge.className = 'index-badge';
+                indexBadge.textContent = index + 1;
+                
                 div.appendChild(img);
-
-                var nameSpan = document.createElement('span');
-                nameSpan.className = 'name';
-                nameSpan.textContent = item.name;
-                div.appendChild(nameSpan);
-
-                var removeBtn = document.createElement('button');
-                removeBtn.className = 'remove outline secondary';
-                removeBtn.textContent = 'X';
-                removeBtn.addEventListener('click', function() {
-                    images.splice(index, 1);
-                    updateImageList();
-                    generateCollage();
-                });
                 div.appendChild(removeBtn);
-
-                // Drag events
-                div.addEventListener('dragstart', function(e) {
-                    draggedItem = div;
-                    e.dataTransfer.effectAllowed = 'move';
-                });
-
-                div.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                });
-
-                div.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    if (draggedItem !== div) {
-                        var fromIndex = parseInt(draggedItem.dataset.index);
-                        var toIndex = parseInt(div.dataset.index);
-                        var temp = images[fromIndex];
-                        images.splice(fromIndex, 1);
-                        images.splice(toIndex, 0, temp);
-                        updateImageList();
-                        generateCollage();
-                    }
-                });
-
-                imageList.appendChild(div);
+                div.appendChild(indexBadge);
+                
+                // Drag events for reordering
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                
+                previewGrid.appendChild(div);
             });
         }
-
+        
+        // Drag and drop for reordering
+        let dragIndex = null;
+        
+        function handleDragStart(e) {
+            dragIndex = parseInt(this.dataset.index);
+            this.classList.add('dragging');
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropIndex = parseInt(this.dataset.index);
+            if (dragIndex !== null && dragIndex !== dropIndex) {
+                const [removed] = images.splice(dragIndex, 1);
+                images.splice(dropIndex, 0, removed);
+                updatePreview();
+            }
+        }
+        
+        // Remove image
+        function removeImage(index) {
+            images.splice(index, 1);
+            updatePreview();
+            updateButtons();
+            if (images.length === 0) {
+                canvas.width = 0;
+                canvas.height = 0;
+                emptyState.style.display = 'block';
+            }
+        }
+        
+        // Update button states
+        function updateButtons() {
+            const hasImages = images.length > 0;
+            generateBtn.disabled = !hasImages;
+            clearBtn.disabled = !hasImages;
+        }
+        
         // Generate collage
         function generateCollage() {
-            if (images.length === 0) {
-                canvas.width = 800;
-                canvas.height = 600;
-                ctx.fillStyle = bgColor.value;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#999';
-                ctx.font = '24px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('请添加图片', canvas.width / 2, canvas.height / 2);
-                return;
-            }
-
-            var width = parseInt(outputWidth.value);
-            var gap = parseInt(gapInput.value);
-            var cols = parseInt(columnsInput.value);
-            var radius = parseInt(radiusInput.value);
-
-            var layout = calculateLayout(width, gap, cols);
+            if (images.length === 0) return;
             
-            canvas.width = layout.width;
-            canvas.height = layout.height;
-
-            // Background
-            ctx.fillStyle = bgColor.value;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw images
-            layout.items.forEach(function(item, index) {
-                if (images[index]) {
-                    drawRoundedImage(ctx, images[index].img, item.x, item.y, item.w, item.h, radius);
+            const spacing = parseInt(spacingInput.value) || 0;
+            const maxWidth = parseInt(maxWidthInput.value) || 1920;
+            const columns = parseInt(columnsInput.value) || 2;
+            const bgColor = bgColorInput.value;
+            
+            let canvasWidth, canvasHeight;
+            const positions = [];
+            
+            if (currentLayout === 'horizontal') {
+                // Horizontal layout - same height
+                const targetHeight = 400;
+                let totalWidth = 0;
+                const scaledImages = images.map(item => {
+                    const scale = targetHeight / item.img.height;
+                    const scaledWidth = item.img.width * scale;
+                    totalWidth += scaledWidth;
+                    return { ...item, scaledWidth, scaledHeight: targetHeight };
+                });
+                
+                totalWidth += spacing * (images.length - 1);
+                
+                // Scale down if exceeds max width
+                let finalScale = 1;
+                if (totalWidth > maxWidth) {
+                    finalScale = maxWidth / totalWidth;
+                }
+                
+                canvasWidth = Math.round(totalWidth * finalScale);
+                canvasHeight = Math.round(targetHeight * finalScale);
+                
+                let x = 0;
+                scaledImages.forEach((item, i) => {
+                    const w = Math.round(item.scaledWidth * finalScale);
+                    const h = Math.round(item.scaledHeight * finalScale);
+                    positions.push({ img: item.img, x, y: 0, w, h });
+                    x += w + Math.round(spacing * finalScale);
+                });
+                
+            } else if (currentLayout === 'vertical') {
+                // Vertical layout - same width
+                const targetWidth = Math.min(800, maxWidth);
+                let totalHeight = 0;
+                const scaledImages = images.map(item => {
+                    const scale = targetWidth / item.img.width;
+                    const scaledHeight = item.img.height * scale;
+                    totalHeight += scaledHeight;
+                    return { ...item, scaledWidth: targetWidth, scaledHeight };
+                });
+                
+                totalHeight += spacing * (images.length - 1);
+                
+                canvasWidth = targetWidth;
+                canvasHeight = Math.round(totalHeight);
+                
+                let y = 0;
+                scaledImages.forEach((item, i) => {
+                    positions.push({ img: item.img, x: 0, y, w: item.scaledWidth, h: Math.round(item.scaledHeight) });
+                    y += Math.round(item.scaledHeight) + spacing;
+                });
+                
+            } else {
+                // Grid layout
+                const cols = Math.min(columns, images.length);
+                const rows = Math.ceil(images.length / cols);
+                const cellWidth = Math.floor((maxWidth - spacing * (cols - 1)) / cols);
+                const cellHeight = cellWidth; // Square cells
+                
+                canvasWidth = cols * cellWidth + spacing * (cols - 1);
+                canvasHeight = rows * cellHeight + spacing * (rows - 1);
+                
+                images.forEach((item, i) => {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    const x = col * (cellWidth + spacing);
+                    const y = row * (cellHeight + spacing);
+                    
+                    // Fit image in cell
+                    const imgRatio = item.img.width / item.img.height;
+                    let drawWidth, drawHeight, drawX, drawY;
+                    
+                    if (imgRatio > 1) {
+                        drawHeight = cellHeight;
+                        drawWidth = cellHeight * imgRatio;
+                        drawX = x - (drawWidth - cellWidth) / 2;
+                        drawY = y;
+                    } else {
+                        drawWidth = cellWidth;
+                        drawHeight = cellWidth / imgRatio;
+                        drawX = x;
+                        drawY = y - (drawHeight - cellHeight) / 2;
+                    }
+                    
+                    positions.push({ 
+                        img: item.img, 
+                        x: drawX, 
+                        y: drawY, 
+                        w: drawWidth, 
+                        h: drawHeight,
+                        clipX: x,
+                        clipY: y,
+                        clipW: cellWidth,
+                        clipH: cellHeight
+                    });
+                });
+            }
+            
+            // Draw to canvas
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            
+            positions.forEach(pos => {
+                if (pos.clipW !== undefined) {
+                    // Grid layout with clipping
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(pos.clipX, pos.clipY, pos.clipW, pos.clipH);
+                    ctx.clip();
+                    ctx.drawImage(pos.img, pos.x, pos.y, pos.w, pos.h);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(pos.img, pos.x, pos.y, pos.w, pos.h);
                 }
             });
+            
+            emptyState.style.display = 'none';
+            downloadBtn.disabled = false;
         }
-
-        // Calculate layout
-        function calculateLayout(totalWidth, gap, cols) {
-            var items = [];
-            var height = 0;
-
-            switch (currentLayout) {
-                case 'horizontal':
-                    var itemWidth = (totalWidth - gap * (images.length - 1)) / images.length;
-                    var maxHeight = 0;
-                    images.forEach(function(item) {
-                        var h = itemWidth * (item.img.height / item.img.width);
-                        if (h > maxHeight) maxHeight = h;
-                    });
-                    if (equalSize.checked) {
-                        images.forEach(function(item, i) {
-                            items.push({
-                                x: i * (itemWidth + gap),
-                                y: 0,
-                                w: itemWidth,
-                                h: maxHeight
-                            });
-                        });
-                    } else {
-                        images.forEach(function(item, i) {
-                            var h = itemWidth * (item.img.height / item.img.width);
-                            items.push({
-                                x: i * (itemWidth + gap),
-                                y: (maxHeight - h) / 2,
-                                w: itemWidth,
-                                h: h
-                            });
-                        });
-                    }
-                    height = maxHeight;
-                    break;
-
-                case 'vertical':
-                    var itemWidth = totalWidth;
-                    var y = 0;
-                    images.forEach(function(item) {
-                        var h = itemWidth * (item.img.height / item.img.width);
-                        items.push({ x: 0, y: y, w: itemWidth, h: h });
-                        y += h + gap;
-                    });
-                    height = y - gap;
-                    break;
-
-                case '2x2':
-                    cols = 2;
-                    // Fall through to grid
-                case '3x3':
-                    if (currentLayout === '3x3') cols = 3;
-                    // Fall through to grid
-                case 'grid':
-                    var itemWidth = (totalWidth - gap * (cols - 1)) / cols;
-                    var rows = Math.ceil(images.length / cols);
-                    var maxRowHeight = itemWidth;
-                    
-                    if (equalSize.checked) {
-                        for (var i = 0; i < images.length; i++) {
-                            var col = i % cols;
-                            var row = Math.floor(i / cols);
-                            items.push({
-                                x: col * (itemWidth + gap),
-                                y: row * (maxRowHeight + gap),
-                                w: itemWidth,
-                                h: maxRowHeight
-                            });
-                        }
-                        height = rows * (maxRowHeight + gap) - gap;
-                    } else {
-                        var rowHeights = [];
-                        for (var r = 0; r < rows; r++) {
-                            var maxH = 0;
-                            for (var c = 0; c < cols; c++) {
-                                var idx = r * cols + c;
-                                if (images[idx]) {
-                                    var h = itemWidth * (images[idx].img.height / images[idx].img.width);
-                                    if (h > maxH) maxH = h;
-                                }
-                            }
-                            rowHeights.push(maxH);
-                        }
-                        
-                        var y = 0;
-                        for (var i = 0; i < images.length; i++) {
-                            var col = i % cols;
-                            var row = Math.floor(i / cols);
-                            if (col === 0 && row > 0) {
-                                y += rowHeights[row - 1] + gap;
-                            }
-                            var h = itemWidth * (images[i].img.height / images[i].img.width);
-                            items.push({
-                                x: col * (itemWidth + gap),
-                                y: y + (rowHeights[row] - h) / 2,
-                                w: itemWidth,
-                                h: h
-                            });
-                        }
-                        height = y + rowHeights[rows - 1];
-                    }
-                    break;
-
-                case 'masonry':
-                    var itemWidth = (totalWidth - gap * (cols - 1)) / cols;
-                    var colHeights = new Array(cols).fill(0);
-                    
-                    images.forEach(function(item) {
-                        var minCol = 0;
-                        var minH = colHeights[0];
-                        for (var c = 1; c < cols; c++) {
-                            if (colHeights[c] < minH) {
-                                minH = colHeights[c];
-                                minCol = c;
-                            }
-                        }
-                        
-                        var h = itemWidth * (item.img.height / item.img.width);
-                        items.push({
-                            x: minCol * (itemWidth + gap),
-                            y: colHeights[minCol],
-                            w: itemWidth,
-                            h: h
-                        });
-                        colHeights[minCol] += h + gap;
-                    });
-                    
-                    height = Math.max.apply(null, colHeights) - gap;
-                    break;
-            }
-
-            return {
-                width: totalWidth,
-                height: Math.max(100, height),
-                items: items
-            };
+        
+        // Download image
+        function downloadImage() {
+            const quality = parseFloat(qualityInput.value);
+            const link = document.createElement('a');
+            link.download = 'collage_' + Date.now() + '.jpg';
+            link.href = canvas.toDataURL('image/jpeg', quality);
+            link.click();
         }
-
-        // Draw rounded image
-        function drawRoundedImage(ctx, img, x, y, w, h, r) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(x + r, y);
-            ctx.lineTo(x + w - r, y);
-            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-            ctx.lineTo(x + w, y + h - r);
-            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-            ctx.lineTo(x + r, y + h);
-            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-            ctx.lineTo(x, y + r);
-            ctx.quadraticCurveTo(x, y, x + r, y);
-            ctx.closePath();
-            ctx.clip();
-
-            // Draw image to fill the area
-            var imgRatio = img.width / img.height;
-            var areaRatio = w / h;
-            var drawW, drawH, drawX, drawY;
-
-            if (imgRatio > areaRatio) {
-                drawH = h;
-                drawW = h * imgRatio;
-                drawX = x - (drawW - w) / 2;
-                drawY = y;
-            } else {
-                drawW = w;
-                drawH = w / imgRatio;
-                drawX = x;
-                drawY = y - (drawH - h) / 2;
-            }
-
-            ctx.drawImage(img, drawX, drawY, drawW, drawH);
-            ctx.restore();
-        }
-
+        
         // Clear all
-        document.getElementById('clearBtn').addEventListener('click', function() {
+        function clearAll() {
             images = [];
-            updateImageList();
-            generateCollage();
-        });
-
-        // Generate button
-        document.getElementById('generateBtn').addEventListener('click', generateCollage);
-
-        // Download PNG
-        document.getElementById('downloadPng').addEventListener('click', function() {
-            var a = document.createElement('a');
-            a.href = canvas.toDataURL('image/png');
-            a.download = 'collage.png';
-            a.click();
-        });
-
-        // Download JPG
-        document.getElementById('downloadJpg').addEventListener('click', function() {
-            var a = document.createElement('a');
-            a.href = canvas.toDataURL('image/jpeg', 0.9);
-            a.download = 'collage.jpg';
-            a.click();
-        });
-
-        // Initial render
-        generateCollage();
+            previewGrid.replaceChildren();
+            canvas.width = 0;
+            canvas.height = 0;
+            emptyState.style.display = 'block';
+            generateBtn.disabled = true;
+            downloadBtn.disabled = true;
+            clearBtn.disabled = true;
+            fileInput.value = '';
+        }
     </script>
 </body>
 </html>

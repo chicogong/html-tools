@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 路径编辑器 | HTML Tools</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --primary-color: #0f3460;
+            --accent-color: #e94560;
+            --border-color: #0f3460;
+            --input-bg: #1a1a2e;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --info-color: #60a5fa;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-color: #1a1a2e;
+            --primary-color: #e0e7ff;
+            --accent-color: #e94560;
+            --border-color: #c7d2fe;
+            --input-bg: #f8fafc;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary-color);
+        }
+
+        .back-link {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--accent-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .editor-container {
+            position: relative;
+        }
+
+        .json-editor {
+            width: 100%;
+            height: 400px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-color);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .json-editor:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .path-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .path-input {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        .path-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: var(--primary-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .result-container {
+            margin-top: 15px;
+        }
+
+        .result-label {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: var(--info-color);
+        }
+
+        .result-box {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .path-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            min-height: 44px;
+            align-items: center;
+        }
+
+        .breadcrumb-item {
+            padding: 4px 10px;
+            background: var(--primary-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .breadcrumb-item:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-color);
+            opacity: 0.5;
+        }
+
+        .tree-container {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .tree-node {
+            margin-left: 20px;
+        }
+
+        .tree-node-root {
+            margin-left: 0;
+        }
+
+        .tree-key {
+            color: var(--accent-color);
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tree-key:hover {
+            background: var(--primary-color);
+        }
+
+        .tree-key.selected {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tree-value {
+            color: var(--success-color);
+        }
+
+        .tree-value.string {
+            color: var(--warning-color);
+        }
+
+        .tree-value.number {
+            color: var(--info-color);
+        }
+
+        .tree-value.boolean {
+            color: #f472b6;
+        }
+
+        .tree-value.null {
+            color: #9ca3af;
+        }
+
+        .tree-toggle {
+            cursor: pointer;
+            user-select: none;
+            width: 16px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .tree-bracket {
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+
+        .tree-count {
+            color: var(--text-color);
+            opacity: 0.5;
+            font-size: 12px;
+            margin-left: 4px;
+        }
+
+        .edit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .edit-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-family: 'Consolas', monospace;
+            margin-bottom: 15px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .type-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 10px;
+            color: #ef4444;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .success-message {
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--success-color);
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .sample-paths {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .sample-path {
+            padding: 4px 10px;
+            background: var(--primary-color);
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Consolas', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .sample-path:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../../index.html" class="back-link">← 返回工具列表</a>
+            <h1>📍 JSON 路径编辑器</h1>
+            <p>通过路径查询、编辑和导航 JSON 数据</p>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-title">📝 JSON 数据</div>
+                <div class="editor-container">
+                    <textarea class="json-editor" id="jsonEditor" placeholder="在此输入或粘贴 JSON 数据...">{
+  "user": {
+    "name": "张三",
+    "age": 28,
+    "email": "zhangsan@example.com",
+    "address": {
+      "city": "北京",
+      "district": "朝阳区",
+      "street": "建国路88号"
+    },
+    "hobbies": ["编程", "阅读", "游泳"],
+    "isActive": true
+  },
+  "orders": [
+    {"id": 1001, "product": "笔记本电脑", "price": 5999},
+    {"id": 1002, "product": "无线鼠标", "price": 129},
+    {"id": 1003, "product": "机械键盘", "price": 499}
+  ],
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": null
+  }
+}</textarea>
+                </div>
+                <div class="buttons-row">
+                    <button class="btn btn-primary" onclick="parseJson()">🔄 解析 JSON</button>
+                    <button class="btn btn-secondary" onclick="formatJson()">✨ 格式化</button>
+                    <button class="btn btn-secondary" onclick="copyJson()">📋 复制</button>
+                    <button class="btn btn-secondary" onclick="loadSample()">📥 示例数据</button>
+                </div>
+                <div id="parseMessage"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">🔍 路径查询</div>
+                
+                <div class="path-input-container">
+                    <input type="text" class="path-input" id="pathInput" placeholder="输入路径，如: user.name 或 orders[0].product">
+                    <button class="btn btn-primary" onclick="queryPath()">查询</button>
+                </div>
+
+                <div class="path-breadcrumb" id="pathBreadcrumb">
+                    <span style="opacity: 0.5;">点击树节点或输入路径导航</span>
+                </div>
+
+                <div class="sample-paths" id="samplePaths"></div>
+
+                <div class="result-container">
+                    <div class="result-label">📤 查询结果</div>
+                    <div class="result-box" id="resultBox">-</div>
+                </div>
+
+                <div class="buttons-row">
+                    <button class="btn btn-secondary" onclick="editValue()">✏️ 编辑值</button>
+                    <button class="btn btn-secondary" onclick="deleteValue()">🗑️ 删除</button>
+                    <button class="btn btn-secondary" onclick="copyResult()">📋 复制结果</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+            <div class="panel-title">🌳 JSON 树形结构</div>
+            <div class="tree-container" id="treeContainer">
+                <p style="opacity: 0.5;">解析 JSON 后显示树形结构</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="edit-modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">编辑值</div>
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 13px; opacity: 0.8;">路径</label>
+                <input type="text" class="modal-input" id="editPath" readonly>
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 13px; opacity: 0.8;">类型</label>
+                <select class="type-select" id="editType" onchange="updateEditInput()">
+                    <option value="string">字符串</option>
+                    <option value="number">数字</option>
+                    <option value="boolean">布尔值</option>
+                    <option value="null">Null</option>
+                    <option value="object">对象 {}</option>
+                    <option value="array">数组 []</option>
+                </select>
+            </div>
+            <div id="editValueContainer">
+                <label style="display: block; margin-bottom: 5px; font-size: 13px; opacity: 0.8;">值</label>
+                <input type="text" class="modal-input" id="editValue">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let jsonData = null;
+        let currentPath = '';
+
+        // Theme toggle
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+            }
+        })();
+
+        function parseJson() {
+            const editor = document.getElementById('jsonEditor');
+            const messageEl = document.getElementById('parseMessage');
+            
+            try {
+                jsonData = JSON.parse(editor.value);
+                messageEl.innerHTML = '<div class="success-message">✅ JSON 解析成功</div>';
+                renderTree();
+                generateSamplePaths();
+                setTimeout(() => messageEl.innerHTML = '', 2000);
+            } catch (e) {
+                messageEl.innerHTML = `<div class="error-message">❌ JSON 解析失败: ${e.message}</div>`;
+                jsonData = null;
+            }
+        }
+
+        function formatJson() {
+            const editor = document.getElementById('jsonEditor');
+            try {
+                const data = JSON.parse(editor.value);
+                editor.value = JSON.stringify(data, null, 2);
+            } catch (e) {
+                alert('JSON 格式错误，无法格式化');
+            }
+        }
+
+        function copyJson() {
+            const editor = document.getElementById('jsonEditor');
+            navigator.clipboard.writeText(editor.value);
+            alert('已复制到剪贴板');
+        }
+
+        function loadSample() {
+            const sample = {
+                "user": {
+                    "name": "张三",
+                    "age": 28,
+                    "email": "zhangsan@example.com",
+                    "address": {
+                        "city": "北京",
+                        "district": "朝阳区",
+                        "street": "建国路88号"
+                    },
+                    "hobbies": ["编程", "阅读", "游泳"],
+                    "isActive": true
+                },
+                "orders": [
+                    {"id": 1001, "product": "笔记本电脑", "price": 5999},
+                    {"id": 1002, "product": "无线鼠标", "price": 129},
+                    {"id": 1003, "product": "机械键盘", "price": 499}
+                ],
+                "metadata": {
+                    "version": "1.0",
+                    "lastUpdated": null
+                }
+            };
+            document.getElementById('jsonEditor').value = JSON.stringify(sample, null, 2);
+            parseJson();
+        }
+
+        function getValueByPath(obj, path) {
+            if (!path) return obj;
+            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(p => p);
+            let current = obj;
+            for (const part of parts) {
+                if (current === null || current === undefined) return undefined;
+                current = current[part];
+            }
+            return current;
+        }
+
+        function setValueByPath(obj, path, value) {
+            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(p => p);
+            let current = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+                current = current[parts[i]];
+            }
+            current[parts[parts.length - 1]] = value;
+        }
+
+        function deleteByPath(obj, path) {
+            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(p => p);
+            let current = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+                current = current[parts[i]];
+            }
+            const lastKey = parts[parts.length - 1];
+            if (Array.isArray(current)) {
+                current.splice(parseInt(lastKey), 1);
+            } else {
+                delete current[lastKey];
+            }
+        }
+
+        function queryPath() {
+            if (!jsonData) {
+                alert('请先解析 JSON');
+                return;
+            }
+            
+            const path = document.getElementById('pathInput').value.trim();
+            currentPath = path;
+            
+            try {
+                const result = getValueByPath(jsonData, path);
+                const resultBox = document.getElementById('resultBox');
+                
+                if (result === undefined) {
+                    resultBox.textContent = '路径不存在';
+                    resultBox.style.color = 'var(--warning-color)';
+                } else {
+                    resultBox.textContent = typeof result === 'object' 
+                        ? JSON.stringify(result, null, 2) 
+                        : String(result);
+                    resultBox.style.color = '';
+                }
+                
+                updateBreadcrumb(path);
+                highlightTreeNode(path);
+            } catch (e) {
+                document.getElementById('resultBox').textContent = '查询错误: ' + e.message;
+            }
+        }
+
+        function updateBreadcrumb(path) {
+            const container = document.getElementById('pathBreadcrumb');
+            if (!path) {
+                container.innerHTML = '<span class="breadcrumb-item" onclick="navigateToPath(\'\')">root</span>';
+                return;
+            }
+            
+            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(p => p);
+            let html = '<span class="breadcrumb-item" onclick="navigateToPath(\'\')">root</span>';
+            let currentPath = '';
+            
+            parts.forEach((part, i) => {
+                currentPath += (i > 0 ? '.' : '') + part;
+                const displayPart = /^\d+$/.test(part) ? `[${part}]` : part;
+                html += `<span class="breadcrumb-separator">›</span>`;
+                html += `<span class="breadcrumb-item" onclick="navigateToPath('${currentPath}')">${displayPart}</span>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function navigateToPath(path) {
+            document.getElementById('pathInput').value = path;
+            queryPath();
+        }
+
+        function generateSamplePaths() {
+            if (!jsonData) return;
+            
+            const paths = [];
+            function traverse(obj, path = '') {
+                if (paths.length >= 10) return;
+                
+                if (typeof obj === 'object' && obj !== null) {
+                    if (Array.isArray(obj)) {
+                        if (obj.length > 0) {
+                            const newPath = path + '[0]';
+                            paths.push(newPath);
+                            traverse(obj[0], newPath);
+                        }
+                    } else {
+                        for (const key of Object.keys(obj)) {
+                            const newPath = path ? `${path}.${key}` : key;
+                            paths.push(newPath);
+                            if (paths.length < 10) {
+                                traverse(obj[key], newPath);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            traverse(jsonData);
+            
+            const container = document.getElementById('samplePaths');
+            container.innerHTML = '<span style="font-size: 12px; opacity: 0.6; margin-right: 8px;">示例路径:</span>' +
+                paths.slice(0, 8).map(p => 
+                    `<span class="sample-path" onclick="navigateToPath('${p}')">${p}</span>`
+                ).join('');
+        }
+
+        function renderTree() {
+            const container = document.getElementById('treeContainer');
+            if (!jsonData) {
+                container.innerHTML = '<p style="opacity: 0.5;">解析 JSON 后显示树形结构</p>';
+                return;
+            }
+            
+            container.innerHTML = renderNode(jsonData, '', true);
+        }
+
+        function renderNode(data, path, isRoot = false) {
+            const type = data === null ? 'null' : Array.isArray(data) ? 'array' : typeof data;
+            
+            if (type === 'object' || type === 'array') {
+                const isArray = type === 'array';
+                const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
+                const count = entries.length;
+                const id = 'node_' + path.replace(/[.\[\]]/g, '_');
+                
+                let html = `<div class="tree-node ${isRoot ? 'tree-node-root' : ''}">`;
+                html += `<span class="tree-toggle" onclick="toggleNode('${id}')">▼</span>`;
+                html += `<span class="tree-bracket">${isArray ? '[' : '{'}</span>`;
+                html += `<span class="tree-count">${count} items</span>`;
+                html += `<div id="${id}">`;
+                
+                entries.forEach(([key, value], index) => {
+                    const newPath = isArray ? `${path}[${key}]` : (path ? `${path}.${key}` : key);
+                    const displayKey = isArray ? `[${key}]` : key;
+                    
+                    html += `<div class="tree-node">`;
+                    html += `<span class="tree-key" data-path="${newPath}" onclick="selectNode('${newPath}')">${displayKey}</span>`;
+                    html += `: `;
+                    html += renderNode(value, newPath);
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+                html += `<span class="tree-bracket">${isArray ? ']' : '}'}</span>`;
+                html += `</div>`;
+                
+                return html;
+            } else {
+                let valueClass = type;
+                let displayValue = data;
+                
+                if (type === 'string') {
+                    displayValue = `"${data}"`;
+                } else if (type === 'null') {
+                    displayValue = 'null';
+                }
+                
+                return `<span class="tree-value ${valueClass}">${escapeHtml(String(displayValue))}</span>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleNode(id) {
+            const node = document.getElementById(id);
+            const toggle = node.previousElementSibling.previousElementSibling;
+            if (node.style.display === 'none') {
+                node.style.display = '';
+                toggle.textContent = '▼';
+            } else {
+                node.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+
+        function selectNode(path) {
+            document.getElementById('pathInput').value = path;
+            queryPath();
+        }
+
+        function highlightTreeNode(path) {
+            document.querySelectorAll('.tree-key').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.path === path) {
+                    el.classList.add('selected');
+                }
+            });
+        }
+
+        function editValue() {
+            if (!jsonData || !currentPath) {
+                alert('请先选择一个路径');
+                return;
+            }
+            
+            const value = getValueByPath(jsonData, currentPath);
+            if (value === undefined) {
+                alert('路径不存在');
+                return;
+            }
+            
+            document.getElementById('editPath').value = currentPath;
+            
+            const type = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+            document.getElementById('editType').value = type;
+            
+            const valueInput = document.getElementById('editValue');
+            if (type === 'object' || type === 'array') {
+                valueInput.value = JSON.stringify(value, null, 2);
+            } else if (type === 'null') {
+                valueInput.value = '';
+            } else {
+                valueInput.value = value;
+            }
+            
+            updateEditInput();
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function updateEditInput() {
+            const type = document.getElementById('editType').value;
+            const container = document.getElementById('editValueContainer');
+            
+            if (type === 'null') {
+                container.style.display = 'none';
+            } else if (type === 'boolean') {
+                container.innerHTML = `
+                    <label style="display: block; margin-bottom: 5px; font-size: 13px; opacity: 0.8;">值</label>
+                    <select class="type-select" id="editValue">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                    </select>
+                `;
+            } else {
+                container.style.display = '';
+                if (!document.getElementById('editValue') || document.getElementById('editValue').tagName === 'SELECT') {
+                    container.innerHTML = `
+                        <label style="display: block; margin-bottom: 5px; font-size: 13px; opacity: 0.8;">值</label>
+                        <input type="text" class="modal-input" id="editValue">
+                    `;
+                }
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        function saveEdit() {
+            const path = document.getElementById('editPath').value;
+            const type = document.getElementById('editType').value;
+            const valueInput = document.getElementById('editValue');
+            
+            let newValue;
+            
+            try {
+                switch (type) {
+                    case 'string':
+                        newValue = valueInput.value;
+                        break;
+                    case 'number':
+                        newValue = parseFloat(valueInput.value);
+                        if (isNaN(newValue)) throw new Error('无效的数字');
+                        break;
+                    case 'boolean':
+                        newValue = valueInput.value === 'true';
+                        break;
+                    case 'null':
+                        newValue = null;
+                        break;
+                    case 'object':
+                    case 'array':
+                        newValue = JSON.parse(valueInput.value);
+                        break;
+                }
+                
+                setValueByPath(jsonData, path, newValue);
+                document.getElementById('jsonEditor').value = JSON.stringify(jsonData, null, 2);
+                renderTree();
+                queryPath();
+                closeModal();
+            } catch (e) {
+                alert('保存失败: ' + e.message);
+            }
+        }
+
+        function deleteValue() {
+            if (!jsonData || !currentPath) {
+                alert('请先选择一个路径');
+                return;
+            }
+            
+            if (!confirm(`确定要删除路径 "${currentPath}" 吗？`)) return;
+            
+            try {
+                deleteByPath(jsonData, currentPath);
+                document.getElementById('jsonEditor').value = JSON.stringify(jsonData, null, 2);
+                renderTree();
+                generateSamplePaths();
+                document.getElementById('pathInput').value = '';
+                document.getElementById('resultBox').textContent = '已删除';
+                updateBreadcrumb('');
+                currentPath = '';
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
+        function copyResult() {
+            const result = document.getElementById('resultBox').textContent;
+            navigator.clipboard.writeText(result);
+            alert('已复制到剪贴板');
+        }
+
+        // Initialize
+        parseJson();
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片 Base64 转换 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #f59e0b, #f97316); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .tab { flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .tab.active { background: var(--accent); border-color: var(--accent); }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover { border-color: var(--accent); }
+        .drop-zone input { display: none; }
+        textarea { width: 100%; height: 200px; padding: 1rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-family: monospace; font-size: 0.85rem; resize: vertical; }
+        .preview { text-align: center; margin: 1rem 0; }
+        .preview img { max-width: 100%; max-height: 300px; border-radius: 0.5rem; }
+        .info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .btn-group { display: flex; gap: 0.75rem; }
+        .btn { flex: 1; padding: 0.75rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .output-options { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .option-btn { padding: 0.375rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 0.375rem; color: var(--text-primary); cursor: pointer; font-size: 0.85rem; }
+        .option-btn.active { background: var(--accent); border-color: var(--accent); }
+        .hidden { display: none; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🔄 图片 Base64 转换</h1>
+        <p>图片与 Base64 编码互转</p>
+    </div>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('encode')">图片 → Base64</button>
+            <button class="tab" onclick="switchTab('decode')">Base64 → 图片</button>
+        </div>
+        
+        <!-- Encode Tab -->
+        <div id="encodeTab">
+            <div class="card">
+                <div class="drop-zone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="image/*" onchange="encodeImage(this.files[0])">
+                    <div style="font-size: 3rem;">📷</div>
+                    <p style="color: var(--text-secondary);">点击或拖放图片</p>
+                </div>
+                <div class="preview hidden" id="encodePreview">
+                    <img id="previewImg" alt="Preview">
+                    <div class="info" id="imageInfo"></div>
+                </div>
+            </div>
+            
+            <div class="card hidden" id="encodeResult">
+                <div class="output-options">
+                    <span style="color: var(--text-secondary); font-size: 0.85rem;">输出格式:</span>
+                    <button class="option-btn active" onclick="setFormat('dataurl')">Data URL</button>
+                    <button class="option-btn" onclick="setFormat('base64')">纯 Base64</button>
+                    <button class="option-btn" onclick="setFormat('html')">HTML &lt;img&gt;</button>
+                    <button class="option-btn" onclick="setFormat('css')">CSS background</button>
+                </div>
+                <textarea id="encodeOutput" readonly onclick="copyOutput()"></textarea>
+                <div class="info" id="outputInfo"></div>
+                <div class="btn-group" style="margin-top: 1rem;">
+                    <button class="btn btn-primary" onclick="copyOutput()">📋 复制</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Decode Tab -->
+        <div id="decodeTab" class="hidden">
+            <div class="card">
+                <textarea id="base64Input" placeholder="粘贴 Base64 字符串或 Data URL..." oninput="decodeBase64()"></textarea>
+            </div>
+            <div class="card hidden" id="decodeResult">
+                <div class="preview">
+                    <img id="decodedImg" alt="Decoded">
+                    <div class="info" id="decodedInfo"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="downloadDecoded()">💾 下载图片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">已复制到剪贴板</div>
+    <script>
+        let currentBase64 = '';
+        let currentDataUrl = '';
+        let outputFormat = 'dataurl';
+        
+        const dropZone = document.querySelector('.drop-zone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+        dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '');
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '';
+            encodeImage(e.dataTransfer.files[0]);
+        });
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && tab === 'encode') || (i === 1 && tab === 'decode')));
+            document.getElementById('encodeTab').classList.toggle('hidden', tab !== 'encode');
+            document.getElementById('decodeTab').classList.toggle('hidden', tab !== 'decode');
+        }
+        
+        function encodeImage(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentDataUrl = e.target.result;
+                currentBase64 = currentDataUrl.split(',')[1];
+                
+                document.getElementById('previewImg').src = currentDataUrl;
+                document.getElementById('encodePreview').classList.remove('hidden');
+                document.getElementById('encodeResult').classList.remove('hidden');
+                
+                const img = new Image();
+                img.onload = () => {
+                    document.getElementById('imageInfo').textContent = `${img.width} × ${img.height} | ${file.type} | ${(file.size / 1024).toFixed(1)} KB`;
+                };
+                img.src = currentDataUrl;
+                
+                updateOutput();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function setFormat(format) {
+            outputFormat = format;
+            document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateOutput();
+        }
+        
+        function updateOutput() {
+            let output;
+            switch (outputFormat) {
+                case 'dataurl':
+                    output = currentDataUrl;
+                    break;
+                case 'base64':
+                    output = currentBase64;
+                    break;
+                case 'html':
+                    output = `<img src="${currentDataUrl}" alt="image">`;
+                    break;
+                case 'css':
+                    output = `background-image: url(${currentDataUrl});`;
+                    break;
+            }
+            document.getElementById('encodeOutput').value = output;
+            document.getElementById('outputInfo').textContent = `长度: ${output.length.toLocaleString()} 字符`;
+        }
+        
+        function copyOutput() {
+            const output = document.getElementById('encodeOutput').value;
+            navigator.clipboard.writeText(output);
+            document.getElementById('toast').classList.add('show');
+            setTimeout(() => document.getElementById('toast').classList.remove('show'), 2000);
+        }
+        
+        function decodeBase64() {
+            const input = document.getElementById('base64Input').value.trim();
+            if (!input) {
+                document.getElementById('decodeResult').classList.add('hidden');
+                return;
+            }
+            
+            let dataUrl = input;
+            if (!input.startsWith('data:')) {
+                dataUrl = 'data:image/png;base64,' + input;
+            }
+            
+            const img = document.getElementById('decodedImg');
+            img.onload = () => {
+                document.getElementById('decodeResult').classList.remove('hidden');
+                document.getElementById('decodedInfo').textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+            };
+            img.onerror = () => {
+                document.getElementById('decodeResult').classList.add('hidden');
+            };
+            img.src = dataUrl;
+        }
+        
+        function downloadDecoded() {
+            const img = document.getElementById('decodedImg');
+            const link = document.createElement('a');
+            link.download = 'decoded_image.png';
+            link.href = img.src;
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

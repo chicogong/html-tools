@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长度单位转换器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --text-primary: #ffffff;
+            --text-secondary: #8888aa;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --border: #2a2a3a;
+            --success: #22c55e;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .input-row { display: flex; gap: 1rem; }
+        .input-row input { flex: 1; }
+        .input-row select { width: 150px; }
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .result-item {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .result-item:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .result-item .unit { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .result-item .value { font-size: 1.1rem; font-weight: 600; word-break: break-all; }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--success);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>📏 长度单位转换器</h1>
+        <p>支持公制、英制等多种长度单位互转</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="input-group">
+                <label>输入长度值</label>
+                <div class="input-row">
+                    <input type="number" id="inputValue" value="1" oninput="convert()">
+                    <select id="inputUnit" onchange="convert()">
+                        <option value="m">米 (m)</option>
+                        <option value="km">千米 (km)</option>
+                        <option value="cm">厘米 (cm)</option>
+                        <option value="mm">毫米 (mm)</option>
+                        <option value="um">微米 (μm)</option>
+                        <option value="nm">纳米 (nm)</option>
+                        <option value="mi">英里 (mi)</option>
+                        <option value="yd">码 (yd)</option>
+                        <option value="ft">英尺 (ft)</option>
+                        <option value="in">英寸 (in)</option>
+                        <option value="nmi">海里 (nmi)</option>
+                        <option value="li">里</option>
+                        <option value="zhang">丈</option>
+                        <option value="chi">尺</option>
+                        <option value="cun">寸</option>
+                    </select>
+                </div>
+            </div>
+            <div class="results-grid" id="results"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast">已复制到剪贴板</div>
+    <script>
+        const units = {
+            m: { name: '米 (m)', factor: 1 },
+            km: { name: '千米 (km)', factor: 1000 },
+            cm: { name: '厘米 (cm)', factor: 0.01 },
+            mm: { name: '毫米 (mm)', factor: 0.001 },
+            um: { name: '微米 (μm)', factor: 1e-6 },
+            nm: { name: '纳米 (nm)', factor: 1e-9 },
+            mi: { name: '英里 (mi)', factor: 1609.344 },
+            yd: { name: '码 (yd)', factor: 0.9144 },
+            ft: { name: '英尺 (ft)', factor: 0.3048 },
+            in: { name: '英寸 (in)', factor: 0.0254 },
+            nmi: { name: '海里 (nmi)', factor: 1852 },
+            li: { name: '里', factor: 500 },
+            zhang: { name: '丈', factor: 10/3 },
+            chi: { name: '尺', factor: 1/3 },
+            cun: { name: '寸', factor: 1/30 }
+        };
+
+        function convert() {
+            const value = parseFloat(document.getElementById('inputValue').value) || 0;
+            const unit = document.getElementById('inputUnit').value;
+            const meters = value * units[unit].factor;
+            
+            let html = '';
+            for (const [key, data] of Object.entries(units)) {
+                const result = meters / data.factor;
+                const formatted = result < 0.0001 || result > 1e10 ? result.toExponential(6) : 
+                    result.toFixed(result < 1 ? 8 : 4).replace(/\.?0+$/, '');
+                html += `<div class="result-item" onclick="copyValue('${formatted}')">
+                    <div class="unit">${data.name}</div>
+                    <div class="value">${formatted}</div>
+                </div>`;
+            }
+            document.getElementById('results').innerHTML = html;
+        }
+
+        function copyValue(value) {
+            navigator.clipboard.writeText(value);
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const theme = body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        convert();
+    </script>
+</body>
+</html>

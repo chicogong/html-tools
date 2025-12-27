@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片尺寸调整 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #0ea5e9, #06b6d4); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover { border-color: var(--accent); }
+        .drop-zone input { display: none; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        input[type="number"], select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 1rem; }
+        .lock-btn { padding: 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer; font-size: 1.2rem; }
+        .lock-btn.locked { background: var(--accent); border-color: var(--accent); }
+        .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .preset-btn { padding: 0.5rem 1rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text-primary); cursor: pointer; font-size: 0.85rem; }
+        .preset-btn:hover { border-color: var(--accent); }
+        .preview-box { background: var(--bg-tertiary); border-radius: 0.5rem; padding: 1rem; text-align: center; }
+        .preview-box img { max-width: 100%; max-height: 300px; }
+        .info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; }
+        .btn-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .btn { flex: 1; padding: 0.75rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>📐 图片尺寸调整</h1>
+        <p>调整图片宽高尺寸</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                <div style="font-size: 3rem;">🖼️</div>
+                <p style="color: var(--text-secondary);">点击或拖放图片</p>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="resizeSection">
+            <div class="presets">
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">预设尺寸:</span>
+                <button class="preset-btn" onclick="setSize(1920, 1080)">1920×1080</button>
+                <button class="preset-btn" onclick="setSize(1280, 720)">1280×720</button>
+                <button class="preset-btn" onclick="setSize(800, 600)">800×600</button>
+                <button class="preset-btn" onclick="setSize(640, 480)">640×480</button>
+                <button class="preset-btn" onclick="setSize(512, 512)">512×512</button>
+                <button class="preset-btn" onclick="setSize(256, 256)">256×256</button>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>宽度 (px)</label>
+                    <input type="number" id="width" value="800" oninput="onSizeChange('width')">
+                </div>
+                <div class="control-group" style="display: flex; align-items: flex-end;">
+                    <button class="lock-btn locked" id="lockBtn" onclick="toggleLock()">🔗</button>
+                </div>
+                <div class="control-group">
+                    <label>高度 (px)</label>
+                    <input type="number" id="height" value="600" oninput="onSizeChange('height')">
+                </div>
+                <div class="control-group">
+                    <label>输出格式</label>
+                    <select id="format">
+                        <option value="image/png">PNG</option>
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/webp">WebP</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="preview-box">
+                <img id="preview" alt="Preview">
+                <div class="info" id="info"></div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="resize()">📐 调整尺寸</button>
+                <button class="btn btn-success hidden" id="downloadBtn" onclick="download()">💾 下载</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let img = null;
+        let originalW, originalH;
+        let aspectLocked = true;
+        let resizedBlob = null;
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            img = new Image();
+            img.onload = () => {
+                originalW = img.width;
+                originalH = img.height;
+                document.getElementById('width').value = originalW;
+                document.getElementById('height').value = originalH;
+                document.getElementById('preview').src = img.src;
+                document.getElementById('info').textContent = `原始尺寸: ${originalW} × ${originalH}`;
+                document.getElementById('resizeSection').classList.remove('hidden');
+                document.getElementById('downloadBtn').classList.add('hidden');
+            };
+            img.src = URL.createObjectURL(file);
+        }
+        
+        function toggleLock() {
+            aspectLocked = !aspectLocked;
+            document.getElementById('lockBtn').classList.toggle('locked', aspectLocked);
+        }
+        
+        function onSizeChange(changed) {
+            if (!aspectLocked || !originalW || !originalH) return;
+            
+            const ratio = originalW / originalH;
+            if (changed === 'width') {
+                const w = parseInt(document.getElementById('width').value) || 0;
+                document.getElementById('height').value = Math.round(w / ratio);
+            } else {
+                const h = parseInt(document.getElementById('height').value) || 0;
+                document.getElementById('width').value = Math.round(h * ratio);
+            }
+        }
+        
+        function setSize(w, h) {
+            document.getElementById('width').value = w;
+            document.getElementById('height').value = h;
+        }
+        
+        function resize() {
+            if (!img) return;
+            
+            const w = parseInt(document.getElementById('width').value) || originalW;
+            const h = parseInt(document.getElementById('height').value) || originalH;
+            const format = document.getElementById('format').value;
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            
+            canvas.toBlob((blob) => {
+                resizedBlob = blob;
+                document.getElementById('preview').src = URL.createObjectURL(blob);
+                document.getElementById('info').textContent = `新尺寸: ${w} × ${h} | 大小: ${(blob.size / 1024).toFixed(1)} KB`;
+                document.getElementById('downloadBtn').classList.remove('hidden');
+            }, format);
+        }
+        
+        function download() {
+            if (!resizedBlob) return;
+            const format = document.getElementById('format').value;
+            const ext = format.split('/')[1];
+            const link = document.createElement('a');
+            link.download = `resized_image.${ext}`;
+            link.href = URL.createObjectURL(resizedBlob);
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP 地址计算器 - 在线工具</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #3b82f6; }
+        [data-theme="dark"] { --primary-color: #60a5fa; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; font-size: 1rem; }
+        .back-link { color: var(--primary-color); text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--primary-color); font-size: 0.9rem; }
+        .input-section { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .input-section h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .input-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+        .input-group { flex: 1; min-width: 200px; }
+        .input-group label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--muted-color); }
+        .input-group input, .input-group select { width: 100%; font-family: 'SF Mono', Monaco, monospace; }
+        .quick-masks { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+        .quick-masks button { font-size: 0.75rem; padding: 0.25rem 0.5rem; background: var(--code-background-color); border: 1px solid var(--muted-border-color); border-radius: 4px; cursor: pointer; }
+        .quick-masks button:hover { background: var(--primary-color); color: white; }
+        .result-section { display: none; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .result-card { background: var(--card-background-color); border-radius: 12px; padding: 1rem; }
+        .result-card h4 { margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--muted-color); display: flex; justify-content: space-between; align-items: center; }
+        .result-card .copy-btn { font-size: 0.7rem; padding: 0.2rem 0.4rem; }
+        .result-value { font-family: 'SF Mono', Monaco, monospace; font-size: 1.1rem; color: var(--primary-color); word-break: break-all; }
+        .result-value.small { font-size: 0.9rem; }
+        .binary-display { font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; background: var(--code-background-color); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; word-break: break-all; }
+        .binary-display .octet { display: inline-block; margin-right: 0.5rem; }
+        .binary-display .network { color: var(--primary-color); }
+        .binary-display .host { color: #10b981; }
+        .info-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .info-table th, .info-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--muted-border-color); }
+        .info-table th { color: var(--muted-color); font-weight: 500; width: 40%; }
+        .info-table td { font-family: 'SF Mono', Monaco, monospace; }
+        .class-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+        .class-badge.a { background: #ef444420; color: #ef4444; }
+        .class-badge.b { background: #f59e0b20; color: #f59e0b; }
+        .class-badge.c { background: #10b98120; color: #10b981; }
+        .class-badge.d { background: #8b5cf620; color: #8b5cf6; }
+        .class-badge.e { background: #6b728020; color: #6b7280; }
+        .special-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--primary-color); color: white; margin-left: 0.5rem; }
+        .subnet-section { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; }
+        .subnet-section h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .hosts-table { max-height: 300px; overflow-y: auto; }
+        .hosts-table table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .hosts-table th, .hosts-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--muted-border-color); font-family: 'SF Mono', Monaco, monospace; }
+        .hosts-table th { position: sticky; top: 0; background: var(--card-background-color); }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: #10b981; color: white; border-radius: 8px; font-weight: 500; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 IP 地址计算器</h1>
+            <div class="header-actions">
+                <a href="/" class="back-link">← 返回首页</a>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </header>
+
+        <div class="input-section">
+            <h3>输入 IP 地址</h3>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>IP 地址</label>
+                    <input type="text" id="ipInput" placeholder="192.168.1.100" oninput="calculate()">
+                </div>
+                <div class="input-group">
+                    <label>子网掩码 (CIDR 或点分)</label>
+                    <input type="text" id="maskInput" placeholder="/24 或 255.255.255.0" oninput="calculate()">
+                </div>
+                <button onclick="calculate()">计算</button>
+            </div>
+            <div class="quick-masks">
+                <span style="color: var(--muted-color); font-size: 0.8rem;">常用掩码:</span>
+                <button onclick="setMask('/8')">/8</button>
+                <button onclick="setMask('/16')">/16</button>
+                <button onclick="setMask('/24')">/24</button>
+                <button onclick="setMask('/25')">/25</button>
+                <button onclick="setMask('/26')">/26</button>
+                <button onclick="setMask('/27')">/27</button>
+                <button onclick="setMask('/28')">/28</button>
+                <button onclick="setMask('/29')">/29</button>
+                <button onclick="setMask('/30')">/30</button>
+            </div>
+        </div>
+
+        <div class="result-section" id="result">
+            <div class="result-grid">
+                <div class="result-card">
+                    <h4>网络地址 <button class="copy-btn secondary outline" onclick="copyValue('networkAddr')">复制</button></h4>
+                    <div class="result-value" id="networkAddr"></div>
+                </div>
+                <div class="result-card">
+                    <h4>广播地址 <button class="copy-btn secondary outline" onclick="copyValue('broadcastAddr')">复制</button></h4>
+                    <div class="result-value" id="broadcastAddr"></div>
+                </div>
+                <div class="result-card">
+                    <h4>可用 IP 范围 <button class="copy-btn secondary outline" onclick="copyValue('ipRange')">复制</button></h4>
+                    <div class="result-value small" id="ipRange"></div>
+                </div>
+                <div class="result-card">
+                    <h4>子网掩码 <button class="copy-btn secondary outline" onclick="copyValue('subnetMask')">复制</button></h4>
+                    <div class="result-value" id="subnetMask"></div>
+                </div>
+            </div>
+
+            <div class="result-card" style="margin-bottom: 1.5rem;">
+                <h4>二进制表示</h4>
+                <div class="binary-display" id="binaryDisplay"></div>
+            </div>
+
+            <div class="result-card">
+                <table class="info-table">
+                    <tr>
+                        <th>IP 地址类别</th>
+                        <td id="ipClass"></td>
+                    </tr>
+                    <tr>
+                        <th>CIDR 表示</th>
+                        <td id="cidrNotation"></td>
+                    </tr>
+                    <tr>
+                        <th>可用主机数</th>
+                        <td id="hostCount"></td>
+                    </tr>
+                    <tr>
+                        <th>子网数量 (/16 基准)</th>
+                        <td id="subnetCount"></td>
+                    </tr>
+                    <tr>
+                        <th>通配符掩码</th>
+                        <td id="wildcardMask"></td>
+                    </tr>
+                    <tr>
+                        <th>IP 类型</th>
+                        <td id="ipType"></td>
+                    </tr>
+                    <tr>
+                        <th>十六进制</th>
+                        <td id="hexValue"></td>
+                    </tr>
+                    <tr>
+                        <th>十进制</th>
+                        <td id="decValue"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="subnet-section" id="subnetSection">
+                <h3>子网划分 (显示前 16 个)</h3>
+                <div class="hosts-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>网络地址</th>
+                                <th>可用范围</th>
+                                <th>广播地址</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subnetTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        function setMask(mask) {
+            document.getElementById('maskInput').value = mask;
+            calculate();
+        }
+
+        function ipToInt(ip) {
+            const parts = ip.split('.').map(Number);
+            return (parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
+        }
+
+        function intToIp(int) {
+            return [
+                (int >>> 24) & 255,
+                (int >>> 16) & 255,
+                (int >>> 8) & 255,
+                int & 255
+            ].join('.');
+        }
+
+        function cidrToMask(cidr) {
+            const mask = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
+            return intToIp(mask);
+        }
+
+        function maskToCidr(mask) {
+            const int = ipToInt(mask);
+            let cidr = 0;
+            let temp = int;
+            while (temp & 0x80000000) {
+                cidr++;
+                temp <<= 1;
+            }
+            return cidr;
+        }
+
+        function parseMask(input) {
+            input = input.trim();
+            if (input.startsWith('/')) {
+                const cidr = parseInt(input.slice(1));
+                if (cidr >= 0 && cidr <= 32) {
+                    return { cidr, mask: cidrToMask(cidr) };
+                }
+            } else if (/^\d+$/.test(input)) {
+                const cidr = parseInt(input);
+                if (cidr >= 0 && cidr <= 32) {
+                    return { cidr, mask: cidrToMask(cidr) };
+                }
+            } else if (/^\d+\.\d+\.\d+\.\d+$/.test(input)) {
+                const cidr = maskToCidr(input);
+                return { cidr, mask: input };
+            }
+            return null;
+        }
+
+        function getIpClass(firstOctet) {
+            if (firstOctet < 128) return { class: 'A', badge: 'a' };
+            if (firstOctet < 192) return { class: 'B', badge: 'b' };
+            if (firstOctet < 224) return { class: 'C', badge: 'c' };
+            if (firstOctet < 240) return { class: 'D (组播)', badge: 'd' };
+            return { class: 'E (保留)', badge: 'e' };
+        }
+
+        function getIpType(ip) {
+            const parts = ip.split('.').map(Number);
+            const types = [];
+
+            // Private ranges
+            if (parts[0] === 10) types.push('私有地址');
+            else if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) types.push('私有地址');
+            else if (parts[0] === 192 && parts[1] === 168) types.push('私有地址');
+            
+            // Special ranges
+            if (parts[0] === 127) types.push('回环地址');
+            if (parts[0] === 169 && parts[1] === 254) types.push('链路本地');
+            if (parts[0] >= 224 && parts[0] <= 239) types.push('组播地址');
+            if (parts[0] >= 240) types.push('保留地址');
+            if (parts[0] === 0) types.push('当前网络');
+
+            if (types.length === 0) types.push('公网地址');
+            return types.join(', ');
+        }
+
+        function toBinary(ip, cidr) {
+            const parts = ip.split('.').map(Number);
+            const binary = parts.map(p => p.toString(2).padStart(8, '0'));
+            
+            let html = '';
+            let bitCount = 0;
+            binary.forEach((octet, i) => {
+                html += '<span class="octet">';
+                for (let j = 0; j < 8; j++) {
+                    const isNetwork = bitCount < cidr;
+                    html += `<span class="${isNetwork ? 'network' : 'host'}">${octet[j]}</span>`;
+                    bitCount++;
+                }
+                html += '</span>';
+                if (i < 3) html += '.';
+            });
+            return html;
+        }
+
+        function calculate() {
+            const ipInput = document.getElementById('ipInput').value.trim();
+            const maskInput = document.getElementById('maskInput').value.trim();
+
+            if (!ipInput || !maskInput) {
+                document.getElementById('result').style.display = 'none';
+                return;
+            }
+
+            // Validate IP
+            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipRegex.test(ipInput)) {
+                document.getElementById('result').style.display = 'none';
+                return;
+            }
+
+            const ipParts = ipInput.split('.').map(Number);
+            if (ipParts.some(p => p > 255)) {
+                document.getElementById('result').style.display = 'none';
+                return;
+            }
+
+            const maskData = parseMask(maskInput);
+            if (!maskData) {
+                document.getElementById('result').style.display = 'none';
+                return;
+            }
+
+            const { cidr, mask } = maskData;
+            const ipInt = ipToInt(ipInput);
+            const maskInt = ipToInt(mask);
+
+            // Calculate addresses
+            const networkInt = (ipInt & maskInt) >>> 0;
+            const broadcastInt = (networkInt | (~maskInt >>> 0)) >>> 0;
+            const firstHostInt = networkInt + 1;
+            const lastHostInt = broadcastInt - 1;
+
+            const networkAddr = intToIp(networkInt);
+            const broadcastAddr = intToIp(broadcastInt);
+            const firstHost = intToIp(firstHostInt);
+            const lastHost = intToIp(lastHostInt);
+
+            // Host count
+            const hostBits = 32 - cidr;
+            const hostCount = hostBits >= 2 ? Math.pow(2, hostBits) - 2 : 0;
+
+            // Wildcard mask
+            const wildcardInt = (~maskInt) >>> 0;
+            const wildcardMask = intToIp(wildcardInt);
+
+            // IP class
+            const ipClass = getIpClass(ipParts[0]);
+
+            // Subnet count relative to class
+            let subnetCount = '-';
+            if (cidr >= 8 && ipParts[0] < 128) {
+                subnetCount = Math.pow(2, cidr - 8);
+            } else if (cidr >= 16 && ipParts[0] >= 128 && ipParts[0] < 192) {
+                subnetCount = Math.pow(2, cidr - 16);
+            } else if (cidr >= 24 && ipParts[0] >= 192 && ipParts[0] < 224) {
+                subnetCount = Math.pow(2, cidr - 24);
+            }
+
+            // Hex and decimal
+            const hexValue = '0x' + ipInt.toString(16).toUpperCase().padStart(8, '0');
+            const decValue = ipInt.toString();
+
+            // Update display
+            document.getElementById('networkAddr').textContent = networkAddr;
+            document.getElementById('broadcastAddr').textContent = broadcastAddr;
+            document.getElementById('ipRange').textContent = hostCount > 0 ? `${firstHost} - ${lastHost}` : 'N/A';
+            document.getElementById('subnetMask').textContent = mask;
+            document.getElementById('binaryDisplay').innerHTML = toBinary(ipInput, cidr);
+            document.getElementById('ipClass').innerHTML = `<span class="class-badge ${ipClass.badge}">Class ${ipClass.class}</span>`;
+            document.getElementById('cidrNotation').textContent = `${networkAddr}/${cidr}`;
+            document.getElementById('hostCount').textContent = hostCount.toLocaleString();
+            document.getElementById('subnetCount').textContent = subnetCount.toLocaleString();
+            document.getElementById('wildcardMask').textContent = wildcardMask;
+            document.getElementById('ipType').textContent = getIpType(ipInput);
+            document.getElementById('hexValue').textContent = hexValue;
+            document.getElementById('decValue').textContent = decValue;
+
+            // Generate subnet table
+            generateSubnetTable(networkInt, cidr, hostBits);
+
+            document.getElementById('result').style.display = 'block';
+        }
+
+        function generateSubnetTable(networkInt, cidr, hostBits) {
+            const tbody = document.getElementById('subnetTable');
+            const subnetSize = Math.pow(2, hostBits);
+            const maxSubnets = Math.min(16, Math.pow(2, Math.max(0, 32 - cidr - hostBits + 4)));
+
+            let html = '';
+            for (let i = 0; i < Math.min(maxSubnets, 16); i++) {
+                const netStart = networkInt + (i * subnetSize);
+                const netEnd = netStart + subnetSize - 1;
+                const firstHost = netStart + 1;
+                const lastHost = netEnd - 1;
+
+                html += `<tr>
+                    <td>${i + 1}</td>
+                    <td>${intToIp(netStart)}</td>
+                    <td>${hostBits >= 2 ? `${intToIp(firstHost)} - ${intToIp(lastHost)}` : 'N/A'}</td>
+                    <td>${intToIp(netEnd)}</td>
+                </tr>`;
+            }
+
+            tbody.innerHTML = html;
+            document.getElementById('subnetSection').style.display = hostBits >= 2 ? 'block' : 'none';
+        }
+
+        function copyValue(id) {
+            const value = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(value);
+            showToast('已复制');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Init with example
+        document.getElementById('ipInput').value = '192.168.1.100';
+        document.getElementById('maskInput').value = '/24';
+        calculate();
+    </script>
+</body>
+</html>

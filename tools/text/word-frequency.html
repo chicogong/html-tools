@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>词频统计工具 | HTML Tools</title>
+    <meta name="description" content="在线词频统计，分析文本中词语出现的频率，生成词频表">
+    <style>
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 2rem; position: relative; }
+        .header h1 { font-size: 2rem; background: linear-gradient(135deg, var(--accent), #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { color: var(--text-secondary); margin-top: 0.5rem; }
+        .back-link { position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+        .theme-toggle { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); width: 40px; height: 40px; border-radius: 10px; cursor: pointer; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        textarea { width: 100%; height: 200px; padding: 1rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); font-size: 0.875rem; resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        .options { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+        .option { display: flex; align-items: center; gap: 0.5rem; }
+        .option input { accent-color: var(--accent); }
+        .option label { color: var(--text-secondary); font-size: 0.875rem; }
+        .btn-group { display: flex; gap: 0.75rem; }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #a855f7); color: white; }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat { background: var(--bg-tertiary); border-radius: 10px; padding: 1rem; text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); }
+        .word-list { max-height: 400px; overflow-y: auto; }
+        .word-item { display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border); }
+        .word-item:last-child { border-bottom: none; }
+        .word-rank { width: 40px; color: var(--text-secondary); font-size: 0.875rem; }
+        .word-text { flex: 1; font-weight: 500; }
+        .word-count { margin-right: 1rem; color: var(--accent); font-weight: 600; }
+        .word-bar { width: 150px; height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden; }
+        .word-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #a855f7); border-radius: 4px; }
+        @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } .word-bar { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../../index.html" class="back-link">← 返回</a>
+            <h1>📊 词频统计工具</h1>
+            <p>分析文本中词语出现的频率</p>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </div>
+
+        <div class="card">
+            <textarea id="input" placeholder="在此输入或粘贴要分析的文本...">人工智能正在改变世界。人工智能技术的发展使得机器学习和深度学习成为可能。人工智能在医疗、金融、教育等领域都有广泛的应用。未来，人工智能将继续推动社会的进步和发展。</textarea>
+            <div class="options">
+                <div class="option">
+                    <input type="checkbox" id="ignoreCase" checked>
+                    <label for="ignoreCase">忽略大小写</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="ignoreNumbers">
+                    <label for="ignoreNumbers">忽略数字</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="ignorePunctuation" checked>
+                    <label for="ignorePunctuation">忽略标点</label>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="analyze()">📊 分析</button>
+                <button class="btn btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="totalWords">0</div><div class="stat-label">总词数</div></div>
+            <div class="stat"><div class="stat-value" id="uniqueWords">0</div><div class="stat-label">不重复词</div></div>
+            <div class="stat"><div class="stat-value" id="avgLength">0</div><div class="stat-label">平均词长</div></div>
+            <div class="stat"><div class="stat-value" id="topWord">-</div><div class="stat-label">最高频词</div></div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">词频排行</h3>
+            <div class="word-list" id="wordList"></div>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+
+        function analyze() {
+            let text = document.getElementById('input').value;
+            const ignoreCase = document.getElementById('ignoreCase').checked;
+            const ignoreNumbers = document.getElementById('ignoreNumbers').checked;
+            const ignorePunctuation = document.getElementById('ignorePunctuation').checked;
+
+            if (ignoreCase) text = text.toLowerCase();
+            if (ignorePunctuation) text = text.replace(/[^\w\s\u4e00-\u9fa5]/g, ' ');
+            if (ignoreNumbers) text = text.replace(/\d+/g, '');
+
+            // Split into words (handle both Chinese and English)
+            const words = text.split(/\s+/).filter(w => w.length > 0);
+            
+            // For Chinese, also split individual characters
+            const allWords = [];
+            words.forEach(word => {
+                if (/[\u4e00-\u9fa5]/.test(word)) {
+                    // Chinese text - split by characters and also keep the whole word
+                    allWords.push(...word.split(''));
+                } else {
+                    allWords.push(word);
+                }
+            });
+
+            // Count frequencies
+            const freq = {};
+            allWords.forEach(word => {
+                if (word.length > 0) {
+                    freq[word] = (freq[word] || 0) + 1;
+                }
+            });
+
+            // Sort by frequency
+            const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+            const maxCount = sorted.length > 0 ? sorted[0][1] : 0;
+
+            // Update stats
+            document.getElementById('totalWords').textContent = allWords.length;
+            document.getElementById('uniqueWords').textContent = sorted.length;
+            const avgLen = allWords.length > 0 ? (allWords.join('').length / allWords.length).toFixed(1) : 0;
+            document.getElementById('avgLength').textContent = avgLen;
+            document.getElementById('topWord').textContent = sorted.length > 0 ? sorted[0][0] : '-';
+
+            // Render word list
+            const html = sorted.slice(0, 50).map(([word, count], i) => `
+                <div class="word-item">
+                    <span class="word-rank">${i + 1}</span>
+                    <span class="word-text">${escapeHtml(word)}</span>
+                    <span class="word-count">${count}</span>
+                    <div class="word-bar">
+                        <div class="word-bar-fill" style="width: ${(count / maxCount * 100)}%"></div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('wordList').innerHTML = html || '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">暂无数据</p>';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('wordList').innerHTML = '';
+            document.getElementById('totalWords').textContent = '0';
+            document.getElementById('uniqueWords').textContent = '0';
+            document.getElementById('avgLength').textContent = '0';
+            document.getElementById('topWord').textContent = '-';
+        }
+
+        analyze();
+    </script>
+</body>
+</html>

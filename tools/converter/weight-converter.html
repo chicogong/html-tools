@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重量单位转换器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --text-primary: #ffffff;
+            --text-secondary: #8888aa;
+            --accent: #6366f1;
+            --border: #2a2a3a;
+            --success: #22c55e;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; }
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .input-row { display: flex; gap: 1rem; }
+        .input-row input { flex: 1; }
+        .input-row select { width: 150px; }
+        input, select { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .result-item { background: var(--bg-tertiary); padding: 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; }
+        .result-item:hover { transform: translateY(-2px); }
+        .result-item .unit { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .result-item .value { font-size: 1.1rem; font-weight: 600; word-break: break-all; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; opacity: 0; transition: all 0.3s; z-index: 1000; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>⚖️ 重量单位转换器</h1>
+        <p>公制、英制、中国市制重量单位互转</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="input-group">
+                <label>输入重量值</label>
+                <div class="input-row">
+                    <input type="number" id="inputValue" value="1" oninput="convert()">
+                    <select id="inputUnit" onchange="convert()">
+                        <option value="kg">千克 (kg)</option>
+                        <option value="g">克 (g)</option>
+                        <option value="mg">毫克 (mg)</option>
+                        <option value="t">公吨 (t)</option>
+                        <option value="lb">磅 (lb)</option>
+                        <option value="oz">盎司 (oz)</option>
+                        <option value="st">英石 (st)</option>
+                        <option value="jin">斤</option>
+                        <option value="liang">两</option>
+                        <option value="qian">钱</option>
+                        <option value="dan">担</option>
+                        <option value="ct">克拉 (ct)</option>
+                        <option value="grain">格令</option>
+                    </select>
+                </div>
+            </div>
+            <div class="results-grid" id="results"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast">已复制到剪贴板</div>
+    <script>
+        const units = {
+            kg: { name: '千克 (kg)', factor: 1 },
+            g: { name: '克 (g)', factor: 0.001 },
+            mg: { name: '毫克 (mg)', factor: 1e-6 },
+            t: { name: '公吨 (t)', factor: 1000 },
+            lb: { name: '磅 (lb)', factor: 0.45359237 },
+            oz: { name: '盎司 (oz)', factor: 0.028349523 },
+            st: { name: '英石 (st)', factor: 6.35029318 },
+            jin: { name: '斤', factor: 0.5 },
+            liang: { name: '两', factor: 0.05 },
+            qian: { name: '钱', factor: 0.005 },
+            dan: { name: '担', factor: 50 },
+            ct: { name: '克拉 (ct)', factor: 0.0002 },
+            grain: { name: '格令', factor: 0.00006479891 }
+        };
+
+        function convert() {
+            const value = parseFloat(document.getElementById('inputValue').value) || 0;
+            const unit = document.getElementById('inputUnit').value;
+            const kg = value * units[unit].factor;
+            
+            let html = '';
+            for (const [key, data] of Object.entries(units)) {
+                const result = kg / data.factor;
+                const formatted = result < 0.0001 || result > 1e10 ? result.toExponential(6) : 
+                    result.toFixed(result < 1 ? 8 : 4).replace(/\.?0+$/, '');
+                html += `<div class="result-item" onclick="copyValue('${formatted}')">
+                    <div class="unit">${data.name}</div>
+                    <div class="value">${formatted}</div>
+                </div>`;
+            }
+            document.getElementById('results').innerHTML = html;
+        }
+
+        function copyValue(value) {
+            navigator.clipboard.writeText(value);
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function toggleTheme() {
+            const theme = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        convert();
+    </script>
+</body>
+</html>

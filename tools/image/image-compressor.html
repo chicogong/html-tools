@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片压缩器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #f472b6, #ec4899); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .drop-zone input { display: none; }
+        .drop-zone p { color: var(--text-secondary); margin-top: 0.5rem; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .slider-row { display: flex; align-items: center; gap: 1rem; }
+        .slider-row input[type="range"] { flex: 1; }
+        .slider-row .value { min-width: 50px; font-weight: 600; text-align: right; }
+        select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); }
+        .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+        @media (max-width: 768px) { .preview-grid { grid-template-columns: 1fr; } }
+        .preview-box { background: var(--bg-tertiary); border-radius: 0.5rem; overflow: hidden; }
+        .preview-header { padding: 0.75rem 1rem; background: var(--bg-primary); font-size: 0.85rem; display: flex; justify-content: space-between; }
+        .preview-image { padding: 1rem; display: flex; align-items: center; justify-content: center; min-height: 200px; }
+        .preview-image img { max-width: 100%; max-height: 300px; object-fit: contain; }
+        .stats { display: flex; justify-content: center; gap: 2rem; margin: 1rem 0; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 0.85rem; color: var(--text-secondary); }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🗜️ 图片压缩器</h1>
+        <p>在浏览器中压缩图片，保护隐私</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                <div style="font-size: 3rem;">📷</div>
+                <p>点击选择图片或拖放图片到此处</p>
+                <p style="font-size: 0.85rem;">支持 JPG、PNG、WebP 格式</p>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="compressSection">
+            <div class="controls">
+                <div class="control-group">
+                    <label>压缩质量: <span id="qualityValue">80</span>%</label>
+                    <div class="slider-row">
+                        <input type="range" id="quality" min="10" max="100" value="80" oninput="updateQuality()">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>最大宽度 (px)</label>
+                    <div class="slider-row">
+                        <input type="range" id="maxWidth" min="100" max="4000" value="1920" step="100" oninput="document.getElementById('maxWidthValue').textContent = this.value">
+                        <span class="value" id="maxWidthValue">1920</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>输出格式</label>
+                    <select id="format">
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/png">PNG</option>
+                        <option value="image/webp">WebP</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn btn-primary" onclick="compress()">🗜️ 压缩图片</button>
+            </div>
+            
+            <div class="preview-grid">
+                <div class="preview-box">
+                    <div class="preview-header">
+                        <span>原图</span>
+                        <span id="originalSize">-</span>
+                    </div>
+                    <div class="preview-image">
+                        <img id="originalPreview" alt="Original">
+                    </div>
+                </div>
+                <div class="preview-box">
+                    <div class="preview-header">
+                        <span>压缩后</span>
+                        <span id="compressedSize">-</span>
+                    </div>
+                    <div class="preview-image">
+                        <img id="compressedPreview" alt="Compressed" class="hidden">
+                        <span id="compressPlaceholder" style="color: var(--text-secondary);">等待压缩...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats hidden" id="stats">
+                <div class="stat">
+                    <div class="stat-value" id="reduction">-</div>
+                    <div class="stat-label">体积减少</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="savedSize">-</div>
+                    <div class="stat-label">节省空间</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="btn btn-success hidden" id="downloadBtn" onclick="download()">💾 下载压缩图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let originalFile = null;
+        let compressedBlob = null;
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            originalFile = file;
+            document.getElementById('compressSection').classList.remove('hidden');
+            document.getElementById('originalSize').textContent = formatSize(file.size);
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('originalPreview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            // Reset compressed preview
+            document.getElementById('compressedPreview').classList.add('hidden');
+            document.getElementById('compressPlaceholder').classList.remove('hidden');
+            document.getElementById('stats').classList.add('hidden');
+            document.getElementById('downloadBtn').classList.add('hidden');
+        }
+        
+        function updateQuality() {
+            document.getElementById('qualityValue').textContent = document.getElementById('quality').value;
+        }
+        
+        function compress() {
+            if (!originalFile) return;
+            
+            const quality = parseInt(document.getElementById('quality').value) / 100;
+            const maxWidth = parseInt(document.getElementById('maxWidth').value);
+            const format = document.getElementById('format').value;
+            
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                canvas.toBlob((blob) => {
+                    compressedBlob = blob;
+                    
+                    document.getElementById('compressedPreview').src = URL.createObjectURL(blob);
+                    document.getElementById('compressedPreview').classList.remove('hidden');
+                    document.getElementById('compressPlaceholder').classList.add('hidden');
+                    document.getElementById('compressedSize').textContent = formatSize(blob.size);
+                    
+                    const reduction = ((1 - blob.size / originalFile.size) * 100).toFixed(1);
+                    const saved = originalFile.size - blob.size;
+                    
+                    document.getElementById('reduction').textContent = reduction + '%';
+                    document.getElementById('savedSize').textContent = formatSize(saved);
+                    document.getElementById('stats').classList.remove('hidden');
+                    document.getElementById('downloadBtn').classList.remove('hidden');
+                }, format, quality);
+            };
+            img.src = URL.createObjectURL(originalFile);
+        }
+        
+        function download() {
+            if (!compressedBlob) return;
+            
+            const format = document.getElementById('format').value;
+            const ext = format.split('/')[1];
+            const name = originalFile.name.replace(/\.[^/.]+$/, '') + '_compressed.' + ext;
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(compressedBlob);
+            link.download = name;
+            link.click();
+        }
+        
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟 - Pomodoro Timer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #ef4444; --work-color: #ef4444; --break-color: #10b981; --long-break-color: #3b82f6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 600px; margin: 0 auto; text-align: center; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        header h1 { margin: 0; font-size: 1.75rem; }
+        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; }
+        .timer-display { background: var(--card-background-color); border-radius: 50%; width: 280px; height: 280px; margin: 2rem auto; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1); position: relative; }
+        .timer-display.work { border: 4px solid var(--work-color); }
+        .timer-display.break { border: 4px solid var(--break-color); }
+        .timer-display.long-break { border: 4px solid var(--long-break-color); }
+        .timer-time { font-size: 4rem; font-weight: 700; font-family: 'SF Mono', monospace; }
+        .timer-label { font-size: 1rem; color: var(--muted-color); margin-top: 0.5rem; }
+        .mode-tabs { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
+        .mode-tabs button { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; background: var(--code-background-color); }
+        .mode-tabs button.active { background: var(--primary-color); color: white; }
+        .controls { display: flex; gap: 1rem; justify-content: center; margin: 2rem 0; }
+        .controls button { width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem; border: none; cursor: pointer; }
+        .btn-start { background: var(--work-color); color: white; }
+        .btn-pause { background: #f59e0b; color: white; }
+        .btn-reset { background: var(--muted-color); color: white; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+        .stat-card { background: var(--card-background-color); padding: 1rem; border-radius: 12px; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--primary-color); }
+        .stat-card .label { font-size: 0.8rem; color: var(--muted-color); }
+        .settings { background: var(--card-background-color); padding: 1.5rem; border-radius: 12px; margin-top: 2rem; text-align: left; }
+        .settings h3 { margin-top: 0; }
+        .settings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .settings-grid label { font-size: 0.85rem; }
+        .settings-grid input { width: 100%; text-align: center; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍅 番茄钟</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </header>
+        
+        <div class="mode-tabs">
+            <button class="active" onclick="setMode('work')">专注</button>
+            <button onclick="setMode('break')">短休息</button>
+            <button onclick="setMode('long-break')">长休息</button>
+        </div>
+        
+        <div class="timer-display work" id="timerDisplay">
+            <div class="timer-time" id="timerTime">25:00</div>
+            <div class="timer-label" id="timerLabel">专注时间</div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-reset" onclick="resetTimer()">↺</button>
+            <button class="btn-start" id="startBtn" onclick="toggleTimer()">▶</button>
+            <button class="btn-reset" onclick="skipTimer()">⏭</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="value" id="pomodoroCount">0</div>
+                <div class="label">今日番茄</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="totalMinutes">0</div>
+                <div class="label">专注分钟</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="streak">0</div>
+                <div class="label">连续天数</div>
+            </div>
+        </div>
+        
+        <div class="settings">
+            <h3>⚙️ 设置</h3>
+            <div class="settings-grid">
+                <label>专注时长 (分钟)<input type="number" id="workTime" value="25" min="1" max="60" onchange="updateSettings()"></label>
+                <label>短休息 (分钟)<input type="number" id="breakTime" value="5" min="1" max="30" onchange="updateSettings()"></label>
+                <label>长休息 (分钟)<input type="number" id="longBreakTime" value="15" min="1" max="60" onchange="updateSettings()"></label>
+            </div>
+            <label style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="autoStart" checked> 自动开始下一个
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="soundEnabled" checked> 启用提示音
+            </label>
+        </div>
+    </div>
+    
+    <script>
+        let timer = null;
+        let timeLeft = 25 * 60;
+        let isRunning = false;
+        let mode = 'work';
+        let pomodoroCount = 0;
+        let totalMinutes = 0;
+        
+        const settings = { work: 25, break: 5, longBreak: 15 };
+        const labels = { work: '专注时间', break: '短休息', 'long-break': '长休息' };
+        
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); loadStats(); updateDisplay(); });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        
+        function loadStats() {
+            const today = new Date().toDateString();
+            const saved = localStorage.getItem('pomodoroStats');
+            if (saved) {
+                const stats = JSON.parse(saved);
+                if (stats.date === today) { pomodoroCount = stats.count; totalMinutes = stats.minutes; }
+            }
+            updateStats();
+        }
+        
+        function saveStats() {
+            localStorage.setItem('pomodoroStats', JSON.stringify({ date: new Date().toDateString(), count: pomodoroCount, minutes: totalMinutes }));
+            updateStats();
+        }
+        
+        function updateStats() {
+            document.getElementById('pomodoroCount').textContent = pomodoroCount;
+            document.getElementById('totalMinutes').textContent = totalMinutes;
+        }
+        
+        function setMode(m) {
+            mode = m;
+            document.querySelectorAll('.mode-tabs button').forEach((b, i) => b.classList.toggle('active', ['work', 'break', 'long-break'][i] === m));
+            document.getElementById('timerDisplay').className = 'timer-display ' + m;
+            document.getElementById('timerLabel').textContent = labels[m];
+            timeLeft = (m === 'work' ? settings.work : m === 'break' ? settings.break : settings.longBreak) * 60;
+            if (isRunning) { clearInterval(timer); isRunning = false; document.getElementById('startBtn').textContent = '▶'; }
+            updateDisplay();
+        }
+        
+        function updateDisplay() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            document.getElementById('timerTime').textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            document.title = document.getElementById('timerTime').textContent + ' - 番茄钟';
+        }
+        
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timer);
+                isRunning = false;
+                document.getElementById('startBtn').textContent = '▶';
+                document.getElementById('startBtn').className = 'btn-start';
+            } else {
+                timer = setInterval(tick, 1000);
+                isRunning = true;
+                document.getElementById('startBtn').textContent = '⏸';
+                document.getElementById('startBtn').className = 'btn-pause';
+            }
+        }
+        
+        function tick() {
+            timeLeft--;
+            updateDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                isRunning = false;
+                document.getElementById('startBtn').textContent = '▶';
+                document.getElementById('startBtn').className = 'btn-start';
+                
+                if (document.getElementById('soundEnabled').checked) playSound();
+                
+                if (mode === 'work') {
+                    pomodoroCount++;
+                    totalMinutes += settings.work;
+                    saveStats();
+                    showToast('🍅 完成一个番茄！');
+                    if (document.getElementById('autoStart').checked) {
+                        setMode(pomodoroCount % 4 === 0 ? 'long-break' : 'break');
+                        setTimeout(toggleTimer, 1000);
+                    }
+                } else {
+                    showToast('休息结束，继续加油！');
+                    if (document.getElementById('autoStart').checked) {
+                        setMode('work');
+                        setTimeout(toggleTimer, 1000);
+                    }
+                }
+            }
+        }
+        
+        function resetTimer() { setMode(mode); }
+        function skipTimer() { timeLeft = 0; tick(); }
+        
+        function updateSettings() {
+            settings.work = parseInt(document.getElementById('workTime').value) || 25;
+            settings.break = parseInt(document.getElementById('breakTime').value) || 5;
+            settings.longBreak = parseInt(document.getElementById('longBreakTime').value) || 15;
+            setMode(mode);
+        }
+        
+        function playSound() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 800;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+        }
+        
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS 记录查询工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        header h1 {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--pico-primary);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .input-section {
+            margin-bottom: 2rem;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .input-group input {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .record-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .record-type-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            border: 2px solid var(--pico-primary);
+            background: transparent;
+            color: var(--pico-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .record-type-btn:hover,
+        .record-type-btn.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        
+        .results-section {
+            margin-top: 2rem;
+        }
+        
+        .result-card {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .result-card h4 {
+            margin: 0 0 1rem 0;
+            color: var(--pico-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .record-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .record-table th,
+        .record-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .record-table th {
+            font-weight: 600;
+            background: var(--pico-secondary-background);
+        }
+        
+        .ttl-badge {
+            background: var(--success-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .priority-badge {
+            background: var(--warning-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--pico-primary);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .info-box {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .info-box h4 {
+            margin-top: 0;
+        }
+        
+        .info-box ul {
+            margin-bottom: 0;
+        }
+        
+        .copy-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .record-table {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    
+    <main class="container">
+        <header>
+            <h1>🔍 DNS 记录查询工具</h1>
+            <p>模拟查询域名的各类 DNS 记录，了解 DNS 解析原理</p>
+        </header>
+        
+        <section class="input-section">
+            <div class="input-group">
+                <input type="text" id="domainInput" placeholder="输入域名，如：example.com" value="example.com">
+                <button onclick="lookupDNS()">查询 DNS</button>
+            </div>
+            
+            <div class="record-types">
+                <button class="record-type-btn active" data-type="A">A</button>
+                <button class="record-type-btn active" data-type="AAAA">AAAA</button>
+                <button class="record-type-btn active" data-type="CNAME">CNAME</button>
+                <button class="record-type-btn active" data-type="MX">MX</button>
+                <button class="record-type-btn active" data-type="NS">NS</button>
+                <button class="record-type-btn active" data-type="TXT">TXT</button>
+                <button class="record-type-btn active" data-type="SOA">SOA</button>
+                <button class="record-type-btn" data-type="SRV">SRV</button>
+                <button class="record-type-btn" data-type="CAA">CAA</button>
+            </div>
+            <small>点击选择要查询的记录类型</small>
+        </section>
+        
+        <section class="results-section" id="resultsSection">
+            <!-- 查询结果将显示在这里 -->
+        </section>
+        
+        <div class="info-box">
+            <h4>📚 DNS 记录类型说明</h4>
+            <ul>
+                <li><strong>A 记录</strong> - 将域名映射到 IPv4 地址</li>
+                <li><strong>AAAA 记录</strong> - 将域名映射到 IPv6 地址</li>
+                <li><strong>CNAME 记录</strong> - 别名记录，将域名指向另一个域名</li>
+                <li><strong>MX 记录</strong> - 邮件交换记录，指定邮件服务器</li>
+                <li><strong>NS 记录</strong> - 域名服务器记录，指定 DNS 服务器</li>
+                <li><strong>TXT 记录</strong> - 文本记录，常用于验证和 SPF/DKIM</li>
+                <li><strong>SOA 记录</strong> - 授权起始记录，包含域名管理信息</li>
+                <li><strong>SRV 记录</strong> - 服务记录，指定服务的位置</li>
+                <li><strong>CAA 记录</strong> - 证书颁发机构授权记录</li>
+            </ul>
+        </div>
+    </main>
+    
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // 加载保存的主题
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        
+        // 记录类型按钮切换
+        document.querySelectorAll('.record-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+        
+        // 模拟 DNS 数据生成
+        function generateMockDNSData(domain) {
+            const hash = domain.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0);
+            const ip1 = Math.abs(hash % 256);
+            const ip2 = Math.abs((hash >> 8) % 256);
+            const ip3 = Math.abs((hash >> 16) % 256);
+            const ip4 = Math.abs((hash >> 24) % 256);
+            
+            return {
+                A: [
+                    { name: domain, ttl: 300, value: ip1 + '.' + ip2 + '.' + ip3 + '.' + ip4 },
+                    { name: domain, ttl: 300, value: ip1 + '.' + ip2 + '.' + ip3 + '.' + ((ip4 + 1) % 256) }
+                ],
+                AAAA: [
+                    { name: domain, ttl: 300, value: '2606:4700:' + ip1.toString(16) + '::' + ip2.toString(16) + ':' + ip3.toString(16) }
+                ],
+                CNAME: domain.startsWith('www.') ? [
+                    { name: domain, ttl: 3600, value: domain.replace('www.', '') }
+                ] : [],
+                MX: [
+                    { name: domain, ttl: 3600, priority: 10, value: 'mail1.' + domain },
+                    { name: domain, ttl: 3600, priority: 20, value: 'mail2.' + domain },
+                    { name: domain, ttl: 3600, priority: 30, value: 'mail-backup.' + domain }
+                ],
+                NS: [
+                    { name: domain, ttl: 86400, value: 'ns1.' + domain },
+                    { name: domain, ttl: 86400, value: 'ns2.' + domain }
+                ],
+                TXT: [
+                    { name: domain, ttl: 3600, value: 'v=spf1 include:_spf.' + domain + ' ~all' },
+                    { name: domain, ttl: 3600, value: 'google-site-verification=' + btoa(domain).substring(0, 20) }
+                ],
+                SOA: [
+                    { 
+                        name: domain, 
+                        ttl: 3600, 
+                        mname: 'ns1.' + domain,
+                        rname: 'admin.' + domain,
+                        serial: 2024010101,
+                        refresh: 7200,
+                        retry: 3600,
+                        expire: 1209600,
+                        minimum: 3600
+                    }
+                ],
+                SRV: [
+                    { name: '_sip._tcp.' + domain, ttl: 3600, priority: 10, weight: 5, port: 5060, value: 'sip.' + domain }
+                ],
+                CAA: [
+                    { name: domain, ttl: 3600, flags: 0, tag: 'issue', value: 'letsencrypt.org' },
+                    { name: domain, ttl: 3600, flags: 0, tag: 'issuewild', value: 'letsencrypt.org' }
+                ]
+            };
+        }
+        
+        // DNS 查询
+        async function lookupDNS() {
+            const domain = document.getElementById('domainInput').value.trim();
+            if (!domain) {
+                alert('请输入域名');
+                return;
+            }
+            
+            const selectedTypes = Array.from(document.querySelectorAll('.record-type-btn.active'))
+                .map(btn => btn.dataset.type);
+            
+            if (selectedTypes.length === 0) {
+                alert('请至少选择一种记录类型');
+                return;
+            }
+            
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.textContent = '';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = '查询中...';
+            resultsSection.appendChild(loadingDiv);
+            
+            // 模拟网络延迟
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            const dnsData = generateMockDNSData(domain);
+            resultsSection.textContent = '';
+            
+            const titleEl = document.createElement('h3');
+            titleEl.textContent = '📋 ' + domain + ' 的 DNS 记录';
+            resultsSection.appendChild(titleEl);
+            
+            selectedTypes.forEach(type => {
+                const records = dnsData[type];
+                const card = createRecordCard(type, records, domain);
+                resultsSection.appendChild(card);
+            });
+        }
+        
+        function createRecordCard(type, records, domain) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            
+            const title = document.createElement('h4');
+            title.textContent = '📄 ' + type + ' 记录' + (records && records.length > 0 ? ' (' + records.length + ' 条)' : '');
+            card.appendChild(title);
+            
+            if (!records || records.length === 0) {
+                const noData = document.createElement('p');
+                noData.style.color = 'var(--pico-muted-color)';
+                noData.textContent = '未找到 ' + type + ' 记录';
+                card.appendChild(noData);
+                return card;
+            }
+            
+            const table = document.createElement('table');
+            table.className = 'record-table';
+            
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            let headers = [];
+            switch(type) {
+                case 'A':
+                case 'AAAA':
+                    headers = ['名称', 'TTL', 'IP 地址', ''];
+                    break;
+                case 'CNAME':
+                case 'NS':
+                    headers = ['名称', 'TTL', '目标', ''];
+                    break;
+                case 'MX':
+                    headers = ['名称', 'TTL', '优先级', '邮件服务器', ''];
+                    break;
+                case 'TXT':
+                    headers = ['名称', 'TTL', '文本内容', ''];
+                    break;
+                case 'SRV':
+                    headers = ['名称', 'TTL', '优先级', '权重', '端口', '目标'];
+                    break;
+                case 'CAA':
+                    headers = ['名称', 'TTL', '标志', '标签', '值'];
+                    break;
+                case 'SOA':
+                    break;
+            }
+            
+            if (type !== 'SOA') {
+                headers.forEach(h => {
+                    const th = document.createElement('th');
+                    th.textContent = h;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+            }
+            
+            const tbody = document.createElement('tbody');
+            
+            if (type === 'SOA') {
+                const soa = records[0];
+                const fields = [
+                    ['主名称服务器', soa.mname],
+                    ['管理员邮箱', soa.rname],
+                    ['序列号', soa.serial],
+                    ['刷新间隔', soa.refresh + 's'],
+                    ['重试间隔', soa.retry + 's'],
+                    ['过期时间', soa.expire + 's'],
+                    ['最小 TTL', soa.minimum + 's']
+                ];
+                fields.forEach(([label, value]) => {
+                    const tr = document.createElement('tr');
+                    const th = document.createElement('th');
+                    th.textContent = label;
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(th);
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                });
+            } else {
+                records.forEach(r => {
+                    const tr = document.createElement('tr');
+                    
+                    switch(type) {
+                        case 'A':
+                        case 'AAAA':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            addCell(tr, r.value);
+                            addCopyCell(tr, r.value);
+                            break;
+                        case 'CNAME':
+                        case 'NS':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            addCell(tr, r.value);
+                            addCopyCell(tr, r.value);
+                            break;
+                        case 'MX':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            addPriorityCell(tr, r.priority);
+                            addCell(tr, r.value);
+                            addCopyCell(tr, r.value);
+                            break;
+                        case 'TXT':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            const txtTd = document.createElement('td');
+                            txtTd.style.wordBreak = 'break-all';
+                            txtTd.style.maxWidth = '400px';
+                            txtTd.textContent = r.value;
+                            tr.appendChild(txtTd);
+                            addCopyCell(tr, r.value);
+                            break;
+                        case 'SRV':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            addCell(tr, r.priority);
+                            addCell(tr, r.weight);
+                            addCell(tr, r.port);
+                            addCell(tr, r.value);
+                            break;
+                        case 'CAA':
+                            addCell(tr, r.name);
+                            addTtlCell(tr, r.ttl);
+                            addCell(tr, r.flags);
+                            addCell(tr, r.tag);
+                            addCell(tr, r.value);
+                            break;
+                    }
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            table.appendChild(tbody);
+            card.appendChild(table);
+            return card;
+        }
+        
+        function addCell(tr, text) {
+            const td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+        }
+        
+        function addTtlCell(tr, ttl) {
+            const td = document.createElement('td');
+            const span = document.createElement('span');
+            span.className = 'ttl-badge';
+            span.textContent = ttl + 's';
+            td.appendChild(span);
+            tr.appendChild(td);
+        }
+        
+        function addPriorityCell(tr, priority) {
+            const td = document.createElement('td');
+            const span = document.createElement('span');
+            span.className = 'priority-badge';
+            span.textContent = priority;
+            td.appendChild(span);
+            tr.appendChild(td);
+        }
+        
+        function addCopyCell(tr, text) {
+            const td = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = '📋';
+            btn.onclick = function() { copyToClipboard(text); };
+            td.appendChild(btn);
+            tr.appendChild(td);
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.createElement('div');
+                toast.textContent = '已复制到剪贴板';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:0.75rem 1.5rem;border-radius:8px;z-index:1000;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            });
+        }
+        
+        // 回车键查询
+        document.getElementById('domainInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') lookupDNS();
+        });
+    </script>
+</body>
+</html>

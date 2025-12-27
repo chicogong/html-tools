@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 转 MongoDB 查询</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #22c55e;
+            --preview-bg: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --preview-bg: #1e293b;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+            background: linear-gradient(135deg, #22c55e, #14b8a6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 2px solid var(--pico-primary);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .panel-header h3 {
+            margin: 0;
+        }
+        
+        .code-area {
+            font-family: monospace;
+            font-size: 0.875rem;
+            min-height: 350px;
+            resize: vertical;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .copy-btn.copied {
+            background: #10b981;
+            border-color: #10b981;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            padding: 0.75rem;
+            background: #fef2f2;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        [data-theme="dark"] .error-message {
+            background: #450a0a;
+        }
+        
+        .preset-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .preset-btn {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        
+        .help-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--preview-bg);
+            border-radius: 8px;
+        }
+        
+        .help-title {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .help-table {
+            width: 100%;
+            font-size: 0.8rem;
+            border-collapse: collapse;
+        }
+        
+        .help-table th, .help-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .help-table th {
+            background: var(--pico-secondary-background);
+        }
+        
+        .help-table code {
+            font-size: 0.75rem;
+            background: var(--pico-secondary-background);
+            padding: 0.125rem 0.25rem;
+            border-radius: 3px;
+        }
+        
+        .output-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .output-tab {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background: var(--pico-secondary-background);
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        
+        .output-tab.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        
+        .warning-message {
+            color: #f59e0b;
+            padding: 0.5rem 0.75rem;
+            background: #fffbeb;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        [data-theme="dark"] .warning-message {
+            background: #451a03;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>SQL 转 MongoDB 查询</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon"></span>
+            </button>
+        </header>
+        
+        <div class="main-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>SQL 查询</h3>
+                    <div class="btn-group">
+                        <button class="btn-small" onclick="formatSQL()">格式化</button>
+                        <button class="btn-small" onclick="clearInput()">清空</button>
+                    </div>
+                </div>
+                
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadExample('select')">SELECT</button>
+                    <button class="preset-btn" onclick="loadExample('where')">WHERE</button>
+                    <button class="preset-btn" onclick="loadExample('orderby')">ORDER BY</button>
+                    <button class="preset-btn" onclick="loadExample('limit')">LIMIT</button>
+                    <button class="preset-btn" onclick="loadExample('aggregate')">聚合</button>
+                    <button class="preset-btn" onclick="loadExample('join')">JOIN</button>
+                </div>
+                
+                <textarea class="code-area" id="sql-input" placeholder="输入 SQL 查询语句..." oninput="convertSQL()">SELECT name, email, age
+FROM users
+WHERE age > 18 AND status = 'active'
+ORDER BY created_at DESC
+LIMIT 10</textarea>
+                
+                <div id="input-error"></div>
+                <div id="warning-container"></div>
+                
+                <div class="help-section">
+                    <div class="help-title">支持的 SQL 语法</div>
+                    <table class="help-table">
+                        <tr>
+                            <th>SQL</th>
+                            <th>MongoDB</th>
+                        </tr>
+                        <tr>
+                            <td><code>SELECT a, b</code></td>
+                            <td><code>projection: {a: 1, b: 1}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>WHERE a = 1</code></td>
+                            <td><code>filter: {a: 1}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>ORDER BY a DESC</code></td>
+                            <td><code>sort: {a: -1}</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>LIMIT 10</code></td>
+                            <td><code>limit: 10</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>OFFSET 5</code></td>
+                            <td><code>skip: 5</code></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>MongoDB 查询</h3>
+                    <div class="btn-group">
+                        <button class="btn-small copy-btn" onclick="copyMongo()">复制</button>
+                    </div>
+                </div>
+                
+                <div class="output-tabs">
+                    <button class="output-tab active" onclick="switchTab('shell')" id="tab-shell">Shell</button>
+                    <button class="output-tab" onclick="switchTab('nodejs')" id="tab-nodejs">Node.js</button>
+                    <button class="output-tab" onclick="switchTab('python')" id="tab-python">Python</button>
+                </div>
+                
+                <textarea class="code-area" id="mongo-output" readonly placeholder="MongoDB 查询将显示在这里..."></textarea>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        var currentTab = 'shell';
+        var parsedQuery = null;
+        
+        // Theme management
+        function initTheme() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+        
+        function toggleTheme() {
+            var currentTheme = document.documentElement.getAttribute('data-theme');
+            var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        
+        function updateThemeIcon(theme) {
+            document.getElementById('theme-icon').textContent = theme === 'light' ? '\u{1F319}' : '\u2600';
+        }
+        
+        function loadExample(type) {
+            var examples = {
+                'select': 'SELECT name, email, age FROM users',
+                'where': "SELECT * FROM users WHERE age > 18 AND status = 'active'",
+                'orderby': 'SELECT * FROM products ORDER BY price DESC, name ASC',
+                'limit': 'SELECT * FROM orders LIMIT 10 OFFSET 20',
+                'aggregate': 'SELECT category, COUNT(*) as count, AVG(price) as avg_price FROM products GROUP BY category HAVING count > 5',
+                'join': 'SELECT u.name, o.total FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE o.status = "completed"'
+            };
+            
+            if (examples[type]) {
+                document.getElementById('sql-input').value = examples[type];
+                convertSQL();
+            }
+        }
+        
+        function formatSQL() {
+            var input = document.getElementById('sql-input');
+            var sql = input.value.trim();
+            
+            // Simple SQL formatting
+            sql = sql.replace(/\s+/g, ' ');
+            sql = sql.replace(/\s*,\s*/g, ', ');
+            sql = sql.replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|GROUP BY|HAVING|LIMIT|OFFSET|LEFT JOIN|RIGHT JOIN|INNER JOIN|JOIN|ON)\b/gi, function(match) {
+                return '\n' + match.toUpperCase();
+            });
+            sql = sql.trim();
+            if (sql.startsWith('\n')) sql = sql.substring(1);
+            
+            input.value = sql;
+        }
+        
+        function clearInput() {
+            document.getElementById('sql-input').value = '';
+            document.getElementById('mongo-output').value = '';
+            document.getElementById('input-error').textContent = '';
+            document.getElementById('warning-container').textContent = '';
+            parsedQuery = null;
+        }
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.output-tab').forEach(function(t) {
+                t.classList.remove('active');
+            });
+            document.getElementById('tab-' + tab).classList.add('active');
+            renderOutput();
+        }
+        
+        function convertSQL() {
+            var sql = document.getElementById('sql-input').value.trim();
+            var errorDiv = document.getElementById('input-error');
+            var warningDiv = document.getElementById('warning-container');
+            
+            errorDiv.textContent = '';
+            warningDiv.textContent = '';
+            
+            if (!sql) {
+                document.getElementById('mongo-output').value = '';
+                parsedQuery = null;
+                return;
+            }
+            
+            try {
+                parsedQuery = parseSQL(sql);
+                
+                if (parsedQuery.warnings && parsedQuery.warnings.length > 0) {
+                    warningDiv.innerHTML = parsedQuery.warnings.map(function(w) {
+                        return '<div class="warning-message">' + w + '</div>';
+                    }).join('');
+                }
+                
+                renderOutput();
+            } catch (e) {
+                errorDiv.innerHTML = '<div class="error-message">解析错误: ' + e.message + '</div>';
+                document.getElementById('mongo-output').value = '';
+                parsedQuery = null;
+            }
+        }
+        
+        function parseSQL(sql) {
+            var result = {
+                collection: '',
+                filter: {},
+                projection: {},
+                sort: {},
+                limit: null,
+                skip: null,
+                aggregate: null,
+                warnings: []
+            };
+            
+            // Normalize SQL
+            sql = sql.replace(/\s+/g, ' ').trim();
+            
+            // Check for JOIN (not fully supported)
+            if (/\bJOIN\b/i.test(sql)) {
+                result.warnings.push('JOIN 操作在 MongoDB 中使用 $lookup 聚合，此转换为简化版本');
+            }
+            
+            // Parse SELECT
+            var selectMatch = sql.match(/SELECT\s+(.*?)\s+FROM/i);
+            if (selectMatch) {
+                var fields = selectMatch[1].trim();
+                if (fields !== '*') {
+                    // Check for aggregate functions
+                    if (/\b(COUNT|SUM|AVG|MIN|MAX)\s*\(/i.test(fields)) {
+                        result.aggregate = parseAggregate(sql);
+                        return result;
+                    }
+                    
+                    fields.split(',').forEach(function(f) {
+                        f = f.trim().split(/\s+as\s+/i)[0].trim();
+                        if (f && f !== '*') {
+                            // Remove table alias
+                            f = f.replace(/^\w+\./, '');
+                            result.projection[f] = 1;
+                        }
+                    });
+                }
+            }
+            
+            // Parse FROM (collection name)
+            var fromMatch = sql.match(/FROM\s+(\w+)/i);
+            if (fromMatch) {
+                result.collection = fromMatch[1];
+            }
+            
+            // Parse WHERE
+            var whereMatch = sql.match(/WHERE\s+(.*?)(?=ORDER BY|GROUP BY|LIMIT|OFFSET|$)/i);
+            if (whereMatch) {
+                result.filter = parseWhere(whereMatch[1].trim());
+            }
+            
+            // Parse ORDER BY
+            var orderMatch = sql.match(/ORDER BY\s+(.*?)(?=LIMIT|OFFSET|$)/i);
+            if (orderMatch) {
+                orderMatch[1].split(',').forEach(function(part) {
+                    var parts = part.trim().split(/\s+/);
+                    var field = parts[0].replace(/^\w+\./, '');
+                    var direction = parts[1] && parts[1].toUpperCase() === 'DESC' ? -1 : 1;
+                    result.sort[field] = direction;
+                });
+            }
+            
+            // Parse LIMIT
+            var limitMatch = sql.match(/LIMIT\s+(\d+)/i);
+            if (limitMatch) {
+                result.limit = parseInt(limitMatch[1]);
+            }
+            
+            // Parse OFFSET
+            var offsetMatch = sql.match(/OFFSET\s+(\d+)/i);
+            if (offsetMatch) {
+                result.skip = parseInt(offsetMatch[1]);
+            }
+            
+            // Parse GROUP BY (convert to aggregate)
+            if (/GROUP BY/i.test(sql)) {
+                result.aggregate = parseAggregate(sql);
+            }
+            
+            return result;
+        }
+        
+        function parseWhere(whereClause) {
+            var filter = {};
+            
+            // Handle AND conditions
+            var conditions = whereClause.split(/\s+AND\s+/i);
+            
+            conditions.forEach(function(cond) {
+                cond = cond.trim();
+                
+                // Handle OR (simplified)
+                if (/\s+OR\s+/i.test(cond)) {
+                    var orParts = cond.split(/\s+OR\s+/i);
+                    filter['$or'] = orParts.map(function(p) {
+                        return parseSingleCondition(p.trim());
+                    });
+                } else {
+                    var parsed = parseSingleCondition(cond);
+                    Object.keys(parsed).forEach(function(k) {
+                        filter[k] = parsed[k];
+                    });
+                }
+            });
+            
+            return filter;
+        }
+        
+        function parseSingleCondition(cond) {
+            var result = {};
+            
+            // Remove parentheses
+            cond = cond.replace(/^\(|\)$/g, '').trim();
+            
+            // Parse different operators
+            var match;
+            
+            // IN operator
+            if ((match = cond.match(/(\w+)\s+IN\s*\((.*?)\)/i))) {
+                var field = match[1];
+                var values = match[2].split(',').map(function(v) {
+                    return parseValue(v.trim());
+                });
+                result[field] = { '$in': values };
+            }
+            // NOT IN operator
+            else if ((match = cond.match(/(\w+)\s+NOT\s+IN\s*\((.*?)\)/i))) {
+                var field = match[1];
+                var values = match[2].split(',').map(function(v) {
+                    return parseValue(v.trim());
+                });
+                result[field] = { '$nin': values };
+            }
+            // LIKE operator
+            else if ((match = cond.match(/(\w+)\s+LIKE\s+['"](.*)['"]$/i))) {
+                var field = match[1];
+                var pattern = match[2].replace(/%/g, '.*');
+                result[field] = { '$regex': pattern, '$options': 'i' };
+            }
+            // IS NULL
+            else if ((match = cond.match(/(\w+)\s+IS\s+NULL/i))) {
+                result[match[1]] = null;
+            }
+            // IS NOT NULL
+            else if ((match = cond.match(/(\w+)\s+IS\s+NOT\s+NULL/i))) {
+                result[match[1]] = { '$ne': null };
+            }
+            // BETWEEN
+            else if ((match = cond.match(/(\w+)\s+BETWEEN\s+(\S+)\s+AND\s+(\S+)/i))) {
+                result[match[1]] = {
+                    '$gte': parseValue(match[2]),
+                    '$lte': parseValue(match[3])
+                };
+            }
+            // Comparison operators
+            else if ((match = cond.match(/(\w+)\s*(>=|<=|!=|<>|>|<|=)\s*(.+)/))) {
+                var field = match[1];
+                var op = match[2];
+                var value = parseValue(match[3].trim());
+                
+                var mongoOp = {
+                    '>=': '$gte',
+                    '<=': '$lte',
+                    '>': '$gt',
+                    '<': '$lt',
+                    '!=': '$ne',
+                    '<>': '$ne',
+                    '=': null
+                }[op];
+                
+                if (mongoOp) {
+                    result[field] = {};
+                    result[field][mongoOp] = value;
+                } else {
+                    result[field] = value;
+                }
+            }
+            
+            return result;
+        }
+        
+        function parseValue(value) {
+            value = value.trim();
+            
+            // String
+            if ((value.startsWith("'") && value.endsWith("'")) || 
+                (value.startsWith('"') && value.endsWith('"'))) {
+                return value.slice(1, -1);
+            }
+            
+            // Number
+            if (!isNaN(value)) {
+                return parseFloat(value);
+            }
+            
+            // Boolean
+            if (value.toLowerCase() === 'true') return true;
+            if (value.toLowerCase() === 'false') return false;
+            if (value.toLowerCase() === 'null') return null;
+            
+            return value;
+        }
+        
+        function parseAggregate(sql) {
+            var pipeline = [];
+            
+            // Parse WHERE for $match
+            var whereMatch = sql.match(/WHERE\s+(.*?)(?=GROUP BY|ORDER BY|LIMIT|$)/i);
+            if (whereMatch) {
+                pipeline.push({ '$match': parseWhere(whereMatch[1].trim()) });
+            }
+            
+            // Parse GROUP BY for $group
+            var groupMatch = sql.match(/GROUP BY\s+(.*?)(?=HAVING|ORDER BY|LIMIT|$)/i);
+            var selectMatch = sql.match(/SELECT\s+(.*?)\s+FROM/i);
+            
+            if (groupMatch && selectMatch) {
+                var groupFields = groupMatch[1].split(',').map(function(f) { return f.trim(); });
+                var selectFields = selectMatch[1];
+                
+                var groupStage = {
+                    '_id': {}
+                };
+                
+                groupFields.forEach(function(f) {
+                    groupStage['_id'][f] = '$' + f;
+                });
+                
+                // Parse aggregate functions
+                var aggMatch;
+                var aggRegex = /(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|\w+)\s*\)\s*(?:as\s+)?(\w+)?/gi;
+                while ((aggMatch = aggRegex.exec(selectFields)) !== null) {
+                    var func = aggMatch[1].toUpperCase();
+                    var field = aggMatch[2];
+                    var alias = aggMatch[3] || func.toLowerCase();
+                    
+                    if (func === 'COUNT') {
+                        groupStage[alias] = { '$sum': 1 };
+                    } else {
+                        var mongoFunc = '$' + func.toLowerCase();
+                        groupStage[alias] = {};
+                        groupStage[alias][mongoFunc] = field === '*' ? 1 : ('$' + field);
+                    }
+                }
+                
+                pipeline.push({ '$group': groupStage });
+            }
+            
+            // Parse HAVING for $match after group
+            var havingMatch = sql.match(/HAVING\s+(.*?)(?=ORDER BY|LIMIT|$)/i);
+            if (havingMatch) {
+                pipeline.push({ '$match': parseWhere(havingMatch[1].trim()) });
+            }
+            
+            // Parse ORDER BY for $sort
+            var orderMatch = sql.match(/ORDER BY\s+(.*?)(?=LIMIT|$)/i);
+            if (orderMatch) {
+                var sort = {};
+                orderMatch[1].split(',').forEach(function(part) {
+                    var parts = part.trim().split(/\s+/);
+                    var field = parts[0];
+                    var direction = parts[1] && parts[1].toUpperCase() === 'DESC' ? -1 : 1;
+                    sort[field] = direction;
+                });
+                pipeline.push({ '$sort': sort });
+            }
+            
+            // Parse LIMIT for $limit
+            var limitMatch = sql.match(/LIMIT\s+(\d+)/i);
+            if (limitMatch) {
+                pipeline.push({ '$limit': parseInt(limitMatch[1]) });
+            }
+            
+            return pipeline;
+        }
+        
+        function renderOutput() {
+            if (!parsedQuery) {
+                document.getElementById('mongo-output').value = '';
+                return;
+            }
+            
+            var output = '';
+            
+            switch (currentTab) {
+                case 'shell':
+                    output = renderShell(parsedQuery);
+                    break;
+                case 'nodejs':
+                    output = renderNodeJS(parsedQuery);
+                    break;
+                case 'python':
+                    output = renderPython(parsedQuery);
+                    break;
+            }
+            
+            document.getElementById('mongo-output').value = output;
+        }
+        
+        function renderShell(q) {
+            var collection = q.collection || 'collection';
+            
+            if (q.aggregate) {
+                return 'db.' + collection + '.aggregate(' + 
+                       JSON.stringify(q.aggregate, null, 2) + ')';
+            }
+            
+            var parts = ['db.' + collection + '.find('];
+            
+            // Filter
+            parts.push('  ' + JSON.stringify(q.filter, null, 2).replace(/\n/g, '\n  '));
+            
+            // Projection
+            if (Object.keys(q.projection).length > 0) {
+                parts[parts.length - 1] += ',';
+                parts.push('  ' + JSON.stringify(q.projection, null, 2).replace(/\n/g, '\n  '));
+            }
+            
+            parts.push(')');
+            
+            // Sort
+            if (Object.keys(q.sort).length > 0) {
+                parts.push('.sort(' + JSON.stringify(q.sort) + ')');
+            }
+            
+            // Skip
+            if (q.skip) {
+                parts.push('.skip(' + q.skip + ')');
+            }
+            
+            // Limit
+            if (q.limit) {
+                parts.push('.limit(' + q.limit + ')');
+            }
+            
+            return parts.join('\n');
+        }
+        
+        function renderNodeJS(q) {
+            var collection = q.collection || 'collection';
+            var lines = [];
+            
+            if (q.aggregate) {
+                lines.push('const result = await db.collection("' + collection + '")');
+                lines.push('  .aggregate(' + JSON.stringify(q.aggregate, null, 4).replace(/\n/g, '\n  ') + ')');
+                lines.push('  .toArray();');
+                return lines.join('\n');
+            }
+            
+            lines.push('const result = await db.collection("' + collection + '")');
+            lines.push('  .find(' + JSON.stringify(q.filter, null, 4).replace(/\n/g, '\n  ') + ')');
+            
+            if (Object.keys(q.projection).length > 0) {
+                lines.push('  .project(' + JSON.stringify(q.projection) + ')');
+            }
+            
+            if (Object.keys(q.sort).length > 0) {
+                lines.push('  .sort(' + JSON.stringify(q.sort) + ')');
+            }
+            
+            if (q.skip) {
+                lines.push('  .skip(' + q.skip + ')');
+            }
+            
+            if (q.limit) {
+                lines.push('  .limit(' + q.limit + ')');
+            }
+            
+            lines.push('  .toArray();');
+            
+            return lines.join('\n');
+        }
+        
+        function renderPython(q) {
+            var collection = q.collection || 'collection';
+            var lines = [];
+            
+            if (q.aggregate) {
+                lines.push('result = db["' + collection + '"].aggregate(');
+                lines.push('    ' + JSON.stringify(q.aggregate, null, 4).replace(/\n/g, '\n    '));
+                lines.push(')');
+                return lines.join('\n');
+            }
+            
+            lines.push('result = db["' + collection + '"].find(');
+            lines.push('    ' + JSON.stringify(q.filter, null, 4).replace(/\n/g, '\n    ') + ',');
+            
+            if (Object.keys(q.projection).length > 0) {
+                lines.push('    ' + JSON.stringify(q.projection));
+            } else {
+                // Remove the trailing comma
+                lines[lines.length - 1] = lines[lines.length - 1].replace(/,$/, '');
+            }
+            
+            lines.push(')');
+            
+            if (Object.keys(q.sort).length > 0) {
+                var sortList = Object.keys(q.sort).map(function(k) {
+                    return '("' + k + '", ' + (q.sort[k] === 1 ? '1' : '-1') + ')';
+                });
+                lines.push('.sort([' + sortList.join(', ') + '])');
+            }
+            
+            if (q.skip) {
+                lines.push('.skip(' + q.skip + ')');
+            }
+            
+            if (q.limit) {
+                lines.push('.limit(' + q.limit + ')');
+            }
+            
+            return lines.join('\n');
+        }
+        
+        function copyMongo() {
+            var output = document.getElementById('mongo-output');
+            
+            navigator.clipboard.writeText(output.value).then(function() {
+                var btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.textContent = '复制';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Initialize
+        initTheme();
+        convertSQL();
+    </script>
+</body>
+</html>

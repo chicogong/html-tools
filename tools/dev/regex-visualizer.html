@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则表达式可视化器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #f97316;
+            --preview-bg: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --match-color: #22c55e;
+            --group-color: #3b82f6;
+        }
+        
+        [data-theme="dark"] {
+            --preview-bg: #1e293b;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+            background: linear-gradient(135deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 2px solid var(--pico-primary);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        
+        .input-section {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .regex-input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        
+        .regex-input-wrapper {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .regex-input {
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        
+        .flags-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .flag-btn {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            font-family: monospace;
+            min-width: 40px;
+        }
+        
+        .flag-btn.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        
+        .preset-section {
+            margin-top: 1rem;
+        }
+        
+        .preset-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .preset-btn {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        
+        .visualization-section {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .visual-container {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            min-height: 150px;
+            overflow-x: auto;
+        }
+        
+        .regex-diagram {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+            font-family: monospace;
+            font-size: 1rem;
+        }
+        
+        .regex-node {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            margin: 0.25rem;
+        }
+        
+        [data-theme="dark"] .regex-node {
+            background: #334155;
+            border-color: #475569;
+        }
+        
+        .regex-node.literal {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        
+        .regex-node.special {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+        
+        .regex-node.quantifier {
+            background: #dcfce7;
+            border-color: #22c55e;
+        }
+        
+        .regex-node.group {
+            background: #f3e8ff;
+            border-color: #a855f7;
+        }
+        
+        .regex-node.anchor {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .regex-node.charset {
+            background: #e0f2fe;
+            border-color: #0ea5e9;
+        }
+        
+        .node-label {
+            font-size: 0.7rem;
+            color: var(--pico-muted-color);
+            display: block;
+            margin-top: 0.25rem;
+        }
+        
+        .test-section {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .test-input {
+            font-family: monospace;
+        }
+        
+        .matches-container {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            min-height: 100px;
+        }
+        
+        .highlighted-text {
+            font-family: monospace;
+            font-size: 1rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .match {
+            background: rgba(34, 197, 94, 0.3);
+            border-bottom: 2px solid var(--match-color);
+            padding: 0.125rem 0;
+        }
+        
+        .match-info {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .match-item {
+            background: var(--pico-secondary-background);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-family: monospace;
+        }
+        
+        .match-index {
+            color: var(--pico-muted-color);
+            margin-right: 0.5rem;
+        }
+        
+        .match-value {
+            color: var(--match-color);
+            font-weight: 600;
+        }
+        
+        .match-position {
+            color: var(--pico-muted-color);
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            padding: 0.75rem;
+            background: #fef2f2;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+        
+        [data-theme="dark"] .error-message {
+            background: #450a0a;
+        }
+        
+        .explanation-section {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .explanation-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .explanation-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .explanation-item:last-child {
+            border-bottom: none;
+        }
+        
+        .explanation-token {
+            font-family: monospace;
+            font-weight: 600;
+            min-width: 80px;
+            color: var(--pico-primary);
+        }
+        
+        .explanation-desc {
+            color: var(--pico-muted-color);
+        }
+        
+        .copy-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .copy-btn.copied {
+            background: #10b981;
+            border-color: #10b981;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .stat-item {
+            background: var(--pico-secondary-background);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--pico-primary);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>正则表达式可视化器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon"></span>
+            </button>
+        </header>
+        
+        <div class="main-content">
+            <section class="input-section">
+                <div class="section-header">
+                    <h3>正则表达式</h3>
+                    <button class="copy-btn" onclick="copyRegex()">复制正则</button>
+                </div>
+                
+                <div class="regex-input-group">
+                    <div class="regex-input-wrapper">
+                        <input type="text" class="regex-input" id="regex-input" 
+                               placeholder="输入正则表达式..." 
+                               value="(\d{4})-(\d{2})-(\d{2})"
+                               oninput="updateVisualization()">
+                    </div>
+                    <div class="flags-group">
+                        <button class="flag-btn" onclick="toggleFlag('g')" id="flag-g">g</button>
+                        <button class="flag-btn" onclick="toggleFlag('i')" id="flag-i">i</button>
+                        <button class="flag-btn" onclick="toggleFlag('m')" id="flag-m">m</button>
+                        <button class="flag-btn" onclick="toggleFlag('s')" id="flag-s">s</button>
+                    </div>
+                </div>
+                
+                <div id="error-container"></div>
+                
+                <div class="preset-section">
+                    <label>常用正则:</label>
+                    <div class="preset-btns">
+                        <button class="preset-btn" onclick="loadPreset('email')">邮箱</button>
+                        <button class="preset-btn" onclick="loadPreset('phone')">手机号</button>
+                        <button class="preset-btn" onclick="loadPreset('url')">URL</button>
+                        <button class="preset-btn" onclick="loadPreset('ip')">IP地址</button>
+                        <button class="preset-btn" onclick="loadPreset('date')">日期</button>
+                        <button class="preset-btn" onclick="loadPreset('chinese')">中文</button>
+                        <button class="preset-btn" onclick="loadPreset('idcard')">身份证</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="visualization-section">
+                <h3>可视化结构</h3>
+                <div class="visual-container">
+                    <div class="regex-diagram" id="regex-diagram"></div>
+                </div>
+            </section>
+            
+            <section class="explanation-section">
+                <h3>表达式解析</h3>
+                <ul class="explanation-list" id="explanation-list"></ul>
+            </section>
+            
+            <section class="test-section">
+                <div class="section-header">
+                    <h3>测试文本</h3>
+                    <div class="stats">
+                        <span class="stat-item">匹配数: <span class="stat-value" id="match-count">0</span></span>
+                    </div>
+                </div>
+                <textarea class="test-input" id="test-input" rows="4" 
+                          placeholder="输入测试文本..."
+                          oninput="updateMatches()">今天是2024-01-15，明天是2024-01-16</textarea>
+                
+                <div class="matches-container">
+                    <div class="highlighted-text" id="highlighted-text"></div>
+                </div>
+                
+                <div class="match-info" id="match-info"></div>
+            </section>
+        </div>
+    </main>
+    
+    <script>
+        var flags = { g: true, i: false, m: false, s: false };
+        
+        // Theme management
+        function initTheme() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+        
+        function toggleTheme() {
+            var currentTheme = document.documentElement.getAttribute('data-theme');
+            var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        
+        function updateThemeIcon(theme) {
+            document.getElementById('theme-icon').textContent = theme === 'light' ? '\u{1F319}' : '\u2600';
+        }
+        
+        function toggleFlag(flag) {
+            flags[flag] = !flags[flag];
+            document.getElementById('flag-' + flag).classList.toggle('active', flags[flag]);
+            updateVisualization();
+        }
+        
+        function loadPreset(preset) {
+            var presets = {
+                'email': '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}',
+                'phone': '1[3-9]\\d{9}',
+                'url': 'https?://[\\w-]+(\\.[\\w-]+)+[\\w.,@?^=%&:/~+#-]*',
+                'ip': '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}',
+                'date': '(\\d{4})-(\\d{2})-(\\d{2})',
+                'chinese': '[\\u4e00-\\u9fa5]+',
+                'idcard': '[1-9]\\d{5}(19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]'
+            };
+            
+            var testTexts = {
+                'email': '联系我: test@example.com 或 user.name@domain.co.uk',
+                'phone': '我的手机号是13812345678，备用号码15987654321',
+                'url': '访问 https://www.example.com 或 http://test.org/path',
+                'ip': '服务器IP: 192.168.1.1 和 10.0.0.255',
+                'date': '今天是2024-01-15，明天是2024-01-16',
+                'chinese': 'Hello 世界! 你好，这是测试文本。',
+                'idcard': '身份证号: 110101199001011234'
+            };
+            
+            if (presets[preset]) {
+                document.getElementById('regex-input').value = presets[preset];
+                document.getElementById('test-input').value = testTexts[preset] || '';
+                updateVisualization();
+            }
+        }
+        
+        function getRegexFlags() {
+            var f = '';
+            if (flags.g) f += 'g';
+            if (flags.i) f += 'i';
+            if (flags.m) f += 'm';
+            if (flags.s) f += 's';
+            return f;
+        }
+        
+        function updateVisualization() {
+            var pattern = document.getElementById('regex-input').value;
+            var errorContainer = document.getElementById('error-container');
+            errorContainer.textContent = '';
+            
+            try {
+                new RegExp(pattern, getRegexFlags());
+                visualizeRegex(pattern);
+                explainRegex(pattern);
+                updateMatches();
+            } catch (e) {
+                errorContainer.innerHTML = '<div class="error-message">正则表达式错误: ' + escapeHtml(e.message) + '</div>';
+                document.getElementById('regex-diagram').textContent = '';
+                document.getElementById('explanation-list').textContent = '';
+            }
+        }
+        
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function visualizeRegex(pattern) {
+            var diagram = document.getElementById('regex-diagram');
+            diagram.textContent = '';
+            
+            var tokens = tokenize(pattern);
+            
+            tokens.forEach(function(token) {
+                var node = document.createElement('span');
+                node.className = 'regex-node ' + token.type;
+                node.textContent = token.value;
+                if (token.label) {
+                    var label = document.createElement('span');
+                    label.className = 'node-label';
+                    label.textContent = token.label;
+                    node.appendChild(label);
+                }
+                diagram.appendChild(node);
+            });
+        }
+        
+        function tokenize(pattern) {
+            var tokens = [];
+            var i = 0;
+            
+            while (i < pattern.length) {
+                var char = pattern[i];
+                
+                // Escaped characters
+                if (char === '\\' && i + 1 < pattern.length) {
+                    var next = pattern[i + 1];
+                    var escaped = '\\' + next;
+                    var type = 'special';
+                    var label = '';
+                    
+                    switch (next) {
+                        case 'd': label = '数字'; break;
+                        case 'D': label = '非数字'; break;
+                        case 'w': label = '单词字符'; break;
+                        case 'W': label = '非单词字符'; break;
+                        case 's': label = '空白'; break;
+                        case 'S': label = '非空白'; break;
+                        case 'b': label = '单词边界'; type = 'anchor'; break;
+                        case 'B': label = '非单词边界'; type = 'anchor'; break;
+                        case 'n': label = '换行'; break;
+                        case 't': label = '制表符'; break;
+                        case 'r': label = '回车'; break;
+                        default: label = '转义'; type = 'literal';
+                    }
+                    
+                    tokens.push({ value: escaped, type: type, label: label });
+                    i += 2;
+                    continue;
+                }
+                
+                // Character class
+                if (char === '[') {
+                    var end = pattern.indexOf(']', i);
+                    if (end !== -1) {
+                        var charClass = pattern.substring(i, end + 1);
+                        tokens.push({ value: charClass, type: 'charset', label: '字符集' });
+                        i = end + 1;
+                        continue;
+                    }
+                }
+                
+                // Group
+                if (char === '(') {
+                    var groupStart = i;
+                    var depth = 1;
+                    var j = i + 1;
+                    while (j < pattern.length && depth > 0) {
+                        if (pattern[j] === '(' && pattern[j-1] !== '\\') depth++;
+                        if (pattern[j] === ')' && pattern[j-1] !== '\\') depth--;
+                        j++;
+                    }
+                    var group = pattern.substring(groupStart, j);
+                    var label = '捕获组';
+                    if (group.startsWith('(?:')) label = '非捕获组';
+                    else if (group.startsWith('(?=')) label = '正向预查';
+                    else if (group.startsWith('(?!')) label = '负向预查';
+                    else if (group.startsWith('(?<=')) label = '正向回顾';
+                    else if (group.startsWith('(?<!')) label = '负向回顾';
+                    
+                    tokens.push({ value: group, type: 'group', label: label });
+                    i = j;
+                    continue;
+                }
+                
+                // Quantifiers
+                if (char === '*' || char === '+' || char === '?') {
+                    var label = char === '*' ? '0或多次' : (char === '+' ? '1或多次' : '0或1次');
+                    tokens.push({ value: char, type: 'quantifier', label: label });
+                    i++;
+                    continue;
+                }
+                
+                if (char === '{') {
+                    var end = pattern.indexOf('}', i);
+                    if (end !== -1) {
+                        var quant = pattern.substring(i, end + 1);
+                        tokens.push({ value: quant, type: 'quantifier', label: '重复次数' });
+                        i = end + 1;
+                        continue;
+                    }
+                }
+                
+                // Anchors
+                if (char === '^') {
+                    tokens.push({ value: '^', type: 'anchor', label: '行首' });
+                    i++;
+                    continue;
+                }
+                
+                if (char === '$') {
+                    tokens.push({ value: '$', type: 'anchor', label: '行尾' });
+                    i++;
+                    continue;
+                }
+                
+                // Dot
+                if (char === '.') {
+                    tokens.push({ value: '.', type: 'special', label: '任意字符' });
+                    i++;
+                    continue;
+                }
+                
+                // Alternation
+                if (char === '|') {
+                    tokens.push({ value: '|', type: 'special', label: '或' });
+                    i++;
+                    continue;
+                }
+                
+                // Literal
+                tokens.push({ value: char, type: 'literal', label: '' });
+                i++;
+            }
+            
+            return tokens;
+        }
+        
+        function explainRegex(pattern) {
+            var list = document.getElementById('explanation-list');
+            list.textContent = '';
+            
+            var explanations = {
+                '\\d': '匹配任意数字 (0-9)',
+                '\\D': '匹配任意非数字字符',
+                '\\w': '匹配单词字符 (字母、数字、下划线)',
+                '\\W': '匹配非单词字符',
+                '\\s': '匹配空白字符 (空格、制表符、换行)',
+                '\\S': '匹配非空白字符',
+                '\\b': '匹配单词边界',
+                '\\B': '匹配非单词边界',
+                '.': '匹配任意字符 (除换行符)',
+                '^': '匹配字符串/行的开始',
+                '$': '匹配字符串/行的结束',
+                '*': '匹配前面的表达式 0 次或多次',
+                '+': '匹配前面的表达式 1 次或多次',
+                '?': '匹配前面的表达式 0 次或 1 次',
+                '|': '匹配左边或右边的表达式'
+            };
+            
+            var tokens = tokenize(pattern);
+            var seen = {};
+            
+            tokens.forEach(function(token) {
+                var key = token.value;
+                var desc = explanations[key];
+                
+                if (!desc && token.type === 'group') {
+                    desc = token.label;
+                } else if (!desc && token.type === 'charset') {
+                    desc = '匹配字符集中的任意一个字符';
+                } else if (!desc && token.type === 'quantifier' && key.startsWith('{')) {
+                    desc = '指定重复次数';
+                } else if (!desc && token.type === 'literal') {
+                    desc = '匹配字面字符 "' + key + '"';
+                }
+                
+                if (desc && !seen[key]) {
+                    seen[key] = true;
+                    var item = document.createElement('li');
+                    item.className = 'explanation-item';
+                    item.innerHTML = '<span class="explanation-token">' + escapeHtml(key) + '</span>' +
+                                    '<span class="explanation-desc">' + desc + '</span>';
+                    list.appendChild(item);
+                }
+            });
+        }
+        
+        function updateMatches() {
+            var pattern = document.getElementById('regex-input').value;
+            var testText = document.getElementById('test-input').value;
+            var highlightedText = document.getElementById('highlighted-text');
+            var matchInfo = document.getElementById('match-info');
+            var matchCount = document.getElementById('match-count');
+            
+            if (!pattern || !testText) {
+                highlightedText.textContent = testText;
+                matchInfo.textContent = '';
+                matchCount.textContent = '0';
+                return;
+            }
+            
+            try {
+                var flagStr = getRegexFlags();
+                if (!flagStr.includes('g')) flagStr += 'g';
+                var regex = new RegExp(pattern, flagStr);
+                
+                var matches = [];
+                var match;
+                
+                while ((match = regex.exec(testText)) !== null) {
+                    matches.push({
+                        value: match[0],
+                        index: match.index,
+                        groups: match.slice(1)
+                    });
+                    if (match.index === regex.lastIndex) regex.lastIndex++;
+                }
+                
+                matchCount.textContent = matches.length;
+                
+                // Highlight matches
+                if (matches.length > 0) {
+                    var result = '';
+                    var lastIndex = 0;
+                    
+                    matches.forEach(function(m) {
+                        result += escapeHtml(testText.substring(lastIndex, m.index));
+                        result += '<span class="match">' + escapeHtml(m.value) + '</span>';
+                        lastIndex = m.index + m.value.length;
+                    });
+                    result += escapeHtml(testText.substring(lastIndex));
+                    
+                    highlightedText.innerHTML = result;
+                } else {
+                    highlightedText.textContent = testText;
+                }
+                
+                // Show match details
+                matchInfo.textContent = '';
+                matches.forEach(function(m, i) {
+                    var item = document.createElement('div');
+                    item.className = 'match-item';
+                    var html = '<span class="match-index">#' + (i + 1) + '</span>' +
+                               '<span class="match-value">"' + escapeHtml(m.value) + '"</span>' +
+                               '<span class="match-position">(位置: ' + m.index + ')</span>';
+                    
+                    if (m.groups && m.groups.length > 0) {
+                        html += '<br><small style="color:var(--pico-muted-color);">捕获组: ';
+                        m.groups.forEach(function(g, gi) {
+                            html += '$' + (gi + 1) + '="' + escapeHtml(g || '') + '" ';
+                        });
+                        html += '</small>';
+                    }
+                    
+                    item.innerHTML = html;
+                    matchInfo.appendChild(item);
+                });
+                
+            } catch (e) {
+                highlightedText.textContent = testText;
+                matchCount.textContent = '0';
+            }
+        }
+        
+        function copyRegex() {
+            var pattern = document.getElementById('regex-input').value;
+            var flagStr = getRegexFlags();
+            var fullRegex = '/' + pattern + '/' + flagStr;
+            
+            navigator.clipboard.writeText(fullRegex).then(function() {
+                var btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.textContent = '复制正则';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Initialize
+        initTheme();
+        document.getElementById('flag-g').classList.add('active');
+        updateVisualization();
+    </script>
+</body>
+</html>

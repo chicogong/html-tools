@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 响应模拟器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #8b5cf6;
+            --secondary-color: #7c3aed;
+            --accent-color: #f5f5f5;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        [data-theme="dark"] { --accent-color: #1a1a2e; }
+        body { min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--primary-color); }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo svg { width: 48px; height: 48px; }
+        h1 { margin: 0; background: linear-gradient(135deg, var(--primary-color), #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .theme-toggle { background: none; border: 2px solid var(--primary-color); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .theme-toggle:hover { background: var(--primary-color); color: white; }
+        .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; min-height: 70vh; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--accent-color); border-radius: var(--border-radius); padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--primary-color); }
+        .panel-title { font-weight: 600; color: var(--primary-color); margin: 0; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { margin-bottom: 0; }
+        .inline-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background: var(--secondary-color); }
+        .btn-secondary { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
+        .btn-secondary:hover { background: var(--primary-color); color: white; }
+        pre { font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: var(--border-radius); overflow: auto; white-space: pre; min-height: 400px; max-height: 60vh; }
+        .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; background: var(--primary-color); color: white; border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: var(--transition); z-index: 1000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .template-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .template-btn { padding: 0.25rem 0.75rem; font-size: 0.85rem; border-radius: 20px; background: rgba(139, 92, 246, 0.1); border: 1px solid var(--primary-color); color: var(--primary-color); cursor: pointer; transition: var(--transition); }
+        .template-btn:hover { background: var(--primary-color); color: white; }
+        .header-item { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+        .header-item input { margin-bottom: 0; }
+        .add-btn { width: 100%; padding: 0.5rem; background: transparent; border: 1px dashed var(--primary-color); color: var(--primary-color); cursor: pointer; transition: var(--transition); border-radius: var(--border-radius); }
+        .add-btn:hover { background: rgba(139, 92, 246, 0.1); }
+        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .status-2xx { background: #22c55e; color: white; }
+        .status-3xx { background: #3b82f6; color: white; }
+        .status-4xx { background: #f59e0b; color: white; }
+        .status-5xx { background: #ef4444; color: white; }
+        .response-info { margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+        .response-info span { font-size: 0.9rem; color: #666; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .tab-btn { padding: 0.5rem 1rem; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-color); cursor: pointer; border-radius: var(--border-radius); }
+        .tab-btn.active { background: var(--primary-color); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="10" width="80" height="80" rx="10" fill="#8b5cf6"/>
+                    <text x="50" y="55" text-anchor="middle" fill="white" font-size="24" font-weight="bold">API</text>
+                    <text x="50" y="75" text-anchor="middle" fill="white" font-size="14">Mock</text>
+                </svg>
+                <h1>API 响应模拟器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <div class="template-btns">
+            <button class="template-btn" onclick="loadTemplate('user')">用户数据</button>
+            <button class="template-btn" onclick="loadTemplate('list')">列表数据</button>
+            <button class="template-btn" onclick="loadTemplate('paginated')">分页数据</button>
+            <button class="template-btn" onclick="loadTemplate('error')">错误响应</button>
+            <button class="template-btn" onclick="loadTemplate('auth')">认证响应</button>
+            <button class="template-btn" onclick="loadTemplate('crud')">CRUD响应</button>
+        </div>
+        
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">⚙️ 响应配置</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label>HTTP 状态码</label>
+                    <select id="statusCode" onchange="generate()">
+                        <option value="200">200 OK</option>
+                        <option value="201">201 Created</option>
+                        <option value="204">204 No Content</option>
+                        <option value="301">301 Moved Permanently</option>
+                        <option value="302">302 Found</option>
+                        <option value="304">304 Not Modified</option>
+                        <option value="400">400 Bad Request</option>
+                        <option value="401">401 Unauthorized</option>
+                        <option value="403">403 Forbidden</option>
+                        <option value="404">404 Not Found</option>
+                        <option value="422">422 Unprocessable Entity</option>
+                        <option value="429">429 Too Many Requests</option>
+                        <option value="500">500 Internal Server Error</option>
+                        <option value="502">502 Bad Gateway</option>
+                        <option value="503">503 Service Unavailable</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Content-Type</label>
+                    <select id="contentType" onchange="generate()">
+                        <option value="application/json">application/json</option>
+                        <option value="text/plain">text/plain</option>
+                        <option value="text/html">text/html</option>
+                        <option value="application/xml">application/xml</option>
+                    </select>
+                </div>
+                
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label>延迟 (ms)</label>
+                        <input type="number" id="delay" value="0" min="0" max="10000" oninput="generate()">
+                    </div>
+                    <div class="form-group">
+                        <label>数据条数</label>
+                        <input type="number" id="count" value="5" min="1" max="100" oninput="generate()">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>自定义响应头</label>
+                    <div id="headersList"></div>
+                    <button class="add-btn" onclick="addHeader()">+ 添加响应头</button>
+                </div>
+                
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="includeTimestamp" checked onchange="generate()">
+                        包含时间戳
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="randomData" checked onchange="generate()">
+                        随机数据
+                    </label>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📄 响应预览</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-primary" onclick="copyResponse()">复制</button>
+                        <button class="btn-secondary" onclick="downloadResponse()">下载</button>
+                    </div>
+                </div>
+                
+                <div class="response-info">
+                    <span class="status-badge" id="statusBadge">200</span>
+                    <span id="contentTypeDisplay">application/json</span>
+                    <span id="sizeDisplay">0 bytes</span>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('body')">Body</button>
+                    <button class="tab-btn" onclick="switchTab('headers')">Headers</button>
+                    <button class="tab-btn" onclick="switchTab('curl')">cURL</button>
+                </div>
+                
+                <div id="bodyTab" class="tab-content active">
+                    <pre id="responseBody"></pre>
+                </div>
+                
+                <div id="headersTab" class="tab-content">
+                    <pre id="responseHeaders"></pre>
+                </div>
+                
+                <div id="curlTab" class="tab-content">
+                    <pre id="curlCommand"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let headers = [];
+        let currentTemplate = 'user';
+        
+        const templates = {
+            user: function(count, random) {
+                if (count === 1) {
+                    return {
+                        id: random ? Math.floor(Math.random() * 1000) : 1,
+                        name: random ? randomName() : '张三',
+                        email: random ? randomEmail() : 'zhangsan@example.com',
+                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + (random ? Math.random() : 'default'),
+                        role: random ? randomChoice(['admin', 'user', 'editor']) : 'user',
+                        createdAt: new Date().toISOString()
+                    };
+                }
+                return Array.from({ length: count }, (_, i) => ({
+                    id: random ? Math.floor(Math.random() * 1000) : i + 1,
+                    name: random ? randomName() : '用户' + (i + 1),
+                    email: random ? randomEmail() : 'user' + (i + 1) + '@example.com',
+                    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + (random ? Math.random() : i),
+                    role: random ? randomChoice(['admin', 'user', 'editor']) : 'user',
+                    createdAt: new Date().toISOString()
+                }));
+            },
+            list: function(count, random) {
+                return {
+                    data: Array.from({ length: count }, (_, i) => ({
+                        id: random ? Math.floor(Math.random() * 1000) : i + 1,
+                        title: random ? randomTitle() : '项目 ' + (i + 1),
+                        description: random ? randomDesc() : '这是项目 ' + (i + 1) + ' 的描述',
+                        status: random ? randomChoice(['active', 'pending', 'completed']) : 'active',
+                        priority: random ? randomChoice(['low', 'medium', 'high']) : 'medium'
+                    })),
+                    total: count,
+                    success: true
+                };
+            },
+            paginated: function(count, random) {
+                const page = 1;
+                const perPage = count;
+                const total = random ? Math.floor(Math.random() * 100) + count : 50;
+                return {
+                    data: Array.from({ length: count }, (_, i) => ({
+                        id: (page - 1) * perPage + i + 1,
+                        name: random ? randomName() : '项目 ' + ((page - 1) * perPage + i + 1),
+                        value: random ? Math.floor(Math.random() * 1000) : (i + 1) * 100
+                    })),
+                    pagination: {
+                        page: page,
+                        perPage: perPage,
+                        total: total,
+                        totalPages: Math.ceil(total / perPage),
+                        hasNext: page < Math.ceil(total / perPage),
+                        hasPrev: page > 1
+                    }
+                };
+            },
+            error: function() {
+                return {
+                    error: {
+                        code: 'VALIDATION_ERROR',
+                        message: '请求参数验证失败',
+                        details: [
+                            { field: 'email', message: '邮箱格式不正确' },
+                            { field: 'password', message: '密码长度至少8位' }
+                        ]
+                    },
+                    timestamp: new Date().toISOString(),
+                    path: '/api/users',
+                    requestId: 'req_' + Math.random().toString(36).substr(2, 9)
+                };
+            },
+            auth: function() {
+                return {
+                    access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' + btoa(JSON.stringify({ sub: '1234567890', name: '张三', iat: Date.now() })),
+                    token_type: 'Bearer',
+                    expires_in: 3600,
+                    refresh_token: 'rt_' + Math.random().toString(36).substr(2, 16),
+                    scope: 'read write',
+                    user: {
+                        id: 1,
+                        name: '张三',
+                        email: 'zhangsan@example.com',
+                        permissions: ['users:read', 'users:write', 'posts:read']
+                    }
+                };
+            },
+            crud: function() {
+                return {
+                    success: true,
+                    message: '操作成功',
+                    data: {
+                        id: Math.floor(Math.random() * 1000),
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    }
+                };
+            }
+        };
+        
+        function randomName() {
+            const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', 'Alice', 'Bob', 'Charlie', 'David'];
+            return names[Math.floor(Math.random() * names.length)];
+        }
+        
+        function randomEmail() {
+            return 'user' + Math.floor(Math.random() * 1000) + '@example.com';
+        }
+        
+        function randomTitle() {
+            const titles = ['新功能开发', '性能优化', 'Bug修复', '文档更新', '代码重构', '测试完善'];
+            return titles[Math.floor(Math.random() * titles.length)];
+        }
+        
+        function randomDesc() {
+            const descs = ['这是一个重要的任务', '需要尽快完成', '优先级较高', '已经在进行中', '等待审核'];
+            return descs[Math.floor(Math.random() * descs.length)];
+        }
+        
+        function randomChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function loadTemplate(name) {
+            currentTemplate = name;
+            if (name === 'error') {
+                document.getElementById('statusCode').value = '400';
+            } else if (name === 'auth') {
+                document.getElementById('statusCode').value = '200';
+            } else if (name === 'crud') {
+                document.getElementById('statusCode').value = '201';
+            } else {
+                document.getElementById('statusCode').value = '200';
+            }
+            generate();
+        }
+        
+        function addHeader() {
+            headers.push({ key: '', value: '' });
+            renderHeaders();
+        }
+        
+        function removeHeader(index) {
+            headers.splice(index, 1);
+            renderHeaders();
+            generate();
+        }
+        
+        function updateHeader(index, field, value) {
+            headers[index][field] = value;
+            generate();
+        }
+        
+        function renderHeaders() {
+            const container = document.getElementById('headersList');
+            while (container.firstChild) container.removeChild(container.firstChild);
+            
+            headers.forEach((header, index) => {
+                const item = document.createElement('div');
+                item.className = 'header-item';
+                
+                const keyInput = document.createElement('input');
+                keyInput.type = 'text';
+                keyInput.value = header.key;
+                keyInput.placeholder = 'Header Name';
+                keyInput.onchange = function() { updateHeader(index, 'key', this.value); };
+                item.appendChild(keyInput);
+                
+                const valueInput = document.createElement('input');
+                valueInput.type = 'text';
+                valueInput.value = header.value;
+                valueInput.placeholder = 'Value';
+                valueInput.onchange = function() { updateHeader(index, 'value', this.value); };
+                item.appendChild(valueInput);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.style.padding = '0.5rem';
+                removeBtn.onclick = function() { removeHeader(index); };
+                item.appendChild(removeBtn);
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tab));
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+        
+        function generate() {
+            const statusCode = document.getElementById('statusCode').value;
+            const contentType = document.getElementById('contentType').value;
+            const count = parseInt(document.getElementById('count').value) || 5;
+            const includeTimestamp = document.getElementById('includeTimestamp').checked;
+            const randomData = document.getElementById('randomData').checked;
+            
+            // Generate body
+            let body = templates[currentTemplate](count, randomData);
+            
+            if (includeTimestamp && typeof body === 'object') {
+                body._timestamp = new Date().toISOString();
+            }
+            
+            const bodyStr = JSON.stringify(body, null, 2);
+            document.getElementById('responseBody').textContent = bodyStr;
+            
+            // Update status badge
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = statusCode;
+            badge.className = 'status-badge';
+            if (statusCode.startsWith('2')) badge.classList.add('status-2xx');
+            else if (statusCode.startsWith('3')) badge.classList.add('status-3xx');
+            else if (statusCode.startsWith('4')) badge.classList.add('status-4xx');
+            else if (statusCode.startsWith('5')) badge.classList.add('status-5xx');
+            
+            document.getElementById('contentTypeDisplay').textContent = contentType;
+            document.getElementById('sizeDisplay').textContent = new Blob([bodyStr]).size + ' bytes';
+            
+            // Generate headers
+            let headersText = 'HTTP/1.1 ' + statusCode + ' ' + getStatusText(statusCode) + '\n';
+            headersText += 'Content-Type: ' + contentType + '\n';
+            headersText += 'Content-Length: ' + new Blob([bodyStr]).size + '\n';
+            headersText += 'Date: ' + new Date().toUTCString() + '\n';
+            headersText += 'X-Request-Id: ' + 'req_' + Math.random().toString(36).substr(2, 9) + '\n';
+            
+            headers.forEach(h => {
+                if (h.key && h.value) {
+                    headersText += h.key + ': ' + h.value + '\n';
+                }
+            });
+            
+            document.getElementById('responseHeaders').textContent = headersText;
+            
+            // Generate cURL
+            let curlCmd = 'curl -X GET \\\n';
+            curlCmd += '  -H "Content-Type: ' + contentType + '" \\\n';
+            headers.forEach(h => {
+                if (h.key && h.value) {
+                    curlCmd += '  -H "' + h.key + ': ' + h.value + '" \\\n';
+                }
+            });
+            curlCmd += '  "https://api.example.com/endpoint"';
+            
+            document.getElementById('curlCommand').textContent = curlCmd;
+        }
+        
+        function getStatusText(code) {
+            const texts = {
+                '200': 'OK', '201': 'Created', '204': 'No Content',
+                '301': 'Moved Permanently', '302': 'Found', '304': 'Not Modified',
+                '400': 'Bad Request', '401': 'Unauthorized', '403': 'Forbidden',
+                '404': 'Not Found', '422': 'Unprocessable Entity', '429': 'Too Many Requests',
+                '500': 'Internal Server Error', '502': 'Bad Gateway', '503': 'Service Unavailable'
+            };
+            return texts[code] || 'Unknown';
+        }
+        
+        function copyResponse() {
+            const body = document.getElementById('responseBody').textContent;
+            navigator.clipboard.writeText(body).then(function() {
+                showToast('响应已复制！');
+            });
+        }
+        
+        function downloadResponse() {
+            const body = document.getElementById('responseBody').textContent;
+            const blob = new Blob([body], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'response.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('文件已下载！');
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); }, 2000);
+        }
+        
+        initTheme();
+        renderHeaders();
+        generate();
+    </script>
+</body>
+</html>

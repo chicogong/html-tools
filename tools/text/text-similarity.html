@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本相似度计算 - Text Similarity Calculator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #06b6d4;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+        
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 { margin: 0; font-size: 1.75rem; }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .text-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .text-input-group { display: flex; flex-direction: column; }
+        .text-input-group label { font-weight: 600; margin-bottom: 0.5rem; }
+        .text-input-group textarea { min-height: 200px; font-family: monospace; font-size: 0.9rem; }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        
+        .similarity-score {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        .score-value {
+            font-size: 4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .score-label { font-size: 1.25rem; color: var(--pico-muted-color); margin-top: 0.5rem; }
+        
+        .score-bar {
+            height: 12px;
+            background: var(--pico-muted-border-color);
+            border-radius: 6px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+        
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--error-color), var(--warning-color), var(--success-color));
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-card {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .metric-value { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); }
+        .metric-label { font-size: 0.75rem; color: var(--pico-muted-color); }
+        
+        .diff-section {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .diff-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .diff-header h3 { margin: 0; }
+        .diff-legend { display: flex; gap: 1rem; font-size: 0.875rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.25rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+        .legend-color.added { background: rgba(16, 185, 129, 0.3); border: 1px solid var(--success-color); }
+        .legend-color.removed { background: rgba(239, 68, 68, 0.3); border: 1px solid var(--error-color); }
+        .legend-color.same { background: var(--pico-secondary-background); border: 1px solid var(--pico-muted-border-color); }
+        
+        .diff-content {
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .diff-added {
+            background: rgba(16, 185, 129, 0.3);
+            color: var(--success-color);
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+        
+        .diff-removed {
+            background: rgba(239, 68, 68, 0.3);
+            color: var(--error-color);
+            text-decoration: line-through;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+        
+        .diff-same { color: var(--pico-color); }
+        
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--pico-muted-border-color);
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--pico-muted-color);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover { color: var(--pico-color); }
+        .tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        .side-panel {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .text-inputs { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .side-by-side { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>文本相似度计算</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+        
+        <div class="text-inputs">
+            <div class="text-input-group">
+                <label>文本 A (原文)</label>
+                <textarea id="textA" placeholder="输入第一段文本..."></textarea>
+            </div>
+            <div class="text-input-group">
+                <label>文本 B (对比)</label>
+                <textarea id="textB" placeholder="输入第二段文本..."></textarea>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="compareTexts()">计算相似度</button>
+            <button class="secondary" onclick="swapTexts()">交换文本</button>
+            <button class="secondary" onclick="clearAll()">清空</button>
+            <button class="secondary" onclick="loadSample()">加载示例</button>
+            <label><input type="checkbox" id="ignoreCase"> 忽略大小写</label>
+            <label><input type="checkbox" id="ignoreWhitespace"> 忽略空白字符</label>
+        </div>
+        
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="similarity-score">
+                <div class="score-value" id="similarityScore">0%</div>
+                <div class="score-label">文本相似度</div>
+                <div class="score-bar">
+                    <div class="score-fill" id="scoreFill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="levenshtein">0</div>
+                    <div class="metric-label">编辑距离 (Levenshtein)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="commonChars">0</div>
+                    <div class="metric-label">共同字符数</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="lengthDiff">0</div>
+                    <div class="metric-label">长度差异</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="jaccardIndex">0%</div>
+                    <div class="metric-label">Jaccard 相似系数</div>
+                </div>
+            </div>
+            
+            <div class="diff-section">
+                <div class="diff-header">
+                    <h3>差异对比</h3>
+                    <div class="diff-legend">
+                        <div class="legend-item"><div class="legend-color removed"></div><span>删除</span></div>
+                        <div class="legend-item"><div class="legend-color added"></div><span>新增</span></div>
+                        <div class="legend-item"><div class="legend-color same"></div><span>相同</span></div>
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="switchDiffTab('inline')">内联对比</button>
+                    <button class="tab" onclick="switchDiffTab('sidebyside')">并排对比</button>
+                    <button class="tab" onclick="switchDiffTab('chars')">字符级对比</button>
+                </div>
+                
+                <div id="inlineTab" class="tab-content active">
+                    <div class="diff-content" id="inlineDiff"></div>
+                </div>
+                
+                <div id="sidebysideTab" class="tab-content">
+                    <div class="side-by-side">
+                        <div class="side-panel" id="leftPanel"></div>
+                        <div class="side-panel" id="rightPanel"></div>
+                    </div>
+                </div>
+                
+                <div id="charsTab" class="tab-content">
+                    <div class="diff-content" id="charsDiff"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+        
+        function switchDiffTab(tab) {
+            document.querySelectorAll('.diff-section .tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.diff-section .tab-content').forEach(function(c) { c.classList.remove('active'); });
+            const index = tab === 'inline' ? 1 : tab === 'sidebyside' ? 2 : 3;
+            document.querySelector('.diff-section .tab:nth-child(' + index + ')').classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+        
+        function levenshteinDistance(str1, str2) {
+            const m = str1.length, n = str2.length;
+            const dp = Array(m + 1).fill(null).map(function() { return Array(n + 1).fill(0); });
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    } else {
+                        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1);
+                    }
+                }
+            }
+            return dp[m][n];
+        }
+        
+        function lcs(str1, str2) {
+            const m = str1.length, n = str2.length;
+            const dp = Array(m + 1).fill(null).map(function() { return Array(n + 1).fill(0); });
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            return dp[m][n];
+        }
+        
+        function jaccardSimilarity(str1, str2) {
+            const set1 = new Set(str1.split(/\s+/).filter(Boolean));
+            const set2 = new Set(str2.split(/\s+/).filter(Boolean));
+            const intersection = new Set([...set1].filter(function(x) { return set2.has(x); }));
+            const union = new Set([...set1, ...set2]);
+            return union.size === 0 ? 0 : intersection.size / union.size;
+        }
+        
+        function generateCharDiff(str1, str2) {
+            const m = str1.length, n = str2.length;
+            const dp = Array(m + 1).fill(null).map(function() { return Array(n + 1).fill(0); });
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            const result = [];
+            let i = m, j = n;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && str1[i - 1] === str2[j - 1]) {
+                    result.unshift({ type: 'same', text: str1[i - 1] });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    result.unshift({ type: 'added', text: str2[j - 1] });
+                    j--;
+                } else {
+                    result.unshift({ type: 'removed', text: str1[i - 1] });
+                    i--;
+                }
+            }
+            return result;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function compareTexts() {
+            let textA = document.getElementById('textA').value;
+            let textB = document.getElementById('textB').value;
+            if (!textA.trim() || !textB.trim()) { alert('请输入两段文本进行比较'); return; }
+            
+            const ignoreCase = document.getElementById('ignoreCase').checked;
+            const ignoreWhitespace = document.getElementById('ignoreWhitespace').checked;
+            
+            let processedA = textA, processedB = textB;
+            if (ignoreCase) { processedA = processedA.toLowerCase(); processedB = processedB.toLowerCase(); }
+            if (ignoreWhitespace) { processedA = processedA.replace(/\s+/g, ' ').trim(); processedB = processedB.replace(/\s+/g, ' ').trim(); }
+            
+            const distance = levenshteinDistance(processedA, processedB);
+            const maxLen = Math.max(processedA.length, processedB.length);
+            const similarity = maxLen === 0 ? 100 : ((1 - distance / maxLen) * 100);
+            const commonLength = lcs(processedA, processedB);
+            const jaccard = jaccardSimilarity(processedA, processedB) * 100;
+            
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('similarityScore').textContent = similarity.toFixed(1) + '%';
+            document.getElementById('scoreFill').style.width = similarity + '%';
+            document.getElementById('levenshtein').textContent = distance;
+            document.getElementById('commonChars').textContent = commonLength;
+            document.getElementById('lengthDiff').textContent = Math.abs(processedA.length - processedB.length);
+            document.getElementById('jaccardIndex').textContent = jaccard.toFixed(1) + '%';
+            
+            const charDiff = generateCharDiff(processedA, processedB);
+            
+            let inlineHtml = '';
+            let charsHtml = '';
+            charDiff.forEach(function(item) {
+                const text = item.text === ' ' ? '&nbsp;' : escapeHtml(item.text);
+                if (item.type === 'same') {
+                    inlineHtml += '<span class="diff-same">' + text + '</span>';
+                    charsHtml += '<span class="diff-same">' + text + '</span>';
+                } else if (item.type === 'added') {
+                    inlineHtml += '<span class="diff-added">' + text + '</span>';
+                    charsHtml += '<span class="diff-added">' + text + '</span>';
+                } else {
+                    inlineHtml += '<span class="diff-removed">' + text + '</span>';
+                    charsHtml += '<span class="diff-removed">' + text + '</span>';
+                }
+            });
+            
+            document.getElementById('inlineDiff').innerHTML = inlineHtml;
+            document.getElementById('charsDiff').innerHTML = charsHtml;
+            document.getElementById('leftPanel').textContent = processedA;
+            document.getElementById('rightPanel').textContent = processedB;
+        }
+        
+        function swapTexts() {
+            const textA = document.getElementById('textA');
+            const textB = document.getElementById('textB');
+            const temp = textA.value;
+            textA.value = textB.value;
+            textB.value = temp;
+        }
+        
+        function clearAll() {
+            document.getElementById('textA').value = '';
+            document.getElementById('textB').value = '';
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+        
+        function loadSample() {
+            document.getElementById('textA').value = '人工智能是计算机科学的一个重要分支领域，它致力于研究和开发能够模拟人类智能的系统和技术。这个领域涵盖了机器学习、深度学习、自然语言处理等多个方向。';
+            document.getElementById('textB').value = '人工智能是计算机科学的一个核心分支，它专注于研究和开发能够模拟人类智慧的系统与技术。该领域包含了机器学习、深度学习、自然语言处理等众多方向。';
+            compareTexts();
+        }
+    </script>
+</body>
+</html>

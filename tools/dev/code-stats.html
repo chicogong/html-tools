@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码统计器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #10b981;
+            --secondary-color: #059669;
+            --accent-color: #f5f5f5;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        [data-theme="dark"] { --accent-color: #1a2e2a; }
+        body { min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--primary-color); }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo svg { width: 48px; height: 48px; }
+        h1 { margin: 0; background: linear-gradient(135deg, var(--primary-color), #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .theme-toggle { background: none; border: 2px solid var(--primary-color); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .theme-toggle:hover { background: var(--primary-color); color: white; }
+        .panel { background: var(--accent-color); border-radius: var(--border-radius); padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--primary-color); }
+        .panel-title { font-weight: 600; color: var(--primary-color); margin: 0; }
+        textarea { font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; min-height: 300px; }
+        .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background: var(--secondary-color); }
+        .btn-secondary { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
+        .btn-secondary:hover { background: var(--primary-color); color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .stat-card { background: rgba(16, 185, 129, 0.1); border-radius: var(--border-radius); padding: 1.5rem; text-align: center; border: 1px solid var(--primary-color); }
+        .stat-value { font-size: 2.5rem; font-weight: bold; color: var(--primary-color); }
+        .stat-label { color: #666; margin-top: 0.5rem; }
+        .language-select { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .lang-btn { padding: 0.5rem 1rem; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-color); cursor: pointer; border-radius: 20px; transition: var(--transition); }
+        .lang-btn:hover, .lang-btn.active { background: var(--primary-color); color: white; }
+        .breakdown { margin-top: 1.5rem; }
+        .breakdown-item { display: flex; justify-content: space-between; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(16, 185, 129, 0.05); border-radius: var(--border-radius); }
+        .breakdown-label { font-weight: 500; }
+        .breakdown-bar { height: 8px; background: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; overflow: hidden; }
+        .breakdown-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .fill-code { background: var(--primary-color); }
+        .fill-comment { background: #3b82f6; }
+        .fill-blank { background: #9ca3af; }
+        .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; background: var(--primary-color); color: white; border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: var(--transition); z-index: 1000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .file-input { display: none; }
+        .drop-zone { border: 2px dashed var(--primary-color); border-radius: var(--border-radius); padding: 2rem; text-align: center; cursor: pointer; transition: var(--transition); margin-bottom: 1rem; }
+        .drop-zone:hover, .drop-zone.dragover { background: rgba(16, 185, 129, 0.1); }
+        .legend { display: flex; gap: 1.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="10" width="80" height="80" rx="10" fill="#10b981"/>
+                    <text x="50" y="45" text-anchor="middle" fill="white" font-size="20" font-weight="bold">123</text>
+                    <text x="50" y="70" text-anchor="middle" fill="white" font-size="16">LOC</text>
+                </svg>
+                <h1>代码统计器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📊 统计结果</h3>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalLines">0</div>
+                    <div class="stat-label">总行数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="codeLines">0</div>
+                    <div class="stat-label">代码行</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="commentLines">0</div>
+                    <div class="stat-label">注释行</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="blankLines">0</div>
+                    <div class="stat-label">空白行</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="characters">0</div>
+                    <div class="stat-label">字符数</div>
+                </div>
+            </div>
+            
+            <div class="breakdown">
+                <div class="breakdown-item">
+                    <span class="breakdown-label">代码行</span>
+                    <span id="codePercent">0%</span>
+                </div>
+                <div class="breakdown-bar"><div class="breakdown-fill fill-code" id="codeBar" style="width: 0%;"></div></div>
+                
+                <div class="breakdown-item">
+                    <span class="breakdown-label">注释行</span>
+                    <span id="commentPercent">0%</span>
+                </div>
+                <div class="breakdown-bar"><div class="breakdown-fill fill-comment" id="commentBar" style="width: 0%;"></div></div>
+                
+                <div class="breakdown-item">
+                    <span class="breakdown-label">空白行</span>
+                    <span id="blankPercent">0%</span>
+                </div>
+                <div class="breakdown-bar"><div class="breakdown-fill fill-blank" id="blankBar" style="width: 0%;"></div></div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color fill-code"></div> 代码</div>
+                <div class="legend-item"><div class="legend-color fill-comment"></div> 注释</div>
+                <div class="legend-item"><div class="legend-color fill-blank"></div> 空白</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📝 代码输入</h3>
+                <button class="btn-secondary" onclick="clearCode()">清空</button>
+            </div>
+            
+            <div class="language-select">
+                <button class="lang-btn active" data-lang="auto" onclick="setLanguage('auto')">自动检测</button>
+                <button class="lang-btn" data-lang="javascript" onclick="setLanguage('javascript')">JavaScript</button>
+                <button class="lang-btn" data-lang="python" onclick="setLanguage('python')">Python</button>
+                <button class="lang-btn" data-lang="java" onclick="setLanguage('java')">Java</button>
+                <button class="lang-btn" data-lang="cpp" onclick="setLanguage('cpp')">C/C++</button>
+                <button class="lang-btn" data-lang="html" onclick="setLanguage('html')">HTML</button>
+                <button class="lang-btn" data-lang="css" onclick="setLanguage('css')">CSS</button>
+                <button class="lang-btn" data-lang="sql" onclick="setLanguage('sql')">SQL</button>
+            </div>
+            
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <p>拖放文件到此处或点击选择文件</p>
+                <input type="file" id="fileInput" class="file-input" onchange="handleFile(event)" multiple>
+            </div>
+            
+            <textarea id="codeInput" placeholder="在此粘贴代码..." oninput="analyze()"></textarea>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let currentLang = 'auto';
+        
+        const commentPatterns = {
+            javascript: { single: '//', multiStart: '/*', multiEnd: '*/' },
+            python: { single: '#', multiStart: '"""', multiEnd: '"""', multiStart2: "'''", multiEnd2: "'''" },
+            java: { single: '//', multiStart: '/*', multiEnd: '*/' },
+            cpp: { single: '//', multiStart: '/*', multiEnd: '*/' },
+            html: { multiStart: '<!--', multiEnd: '-->' },
+            css: { multiStart: '/*', multiEnd: '*/' },
+            sql: { single: '--', multiStart: '/*', multiEnd: '*/' }
+        };
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            analyze();
+        }
+        
+        function detectLanguage(code) {
+            if (code.includes('<!DOCTYPE') || code.includes('<html')) return 'html';
+            if (code.includes('function ') || code.includes('=>') || code.includes('const ') || code.includes('let ')) return 'javascript';
+            if (code.includes('def ') || code.includes('import ') && code.includes(':')) return 'python';
+            if (code.includes('public class ') || code.includes('public static void')) return 'java';
+            if (code.includes('#include') || code.includes('int main(')) return 'cpp';
+            if (code.includes('@media') || code.includes('{') && code.includes(':') && code.includes(';')) return 'css';
+            if (code.includes('SELECT ') || code.includes('FROM ') || code.includes('CREATE TABLE')) return 'sql';
+            return 'javascript';
+        }
+        
+        function analyze() {
+            const code = document.getElementById('codeInput').value;
+            const lang = currentLang === 'auto' ? detectLanguage(code) : currentLang;
+            const patterns = commentPatterns[lang] || commentPatterns.javascript;
+            
+            const lines = code.split('\n');
+            let totalLines = lines.length;
+            let codeLines = 0;
+            let commentLines = 0;
+            let blankLines = 0;
+            let inMultiComment = false;
+            
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                
+                if (trimmed === '') {
+                    blankLines++;
+                    return;
+                }
+                
+                // Check multi-line comment
+                if (patterns.multiStart && trimmed.includes(patterns.multiStart)) {
+                    inMultiComment = true;
+                }
+                if (patterns.multiStart2 && trimmed.includes(patterns.multiStart2)) {
+                    inMultiComment = true;
+                }
+                
+                if (inMultiComment) {
+                    commentLines++;
+                    if (patterns.multiEnd && trimmed.includes(patterns.multiEnd)) {
+                        inMultiComment = false;
+                    }
+                    if (patterns.multiEnd2 && trimmed.includes(patterns.multiEnd2)) {
+                        inMultiComment = false;
+                    }
+                    return;
+                }
+                
+                // Check single-line comment
+                if (patterns.single && trimmed.startsWith(patterns.single)) {
+                    commentLines++;
+                    return;
+                }
+                
+                // Check HTML comment
+                if (lang === 'html' && trimmed.startsWith('<!--')) {
+                    commentLines++;
+                    return;
+                }
+                
+                codeLines++;
+            });
+            
+            // Handle empty input
+            if (code.trim() === '') {
+                totalLines = 0;
+                codeLines = 0;
+                commentLines = 0;
+                blankLines = 0;
+            }
+            
+            // Update UI
+            document.getElementById('totalLines').textContent = totalLines;
+            document.getElementById('codeLines').textContent = codeLines;
+            document.getElementById('commentLines').textContent = commentLines;
+            document.getElementById('blankLines').textContent = blankLines;
+            document.getElementById('characters').textContent = code.length;
+            
+            // Calculate percentages
+            const total = totalLines || 1;
+            const codePercent = ((codeLines / total) * 100).toFixed(1);
+            const commentPercent = ((commentLines / total) * 100).toFixed(1);
+            const blankPercent = ((blankLines / total) * 100).toFixed(1);
+            
+            document.getElementById('codePercent').textContent = codePercent + '%';
+            document.getElementById('commentPercent').textContent = commentPercent + '%';
+            document.getElementById('blankPercent').textContent = blankPercent + '%';
+            
+            document.getElementById('codeBar').style.width = codePercent + '%';
+            document.getElementById('commentBar').style.width = commentPercent + '%';
+            document.getElementById('blankBar').style.width = blankPercent + '%';
+        }
+        
+        function handleFile(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('codeInput').value = e.target.result;
+                    analyze();
+                    showToast('文件已加载: ' + files[0].name);
+                };
+                reader.readAsText(files[0]);
+            }
+        }
+        
+        function clearCode() {
+            document.getElementById('codeInput').value = '';
+            analyze();
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); }, 2000);
+        }
+        
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    document.getElementById('codeInput').value = ev.target.result;
+                    analyze();
+                    showToast('文件已加载: ' + files[0].name);
+                };
+                reader.readAsText(files[0]);
+            }
+        });
+        
+        initTheme();
+        analyze();
+    </script>
+</body>
+</html>

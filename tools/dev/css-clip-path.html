@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Clip-path 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .controls-panel {
+            padding: 20px;
+            border-radius: 8px;
+            background: var(--pico-card-background-color);
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .shape-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .shape-btn {
+            padding: 12px;
+            border: 2px solid var(--pico-primary);
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .shape-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .shape-btn.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .presets-section {
+            margin-bottom: 20px;
+        }
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .preset-btn {
+            padding: 8px;
+            font-size: 12px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+            border-color: var(--pico-primary);
+        }
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .slider-value {
+            font-family: monospace;
+            background: var(--pico-code-background-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .preview-container {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .preview-stage {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(45deg, #ddd 25%, transparent 25%),
+                        linear-gradient(-45deg, #ddd 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #ddd 75%),
+                        linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        [data-theme="dark"] .preview-stage {
+            background: linear-gradient(45deg, #333 25%, transparent 25%),
+                        linear-gradient(-45deg, #333 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #333 75%),
+                        linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #222;
+        }
+        .clipped-element {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .point-handle {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            cursor: move;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        .point-handle:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        .point-handle.active {
+            background: #667eea;
+            border-color: white;
+        }
+        .point-label {
+            position: absolute;
+            font-size: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            transform: translate(-50%, -150%);
+            white-space: nowrap;
+        }
+        .code-output {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .copy-btn {
+            margin-top: 10px;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 24px;
+        }
+        .polygon-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .polygon-controls button {
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
+        }
+        .shape-controls {
+            display: none;
+        }
+        .shape-controls.active {
+            display: block;
+        }
+        .inset-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CSS Clip-path 生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <div class="main-grid">
+            <div class="controls-panel">
+                <div class="control-group">
+                    <label>选择形状</label>
+                    <div class="shape-buttons">
+                        <button class="shape-btn" onclick="setShape('circle')" id="btn-circle">圆形</button>
+                        <button class="shape-btn" onclick="setShape('ellipse')" id="btn-ellipse">椭圆</button>
+                        <button class="shape-btn" onclick="setShape('inset')" id="btn-inset">内嵌</button>
+                        <button class="shape-btn active" onclick="setShape('polygon')" id="btn-polygon">多边形</button>
+                    </div>
+                </div>
+
+                <div class="presets-section">
+                    <label>多边形预设</label>
+                    <div class="presets-grid">
+                        <button class="preset-btn" onclick="applyPolygonPreset('triangle')">三角形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('rhombus')">菱形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('pentagon')">五边形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('hexagon')">六边形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('octagon')">八边形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('star')">星形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('cross')">十字形</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('arrow')">箭头</button>
+                        <button class="preset-btn" onclick="applyPolygonPreset('chevron')">V形</button>
+                    </div>
+                </div>
+
+                <div class="shape-controls" id="circle-controls">
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>半径</label>
+                            <span class="slider-value" id="circleRadiusValue">50%</span>
+                        </div>
+                        <input type="range" id="circleRadius" min="0" max="100" value="50" oninput="updateCircle()">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>中心点 X</label>
+                            <span class="slider-value" id="circleCxValue">50%</span>
+                        </div>
+                        <input type="range" id="circleCx" min="0" max="100" value="50" oninput="updateCircle()">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>中心点 Y</label>
+                            <span class="slider-value" id="circleCyValue">50%</span>
+                        </div>
+                        <input type="range" id="circleCy" min="0" max="100" value="50" oninput="updateCircle()">
+                    </div>
+                </div>
+
+                <div class="shape-controls" id="ellipse-controls">
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>水平半径</label>
+                            <span class="slider-value" id="ellipseRxValue">50%</span>
+                        </div>
+                        <input type="range" id="ellipseRx" min="0" max="100" value="50" oninput="updateEllipse()">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>垂直半径</label>
+                            <span class="slider-value" id="ellipseRyValue">35%</span>
+                        </div>
+                        <input type="range" id="ellipseRy" min="0" max="100" value="35" oninput="updateEllipse()">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>中心点 X</label>
+                            <span class="slider-value" id="ellipseCxValue">50%</span>
+                        </div>
+                        <input type="range" id="ellipseCx" min="0" max="100" value="50" oninput="updateEllipse()">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>中心点 Y</label>
+                            <span class="slider-value" id="ellipseCyValue">50%</span>
+                        </div>
+                        <input type="range" id="ellipseCy" min="0" max="100" value="50" oninput="updateEllipse()">
+                    </div>
+                </div>
+
+                <div class="shape-controls" id="inset-controls">
+                    <div class="inset-controls">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>上</label>
+                                <span class="slider-value" id="insetTopValue">10%</span>
+                            </div>
+                            <input type="range" id="insetTop" min="0" max="50" value="10" oninput="updateInset()">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>右</label>
+                                <span class="slider-value" id="insetRightValue">10%</span>
+                            </div>
+                            <input type="range" id="insetRight" min="0" max="50" value="10" oninput="updateInset()">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>下</label>
+                                <span class="slider-value" id="insetBottomValue">10%</span>
+                            </div>
+                            <input type="range" id="insetBottom" min="0" max="50" value="10" oninput="updateInset()">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label>左</label>
+                                <span class="slider-value" id="insetLeftValue">10%</span>
+                            </div>
+                            <input type="range" id="insetLeft" min="0" max="50" value="10" oninput="updateInset()">
+                        </div>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label>圆角</label>
+                            <span class="slider-value" id="insetRadiusValue">0%</span>
+                        </div>
+                        <input type="range" id="insetRadius" min="0" max="50" value="0" oninput="updateInset()">
+                    </div>
+                </div>
+
+                <div class="shape-controls active" id="polygon-controls">
+                    <p style="font-size: 13px; color: var(--pico-muted-color); margin-bottom: 10px;">
+                        在预览区域拖动控制点来调整形状，或点击空白处添加新点
+                    </p>
+                    <div class="polygon-controls">
+                        <button onclick="addPoint()">添加点</button>
+                        <button onclick="removeLastPoint()">删除点</button>
+                        <button onclick="resetPolygon()">重置</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-area">
+                <div class="preview-container">
+                    <h3>预览 (可拖动控制点)</h3>
+                    <div class="preview-stage" id="previewStage" onclick="handleStageClick(event)">
+                        <div class="clipped-element" id="clippedElement"></div>
+                    </div>
+                </div>
+
+                <div class="code-output">
+                    <h3>CSS 代码</h3>
+                    <div class="code-block" id="codeOutput"></div>
+                    <button class="copy-btn" onclick="copyCode()">复制代码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentShape = 'polygon';
+        let polygonPoints = [
+            { x: 50, y: 0 },
+            { x: 100, y: 100 },
+            { x: 0, y: 100 }
+        ];
+        let activePoint = null;
+        let isDragging = false;
+
+        function setShape(shape) {
+            currentShape = shape;
+            
+            document.querySelectorAll('.shape-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + shape).classList.add('active');
+            
+            document.querySelectorAll('.shape-controls').forEach(ctrl => ctrl.classList.remove('active'));
+            document.getElementById(shape + '-controls').classList.add('active');
+            
+            updateClipPath();
+            renderHandles();
+        }
+
+        function updateClipPath() {
+            const element = document.getElementById('clippedElement');
+            let clipPath = '';
+            
+            switch(currentShape) {
+                case 'circle':
+                    const radius = document.getElementById('circleRadius').value;
+                    const cx = document.getElementById('circleCx').value;
+                    const cy = document.getElementById('circleCy').value;
+                    document.getElementById('circleRadiusValue').textContent = radius + '%';
+                    document.getElementById('circleCxValue').textContent = cx + '%';
+                    document.getElementById('circleCyValue').textContent = cy + '%';
+                    clipPath = 'circle(' + radius + '% at ' + cx + '% ' + cy + '%)';
+                    break;
+                    
+                case 'ellipse':
+                    const rx = document.getElementById('ellipseRx').value;
+                    const ry = document.getElementById('ellipseRy').value;
+                    const ecx = document.getElementById('ellipseCx').value;
+                    const ecy = document.getElementById('ellipseCy').value;
+                    document.getElementById('ellipseRxValue').textContent = rx + '%';
+                    document.getElementById('ellipseRyValue').textContent = ry + '%';
+                    document.getElementById('ellipseCxValue').textContent = ecx + '%';
+                    document.getElementById('ellipseCyValue').textContent = ecy + '%';
+                    clipPath = 'ellipse(' + rx + '% ' + ry + '% at ' + ecx + '% ' + ecy + '%)';
+                    break;
+                    
+                case 'inset':
+                    const top = document.getElementById('insetTop').value;
+                    const right = document.getElementById('insetRight').value;
+                    const bottom = document.getElementById('insetBottom').value;
+                    const left = document.getElementById('insetLeft').value;
+                    const insetRadius = document.getElementById('insetRadius').value;
+                    document.getElementById('insetTopValue').textContent = top + '%';
+                    document.getElementById('insetRightValue').textContent = right + '%';
+                    document.getElementById('insetBottomValue').textContent = bottom + '%';
+                    document.getElementById('insetLeftValue').textContent = left + '%';
+                    document.getElementById('insetRadiusValue').textContent = insetRadius + '%';
+                    clipPath = 'inset(' + top + '% ' + right + '% ' + bottom + '% ' + left + '%';
+                    if (insetRadius > 0) {
+                        clipPath += ' round ' + insetRadius + '%';
+                    }
+                    clipPath += ')';
+                    break;
+                    
+                case 'polygon':
+                    const points = polygonPoints.map(p => p.x + '% ' + p.y + '%').join(', ');
+                    clipPath = 'polygon(' + points + ')';
+                    break;
+            }
+            
+            element.style.clipPath = clipPath;
+            generateCode(clipPath);
+        }
+
+        function updateCircle() { updateClipPath(); }
+        function updateEllipse() { updateClipPath(); }
+        function updateInset() { updateClipPath(); }
+
+        function renderHandles() {
+            const stage = document.getElementById('previewStage');
+            const existingHandles = stage.querySelectorAll('.point-handle');
+            existingHandles.forEach(h => h.remove());
+            
+            if (currentShape !== 'polygon') return;
+            
+            const stageRect = stage.getBoundingClientRect();
+            
+            polygonPoints.forEach((point, index) => {
+                const handle = document.createElement('div');
+                handle.className = 'point-handle';
+                handle.style.left = point.x + '%';
+                handle.style.top = point.y + '%';
+                handle.dataset.index = index;
+                
+                const label = document.createElement('span');
+                label.className = 'point-label';
+                label.textContent = (index + 1) + ': ' + Math.round(point.x) + '%, ' + Math.round(point.y) + '%';
+                handle.appendChild(label);
+                
+                handle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    activePoint = index;
+                    isDragging = true;
+                    handle.classList.add('active');
+                });
+                
+                stage.appendChild(handle);
+            });
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || activePoint === null) return;
+            
+            const stage = document.getElementById('previewStage');
+            const rect = stage.getBoundingClientRect();
+            
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            let y = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            x = Math.max(0, Math.min(100, x));
+            y = Math.max(0, Math.min(100, y));
+            
+            polygonPoints[activePoint] = { x: x, y: y };
+            
+            const handle = document.querySelector('.point-handle[data-index="' + activePoint + '"]');
+            if (handle) {
+                handle.style.left = x + '%';
+                handle.style.top = y + '%';
+                const label = handle.querySelector('.point-label');
+                if (label) {
+                    label.textContent = (activePoint + 1) + ': ' + Math.round(x) + '%, ' + Math.round(y) + '%';
+                }
+            }
+            
+            updateClipPath();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                const handle = document.querySelector('.point-handle[data-index="' + activePoint + '"]');
+                if (handle) handle.classList.remove('active');
+            }
+            isDragging = false;
+            activePoint = null;
+        });
+
+        function handleStageClick(e) {
+            if (currentShape !== 'polygon') return;
+            if (e.target.classList.contains('point-handle')) return;
+            
+            const stage = document.getElementById('previewStage');
+            const rect = stage.getBoundingClientRect();
+            
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            polygonPoints.push({ x: x, y: y });
+            updateClipPath();
+            renderHandles();
+        }
+
+        function addPoint() {
+            if (polygonPoints.length >= 2) {
+                const lastPoint = polygonPoints[polygonPoints.length - 1];
+                const firstPoint = polygonPoints[0];
+                const newX = (lastPoint.x + firstPoint.x) / 2;
+                const newY = (lastPoint.y + firstPoint.y) / 2;
+                polygonPoints.push({ x: newX, y: newY });
+            } else {
+                polygonPoints.push({ x: 50, y: 50 });
+            }
+            updateClipPath();
+            renderHandles();
+        }
+
+        function removeLastPoint() {
+            if (polygonPoints.length > 3) {
+                polygonPoints.pop();
+                updateClipPath();
+                renderHandles();
+            }
+        }
+
+        function resetPolygon() {
+            polygonPoints = [
+                { x: 50, y: 0 },
+                { x: 100, y: 100 },
+                { x: 0, y: 100 }
+            ];
+            updateClipPath();
+            renderHandles();
+        }
+
+        function applyPolygonPreset(preset) {
+            currentShape = 'polygon';
+            setShape('polygon');
+            
+            switch(preset) {
+                case 'triangle':
+                    polygonPoints = [
+                        { x: 50, y: 0 },
+                        { x: 100, y: 100 },
+                        { x: 0, y: 100 }
+                    ];
+                    break;
+                case 'rhombus':
+                    polygonPoints = [
+                        { x: 50, y: 0 },
+                        { x: 100, y: 50 },
+                        { x: 50, y: 100 },
+                        { x: 0, y: 50 }
+                    ];
+                    break;
+                case 'pentagon':
+                    polygonPoints = [
+                        { x: 50, y: 0 },
+                        { x: 100, y: 38 },
+                        { x: 82, y: 100 },
+                        { x: 18, y: 100 },
+                        { x: 0, y: 38 }
+                    ];
+                    break;
+                case 'hexagon':
+                    polygonPoints = [
+                        { x: 25, y: 0 },
+                        { x: 75, y: 0 },
+                        { x: 100, y: 50 },
+                        { x: 75, y: 100 },
+                        { x: 25, y: 100 },
+                        { x: 0, y: 50 }
+                    ];
+                    break;
+                case 'octagon':
+                    polygonPoints = [
+                        { x: 30, y: 0 },
+                        { x: 70, y: 0 },
+                        { x: 100, y: 30 },
+                        { x: 100, y: 70 },
+                        { x: 70, y: 100 },
+                        { x: 30, y: 100 },
+                        { x: 0, y: 70 },
+                        { x: 0, y: 30 }
+                    ];
+                    break;
+                case 'star':
+                    polygonPoints = [
+                        { x: 50, y: 0 },
+                        { x: 61, y: 35 },
+                        { x: 98, y: 35 },
+                        { x: 68, y: 57 },
+                        { x: 79, y: 91 },
+                        { x: 50, y: 70 },
+                        { x: 21, y: 91 },
+                        { x: 32, y: 57 },
+                        { x: 2, y: 35 },
+                        { x: 39, y: 35 }
+                    ];
+                    break;
+                case 'cross':
+                    polygonPoints = [
+                        { x: 35, y: 0 },
+                        { x: 65, y: 0 },
+                        { x: 65, y: 35 },
+                        { x: 100, y: 35 },
+                        { x: 100, y: 65 },
+                        { x: 65, y: 65 },
+                        { x: 65, y: 100 },
+                        { x: 35, y: 100 },
+                        { x: 35, y: 65 },
+                        { x: 0, y: 65 },
+                        { x: 0, y: 35 },
+                        { x: 35, y: 35 }
+                    ];
+                    break;
+                case 'arrow':
+                    polygonPoints = [
+                        { x: 0, y: 35 },
+                        { x: 60, y: 35 },
+                        { x: 60, y: 0 },
+                        { x: 100, y: 50 },
+                        { x: 60, y: 100 },
+                        { x: 60, y: 65 },
+                        { x: 0, y: 65 }
+                    ];
+                    break;
+                case 'chevron':
+                    polygonPoints = [
+                        { x: 0, y: 0 },
+                        { x: 50, y: 50 },
+                        { x: 100, y: 0 },
+                        { x: 100, y: 30 },
+                        { x: 50, y: 80 },
+                        { x: 0, y: 30 }
+                    ];
+                    break;
+            }
+            
+            updateClipPath();
+            renderHandles();
+        }
+
+        function generateCode(clipPath) {
+            let css = '.element {\n';
+            css += '  clip-path: ' + clipPath + ';\n';
+            css += '  -webkit-clip-path: ' + clipPath + ';\n';
+            css += '}';
+            document.getElementById('codeOutput').textContent = css;
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeOutput').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                setTimeout(() => {
+                    btn.textContent = '复制代码';
+                }, 2000);
+            });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+
+        updateClipPath();
+        renderHandles();
+    </script>
+</body>
+</html>

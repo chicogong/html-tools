@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本频率分析 - Text Frequency Analyzer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #8b5cf6;
+            --chart-color-1: #3b82f6;
+            --chart-color-2: #10b981;
+        }
+        
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 { margin: 0; font-size: 1.75rem; }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .input-section { margin-bottom: 2rem; }
+        .input-section textarea { min-height: 150px; font-size: 1rem; }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label { font-size: 0.875rem; color: var(--pico-muted-color); }
+        
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--pico-muted-border-color);
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--pico-muted-color);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover { color: var(--pico-color); }
+        .tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .chart-container {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1.5rem;
+        }
+        
+        .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+        .bar-item { display: flex; align-items: center; gap: 1rem; }
+        .bar-label { min-width: 80px; font-family: monospace; font-size: 0.9rem; text-align: right; }
+        
+        .bar-wrapper {
+            flex: 1;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+        }
+        
+        .bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--chart-color-1), var(--chart-color-2));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .bar-value { min-width: 80px; font-size: 0.875rem; text-align: right; }
+        
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+        }
+        
+        .frequency-table { width: 100%; border-collapse: collapse; }
+        .frequency-table th, .frequency-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .frequency-table th { background: var(--pico-secondary-background); font-weight: 600; }
+        .frequency-table tr:hover { background: var(--pico-secondary-background); }
+        
+        .copy-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .top-n-control { display: flex; align-items: center; gap: 0.5rem; }
+        .top-n-control input { width: 80px; margin: 0; }
+        .export-buttons { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .controls { flex-direction: column; align-items: stretch; }
+            .bar-label { min-width: 60px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>文本频率分析</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+        
+        <div class="input-section">
+            <textarea id="inputText" placeholder="在此输入或粘贴要分析的文本..."></textarea>
+            <div class="controls">
+                <button onclick="analyzeText()">分析文本</button>
+                <button class="secondary" onclick="clearAll()">清空</button>
+                <button class="secondary" onclick="loadSample()">加载示例</button>
+                <label><input type="checkbox" id="ignoreCase" checked> 忽略大小写</label>
+                <label><input type="checkbox" id="ignoreSpaces" checked> 忽略空格</label>
+                <label><input type="checkbox" id="ignorePunctuation"> 忽略标点</label>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalChars">0</div>
+                <div class="stat-label">总字符数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalWords">0</div>
+                <div class="stat-label">总词数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uniqueChars">0</div>
+                <div class="stat-label">不同字符</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uniqueWords">0</div>
+                <div class="stat-label">不同词汇</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('char')">字符频率</button>
+            <button class="tab" onclick="switchTab('word')">词频分析</button>
+            <button class="tab" onclick="switchTab('ngram')">N-gram分析</button>
+        </div>
+        
+        <div id="charTab" class="tab-content active">
+            <div class="controls">
+                <div class="top-n-control">
+                    <span>显示前</span>
+                    <input type="number" id="charTopN" value="20" min="5" max="100">
+                    <span>个</span>
+                </div>
+                <button class="secondary" onclick="updateCharChart()">更新</button>
+            </div>
+            <div class="chart-container">
+                <h3>字符频率分布</h3>
+                <div class="bar-chart" id="charChart"></div>
+            </div>
+            <div class="table-container">
+                <table class="frequency-table" id="charTable">
+                    <thead><tr><th>排名</th><th>字符</th><th>出现次数</th><th>占比</th><th>操作</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="export-buttons">
+                <button class="secondary" onclick="exportData('char', 'csv')">导出 CSV</button>
+                <button class="secondary" onclick="exportData('char', 'json')">导出 JSON</button>
+                <button class="secondary" onclick="copyTable('char')">复制表格</button>
+            </div>
+        </div>
+        
+        <div id="wordTab" class="tab-content">
+            <div class="controls">
+                <div class="top-n-control">
+                    <span>显示前</span>
+                    <input type="number" id="wordTopN" value="20" min="5" max="100">
+                    <span>个</span>
+                </div>
+                <button class="secondary" onclick="updateWordChart()">更新</button>
+            </div>
+            <div class="chart-container">
+                <h3>词频分布</h3>
+                <div class="bar-chart" id="wordChart"></div>
+            </div>
+            <div class="table-container">
+                <table class="frequency-table" id="wordTable">
+                    <thead><tr><th>排名</th><th>词汇</th><th>出现次数</th><th>占比</th><th>操作</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="export-buttons">
+                <button class="secondary" onclick="exportData('word', 'csv')">导出 CSV</button>
+                <button class="secondary" onclick="exportData('word', 'json')">导出 JSON</button>
+                <button class="secondary" onclick="copyTable('word')">复制表格</button>
+            </div>
+        </div>
+        
+        <div id="ngramTab" class="tab-content">
+            <div class="controls">
+                <div class="top-n-control">
+                    <span>N-gram 长度</span>
+                    <input type="number" id="ngramLength" value="2" min="2" max="5">
+                </div>
+                <div class="top-n-control">
+                    <span>显示前</span>
+                    <input type="number" id="ngramTopN" value="20" min="5" max="100">
+                    <span>个</span>
+                </div>
+                <button class="secondary" onclick="updateNgramChart()">更新</button>
+            </div>
+            <div class="chart-container">
+                <h3>N-gram 频率分布</h3>
+                <div class="bar-chart" id="ngramChart"></div>
+            </div>
+            <div class="table-container">
+                <table class="frequency-table" id="ngramTable">
+                    <thead><tr><th>排名</th><th>N-gram</th><th>出现次数</th><th>占比</th><th>操作</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="export-buttons">
+                <button class="secondary" onclick="exportData('ngram', 'csv')">导出 CSV</button>
+                <button class="secondary" onclick="exportData('ngram', 'json')">导出 JSON</button>
+                <button class="secondary" onclick="copyTable('ngram')">复制表格</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let charFrequency = {};
+        let wordFrequency = {};
+        let ngramFrequency = {};
+        let originalText = '';
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            const index = tab === 'char' ? 1 : tab === 'word' ? 2 : 3;
+            document.querySelector('.tab:nth-child(' + index + ')').classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function analyzeText() {
+            originalText = document.getElementById('inputText').value;
+            if (!originalText.trim()) { alert('请输入要分析的文本'); return; }
+            
+            const ignoreCase = document.getElementById('ignoreCase').checked;
+            const ignoreSpaces = document.getElementById('ignoreSpaces').checked;
+            const ignorePunctuation = document.getElementById('ignorePunctuation').checked;
+            
+            let processedText = originalText;
+            if (ignoreCase) processedText = processedText.toLowerCase();
+            if (ignorePunctuation) processedText = processedText.replace(/[^\w\s\u4e00-\u9fff]/g, '');
+            
+            charFrequency = {};
+            for (let char of processedText) {
+                if (ignoreSpaces && /\s/.test(char)) continue;
+                charFrequency[char] = (charFrequency[char] || 0) + 1;
+            }
+            
+            wordFrequency = {};
+            const words = processedText.match(/[\u4e00-\u9fff]|[a-zA-Z]+/g) || [];
+            for (let word of words) {
+                wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+            }
+            
+            const totalChars = Object.values(charFrequency).reduce((a, b) => a + b, 0);
+            document.getElementById('totalChars').textContent = totalChars;
+            document.getElementById('totalWords').textContent = words.length;
+            document.getElementById('uniqueChars').textContent = Object.keys(charFrequency).length;
+            document.getElementById('uniqueWords').textContent = Object.keys(wordFrequency).length;
+            
+            updateCharChart();
+            updateWordChart();
+            updateNgramChart();
+        }
+        
+        function updateCharChart() {
+            const topN = parseInt(document.getElementById('charTopN').value);
+            const sorted = Object.entries(charFrequency).sort((a, b) => b[1] - a[1]).slice(0, topN);
+            const total = Object.values(charFrequency).reduce((a, b) => a + b, 0);
+            const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+            renderChart('charChart', sorted, total, maxCount);
+            renderTable('charTable', sorted, total);
+        }
+        
+        function updateWordChart() {
+            const topN = parseInt(document.getElementById('wordTopN').value);
+            const sorted = Object.entries(wordFrequency).sort((a, b) => b[1] - a[1]).slice(0, topN);
+            const total = Object.values(wordFrequency).reduce((a, b) => a + b, 0);
+            const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+            renderChart('wordChart', sorted, total, maxCount);
+            renderTable('wordTable', sorted, total);
+        }
+        
+        function updateNgramChart() {
+            const n = parseInt(document.getElementById('ngramLength').value);
+            const topN = parseInt(document.getElementById('ngramTopN').value);
+            const ignoreCase = document.getElementById('ignoreCase').checked;
+            const ignoreSpaces = document.getElementById('ignoreSpaces').checked;
+            
+            let text = originalText;
+            if (ignoreCase) text = text.toLowerCase();
+            if (ignoreSpaces) text = text.replace(/\s/g, '');
+            
+            ngramFrequency = {};
+            for (let i = 0; i <= text.length - n; i++) {
+                const ngram = text.substring(i, i + n);
+                ngramFrequency[ngram] = (ngramFrequency[ngram] || 0) + 1;
+            }
+            
+            const sorted = Object.entries(ngramFrequency).sort((a, b) => b[1] - a[1]).slice(0, topN);
+            const total = Object.values(ngramFrequency).reduce((a, b) => a + b, 0);
+            const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+            renderChart('ngramChart', sorted, total, maxCount);
+            renderTable('ngramTable', sorted, total);
+        }
+        
+        function renderChart(containerId, data, total, maxCount) {
+            const container = document.getElementById(containerId);
+            let html = '';
+            data.forEach(function(item) {
+                const key = item[0];
+                const count = item[1];
+                const percentage = ((count / total) * 100).toFixed(2);
+                const width = (count / maxCount) * 100;
+                let displayItem = key;
+                if (key === ' ') displayItem = '[空格]';
+                else if (key === '\n') displayItem = '[换行]';
+                else if (key === '\t') displayItem = '[制表符]';
+                html += '<div class="bar-item">' +
+                    '<span class="bar-label">' + escapeHtml(displayItem) + '</span>' +
+                    '<div class="bar-wrapper"><div class="bar" style="width:' + width + '%"></div></div>' +
+                    '<span class="bar-value">' + count + ' (' + percentage + '%)</span></div>';
+            });
+            container.innerHTML = html;
+        }
+        
+        function renderTable(tableId, data, total) {
+            const tbody = document.querySelector('#' + tableId + ' tbody');
+            let html = '';
+            data.forEach(function(item, index) {
+                const key = item[0];
+                const count = item[1];
+                const percentage = ((count / total) * 100).toFixed(2);
+                let displayItem = key;
+                if (key === ' ') displayItem = '[空格]';
+                else if (key === '\n') displayItem = '[换行]';
+                else if (key === '\t') displayItem = '[制表符]';
+                html += '<tr><td>' + (index + 1) + '</td>' +
+                    '<td><code>' + escapeHtml(displayItem) + '</code></td>' +
+                    '<td>' + count + '</td><td>' + percentage + '%</td>' +
+                    '<td><button class="copy-btn secondary" onclick="copyItem(\'' + escapeHtml(key).replace(/'/g, "\\'") + '\')">复制</button></td></tr>';
+            });
+            tbody.innerHTML = html;
+        }
+        
+        function copyItem(item) {
+            navigator.clipboard.writeText(item).then(function() { showToast('已复制'); });
+        }
+        
+        function copyTable(type) {
+            let data = type === 'char' ? charFrequency : type === 'word' ? wordFrequency : ngramFrequency;
+            const total = Object.values(data).reduce((a, b) => a + b, 0);
+            const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+            const text = sorted.map(function(item, i) {
+                return (i + 1) + '\t' + item[0] + '\t' + item[1] + '\t' + ((item[1] / total) * 100).toFixed(2) + '%';
+            }).join('\n');
+            navigator.clipboard.writeText('排名\t内容\t次数\t占比\n' + text).then(function() { showToast('表格已复制到剪贴板'); });
+        }
+        
+        function exportData(type, format) {
+            let data = type === 'char' ? charFrequency : type === 'word' ? wordFrequency : ngramFrequency;
+            const total = Object.values(data).reduce((a, b) => a + b, 0);
+            const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+            let content, filename, mimeType;
+            
+            if (format === 'csv') {
+                content = '排名,内容,次数,占比\n' + sorted.map(function(item, i) {
+                    return (i + 1) + ',"' + item[0].replace(/"/g, '""') + '",' + item[1] + ',' + ((item[1] / total) * 100).toFixed(2) + '%';
+                }).join('\n');
+                filename = 'frequency-' + type + '.csv';
+                mimeType = 'text/csv';
+            } else {
+                content = JSON.stringify(sorted.map(function(item, i) {
+                    return { rank: i + 1, item: item[0], count: item[1], percentage: ((item[1] / total) * 100).toFixed(2) + '%' };
+                }), null, 2);
+                filename = 'frequency-' + type + '.json';
+                mimeType = 'application/json';
+            }
+            
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function clearAll() {
+            document.getElementById('inputText').value = '';
+            charFrequency = {}; wordFrequency = {}; ngramFrequency = {};
+            document.getElementById('totalChars').textContent = '0';
+            document.getElementById('totalWords').textContent = '0';
+            document.getElementById('uniqueChars').textContent = '0';
+            document.getElementById('uniqueWords').textContent = '0';
+            document.getElementById('charChart').innerHTML = '';
+            document.getElementById('wordChart').innerHTML = '';
+            document.getElementById('ngramChart').innerHTML = '';
+            document.querySelector('#charTable tbody').innerHTML = '';
+            document.querySelector('#wordTable tbody').innerHTML = '';
+            document.querySelector('#ngramTable tbody').innerHTML = '';
+        }
+        
+        function loadSample() {
+            document.getElementById('inputText').value = '人工智能（Artificial Intelligence，简称AI）是计算机科学的一个分支，它企图了解智能的实质，并生产出一种新的能以人类智能相似的方式做出反应的智能机器。\n\n该领域的研究包括机器人、语言识别、图像识别、自然语言处理和专家系统等。人工智能从诞生以来，理论和技术日益成熟，应用领域也不断扩大。\n\nThe quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet. Programming languages like Python, JavaScript, and Java are popular choices for AI development.\n\n机器学习是人工智能的核心，深度学习则是机器学习的重要分支。通过大量数据的训练，机器可以学习识别模式、做出决策。';
+            analyzeText();
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:12px 24px;border-radius:8px;z-index:1000;';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 2000);
+        }
+    </script>
+</body>
+</html>

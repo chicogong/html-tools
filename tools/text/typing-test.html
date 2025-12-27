@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字速度测试 - Typing Speed Test</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .text-display {
+            background: var(--pico-card-background-color);
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            line-height: 2;
+            min-height: 150px;
+            position: relative;
+        }
+        
+        .text-display.active {
+            border-color: var(--primary-color);
+        }
+        
+        .char {
+            position: relative;
+            transition: all 0.1s;
+        }
+        
+        .char.correct {
+            color: var(--success-color);
+        }
+        
+        .char.incorrect {
+            color: var(--error-color);
+            background: rgba(239, 68, 68, 0.2);
+            border-radius: 2px;
+        }
+        
+        .char.current {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 2px;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .input-area {
+            margin-bottom: 2rem;
+        }
+        
+        .input-area textarea {
+            font-size: 1.125rem;
+            resize: none;
+        }
+        
+        .keyboard {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .key {
+            min-width: 40px;
+            height: 40px;
+            background: var(--pico-secondary-background);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.1s;
+        }
+        
+        .key.wide {
+            min-width: 80px;
+        }
+        
+        .key.space {
+            min-width: 250px;
+        }
+        
+        .key.active {
+            background: var(--primary-color);
+            color: white;
+            transform: scale(0.95);
+        }
+        
+        .key.correct-key {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .key.incorrect-key {
+            background: var(--error-color);
+            color: white;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .controls select {
+            min-width: 150px;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: var(--pico-muted-border-color);
+            border-radius: 3px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s;
+            border-radius: 3px;
+        }
+        
+        .result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .result-modal.show {
+            display: flex;
+        }
+        
+        .result-content {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .result-wpm {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .result-details {
+            margin: 1.5rem 0;
+        }
+        
+        .result-details p {
+            margin: 0.5rem 0;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .key {
+                min-width: 28px;
+                height: 32px;
+                font-size: 0.7rem;
+            }
+            
+            .key.wide {
+                min-width: 50px;
+            }
+            
+            .key.space {
+                min-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>打字速度测试</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="wpm">0</div>
+                <div class="stat-label">WPM (每分钟词数)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="cpm">0</div>
+                <div class="stat-label">CPM (每分钟字符)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accuracy">100%</div>
+                <div class="stat-label">准确率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="time">60</div>
+                <div class="stat-label">剩余时间 (秒)</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <select id="textType">
+                <option value="chinese">中文段落</option>
+                <option value="english">英文段落</option>
+                <option value="code">代码片段</option>
+                <option value="mixed">中英混合</option>
+            </select>
+            <select id="duration">
+                <option value="30">30 秒</option>
+                <option value="60" selected>60 秒</option>
+                <option value="120">120 秒</option>
+                <option value="180">180 秒</option>
+            </select>
+            <button onclick="startTest()" id="startBtn">开始测试</button>
+            <button onclick="resetTest()" class="secondary">重置</button>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress" style="width: 0%"></div>
+        </div>
+        
+        <div class="text-display" id="textDisplay">
+            <span class="placeholder">选择文本类型后点击"开始测试"，然后在下方输入框中输入显示的文本...</span>
+        </div>
+        
+        <div class="input-area">
+            <textarea id="inputArea" rows="3" placeholder="在此输入..." disabled></textarea>
+        </div>
+        
+        <div class="keyboard" id="keyboard">
+            <div class="keyboard-row">
+                <div class="key" data-key="`">`</div>
+                <div class="key" data-key="1">1</div>
+                <div class="key" data-key="2">2</div>
+                <div class="key" data-key="3">3</div>
+                <div class="key" data-key="4">4</div>
+                <div class="key" data-key="5">5</div>
+                <div class="key" data-key="6">6</div>
+                <div class="key" data-key="7">7</div>
+                <div class="key" data-key="8">8</div>
+                <div class="key" data-key="9">9</div>
+                <div class="key" data-key="0">0</div>
+                <div class="key" data-key="-">-</div>
+                <div class="key" data-key="=">=</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="key" data-key="q">Q</div>
+                <div class="key" data-key="w">W</div>
+                <div class="key" data-key="e">E</div>
+                <div class="key" data-key="r">R</div>
+                <div class="key" data-key="t">T</div>
+                <div class="key" data-key="y">Y</div>
+                <div class="key" data-key="u">U</div>
+                <div class="key" data-key="i">I</div>
+                <div class="key" data-key="o">O</div>
+                <div class="key" data-key="p">P</div>
+                <div class="key" data-key="[">[</div>
+                <div class="key" data-key="]">]</div>
+                <div class="key" data-key="\">\</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="key" data-key="a">A</div>
+                <div class="key" data-key="s">S</div>
+                <div class="key" data-key="d">D</div>
+                <div class="key" data-key="f">F</div>
+                <div class="key" data-key="g">G</div>
+                <div class="key" data-key="h">H</div>
+                <div class="key" data-key="j">J</div>
+                <div class="key" data-key="k">K</div>
+                <div class="key" data-key="l">L</div>
+                <div class="key" data-key=";">;</div>
+                <div class="key" data-key="'">'</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="key" data-key="z">Z</div>
+                <div class="key" data-key="x">X</div>
+                <div class="key" data-key="c">C</div>
+                <div class="key" data-key="v">V</div>
+                <div class="key" data-key="b">B</div>
+                <div class="key" data-key="n">N</div>
+                <div class="key" data-key="m">M</div>
+                <div class="key" data-key=",">,</div>
+                <div class="key" data-key=".">.</div>
+                <div class="key" data-key="/">/</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="key space" data-key=" ">空格</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="result-modal" id="resultModal">
+        <div class="result-content">
+            <h2>测试完成!</h2>
+            <div class="result-wpm" id="resultWpm">0</div>
+            <div>每分钟词数 (WPM)</div>
+            <div class="result-details">
+                <p>字符数: <strong id="resultChars">0</strong></p>
+                <p>正确数: <strong id="resultCorrect">0</strong></p>
+                <p>错误数: <strong id="resultErrors">0</strong></p>
+                <p>准确率: <strong id="resultAccuracy">100%</strong></p>
+            </div>
+            <button onclick="closeResult()">关闭</button>
+            <button onclick="startTest()" class="secondary">再测一次</button>
+        </div>
+    </div>
+    
+    <script>
+        const texts = {
+            chinese: [
+                "人工智能正在改变我们的生活方式，从智能手机到自动驾驶汽车，科技的进步让一切变得更加便捷。我们应该拥抱这些变化，同时也要关注技术发展带来的挑战。",
+                "编程是一门艺术，也是一种解决问题的能力。通过学习编程，我们可以将创意转化为现实，创造出改变世界的产品和服务。每一行代码都是通往未来的阶梯。",
+                "在这个信息爆炸的时代，学会筛选和处理信息变得尤为重要。我们需要培养批判性思维，辨别真假信息，做出明智的决策。知识就是力量，但正确的知识更加重要。",
+                "健康的生活方式包括均衡的饮食、适量的运动和充足的睡眠。保持积极乐观的心态，与家人朋友保持良好的关系，这些都是幸福生活的重要组成部分。",
+                "阅读是一扇通往世界的窗户，通过阅读我们可以了解不同的文化、历史和思想。每一本书都是一次心灵的旅行，让我们在文字中探索无限的可能。"
+            ],
+            english: [
+                "The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet and is often used for typing practice and font display.",
+                "Technology is reshaping how we live and work. From smartphones to artificial intelligence, digital innovation continues to transform every aspect of our daily lives.",
+                "Success is not final, failure is not fatal: it is the courage to continue that counts. Every great achievement was once considered impossible until someone did it.",
+                "Programming is the art of telling a computer what to do. It requires logical thinking, creativity, and patience to solve complex problems with elegant solutions.",
+                "The internet has connected billions of people around the world, creating new opportunities for communication, learning, and collaboration across borders and cultures."
+            ],
+            code: [
+                "function fibonacci(n) { return n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2); }",
+                "const sum = arr.reduce((acc, val) => acc + val, 0); console.log(sum);",
+                "for (let i = 0; i < array.length; i++) { if (array[i] === target) return i; }",
+                "async function fetchData(url) { const response = await fetch(url); return response.json(); }",
+                "const filtered = data.filter(item => item.active).map(item => item.name).sort();"
+            ],
+            mixed: [
+                "JavaScript是一种动态编程语言，它可以用于web开发、server端开发和mobile应用开发。",
+                "React和Vue是目前最流行的前端框架，它们都采用了component-based的架构设计。",
+                "使用npm install命令可以安装package依赖，然后通过import语句引入到项目中。",
+                "CSS Grid和Flexbox是现代网页布局的两大利器，它们让responsive设计变得更加简单。",
+                "API接口设计需要考虑RESTful原则，包括使用正确的HTTP methods和返回适当的status code。"
+            ]
+        };
+        
+        let currentText = '';
+        let currentIndex = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let totalTime = 60;
+        let remainingTime = 60;
+        let correctChars = 0;
+        let incorrectChars = 0;
+        let isTestActive = false;
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+        
+        function getRandomText(type) {
+            const textArray = texts[type];
+            return textArray[Math.floor(Math.random() * textArray.length)];
+        }
+        
+        function renderText() {
+            const display = document.getElementById('textDisplay');
+            let html = '';
+            for (let i = 0; i < currentText.length; i++) {
+                let className = 'char';
+                if (i < currentIndex) {
+                    className += ' correct';
+                } else if (i === currentIndex) {
+                    className += ' current';
+                }
+                const char = currentText[i] === ' ' ? '&nbsp;' : escapeHtml(currentText[i]);
+                html += '<span class="' + className + '" data-index="' + i + '">' + char + '</span>';
+            }
+            display.innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        function updateStats() {
+            const timeElapsed = (totalTime - remainingTime) || 1;
+            const minutes = timeElapsed / 60;
+            
+            const wpm = Math.round((correctChars / 5) / minutes);
+            const cpm = Math.round(correctChars / minutes);
+            
+            const totalTyped = correctChars + incorrectChars;
+            const accuracy = totalTyped > 0 ? Math.round((correctChars / totalTyped) * 100) : 100;
+            
+            document.getElementById('wpm').textContent = wpm || 0;
+            document.getElementById('cpm').textContent = cpm || 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            document.getElementById('time').textContent = remainingTime;
+            
+            const progress = ((totalTime - remainingTime) / totalTime) * 100;
+            document.getElementById('progress').style.width = progress + '%';
+        }
+        
+        function highlightKey(key, isCorrect) {
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(k => {
+                k.classList.remove('active', 'correct-key', 'incorrect-key');
+            });
+            
+            const keyElement = document.querySelector('.key[data-key="' + key.toLowerCase() + '"]');
+            if (keyElement) {
+                keyElement.classList.add('active');
+                if (isCorrect !== undefined) {
+                    keyElement.classList.add(isCorrect ? 'correct-key' : 'incorrect-key');
+                }
+            }
+        }
+        
+        function startTest() {
+            closeResult();
+            const textType = document.getElementById('textType').value;
+            totalTime = parseInt(document.getElementById('duration').value);
+            remainingTime = totalTime;
+            
+            currentText = getRandomText(textType);
+            currentIndex = 0;
+            correctChars = 0;
+            incorrectChars = 0;
+            isTestActive = true;
+            startTime = null;
+            
+            renderText();
+            updateStats();
+            
+            const inputArea = document.getElementById('inputArea');
+            inputArea.disabled = false;
+            inputArea.value = '';
+            inputArea.focus();
+            
+            document.getElementById('textDisplay').classList.add('active');
+            document.getElementById('startBtn').textContent = '测试中...';
+            document.getElementById('startBtn').disabled = true;
+        }
+        
+        function resetTest() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            isTestActive = false;
+            currentText = '';
+            currentIndex = 0;
+            correctChars = 0;
+            incorrectChars = 0;
+            remainingTime = parseInt(document.getElementById('duration').value);
+            
+            document.getElementById('textDisplay').innerHTML = '<span class="placeholder">选择文本类型后点击"开始测试"，然后在下方输入框中输入显示的文本...</span>';
+            document.getElementById('textDisplay').classList.remove('active');
+            document.getElementById('inputArea').disabled = true;
+            document.getElementById('inputArea').value = '';
+            document.getElementById('startBtn').textContent = '开始测试';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('progress').style.width = '0%';
+            
+            document.getElementById('wpm').textContent = '0';
+            document.getElementById('cpm').textContent = '0';
+            document.getElementById('accuracy').textContent = '100%';
+            document.getElementById('time').textContent = remainingTime;
+            
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(k => k.classList.remove('active', 'correct-key', 'incorrect-key'));
+        }
+        
+        function endTest() {
+            isTestActive = false;
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            document.getElementById('inputArea').disabled = true;
+            document.getElementById('textDisplay').classList.remove('active');
+            document.getElementById('startBtn').textContent = '开始测试';
+            document.getElementById('startBtn').disabled = false;
+            
+            const timeElapsed = totalTime / 60;
+            const wpm = Math.round((correctChars / 5) / timeElapsed);
+            const totalTyped = correctChars + incorrectChars;
+            const accuracy = totalTyped > 0 ? Math.round((correctChars / totalTyped) * 100) : 100;
+            
+            document.getElementById('resultWpm').textContent = wpm;
+            document.getElementById('resultChars').textContent = totalTyped;
+            document.getElementById('resultCorrect').textContent = correctChars;
+            document.getElementById('resultErrors').textContent = incorrectChars;
+            document.getElementById('resultAccuracy').textContent = accuracy + '%';
+            
+            document.getElementById('resultModal').classList.add('show');
+        }
+        
+        function closeResult() {
+            document.getElementById('resultModal').classList.remove('show');
+        }
+        
+        document.getElementById('inputArea').addEventListener('input', function(e) {
+            if (!isTestActive) return;
+            
+            if (!startTime) {
+                startTime = Date.now();
+                timerInterval = setInterval(function() {
+                    remainingTime--;
+                    updateStats();
+                    if (remainingTime <= 0) {
+                        endTest();
+                    }
+                }, 1000);
+            }
+            
+            const inputValue = e.target.value;
+            const lastChar = inputValue[inputValue.length - 1];
+            
+            if (inputValue.length > currentIndex) {
+                const expectedChar = currentText[currentIndex];
+                const isCorrect = lastChar === expectedChar;
+                
+                if (isCorrect) {
+                    correctChars++;
+                } else {
+                    incorrectChars++;
+                }
+                
+                highlightKey(lastChar, isCorrect);
+                
+                const chars = document.querySelectorAll('.char');
+                if (chars[currentIndex]) {
+                    chars[currentIndex].classList.remove('current');
+                    chars[currentIndex].classList.add(isCorrect ? 'correct' : 'incorrect');
+                }
+                
+                currentIndex++;
+                
+                if (currentIndex < currentText.length) {
+                    if (chars[currentIndex]) {
+                        chars[currentIndex].classList.add('current');
+                    }
+                } else {
+                    const textType = document.getElementById('textType').value;
+                    currentText = getRandomText(textType);
+                    currentIndex = 0;
+                    e.target.value = '';
+                    renderText();
+                }
+                
+                updateStats();
+            }
+        });
+        
+        document.getElementById('inputArea').addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace') {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (isTestActive) {
+                highlightKey(e.key);
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            setTimeout(function() {
+                const keys = document.querySelectorAll('.key');
+                keys.forEach(k => k.classList.remove('active'));
+            }, 100);
+        });
+        
+        document.getElementById('time').textContent = document.getElementById('duration').value;
+        document.getElementById('duration').addEventListener('change', function() {
+            if (!isTestActive) {
+                remainingTime = parseInt(this.value);
+                document.getElementById('time').textContent = remainingTime;
+            }
+        });
+    </script>
+</body>
+</html>

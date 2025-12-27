@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.env 文件编辑器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .panel-header h3 {
+            margin: 0;
+        }
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .panel-actions button {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .editor-area {
+            width: 100%;
+            height: 500px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            resize: vertical;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 24px;
+        }
+        .variables-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .variable-item {
+            display: grid;
+            grid-template-columns: 200px 1fr auto;
+            gap: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: var(--pico-code-background-color);
+            border-radius: 6px;
+            align-items: center;
+        }
+        .variable-item.comment {
+            grid-template-columns: 1fr auto;
+            background: transparent;
+            border: 1px dashed var(--pico-muted-border-color);
+        }
+        .variable-item input {
+            margin: 0;
+            padding: 8px;
+            font-size: 13px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .variable-item .key-input {
+            background: var(--pico-card-background-color);
+            font-weight: 600;
+        }
+        .variable-item .value-input {
+            background: var(--pico-card-background-color);
+        }
+        .variable-item .comment-input {
+            flex: 1;
+            font-style: italic;
+            color: var(--pico-muted-color);
+        }
+        .variable-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .variable-actions button {
+            padding: 4px 8px;
+            font-size: 12px;
+            background: transparent;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .variable-actions button:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .variable-actions button.delete:hover {
+            background: #e74c3c;
+        }
+        .add-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .add-buttons button {
+            flex: 1;
+            padding: 10px;
+            border: 1px dashed var(--pico-primary);
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .add-buttons button:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .search-box {
+            margin-bottom: 15px;
+        }
+        .search-box input {
+            margin: 0;
+        }
+        .status-bar {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--pico-code-background-color);
+            border-radius: 4px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .presets-section {
+            margin-bottom: 20px;
+        }
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+        }
+        .preset-btn {
+            padding: 8px;
+            font-size: 12px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .preset-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .toolbar button:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-code-background-color);
+        }
+        .drop-zone input {
+            display: none;
+        }
+        .category-header {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--pico-primary);
+            margin: 15px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>.env 文件编辑器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <div class="presets-section">
+            <label>快速模板</label>
+            <div class="presets-grid">
+                <button class="preset-btn" onclick="loadPreset('node')">Node.js</button>
+                <button class="preset-btn" onclick="loadPreset('react')">React</button>
+                <button class="preset-btn" onclick="loadPreset('laravel')">Laravel</button>
+                <button class="preset-btn" onclick="loadPreset('django')">Django</button>
+                <button class="preset-btn" onclick="loadPreset('docker')">Docker</button>
+                <button class="preset-btn" onclick="loadPreset('database')">数据库</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>可视化编辑</h3>
+                </div>
+                
+                <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept=".env,.env.*" onchange="loadFile(event)">
+                    <p>拖放 .env 文件到此处或点击选择文件</p>
+                </div>
+
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索变量名或值..." oninput="filterVariables()">
+                </div>
+
+                <div class="toolbar">
+                    <button onclick="sortVariables('asc')">A-Z 排序</button>
+                    <button onclick="sortVariables('desc')">Z-A 排序</button>
+                    <button onclick="groupByPrefix()">按前缀分组</button>
+                    <button onclick="clearAll()">清空全部</button>
+                </div>
+
+                <div class="variables-list" id="variablesList"></div>
+
+                <div class="add-buttons">
+                    <button onclick="addVariable()">+ 添加变量</button>
+                    <button onclick="addComment()">+ 添加注释</button>
+                </div>
+
+                <div class="status-bar">
+                    <span id="varCount">0 个变量</span>
+                    <span id="lastAction">就绪</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>.env 文件内容</h3>
+                    <div class="panel-actions">
+                        <button onclick="parseFromText()">解析文本</button>
+                        <button onclick="copyOutput()">复制</button>
+                        <button onclick="downloadEnv()">下载</button>
+                    </div>
+                </div>
+                <textarea class="editor-area" id="envOutput" placeholder="# .env 文件内容将在这里显示..."># Application
+APP_NAME=MyApp
+APP_ENV=development
+APP_DEBUG=true
+
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=myapp
+DB_USERNAME=root
+DB_PASSWORD=secret</textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let variables = [];
+        let variableId = 0;
+
+        const presets = {
+            node: [
+                { type: 'comment', value: '# Node.js 应用配置' },
+                { type: 'var', key: 'NODE_ENV', value: 'development' },
+                { type: 'var', key: 'PORT', value: '3000' },
+                { type: 'var', key: 'HOST', value: '0.0.0.0' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 数据库配置' },
+                { type: 'var', key: 'DATABASE_URL', value: 'mongodb://localhost:27017/mydb' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# JWT 配置' },
+                { type: 'var', key: 'JWT_SECRET', value: 'your-secret-key' },
+                { type: 'var', key: 'JWT_EXPIRES_IN', value: '7d' }
+            ],
+            react: [
+                { type: 'comment', value: '# React 应用配置' },
+                { type: 'var', key: 'REACT_APP_NAME', value: 'My React App' },
+                { type: 'var', key: 'REACT_APP_API_URL', value: 'http://localhost:3001/api' },
+                { type: 'var', key: 'REACT_APP_VERSION', value: '1.0.0' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 第三方服务' },
+                { type: 'var', key: 'REACT_APP_GOOGLE_ANALYTICS_ID', value: 'UA-XXXXXXXXX-X' },
+                { type: 'var', key: 'REACT_APP_SENTRY_DSN', value: '' }
+            ],
+            laravel: [
+                { type: 'comment', value: '# Laravel 应用配置' },
+                { type: 'var', key: 'APP_NAME', value: 'Laravel' },
+                { type: 'var', key: 'APP_ENV', value: 'local' },
+                { type: 'var', key: 'APP_KEY', value: 'base64:...' },
+                { type: 'var', key: 'APP_DEBUG', value: 'true' },
+                { type: 'var', key: 'APP_URL', value: 'http://localhost' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 数据库配置' },
+                { type: 'var', key: 'DB_CONNECTION', value: 'mysql' },
+                { type: 'var', key: 'DB_HOST', value: '127.0.0.1' },
+                { type: 'var', key: 'DB_PORT', value: '3306' },
+                { type: 'var', key: 'DB_DATABASE', value: 'laravel' },
+                { type: 'var', key: 'DB_USERNAME', value: 'root' },
+                { type: 'var', key: 'DB_PASSWORD', value: '' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 缓存与会话' },
+                { type: 'var', key: 'CACHE_DRIVER', value: 'file' },
+                { type: 'var', key: 'SESSION_DRIVER', value: 'file' },
+                { type: 'var', key: 'QUEUE_CONNECTION', value: 'sync' }
+            ],
+            django: [
+                { type: 'comment', value: '# Django 应用配置' },
+                { type: 'var', key: 'DEBUG', value: 'True' },
+                { type: 'var', key: 'SECRET_KEY', value: 'your-secret-key' },
+                { type: 'var', key: 'ALLOWED_HOSTS', value: 'localhost,127.0.0.1' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 数据库配置' },
+                { type: 'var', key: 'DATABASE_URL', value: 'postgres://user:password@localhost:5432/dbname' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# 静态文件' },
+                { type: 'var', key: 'STATIC_URL', value: '/static/' },
+                { type: 'var', key: 'MEDIA_URL', value: '/media/' }
+            ],
+            docker: [
+                { type: 'comment', value: '# Docker Compose 环境变量' },
+                { type: 'var', key: 'COMPOSE_PROJECT_NAME', value: 'myproject' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# MySQL' },
+                { type: 'var', key: 'MYSQL_ROOT_PASSWORD', value: 'rootpassword' },
+                { type: 'var', key: 'MYSQL_DATABASE', value: 'mydb' },
+                { type: 'var', key: 'MYSQL_USER', value: 'user' },
+                { type: 'var', key: 'MYSQL_PASSWORD', value: 'password' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# Redis' },
+                { type: 'var', key: 'REDIS_PASSWORD', value: '' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# Nginx' },
+                { type: 'var', key: 'NGINX_HOST', value: 'localhost' },
+                { type: 'var', key: 'NGINX_PORT', value: '80' }
+            ],
+            database: [
+                { type: 'comment', value: '# 数据库连接配置' },
+                { type: 'comment', value: '# MySQL' },
+                { type: 'var', key: 'MYSQL_HOST', value: 'localhost' },
+                { type: 'var', key: 'MYSQL_PORT', value: '3306' },
+                { type: 'var', key: 'MYSQL_DATABASE', value: 'mydb' },
+                { type: 'var', key: 'MYSQL_USER', value: 'root' },
+                { type: 'var', key: 'MYSQL_PASSWORD', value: '' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# PostgreSQL' },
+                { type: 'var', key: 'POSTGRES_HOST', value: 'localhost' },
+                { type: 'var', key: 'POSTGRES_PORT', value: '5432' },
+                { type: 'var', key: 'POSTGRES_DB', value: 'mydb' },
+                { type: 'var', key: 'POSTGRES_USER', value: 'postgres' },
+                { type: 'var', key: 'POSTGRES_PASSWORD', value: '' },
+                { type: 'comment', value: '' },
+                { type: 'comment', value: '# Redis' },
+                { type: 'var', key: 'REDIS_HOST', value: 'localhost' },
+                { type: 'var', key: 'REDIS_PORT', value: '6379' },
+                { type: 'var', key: 'REDIS_PASSWORD', value: '' }
+            ]
+        };
+
+        function loadPreset(preset) {
+            variables = presets[preset].map(item => ({
+                id: variableId++,
+                type: item.type,
+                key: item.key || '',
+                value: item.value || ''
+            }));
+            renderVariables();
+            generateOutput();
+            updateStatus('已加载 ' + preset + ' 模板');
+        }
+
+        function addVariable() {
+            variables.push({
+                id: variableId++,
+                type: 'var',
+                key: 'NEW_VARIABLE',
+                value: ''
+            });
+            renderVariables();
+            generateOutput();
+            updateStatus('已添加新变量');
+        }
+
+        function addComment() {
+            variables.push({
+                id: variableId++,
+                type: 'comment',
+                value: '# 注释'
+            });
+            renderVariables();
+            generateOutput();
+            updateStatus('已添加注释');
+        }
+
+        function removeVariable(id) {
+            variables = variables.filter(v => v.id !== id);
+            renderVariables();
+            generateOutput();
+            updateStatus('已删除');
+        }
+
+        function updateVariable(id, field, value) {
+            const variable = variables.find(v => v.id === id);
+            if (variable) {
+                variable[field] = value;
+                generateOutput();
+            }
+        }
+
+        function moveVariable(id, direction) {
+            const index = variables.findIndex(v => v.id === id);
+            const newIndex = index + direction;
+            if (newIndex >= 0 && newIndex < variables.length) {
+                const temp = variables[index];
+                variables[index] = variables[newIndex];
+                variables[newIndex] = temp;
+                renderVariables();
+                generateOutput();
+            }
+        }
+
+        function duplicateVariable(id) {
+            const variable = variables.find(v => v.id === id);
+            if (variable) {
+                const copy = { ...variable, id: variableId++ };
+                if (copy.type === 'var') {
+                    copy.key = copy.key + '_COPY';
+                }
+                const index = variables.findIndex(v => v.id === id);
+                variables.splice(index + 1, 0, copy);
+                renderVariables();
+                generateOutput();
+                updateStatus('已复制');
+            }
+        }
+
+        function renderVariables() {
+            const container = document.getElementById('variablesList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            
+            variables.forEach((variable, index) => {
+                if (searchTerm && variable.type === 'var') {
+                    if (!variable.key.toLowerCase().includes(searchTerm) &&
+                        !variable.value.toLowerCase().includes(searchTerm)) {
+                        return;
+                    }
+                }
+                
+                const item = document.createElement('div');
+                item.className = 'variable-item' + (variable.type === 'comment' ? ' comment' : '');
+                item.dataset.id = variable.id;
+                
+                if (variable.type === 'var') {
+                    const keyInput = document.createElement('input');
+                    keyInput.type = 'text';
+                    keyInput.className = 'key-input';
+                    keyInput.value = variable.key;
+                    keyInput.placeholder = '变量名';
+                    keyInput.oninput = function() { updateVariable(variable.id, 'key', this.value); };
+                    item.appendChild(keyInput);
+                    
+                    const valueInput = document.createElement('input');
+                    valueInput.type = 'text';
+                    valueInput.className = 'value-input';
+                    valueInput.value = variable.value;
+                    valueInput.placeholder = '值';
+                    valueInput.oninput = function() { updateVariable(variable.id, 'value', this.value); };
+                    item.appendChild(valueInput);
+                } else {
+                    const commentInput = document.createElement('input');
+                    commentInput.type = 'text';
+                    commentInput.className = 'comment-input';
+                    commentInput.value = variable.value;
+                    commentInput.placeholder = '# 注释';
+                    commentInput.oninput = function() { updateVariable(variable.id, 'value', this.value); };
+                    item.appendChild(commentInput);
+                }
+                
+                const actions = document.createElement('div');
+                actions.className = 'variable-actions';
+                
+                if (index > 0) {
+                    const upBtn = document.createElement('button');
+                    upBtn.textContent = '↑';
+                    upBtn.onclick = function() { moveVariable(variable.id, -1); };
+                    actions.appendChild(upBtn);
+                }
+                
+                if (index < variables.length - 1) {
+                    const downBtn = document.createElement('button');
+                    downBtn.textContent = '↓';
+                    downBtn.onclick = function() { moveVariable(variable.id, 1); };
+                    actions.appendChild(downBtn);
+                }
+                
+                const dupBtn = document.createElement('button');
+                dupBtn.textContent = '复制';
+                dupBtn.onclick = function() { duplicateVariable(variable.id); };
+                actions.appendChild(dupBtn);
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete';
+                delBtn.textContent = '×';
+                delBtn.onclick = function() { removeVariable(variable.id); };
+                actions.appendChild(delBtn);
+                
+                item.appendChild(actions);
+                container.appendChild(item);
+            });
+            
+            const varCount = variables.filter(v => v.type === 'var').length;
+            document.getElementById('varCount').textContent = varCount + ' 个变量';
+        }
+
+        function generateOutput() {
+            let output = '';
+            variables.forEach(variable => {
+                if (variable.type === 'comment') {
+                    output += variable.value + '\n';
+                } else {
+                    if (variable.key) {
+                        let value = variable.value;
+                        if (value.includes(' ') || value.includes('#') || value.includes('"')) {
+                            value = '"' + value.replace(/"/g, '\\"') + '"';
+                        }
+                        output += variable.key + '=' + value + '\n';
+                    }
+                }
+            });
+            document.getElementById('envOutput').value = output;
+        }
+
+        function parseFromText() {
+            const text = document.getElementById('envOutput').value;
+            const lines = text.split('\n');
+            
+            variables = [];
+            variableId = 0;
+            
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) {
+                    variables.push({ id: variableId++, type: 'comment', value: '' });
+                } else if (line.startsWith('#')) {
+                    variables.push({ id: variableId++, type: 'comment', value: line });
+                } else if (line.includes('=')) {
+                    const eqIndex = line.indexOf('=');
+                    const key = line.substring(0, eqIndex).trim();
+                    let value = line.substring(eqIndex + 1).trim();
+                    
+                    if ((value.startsWith('"') && value.endsWith('"')) ||
+                        (value.startsWith("'") && value.endsWith("'"))) {
+                        value = value.slice(1, -1);
+                    }
+                    
+                    variables.push({ id: variableId++, type: 'var', key: key, value: value });
+                }
+            });
+            
+            renderVariables();
+            updateStatus('已解析 ' + variables.filter(v => v.type === 'var').length + ' 个变量');
+        }
+
+        function filterVariables() {
+            renderVariables();
+        }
+
+        function sortVariables(order) {
+            const varItems = variables.filter(v => v.type === 'var');
+            const others = variables.filter(v => v.type !== 'var');
+            
+            varItems.sort((a, b) => {
+                if (order === 'asc') {
+                    return a.key.localeCompare(b.key);
+                } else {
+                    return b.key.localeCompare(a.key);
+                }
+            });
+            
+            variables = [...varItems, ...others];
+            renderVariables();
+            generateOutput();
+            updateStatus('已按' + (order === 'asc' ? '升序' : '降序') + '排序');
+        }
+
+        function groupByPrefix() {
+            const varItems = variables.filter(v => v.type === 'var');
+            const groups = {};
+            
+            varItems.forEach(v => {
+                const parts = v.key.split('_');
+                const prefix = parts.length > 1 ? parts[0] : 'OTHER';
+                if (!groups[prefix]) groups[prefix] = [];
+                groups[prefix].push(v);
+            });
+            
+            variables = [];
+            Object.keys(groups).sort().forEach(prefix => {
+                variables.push({ id: variableId++, type: 'comment', value: '# ' + prefix });
+                groups[prefix].forEach(v => variables.push(v));
+                variables.push({ id: variableId++, type: 'comment', value: '' });
+            });
+            
+            renderVariables();
+            generateOutput();
+            updateStatus('已按前缀分组');
+        }
+
+        function clearAll() {
+            if (confirm('确定要清空所有变量吗？')) {
+                variables = [];
+                renderVariables();
+                generateOutput();
+                updateStatus('已清空');
+            }
+        }
+
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('envOutput').value = e.target.result;
+                    parseFromText();
+                    updateStatus('已加载文件: ' + file.name);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('envOutput').value;
+            navigator.clipboard.writeText(output).then(() => {
+                updateStatus('已复制到剪贴板');
+            });
+        }
+
+        function downloadEnv() {
+            const output = document.getElementById('envOutput').value;
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '.env';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            updateStatus('已下载 .env 文件');
+        }
+
+        function updateStatus(message) {
+            document.getElementById('lastAction').textContent = message;
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', function(e) {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('envOutput').value = e.target.result;
+                    parseFromText();
+                    updateStatus('已加载文件: ' + file.name);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Initialize
+        parseFromText();
+    </script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF 分解器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        
+        @media (max-width: 900px) {
+            .tool-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .drop-zone {
+            border: 3px dashed var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1rem;
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        
+        .drop-zone-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .gif-preview {
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .gif-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+        }
+        
+        .gif-info {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .gif-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .gif-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .frames-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        
+        .frame-item {
+            position: relative;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .frame-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .frame-item.selected {
+            outline: 3px solid var(--pico-primary);
+        }
+        
+        .frame-item canvas {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            background: #f0f0f0;
+        }
+        
+        [data-theme="dark"] .frame-item canvas {
+            background: #333;
+        }
+        
+        .frame-info {
+            padding: 0.5rem;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .frame-number {
+            font-weight: bold;
+        }
+        
+        .frame-delay {
+            color: var(--pico-muted-color);
+        }
+        
+        .frame-checkbox {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-group button {
+            flex: 1;
+        }
+        
+        .preview-area {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            min-height: 400px;
+            overflow: auto;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .select-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .select-controls button {
+            font-size: 12px;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--pico-muted-border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--pico-primary);
+            transition: width 0.3s;
+            width: 0%;
+        }
+        
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: var(--pico-muted-color);
+        }
+        
+        .placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--pico-muted-border-color);
+            border-top-color: var(--pico-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GIF 分解器</h1>
+            <button id="themeToggle" class="outline">🌙 暗色模式</button>
+        </header>
+        
+        <div class="tool-grid">
+            <article>
+                <h3>上传 GIF</h3>
+                
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">🎬</div>
+                    <p>拖拽 GIF 文件到这里或点击上传</p>
+                    <small>支持 GIF 动图</small>
+                    <input type="file" id="fileInput" accept="image/gif" hidden>
+                </div>
+                
+                <div class="gif-preview" id="gifPreview" style="display: none;">
+                    <img id="originalGif" alt="原始 GIF">
+                </div>
+                
+                <div class="gif-info" id="gifInfo" style="display: none;">
+                    <div class="gif-info-item">
+                        <span>尺寸</span>
+                        <span id="gifSize">-</span>
+                    </div>
+                    <div class="gif-info-item">
+                        <span>帧数</span>
+                        <span id="gifFrameCount">-</span>
+                    </div>
+                    <div class="gif-info-item">
+                        <span>总时长</span>
+                        <span id="gifDuration">-</span>
+                    </div>
+                </div>
+                
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="downloadSelectedBtn" class="primary" disabled>📥 下载选中帧</button>
+                </div>
+                <div class="btn-group">
+                    <button id="downloadAllBtn" class="secondary" disabled>📦 下载全部 (ZIP)</button>
+                </div>
+            </article>
+            
+            <article>
+                <div class="preview-area" id="previewArea">
+                    <div class="placeholder" id="placeholder">
+                        <div class="placeholder-icon">🎞️</div>
+                        <p>请上传 GIF 文件</p>
+                        <p><small>上传后将显示所有帧</small></p>
+                    </div>
+                    
+                    <div class="loading" id="loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>正在解析 GIF 帧...</p>
+                    </div>
+                    
+                    <div id="framesContainer" style="display: none;">
+                        <div class="preview-header">
+                            <span id="selectedCount">已选择 0 帧</span>
+                            <div class="select-controls">
+                                <button id="selectAllBtn" class="outline">全选</button>
+                                <button id="deselectAllBtn" class="outline">取消全选</button>
+                                <button id="selectEvenBtn" class="outline">选偶数帧</button>
+                            </div>
+                        </div>
+                        <div class="frames-grid" id="framesGrid"></div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+    
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        function toggleTheme() {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            themeToggle.textContent = newTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            html.setAttribute('data-theme', savedTheme);
+            themeToggle.textContent = savedTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
+        }
+        
+        // 状态
+        let frames = [];
+        let selectedFrames = new Set();
+        let gifWidth = 0;
+        let gifHeight = 0;
+        
+        // 文件上传
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                loadGif(e.dataTransfer.files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', e => {
+            if (e.target.files[0]) {
+                loadGif(e.target.files[0]);
+            }
+        });
+        
+        async function loadGif(file) {
+            if (!file.type.includes('gif')) {
+                alert('请上传 GIF 文件');
+                return;
+            }
+            
+            // 显示原始 GIF
+            const gifPreview = document.getElementById('gifPreview');
+            const originalGif = document.getElementById('originalGif');
+            originalGif.src = URL.createObjectURL(file);
+            gifPreview.style.display = 'block';
+            
+            // 显示加载状态
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('framesContainer').style.display = 'none';
+            document.getElementById('progressBar').style.display = 'block';
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const gif = parseGIF(arrayBuffer);
+                const decompressedFrames = decompressFrames(gif, true);
+                
+                gifWidth = gif.lsd.width;
+                gifHeight = gif.lsd.height;
+                
+                frames = [];
+                selectedFrames.clear();
+                
+                const framesGrid = document.getElementById('framesGrid');
+                framesGrid.textContent = '';
+                
+                let totalDuration = 0;
+                
+                for (let i = 0; i < decompressedFrames.length; i++) {
+                    const frame = decompressedFrames[i];
+                    const delay = frame.delay * 10; // 转换为毫秒
+                    totalDuration += delay;
+                    
+                    // 创建帧画布
+                    const canvas = document.createElement('canvas');
+                    canvas.width = gifWidth;
+                    canvas.height = gifHeight;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 绘制帧
+                    const imageData = ctx.createImageData(gifWidth, gifHeight);
+                    imageData.data.set(frame.patch);
+                    ctx.putImageData(imageData, 0, 0);
+                    
+                    frames.push({
+                        canvas: canvas,
+                        delay: delay,
+                        dataUrl: canvas.toDataURL('image/png')
+                    });
+                    
+                    // 创建帧元素
+                    const frameItem = document.createElement('div');
+                    frameItem.className = 'frame-item';
+                    frameItem.dataset.index = i;
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'frame-checkbox';
+                    checkbox.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        toggleFrame(i);
+                    });
+                    
+                    const displayCanvas = document.createElement('canvas');
+                    displayCanvas.width = gifWidth;
+                    displayCanvas.height = gifHeight;
+                    displayCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                    
+                    const frameInfo = document.createElement('div');
+                    frameInfo.className = 'frame-info';
+                    frameInfo.innerHTML = `<span class="frame-number">帧 ${i + 1}</span><br><span class="frame-delay">${delay}ms</span>`;
+                    
+                    frameItem.appendChild(checkbox);
+                    frameItem.appendChild(displayCanvas);
+                    frameItem.appendChild(frameInfo);
+                    
+                    frameItem.addEventListener('click', (e) => {
+                        if (e.target !== checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            toggleFrame(i);
+                        }
+                    });
+                    
+                    framesGrid.appendChild(frameItem);
+                    
+                    // 更新进度
+                    document.getElementById('progressFill').style.width = ((i + 1) / decompressedFrames.length * 100) + '%';
+                }
+                
+                // 更新信息
+                document.getElementById('gifSize').textContent = `${gifWidth} × ${gifHeight}`;
+                document.getElementById('gifFrameCount').textContent = frames.length + ' 帧';
+                document.getElementById('gifDuration').textContent = (totalDuration / 1000).toFixed(2) + ' 秒';
+                document.getElementById('gifInfo').style.display = 'block';
+                
+                // 显示帧
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('framesContainer').style.display = 'block';
+                document.getElementById('progressBar').style.display = 'none';
+                
+                // 启用按钮
+                document.getElementById('downloadAllBtn').disabled = false;
+                
+                updateSelectedCount();
+                
+            } catch (err) {
+                console.error(err);
+                alert('解析 GIF 失败: ' + err.message);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('placeholder').style.display = 'block';
+            }
+        }
+        
+        function toggleFrame(index) {
+            if (selectedFrames.has(index)) {
+                selectedFrames.delete(index);
+                document.querySelector(`.frame-item[data-index="${index}"]`).classList.remove('selected');
+            } else {
+                selectedFrames.add(index);
+                document.querySelector(`.frame-item[data-index="${index}"]`).classList.add('selected');
+            }
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = `已选择 ${selectedFrames.size} 帧`;
+            document.getElementById('downloadSelectedBtn').disabled = selectedFrames.size === 0;
+        }
+        
+        // 全选
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            frames.forEach((_, i) => {
+                selectedFrames.add(i);
+                document.querySelector(`.frame-item[data-index="${i}"]`).classList.add('selected');
+                document.querySelector(`.frame-item[data-index="${i}"] .frame-checkbox`).checked = true;
+            });
+            updateSelectedCount();
+        });
+        
+        // 取消全选
+        document.getElementById('deselectAllBtn').addEventListener('click', () => {
+            selectedFrames.clear();
+            document.querySelectorAll('.frame-item').forEach(item => {
+                item.classList.remove('selected');
+                item.querySelector('.frame-checkbox').checked = false;
+            });
+            updateSelectedCount();
+        });
+        
+        // 选偶数帧
+        document.getElementById('selectEvenBtn').addEventListener('click', () => {
+            selectedFrames.clear();
+            frames.forEach((_, i) => {
+                const item = document.querySelector(`.frame-item[data-index="${i}"]`);
+                const checkbox = item.querySelector('.frame-checkbox');
+                if (i % 2 === 1) {
+                    selectedFrames.add(i);
+                    item.classList.add('selected');
+                    checkbox.checked = true;
+                } else {
+                    item.classList.remove('selected');
+                    checkbox.checked = false;
+                }
+            });
+            updateSelectedCount();
+        });
+        
+        // 下载选中帧
+        document.getElementById('downloadSelectedBtn').addEventListener('click', async () => {
+            if (selectedFrames.size === 0) return;
+            
+            if (selectedFrames.size === 1) {
+                // 单帧直接下载
+                const index = Array.from(selectedFrames)[0];
+                const link = document.createElement('a');
+                link.download = `frame_${String(index + 1).padStart(4, '0')}.png`;
+                link.href = frames[index].dataUrl;
+                link.click();
+            } else {
+                // 多帧打包下载
+                await downloadAsZip(Array.from(selectedFrames));
+            }
+        });
+        
+        // 下载全部
+        document.getElementById('downloadAllBtn').addEventListener('click', async () => {
+            await downloadAsZip(frames.map((_, i) => i));
+        });
+        
+        async function downloadAsZip(indices) {
+            const zip = new JSZip();
+            
+            indices.forEach(i => {
+                const dataUrl = frames[i].dataUrl;
+                const base64 = dataUrl.split(',')[1];
+                zip.file(`frame_${String(i + 1).padStart(4, '0')}.png`, base64, { base64: true });
+            });
+            
+            const content = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.download = `gif_frames_${Date.now()}.zip`;
+            link.href = URL.createObjectURL(content);
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+    </script>
+</body>
+</html>

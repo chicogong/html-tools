@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网速计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .result-box {
+            background: var(--pico-primary-focus);
+            border: 2px solid var(--pico-primary);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-lg);
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+        .result-box h2 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        .result-box p {
+            margin: var(--spacing-sm) 0 0 0;
+            color: var(--pico-muted-color);
+        }
+        .btn-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-top: var(--spacing-md);
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            border-bottom: 2px solid var(--pico-muted-border-color);
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        .tab.active {
+            border-bottom-color: var(--pico-primary);
+            color: var(--pico-primary);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .info-box {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .info-box h4 {
+            margin: 0 0 var(--spacing-sm) 0;
+            color: var(--pico-primary);
+        }
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        .preset-btn {
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+        }
+        .progress-container {
+            margin-top: var(--spacing-md);
+        }
+        .progress-bar {
+            height: 20px;
+            background: var(--pico-muted-border-color);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--pico-primary);
+            transition: width 0.3s;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: var(--spacing-sm);
+            font-family: monospace;
+        }
+        .comparison-table {
+            width: 100%;
+            margin-top: var(--spacing-md);
+        }
+        .comparison-table th, .comparison-table td {
+            padding: var(--spacing-sm);
+            text-align: center;
+        }
+        .result-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+        .detail-card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-md);
+            text-align: center;
+        }
+        .detail-card h4 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--pico-primary);
+        }
+        .detail-card p {
+            margin: var(--spacing-sm) 0 0 0;
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="header">
+            <h1>网速计算器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <article>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('download')">下载时间估算</button>
+                <button class="tab" onclick="switchTab('convert')">单位换算</button>
+                <button class="tab" onclick="switchTab('bandwidth')">带宽需求计算</button>
+                <button class="tab" onclick="switchTab('compare')">网速对比</button>
+            </div>
+
+            <!-- Download Time Tab -->
+            <div id="download-tab" class="tab-content active">
+                <div class="info-box">
+                    <h4>下载时间 = 文件大小 / 下载速度</h4>
+                    <p>注意: 实际速度可能因网络拥堵、服务器限速等因素而降低</p>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        文件大小
+                        <input type="number" id="fileSize" value="1024" min="0" step="any">
+                    </label>
+                    <label>
+                        文件大小单位
+                        <select id="fileSizeUnit">
+                            <option value="B">字节 (B)</option>
+                            <option value="KB">KB</option>
+                            <option value="MB" selected>MB</option>
+                            <option value="GB">GB</option>
+                            <option value="TB">TB</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        下载速度
+                        <input type="number" id="downloadSpeed" value="100" min="0" step="any">
+                    </label>
+                    <label>
+                        速度单位
+                        <select id="speedUnit">
+                            <option value="Bps">B/s</option>
+                            <option value="KBps">KB/s</option>
+                            <option value="MBps" selected>MB/s</option>
+                            <option value="GBps">GB/s</option>
+                            <option value="bps">bps</option>
+                            <option value="Kbps">Kbps</option>
+                            <option value="Mbps">Mbps</option>
+                            <option value="Gbps">Gbps</option>
+                        </select>
+                    </label>
+                </div>
+
+                <label>常用网速预设</label>
+                <div class="preset-grid">
+                    <button class="preset-btn secondary" onclick="setSpeed(1, 'MBps')">1 MB/s</button>
+                    <button class="preset-btn secondary" onclick="setSpeed(10, 'MBps')">10 MB/s</button>
+                    <button class="preset-btn secondary" onclick="setSpeed(100, 'MBps')">100 MB/s</button>
+                    <button class="preset-btn secondary" onclick="setSpeed(100, 'Mbps')">100 Mbps</button>
+                    <button class="preset-btn secondary" onclick="setSpeed(500, 'Mbps')">500 Mbps</button>
+                    <button class="preset-btn secondary" onclick="setSpeed(1, 'Gbps')">1 Gbps</button>
+                </div>
+
+                <label>常用文件大小预设</label>
+                <div class="preset-grid">
+                    <button class="preset-btn secondary" onclick="setFileSize(5, 'MB')">歌曲 (5MB)</button>
+                    <button class="preset-btn secondary" onclick="setFileSize(700, 'MB')">电影 (700MB)</button>
+                    <button class="preset-btn secondary" onclick="setFileSize(4.7, 'GB')">DVD (4.7GB)</button>
+                    <button class="preset-btn secondary" onclick="setFileSize(25, 'GB')">蓝光 (25GB)</button>
+                    <button class="preset-btn secondary" onclick="setFileSize(50, 'GB')">游戏 (50GB)</button>
+                    <button class="preset-btn secondary" onclick="setFileSize(100, 'GB')">大型游戏 (100GB)</button>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="calculateDownloadTime()">计算下载时间</button>
+                    <button class="secondary" onclick="clearDownload()">清空</button>
+                </div>
+            </div>
+
+            <!-- Unit Conversion Tab -->
+            <div id="convert-tab" class="tab-content">
+                <div class="info-box">
+                    <h4>网速单位换算</h4>
+                    <p>1 Byte = 8 bits | 1 KB = 1024 B | 1 MB = 1024 KB</p>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        输入数值
+                        <input type="number" id="convertValue" value="100" min="0" step="any" oninput="convertSpeed()">
+                    </label>
+                    <label>
+                        输入单位
+                        <select id="convertFromUnit" onchange="convertSpeed()">
+                            <option value="Bps">B/s</option>
+                            <option value="KBps">KB/s</option>
+                            <option value="MBps" selected>MB/s</option>
+                            <option value="GBps">GB/s</option>
+                            <option value="bps">bps</option>
+                            <option value="Kbps">Kbps</option>
+                            <option value="Mbps">Mbps</option>
+                            <option value="Gbps">Gbps</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="result-details" id="convertResults">
+                    <!-- Results will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Bandwidth Requirement Tab -->
+            <div id="bandwidth-tab" class="tab-content">
+                <div class="info-box">
+                    <h4>带宽需求计算</h4>
+                    <p>根据使用场景估算所需带宽</p>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        视频流质量
+                        <select id="videoQuality">
+                            <option value="0">无</option>
+                            <option value="3">720p (3 Mbps)</option>
+                            <option value="5" selected>1080p (5 Mbps)</option>
+                            <option value="15">1080p 60fps (15 Mbps)</option>
+                            <option value="25">4K (25 Mbps)</option>
+                            <option value="50">4K HDR (50 Mbps)</option>
+                        </select>
+                    </label>
+                    <label>
+                        同时观看设备数
+                        <input type="number" id="videoDevices" value="2" min="0" max="20">
+                    </label>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        视频通话
+                        <select id="videocallQuality">
+                            <option value="0">无</option>
+                            <option value="1.5">标清 (1.5 Mbps)</option>
+                            <option value="3" selected>高清 (3 Mbps)</option>
+                            <option value="8">群组通话 (8 Mbps)</option>
+                        </select>
+                    </label>
+                    <label>
+                        通话设备数
+                        <input type="number" id="callDevices" value="1" min="0" max="10">
+                    </label>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        在线游戏
+                        <select id="gameQuality">
+                            <option value="0">无</option>
+                            <option value="3">普通游戏 (3 Mbps)</option>
+                            <option value="10" selected>竞技游戏 (10 Mbps)</option>
+                            <option value="25">云游戏 (25 Mbps)</option>
+                        </select>
+                    </label>
+                    <label>
+                        游戏设备数
+                        <input type="number" id="gameDevices" value="1" min="0" max="10">
+                    </label>
+                </div>
+
+                <div class="grid-inputs">
+                    <label>
+                        其他设备 (浏览/邮件等)
+                        <input type="number" id="otherDevices" value="5" min="0" max="50">
+                    </label>
+                    <label>
+                        每设备带宽 (Mbps)
+                        <input type="number" id="otherBandwidth" value="2" min="0.1" max="10" step="0.1">
+                    </label>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="calculateBandwidth()">计算带宽需求</button>
+                    <button class="secondary" onclick="clearBandwidth()">清空</button>
+                </div>
+            </div>
+
+            <!-- Speed Comparison Tab -->
+            <div id="compare-tab" class="tab-content">
+                <div class="info-box">
+                    <h4>网速对比参考</h4>
+                    <p>不同网络类型的典型速度</p>
+                </div>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>网络类型</th>
+                            <th>典型速度</th>
+                            <th>下载1GB用时</th>
+                            <th>适用场景</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonTable">
+                        <!-- Will be populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="result-box">
+                <h2 id="result">--</h2>
+                <p id="resultDetail">输入参数并点击计算</p>
+            </div>
+
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">下载进度模拟</div>
+            </div>
+
+            <div class="result-details" id="resultDetails" style="display: none;">
+                <!-- Additional results will be shown here -->
+            </div>
+        </article>
+    </main>
+
+    <script>
+        const unitToBytes = {
+            'B': 1,
+            'KB': 1024,
+            'MB': 1024 * 1024,
+            'GB': 1024 * 1024 * 1024,
+            'TB': 1024 * 1024 * 1024 * 1024
+        };
+
+        const speedToBytePerSec = {
+            'Bps': 1,
+            'KBps': 1024,
+            'MBps': 1024 * 1024,
+            'GBps': 1024 * 1024 * 1024,
+            'bps': 1 / 8,
+            'Kbps': 1024 / 8,
+            'Mbps': 1024 * 1024 / 8,
+            'Gbps': 1024 * 1024 * 1024 / 8
+        };
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            document.querySelector('[onclick="switchTab(\'' + tabName + '\')"]').classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            if (tabName === 'convert') {
+                convertSpeed();
+            } else if (tabName === 'compare') {
+                populateComparison();
+            }
+            
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultDetails').style.display = 'none';
+        }
+
+        function setSpeed(value, unit) {
+            document.getElementById('downloadSpeed').value = value;
+            document.getElementById('speedUnit').value = unit;
+        }
+
+        function setFileSize(value, unit) {
+            document.getElementById('fileSize').value = value;
+            document.getElementById('fileSizeUnit').value = unit;
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 1) {
+                return (seconds * 1000).toFixed(0) + ' 毫秒';
+            } else if (seconds < 60) {
+                return seconds.toFixed(1) + ' 秒';
+            } else if (seconds < 3600) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return mins + ' 分 ' + secs + ' 秒';
+            } else if (seconds < 86400) {
+                const hours = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                return hours + ' 小时 ' + mins + ' 分';
+            } else {
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                return days + ' 天 ' + hours + ' 小时';
+            }
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes.toFixed(2) + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+            if (bytes < 1024 * 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+            return (bytes / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' TB';
+        }
+
+        function calculateDownloadTime() {
+            const fileSize = parseFloat(document.getElementById('fileSize').value) || 0;
+            const fileSizeUnit = document.getElementById('fileSizeUnit').value;
+            const speed = parseFloat(document.getElementById('downloadSpeed').value) || 0;
+            const speedUnit = document.getElementById('speedUnit').value;
+
+            if (fileSize <= 0 || speed <= 0) {
+                alert('请输入有效的文件大小和下载速度');
+                return;
+            }
+
+            const fileSizeBytes = fileSize * unitToBytes[fileSizeUnit];
+            const speedBps = speed * speedToBytePerSec[speedUnit];
+            const seconds = fileSizeBytes / speedBps;
+
+            document.getElementById('result').textContent = formatTime(seconds);
+            document.getElementById('resultDetail').textContent = formatSize(fileSizeBytes) + ' @ ' + speed + ' ' + speedUnit;
+
+            // Show additional details
+            const details = document.getElementById('resultDetails');
+            details.style.display = 'grid';
+            
+            while (details.firstChild) {
+                details.removeChild(details.firstChild);
+            }
+            
+            const detailItems = [
+                { value: formatSize(fileSizeBytes), label: '文件大小' },
+                { value: formatSize(speedBps) + '/s', label: '下载速度' },
+                { value: seconds.toFixed(2) + ' 秒', label: '总秒数' },
+                { value: formatSize(speedBps * 60) + '/分', label: '每分钟下载量' }
+            ];
+            
+            detailItems.forEach(function(item) {
+                const card = document.createElement('div');
+                card.className = 'detail-card';
+                
+                const h4 = document.createElement('h4');
+                h4.textContent = item.value;
+                
+                const p = document.createElement('p');
+                p.textContent = item.label;
+                
+                card.appendChild(h4);
+                card.appendChild(p);
+                details.appendChild(card);
+            });
+
+            // Animate progress bar
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.style.display = 'block';
+            
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = '0%';
+            
+            let progress = 0;
+            const animDuration = Math.min(seconds * 100, 3000); // Max 3 seconds animation
+            const interval = animDuration / 100;
+            
+            const timer = setInterval(function() {
+                progress += 1;
+                progressFill.style.width = progress + '%';
+                const downloaded = fileSizeBytes * progress / 100;
+                progressText.textContent = formatSize(downloaded) + ' / ' + formatSize(fileSizeBytes) + ' (' + progress + '%)';
+                
+                if (progress >= 100) {
+                    clearInterval(timer);
+                    progressText.textContent = '下载完成！总用时: ' + formatTime(seconds);
+                }
+            }, interval);
+        }
+
+        function clearDownload() {
+            document.getElementById('fileSize').value = 1024;
+            document.getElementById('fileSizeUnit').value = 'MB';
+            document.getElementById('downloadSpeed').value = 100;
+            document.getElementById('speedUnit').value = 'MBps';
+            document.getElementById('result').textContent = '--';
+            document.getElementById('resultDetail').textContent = '输入参数并点击计算';
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultDetails').style.display = 'none';
+        }
+
+        function convertSpeed() {
+            const value = parseFloat(document.getElementById('convertValue').value) || 0;
+            const fromUnit = document.getElementById('convertFromUnit').value;
+            
+            const bytesPerSec = value * speedToBytePerSec[fromUnit];
+            
+            const results = document.getElementById('convertResults');
+            while (results.firstChild) {
+                results.removeChild(results.firstChild);
+            }
+            
+            const conversions = [
+                { unit: 'B/s', value: bytesPerSec },
+                { unit: 'KB/s', value: bytesPerSec / 1024 },
+                { unit: 'MB/s', value: bytesPerSec / 1024 / 1024 },
+                { unit: 'GB/s', value: bytesPerSec / 1024 / 1024 / 1024 },
+                { unit: 'bps', value: bytesPerSec * 8 },
+                { unit: 'Kbps', value: bytesPerSec * 8 / 1024 },
+                { unit: 'Mbps', value: bytesPerSec * 8 / 1024 / 1024 },
+                { unit: 'Gbps', value: bytesPerSec * 8 / 1024 / 1024 / 1024 }
+            ];
+            
+            conversions.forEach(function(conv) {
+                const card = document.createElement('div');
+                card.className = 'detail-card';
+                
+                const h4 = document.createElement('h4');
+                h4.textContent = conv.value < 0.01 ? conv.value.toExponential(2) : conv.value.toFixed(conv.value < 1 ? 4 : 2);
+                
+                const p = document.createElement('p');
+                p.textContent = conv.unit;
+                
+                card.appendChild(h4);
+                card.appendChild(p);
+                results.appendChild(card);
+            });
+
+            document.getElementById('result').textContent = value + ' ' + fromUnit;
+            document.getElementById('resultDetail').textContent = '= ' + (bytesPerSec / 1024 / 1024).toFixed(4) + ' MB/s = ' + (bytesPerSec * 8 / 1024 / 1024).toFixed(4) + ' Mbps';
+        }
+
+        function calculateBandwidth() {
+            const videoQuality = parseFloat(document.getElementById('videoQuality').value) || 0;
+            const videoDevices = parseInt(document.getElementById('videoDevices').value) || 0;
+            const callQuality = parseFloat(document.getElementById('videocallQuality').value) || 0;
+            const callDevices = parseInt(document.getElementById('callDevices').value) || 0;
+            const gameQuality = parseFloat(document.getElementById('gameQuality').value) || 0;
+            const gameDevices = parseInt(document.getElementById('gameDevices').value) || 0;
+            const otherDevices = parseInt(document.getElementById('otherDevices').value) || 0;
+            const otherBandwidth = parseFloat(document.getElementById('otherBandwidth').value) || 0;
+
+            const videoBandwidth = videoQuality * videoDevices;
+            const callBandwidth = callQuality * callDevices;
+            const gameBandwidth = gameQuality * gameDevices;
+            const otherTotal = otherDevices * otherBandwidth;
+
+            const total = videoBandwidth + callBandwidth + gameBandwidth + otherTotal;
+            const recommended = Math.ceil(total * 1.2); // 20% headroom
+
+            document.getElementById('result').textContent = '建议带宽: ' + recommended + ' Mbps';
+            document.getElementById('resultDetail').textContent = '计算所需: ' + total.toFixed(1) + ' Mbps (已加20%余量)';
+
+            const details = document.getElementById('resultDetails');
+            details.style.display = 'grid';
+            
+            while (details.firstChild) {
+                details.removeChild(details.firstChild);
+            }
+            
+            const breakdown = [
+                { value: videoBandwidth.toFixed(1) + ' Mbps', label: '视频流媒体' },
+                { value: callBandwidth.toFixed(1) + ' Mbps', label: '视频通话' },
+                { value: gameBandwidth.toFixed(1) + ' Mbps', label: '在线游戏' },
+                { value: otherTotal.toFixed(1) + ' Mbps', label: '其他设备' }
+            ];
+            
+            breakdown.forEach(function(item) {
+                const card = document.createElement('div');
+                card.className = 'detail-card';
+                
+                const h4 = document.createElement('h4');
+                h4.textContent = item.value;
+                
+                const p = document.createElement('p');
+                p.textContent = item.label;
+                
+                card.appendChild(h4);
+                card.appendChild(p);
+                details.appendChild(card);
+            });
+        }
+
+        function clearBandwidth() {
+            document.getElementById('videoQuality').value = '5';
+            document.getElementById('videoDevices').value = 2;
+            document.getElementById('videocallQuality').value = '3';
+            document.getElementById('callDevices').value = 1;
+            document.getElementById('gameQuality').value = '10';
+            document.getElementById('gameDevices').value = 1;
+            document.getElementById('otherDevices').value = 5;
+            document.getElementById('otherBandwidth').value = 2;
+            document.getElementById('result').textContent = '--';
+            document.getElementById('resultDetail').textContent = '输入参数并点击计算';
+            document.getElementById('resultDetails').style.display = 'none';
+        }
+
+        function populateComparison() {
+            const data = [
+                { type: '2G (GPRS)', speed: '0.1 Mbps', time: '22小时', use: '基础网页' },
+                { type: '3G', speed: '3 Mbps', time: '44分钟', use: '网页/邮件' },
+                { type: '4G LTE', speed: '50 Mbps', time: '2.7分钟', use: '高清视频' },
+                { type: '5G', speed: '500 Mbps', time: '16秒', use: '4K视频/VR' },
+                { type: 'ADSL', speed: '8 Mbps', time: '17分钟', use: '基础宽带' },
+                { type: '光纤 100M', speed: '100 Mbps', time: '82秒', use: '家庭宽带' },
+                { type: '光纤 500M', speed: '500 Mbps', time: '16秒', use: '高端家庭' },
+                { type: '光纤 1G', speed: '1 Gbps', time: '8秒', use: '企业级' },
+                { type: 'WiFi 5 (AC)', speed: '867 Mbps', time: '9秒', use: '高速无线' },
+                { type: 'WiFi 6 (AX)', speed: '2.4 Gbps', time: '3秒', use: '最新无线' }
+            ];
+
+            const tbody = document.getElementById('comparisonTable');
+            while (tbody.firstChild) {
+                tbody.removeChild(tbody.firstChild);
+            }
+            
+            data.forEach(function(row) {
+                const tr = document.createElement('tr');
+                
+                const td1 = document.createElement('td');
+                td1.textContent = row.type;
+                
+                const td2 = document.createElement('td');
+                td2.textContent = row.speed;
+                
+                const td3 = document.createElement('td');
+                td3.textContent = row.time;
+                
+                const td4 = document.createElement('td');
+                td4.textContent = row.use;
+                
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tr.appendChild(td3);
+                tr.appendChild(td4);
+                
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('result').textContent = '网速对比参考表';
+            document.getElementById('resultDetail').textContent = '下载1GB文件所需时间对比';
+        }
+
+        // Initialize
+        convertSpeed();
+    </script>
+</body>
+</html>

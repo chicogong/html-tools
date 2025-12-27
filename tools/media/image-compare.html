@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片对比滑块</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 600px) {
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .drop-zone {
+            border: 3px dashed var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        
+        .drop-zone-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .drop-zone.has-image {
+            padding: 0.5rem;
+        }
+        
+        .drop-zone.has-image img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 4px;
+        }
+        
+        .compare-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: var(--pico-border-radius);
+            background: var(--pico-card-background-color);
+            user-select: none;
+        }
+        
+        .compare-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        
+        .compare-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .compare-overlay img {
+            display: block;
+            height: 100%;
+            width: auto;
+            max-width: none;
+        }
+        
+        .compare-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            cursor: ew-resize;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        .compare-slider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .compare-slider::after {
+            content: '◀ ▶';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: #333;
+            white-space: nowrap;
+        }
+        
+        .compare-label {
+            position: absolute;
+            bottom: 10px;
+            padding: 5px 15px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 5;
+        }
+        
+        .compare-label.before {
+            left: 10px;
+        }
+        
+        .compare-label.after {
+            right: 10px;
+        }
+        
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: var(--pico-muted-color);
+        }
+        
+        .placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .orientation-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .orientation-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            cursor: pointer;
+            background: var(--pico-background-color);
+            transition: all 0.2s;
+        }
+        
+        .orientation-btn:hover, .orientation-btn.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        
+        .slider-position {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .slider-position input {
+            width: 150px;
+        }
+        
+        /* 垂直模式 */
+        .compare-container.vertical .compare-overlay {
+            top: auto;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+        }
+        
+        .compare-container.vertical .compare-overlay img {
+            width: 100%;
+            height: auto;
+        }
+        
+        .compare-container.vertical .compare-slider {
+            left: 0;
+            right: 0;
+            width: auto;
+            height: 4px;
+            cursor: ns-resize;
+        }
+        
+        .compare-container.vertical .compare-slider::after {
+            content: '▲ ▼';
+        }
+        
+        .compare-container.vertical .compare-label.before {
+            top: 10px;
+            bottom: auto;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .compare-container.vertical .compare-label.after {
+            bottom: 10px;
+            right: auto;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片对比滑块</h1>
+            <button id="themeToggle" class="outline">🌙 暗色模式</button>
+        </header>
+        
+        <div class="upload-grid">
+            <div class="drop-zone" id="dropZone1" data-slot="before">
+                <div class="drop-zone-icon">📷</div>
+                <p><strong>前图片（Before）</strong></p>
+                <small>点击或拖拽上传</small>
+                <input type="file" id="fileInput1" accept="image/*" hidden>
+            </div>
+            <div class="drop-zone" id="dropZone2" data-slot="after">
+                <div class="drop-zone-icon">📷</div>
+                <p><strong>后图片（After）</strong></p>
+                <small>点击或拖拽上传</small>
+                <input type="file" id="fileInput2" accept="image/*" hidden>
+            </div>
+        </div>
+        
+        <article>
+            <div id="compareWrapper">
+                <div class="placeholder" id="placeholder">
+                    <div class="placeholder-icon">🔀</div>
+                    <p>请上传两张图片进行对比</p>
+                    <p><small>建议使用相同尺寸的图片以获得最佳效果</small></p>
+                </div>
+                
+                <div class="compare-container" id="compareContainer" style="display: none;">
+                    <img class="compare-image" id="afterImage" alt="After">
+                    <div class="compare-overlay" id="compareOverlay">
+                        <img id="beforeImage" alt="Before">
+                    </div>
+                    <div class="compare-slider" id="compareSlider"></div>
+                    <div class="compare-label before">Before</div>
+                    <div class="compare-label after">After</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="orientation-btns">
+                    <button class="orientation-btn active" data-orientation="horizontal">↔️ 水平</button>
+                    <button class="orientation-btn" data-orientation="vertical">↕️ 垂直</button>
+                </div>
+                
+                <div class="slider-position">
+                    <span>位置：</span>
+                    <input type="range" id="sliderPosition" min="0" max="100" value="50">
+                    <span id="positionValue">50%</span>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button id="swapBtn" class="secondary">🔄 交换图片</button>
+                <button id="resetBtn" class="outline">↩️ 重置位置</button>
+            </div>
+        </article>
+    </div>
+    
+    <script>
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        function toggleTheme() {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            themeToggle.textContent = newTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            html.setAttribute('data-theme', savedTheme);
+            themeToggle.textContent = savedTheme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式';
+        }
+        
+        // 状态
+        let beforeSrc = null;
+        let afterSrc = null;
+        let orientation = 'horizontal';
+        let sliderPosition = 50;
+        
+        const compareContainer = document.getElementById('compareContainer');
+        const compareOverlay = document.getElementById('compareOverlay');
+        const compareSlider = document.getElementById('compareSlider');
+        const beforeImage = document.getElementById('beforeImage');
+        const afterImage = document.getElementById('afterImage');
+        const placeholder = document.getElementById('placeholder');
+        
+        // 文件上传
+        function setupDropZone(dropZone, fileInput, slot) {
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            dropZone.addEventListener('dragover', e => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files[0]) {
+                    loadImage(e.dataTransfer.files[0], slot, dropZone);
+                }
+            });
+            
+            fileInput.addEventListener('change', e => {
+                if (e.target.files[0]) {
+                    loadImage(e.target.files[0], slot, dropZone);
+                }
+            });
+        }
+        
+        setupDropZone(document.getElementById('dropZone1'), document.getElementById('fileInput1'), 'before');
+        setupDropZone(document.getElementById('dropZone2'), document.getElementById('fileInput2'), 'after');
+        
+        function loadImage(file, slot, dropZone) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                if (slot === 'before') {
+                    beforeSrc = e.target.result;
+                } else {
+                    afterSrc = e.target.result;
+                }
+                
+                // 更新 dropzone 预览
+                dropZone.classList.add('has-image');
+                const existingImg = dropZone.querySelector('img');
+                if (existingImg) {
+                    existingImg.src = e.target.result;
+                } else {
+                    dropZone.textContent = '';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = slot;
+                    dropZone.appendChild(img);
+                }
+                
+                updateCompare();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function updateCompare() {
+            if (beforeSrc && afterSrc) {
+                beforeImage.src = beforeSrc;
+                afterImage.src = afterSrc;
+                
+                placeholder.style.display = 'none';
+                compareContainer.style.display = 'block';
+                
+                // 等待图片加载完成后更新滑块位置
+                afterImage.onload = () => {
+                    updateSliderPosition(sliderPosition);
+                };
+            }
+        }
+        
+        function updateSliderPosition(percent) {
+            sliderPosition = percent;
+            
+            if (orientation === 'horizontal') {
+                compareOverlay.style.width = percent + '%';
+                compareOverlay.style.height = '100%';
+                compareSlider.style.left = percent + '%';
+                compareSlider.style.top = '0';
+                
+                // 确保 before 图片宽度与容器一致
+                const containerWidth = compareContainer.offsetWidth;
+                beforeImage.style.width = containerWidth + 'px';
+                beforeImage.style.height = 'auto';
+            } else {
+                compareOverlay.style.height = (100 - percent) + '%';
+                compareOverlay.style.width = '100%';
+                compareSlider.style.top = percent + '%';
+                compareSlider.style.left = '0';
+                
+                // 确保 before 图片高度与容器一致
+                beforeImage.style.width = '100%';
+                beforeImage.style.height = 'auto';
+            }
+            
+            document.getElementById('sliderPosition').value = percent;
+            document.getElementById('positionValue').textContent = Math.round(percent) + '%';
+        }
+        
+        // 拖动滑块
+        let isDragging = false;
+        
+        compareSlider.addEventListener('mousedown', e => {
+            isDragging = true;
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            
+            const rect = compareContainer.getBoundingClientRect();
+            let percent;
+            
+            if (orientation === 'horizontal') {
+                percent = ((e.clientX - rect.left) / rect.width) * 100;
+            } else {
+                percent = ((e.clientY - rect.top) / rect.height) * 100;
+            }
+            
+            percent = Math.max(0, Math.min(100, percent));
+            updateSliderPosition(percent);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        // 触摸支持
+        compareSlider.addEventListener('touchstart', e => {
+            isDragging = true;
+            e.preventDefault();
+        });
+        
+        document.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            
+            const touch = e.touches[0];
+            const rect = compareContainer.getBoundingClientRect();
+            let percent;
+            
+            if (orientation === 'horizontal') {
+                percent = ((touch.clientX - rect.left) / rect.width) * 100;
+            } else {
+                percent = ((touch.clientY - rect.top) / rect.height) * 100;
+            }
+            
+            percent = Math.max(0, Math.min(100, percent));
+            updateSliderPosition(percent);
+        });
+        
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+        
+        // 位置滑块
+        document.getElementById('sliderPosition').addEventListener('input', e => {
+            updateSliderPosition(parseInt(e.target.value));
+        });
+        
+        // 方向切换
+        document.querySelectorAll('.orientation-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.orientation-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                orientation = btn.dataset.orientation;
+                
+                if (orientation === 'vertical') {
+                    compareContainer.classList.add('vertical');
+                } else {
+                    compareContainer.classList.remove('vertical');
+                }
+                
+                updateSliderPosition(50);
+            });
+        });
+        
+        // 交换图片
+        document.getElementById('swapBtn').addEventListener('click', () => {
+            if (!beforeSrc || !afterSrc) return;
+            
+            const temp = beforeSrc;
+            beforeSrc = afterSrc;
+            afterSrc = temp;
+            
+            // 更新预览
+            const dropZone1 = document.getElementById('dropZone1');
+            const dropZone2 = document.getElementById('dropZone2');
+            const img1 = dropZone1.querySelector('img');
+            const img2 = dropZone2.querySelector('img');
+            
+            if (img1 && img2) {
+                const tempSrc = img1.src;
+                img1.src = img2.src;
+                img2.src = tempSrc;
+            }
+            
+            updateCompare();
+        });
+        
+        // 重置位置
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            updateSliderPosition(50);
+        });
+    </script>
+</body>
+</html>

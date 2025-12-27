@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>程序员计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .display-area {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .display {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: right;
+            word-break: break-all;
+            min-height: 2.5rem;
+            font-family: monospace;
+            margin-bottom: 1rem;
+        }
+        .base-display {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 0.5rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .base-display .label {
+            color: var(--pico-muted-color);
+            text-align: right;
+            padding-right: 0.5rem;
+        }
+        .base-display .value {
+            word-break: break-all;
+            cursor: pointer;
+        }
+        .base-display .value:hover {
+            color: var(--pico-primary);
+        }
+        .base-display .value.active {
+            color: var(--pico-primary);
+            font-weight: bold;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .controls fieldset {
+            margin: 0;
+            padding: 0.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+        }
+        .controls legend {
+            padding: 0 0.5rem;
+            font-size: 0.85rem;
+        }
+        .radio-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .radio-group input[type="radio"] {
+            margin: 0;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.25rem;
+        }
+        .btn-grid button {
+            padding: 0.6rem 0.3rem;
+            font-size: 0.9rem;
+            margin: 0;
+            width: 100%;
+            font-family: monospace;
+        }
+        .btn-grid button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .bit-display {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .bit-display h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .bits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        .bit-group {
+            display: flex;
+            gap: 1px;
+            margin-right: 0.5rem;
+        }
+        .bit {
+            width: 1.2rem;
+            height: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--pico-muted-border-color);
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .bit.one {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        .bit-index {
+            font-size: 0.6rem;
+            color: var(--pico-muted-color);
+            text-align: center;
+            margin-top: 2px;
+        }
+        @media (max-width: 600px) {
+            .btn-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            .display {
+                font-size: 1.5rem;
+            }
+            .base-display {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h2>程序员计算器</h2>
+            <button class="outline" onclick="toggleTheme()" id="themeBtn">🌙 深色</button>
+        </header>
+
+        <div class="display-area">
+            <div class="display" id="display">0</div>
+            <div class="base-display">
+                <span class="label">HEX</span>
+                <span class="value" id="hexValue" onclick="setBase(16)">0</span>
+                <span class="label">DEC</span>
+                <span class="value active" id="decValue" onclick="setBase(10)">0</span>
+                <span class="label">OCT</span>
+                <span class="value" id="octValue" onclick="setBase(8)">0</span>
+                <span class="label">BIN</span>
+                <span class="value" id="binValue" onclick="setBase(2)">0</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <fieldset>
+                <legend>进制</legend>
+                <div class="radio-group">
+                    <label><input type="radio" name="base" value="16" onchange="setBase(16)"> HEX</label>
+                    <label><input type="radio" name="base" value="10" onchange="setBase(10)" checked> DEC</label>
+                    <label><input type="radio" name="base" value="8" onchange="setBase(8)"> OCT</label>
+                    <label><input type="radio" name="base" value="2" onchange="setBase(2)"> BIN</label>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>字长</legend>
+                <div class="radio-group">
+                    <label><input type="radio" name="size" value="8" onchange="setSize(8)"> BYTE</label>
+                    <label><input type="radio" name="size" value="16" onchange="setSize(16)"> WORD</label>
+                    <label><input type="radio" name="size" value="32" onchange="setSize(32)" checked> DWORD</label>
+                    <label><input type="radio" name="size" value="64" onchange="setSize(64)"> QWORD</label>
+                </div>
+            </fieldset>
+        </div>
+
+        <div class="btn-grid">
+            <button class="secondary" onclick="bitwiseOp('AND')">AND</button>
+            <button class="secondary" onclick="bitwiseOp('OR')">OR</button>
+            <button class="secondary" onclick="bitwiseOp('XOR')">XOR</button>
+            <button class="secondary" onclick="bitwiseNot()">NOT</button>
+            <button class="secondary" onclick="shiftOp('<<')">LSH</button>
+            <button class="secondary" onclick="shiftOp('>>')">RSH</button>
+            
+            <button onclick="inputDigit('D')" id="btnD">D</button>
+            <button onclick="inputDigit('E')" id="btnE">E</button>
+            <button onclick="inputDigit('F')" id="btnF">F</button>
+            <button class="contrast" onclick="clearAll()">C</button>
+            <button class="contrast" onclick="backspace()">⌫</button>
+            <button onclick="inputOperator('/')">÷</button>
+            
+            <button onclick="inputDigit('A')" id="btnA">A</button>
+            <button onclick="inputDigit('B')" id="btnB">B</button>
+            <button onclick="inputDigit('C')" id="btnC">C</button>
+            <button onclick="inputDigit('7')" id="btn7">7</button>
+            <button onclick="inputDigit('8')" id="btn8">8</button>
+            <button onclick="inputDigit('9')" id="btn9">9</button>
+            
+            <button onclick="inputOperator('*')">×</button>
+            <button onclick="inputOperator('%')">MOD</button>
+            <button onclick="toggleSign()">±</button>
+            <button onclick="inputDigit('4')" id="btn4">4</button>
+            <button onclick="inputDigit('5')" id="btn5">5</button>
+            <button onclick="inputDigit('6')" id="btn6">6</button>
+            
+            <button onclick="inputOperator('-')">−</button>
+            <button onclick="inputOperator('+')">+</button>
+            <button onclick="inputDigit('0')" id="btn0">0</button>
+            <button onclick="inputDigit('1')" id="btn1">1</button>
+            <button onclick="inputDigit('2')" id="btn2">2</button>
+            <button onclick="inputDigit('3')" id="btn3">3</button>
+            
+            <button class="primary" onclick="calculate()" style="grid-column: span 3;">=</button>
+            <button onclick="inputDigit('00')">00</button>
+            <button onclick="inputDecimal()">.</button>
+            <button class="secondary" onclick="bitwiseOp('NAND')">NAND</button>
+        </div>
+
+        <div class="bit-display">
+            <h4>位显示 <small id="bitSize">(32位)</small></h4>
+            <div class="bits" id="bitDisplay"></div>
+        </div>
+    </main>
+
+    <script>
+        let currentValue = 0n;
+        let previousValue = 0n;
+        let operator = '';
+        let waitingForOperand = true;
+        let currentBase = 10;
+        let bitSize = 32;
+        let inputString = '';
+
+        const display = document.getElementById('display');
+        const hexValue = document.getElementById('hexValue');
+        const decValue = document.getElementById('decValue');
+        const octValue = document.getElementById('octValue');
+        const binValue = document.getElementById('binValue');
+        const bitDisplay = document.getElementById('bitDisplay');
+        const bitSizeLabel = document.getElementById('bitSize');
+
+        const maxValues = {
+            8: 0xFFn,
+            16: 0xFFFFn,
+            32: 0xFFFFFFFFn,
+            64: 0xFFFFFFFFFFFFFFFFn
+        };
+
+        function getMask() {
+            return maxValues[bitSize];
+        }
+
+        function toSigned(value) {
+            const mask = getMask();
+            value = value & mask;
+            const signBit = 1n << BigInt(bitSize - 1);
+            if (value & signBit) {
+                return value - (mask + 1n);
+            }
+            return value;
+        }
+
+        function toUnsigned(value) {
+            const mask = getMask();
+            if (value < 0n) {
+                return (mask + 1n + value) & mask;
+            }
+            return value & mask;
+        }
+
+        function updateDisplay() {
+            const unsigned = toUnsigned(currentValue);
+            const signed = toSigned(currentValue);
+            
+            display.textContent = inputString || formatValue(unsigned, currentBase);
+            
+            hexValue.textContent = unsigned.toString(16).toUpperCase();
+            decValue.textContent = signed.toString(10);
+            octValue.textContent = unsigned.toString(8);
+            binValue.textContent = unsigned.toString(2);
+            
+            document.querySelectorAll('.base-display .value').forEach(el => el.classList.remove('active'));
+            if (currentBase === 16) hexValue.classList.add('active');
+            else if (currentBase === 10) decValue.classList.add('active');
+            else if (currentBase === 8) octValue.classList.add('active');
+            else if (currentBase === 2) binValue.classList.add('active');
+            
+            updateBitDisplay(unsigned);
+            updateButtonStates();
+        }
+
+        function formatValue(value, base) {
+            const str = value.toString(base).toUpperCase();
+            return str;
+        }
+
+        function updateBitDisplay(value) {
+            bitSizeLabel.textContent = '(' + bitSize + '位)';
+            bitDisplay.textContent = '';
+            
+            for (let i = bitSize - 1; i >= 0; i--) {
+                if (i < bitSize - 1 && (i + 1) % 4 === 0) {
+                    const spacer = document.createElement('span');
+                    spacer.style.width = '0.5rem';
+                    bitDisplay.appendChild(spacer);
+                }
+                
+                const bit = document.createElement('span');
+                bit.className = 'bit' + ((value >> BigInt(i)) & 1n ? ' one' : '');
+                bit.textContent = (value >> BigInt(i)) & 1n ? '1' : '0';
+                bit.onclick = function() { toggleBit(i); };
+                bit.title = '位 ' + i;
+                bitDisplay.appendChild(bit);
+            }
+        }
+
+        function toggleBit(index) {
+            currentValue = toUnsigned(currentValue) ^ (1n << BigInt(index));
+            inputString = '';
+            updateDisplay();
+        }
+
+        function updateButtonStates() {
+            const hexDigits = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const allDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ...hexDigits];
+            
+            allDigits.forEach(d => {
+                const btn = document.getElementById('btn' + d);
+                if (btn) {
+                    const digitVal = parseInt(d, 16);
+                    btn.disabled = digitVal >= currentBase;
+                }
+            });
+        }
+
+        function setBase(base) {
+            currentBase = base;
+            document.querySelectorAll('input[name="base"]').forEach(r => {
+                r.checked = parseInt(r.value) === base;
+            });
+            inputString = '';
+            updateDisplay();
+        }
+
+        function setSize(size) {
+            bitSize = size;
+            document.querySelectorAll('input[name="size"]').forEach(r => {
+                r.checked = parseInt(r.value) === size;
+            });
+            currentValue = toUnsigned(currentValue);
+            inputString = '';
+            updateDisplay();
+        }
+
+        function inputDigit(digit) {
+            if (waitingForOperand) {
+                inputString = digit;
+                waitingForOperand = false;
+            } else {
+                inputString += digit;
+            }
+            
+            try {
+                currentValue = BigInt(parseInt(inputString, currentBase));
+            } catch (e) {
+                currentValue = 0n;
+            }
+            
+            updateDisplay();
+        }
+
+        function inputDecimal() {
+            // Programmer calculator typically doesn't use decimals
+            // But we'll allow it for decimal mode
+            if (currentBase === 10 && !inputString.includes('.')) {
+                if (waitingForOperand) {
+                    inputString = '0.';
+                    waitingForOperand = false;
+                } else {
+                    inputString += '.';
+                }
+                display.textContent = inputString;
+            }
+        }
+
+        function inputOperator(op) {
+            previousValue = toUnsigned(currentValue);
+            operator = op;
+            waitingForOperand = true;
+            inputString = '';
+        }
+
+        function bitwiseOp(op) {
+            previousValue = toUnsigned(currentValue);
+            operator = op;
+            waitingForOperand = true;
+            inputString = '';
+        }
+
+        function shiftOp(op) {
+            previousValue = toUnsigned(currentValue);
+            operator = op;
+            waitingForOperand = true;
+            inputString = '';
+        }
+
+        function bitwiseNot() {
+            currentValue = ~toUnsigned(currentValue) & getMask();
+            inputString = '';
+            updateDisplay();
+        }
+
+        function calculate() {
+            if (operator === '' || waitingForOperand) return;
+            
+            const a = previousValue;
+            const b = toUnsigned(currentValue);
+            let result;
+            
+            switch (operator) {
+                case '+': result = a + b; break;
+                case '-': result = a - b; break;
+                case '*': result = a * b; break;
+                case '/': result = b !== 0n ? a / b : 0n; break;
+                case '%': result = b !== 0n ? a % b : 0n; break;
+                case 'AND': result = a & b; break;
+                case 'OR': result = a | b; break;
+                case 'XOR': result = a ^ b; break;
+                case 'NAND': result = ~(a & b); break;
+                case '<<': result = a << b; break;
+                case '>>': result = a >> b; break;
+                default: result = b;
+            }
+            
+            currentValue = result & getMask();
+            previousValue = 0n;
+            operator = '';
+            waitingForOperand = true;
+            inputString = '';
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            currentValue = -toSigned(currentValue);
+            inputString = '';
+            updateDisplay();
+        }
+
+        function clearAll() {
+            currentValue = 0n;
+            previousValue = 0n;
+            operator = '';
+            waitingForOperand = true;
+            inputString = '';
+            updateDisplay();
+        }
+
+        function backspace() {
+            if (waitingForOperand || inputString.length === 0) return;
+            inputString = inputString.slice(0, -1);
+            if (inputString.length === 0) {
+                currentValue = 0n;
+            } else {
+                try {
+                    currentValue = BigInt(parseInt(inputString, currentBase));
+                } catch (e) {
+                    currentValue = 0n;
+                }
+            }
+            updateDisplay();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'light') {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = '☀️ 浅色';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '🌙 深色';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            const key = e.key.toUpperCase();
+            if ((key >= '0' && key <= '9') || (key >= 'A' && key <= 'F')) {
+                const digitVal = parseInt(key, 16);
+                if (digitVal < currentBase) {
+                    inputDigit(key);
+                }
+            } else if (e.key === '+') inputOperator('+');
+            else if (e.key === '-') inputOperator('-');
+            else if (e.key === '*') inputOperator('*');
+            else if (e.key === '/') { e.preventDefault(); inputOperator('/'); }
+            else if (e.key === '%') inputOperator('%');
+            else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calculate(); }
+            else if (e.key === 'Escape') clearAll();
+            else if (e.key === 'Backspace') backspace();
+        });
+
+        updateDisplay();
+    </script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XPath 测试器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #f59e0b;
+            --secondary-color: #d97706;
+            --accent-color: #f5f5f5;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        [data-theme="dark"] { --accent-color: #2a2a1a; }
+        body { min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--primary-color); }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo svg { width: 48px; height: 48px; }
+        h1 { margin: 0; background: linear-gradient(135deg, var(--primary-color), #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .theme-toggle { background: none; border: 2px solid var(--primary-color); border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .theme-toggle:hover { background: var(--primary-color); color: white; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; min-height: 70vh; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--accent-color); border-radius: var(--border-radius); padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--primary-color); }
+        .panel-title { font-weight: 600; color: var(--primary-color); margin: 0; }
+        .xpath-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .xpath-input input { flex: 1; font-family: monospace; margin-bottom: 0; }
+        .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background: var(--secondary-color); }
+        .btn-secondary { background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
+        .btn-secondary:hover { background: var(--primary-color); color: white; }
+        textarea { font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; min-height: 250px; }
+        .result-info { background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: var(--border-radius); margin-bottom: 1rem; }
+        .result-info .count { font-size: 2rem; font-weight: bold; color: var(--primary-color); }
+        .results-list { max-height: 400px; overflow-y: auto; }
+        .result-item { padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(245, 158, 11, 0.1); border-radius: var(--border-radius); border-left: 3px solid var(--primary-color); font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+        .result-item .path { color: var(--secondary-color); font-size: 0.75rem; margin-bottom: 0.25rem; }
+        .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; background: var(--primary-color); color: white; border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: var(--transition); z-index: 1000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .examples { margin-top: 1rem; }
+        .examples h4 { margin: 0 0 0.5rem 0; color: var(--primary-color); }
+        .example-btn { display: inline-block; padding: 0.25rem 0.5rem; margin: 0.25rem; font-size: 0.75rem; font-family: monospace; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--primary-color); border-radius: 4px; cursor: pointer; transition: var(--transition); }
+        .example-btn:hover { background: var(--primary-color); color: white; }
+        .error-msg { color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: var(--border-radius); margin-bottom: 1rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .tab-btn { padding: 0.5rem 1rem; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-color); cursor: pointer; border-radius: var(--border-radius); }
+        .tab-btn.active { background: var(--primary-color); color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="10" width="80" height="80" rx="10" fill="#f59e0b"/>
+                    <text x="50" y="62" text-anchor="middle" fill="white" font-size="28" font-weight="bold">X/</text>
+                </svg>
+                <h1>XPath 测试器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📝 XML/HTML 输入</h3>
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="setMode('xml')">XML</button>
+                        <button class="tab-btn" onclick="setMode('html')">HTML</button>
+                    </div>
+                </div>
+                <textarea id="xmlInput" placeholder="在此输入 XML 或 HTML 代码..." oninput="evaluate()"></textarea>
+                
+                <div class="btn-group" style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" onclick="loadSampleXml()">加载 XML 示例</button>
+                    <button class="btn-secondary" onclick="loadSampleHtml()">加载 HTML 示例</button>
+                </div>
+                
+                <div class="examples">
+                    <h4>常用 XPath 示例</h4>
+                    <button class="example-btn" onclick="tryXpath('//*')">`//*`</button>
+                    <button class="example-btn" onclick="tryXpath('//div')">`//div`</button>
+                    <button class="example-btn" onclick="tryXpath('//div[@class]')">`//div[@class]`</button>
+                    <button class="example-btn" onclick="tryXpath('//*[@id=\"x\"]')">`//*[@id]`</button>
+                    <button class="example-btn" onclick="tryXpath('//div/p')">`//div/p`</button>
+                    <button class="example-btn" onclick="tryXpath('//div//p')">`//div//p`</button>
+                    <button class="example-btn" onclick="tryXpath('//p[1]')">`//p[1]`</button>
+                    <button class="example-btn" onclick="tryXpath('//p[last()]')">`//p[last()]`</button>
+                    <button class="example-btn" onclick="tryXpath('//p[contains(text(),\"x\")]')">`contains()`</button>
+                    <button class="example-btn" onclick="tryXpath('//p/text()')">`text()`</button>
+                    <button class="example-btn" onclick="tryXpath('//@*')">`//@*`</button>
+                    <button class="example-btn" onclick="tryXpath('//p/parent::*')">`parent::`</button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">🎯 XPath 表达式</h3>
+                </div>
+                
+                <div class="xpath-input">
+                    <input type="text" id="xpathInput" placeholder="输入 XPath 表达式..." oninput="evaluate()">
+                    <button class="btn-primary" onclick="evaluate()">执行</button>
+                </div>
+                
+                <div id="errorMsg" class="error-msg" style="display: none;"></div>
+                
+                <div class="result-info">
+                    <div class="count" id="matchCount">0</div>
+                    <div id="resultType">个结果</div>
+                </div>
+                
+                <div class="panel-header">
+                    <h3 class="panel-title">📋 结果</h3>
+                    <button class="btn-secondary" onclick="copyResults()">复制结果</button>
+                </div>
+                <div class="results-list" id="resultsList"></div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let currentMode = 'xml';
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase() === mode);
+            });
+            evaluate();
+        }
+        
+        function loadSampleXml() {
+            const sample = `<?xml version="1.0" encoding="UTF-8"?>
+<bookstore>
+  <book category="cooking">
+    <title lang="en">Everyday Italian</title>
+    <author>Giada De Laurentiis</author>
+    <year>2005</year>
+    <price>30.00</price>
+  </book>
+  <book category="children">
+    <title lang="en">Harry Potter</title>
+    <author>J K. Rowling</author>
+    <year>2005</year>
+    <price>29.99</price>
+  </book>
+  <book category="web">
+    <title lang="en">Learning XML</title>
+    <author>Erik T. Ray</author>
+    <year>2003</year>
+    <price>39.95</price>
+  </book>
+</bookstore>`;
+            document.getElementById('xmlInput').value = sample;
+            setMode('xml');
+            evaluate();
+        }
+        
+        function loadSampleHtml() {
+            const sample = `<html>
+<head><title>示例页面</title></head>
+<body>
+  <div class="container" id="main">
+    <h1>标题</h1>
+    <p class="intro">这是介绍段落。</p>
+    <ul class="list">
+      <li>项目 1</li>
+      <li>项目 2</li>
+      <li class="special">项目 3</li>
+    </ul>
+    <div class="content">
+      <p>内容段落 1</p>
+      <p>内容段落 2</p>
+    </div>
+  </div>
+</body>
+</html>`;
+            document.getElementById('xmlInput').value = sample;
+            setMode('html');
+            evaluate();
+        }
+        
+        function tryXpath(xpath) {
+            document.getElementById('xpathInput').value = xpath;
+            evaluate();
+        }
+        
+        function evaluate() {
+            const input = document.getElementById('xmlInput').value;
+            const xpath = document.getElementById('xpathInput').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const resultsList = document.getElementById('resultsList');
+            
+            errorMsg.style.display = 'none';
+            while (resultsList.firstChild) resultsList.removeChild(resultsList.firstChild);
+            
+            if (!input.trim() || !xpath.trim()) {
+                document.getElementById('matchCount').textContent = '0';
+                document.getElementById('resultType').textContent = '个结果';
+                return;
+            }
+            
+            try {
+                let doc;
+                if (currentMode === 'xml') {
+                    const parser = new DOMParser();
+                    doc = parser.parseFromString(input, 'application/xml');
+                    const parseError = doc.querySelector('parsererror');
+                    if (parseError) {
+                        throw new Error('XML 解析错误: ' + parseError.textContent.substring(0, 100));
+                    }
+                } else {
+                    const parser = new DOMParser();
+                    doc = parser.parseFromString(input, 'text/html');
+                }
+                
+                const result = doc.evaluate(xpath, doc, null, XPathResult.ANY_TYPE, null);
+                const results = [];
+                
+                switch (result.resultType) {
+                    case XPathResult.NUMBER_TYPE:
+                        results.push({ type: 'number', value: result.numberValue });
+                        document.getElementById('resultType').textContent = '数值结果';
+                        break;
+                    case XPathResult.STRING_TYPE:
+                        results.push({ type: 'string', value: result.stringValue });
+                        document.getElementById('resultType').textContent = '字符串结果';
+                        break;
+                    case XPathResult.BOOLEAN_TYPE:
+                        results.push({ type: 'boolean', value: result.booleanValue });
+                        document.getElementById('resultType').textContent = '布尔结果';
+                        break;
+                    default:
+                        let node;
+                        while ((node = result.iterateNext())) {
+                            results.push({ type: 'node', node: node });
+                        }
+                        document.getElementById('resultType').textContent = '个节点';
+                }
+                
+                document.getElementById('matchCount').textContent = results.length;
+                
+                results.forEach((r, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'result-item';
+                    
+                    if (r.type === 'node') {
+                        const pathDiv = document.createElement('div');
+                        pathDiv.className = 'path';
+                        pathDiv.textContent = getNodePath(r.node);
+                        item.appendChild(pathDiv);
+                        
+                        const valueDiv = document.createElement('div');
+                        if (r.node.nodeType === Node.ATTRIBUTE_NODE) {
+                            valueDiv.textContent = r.node.name + '="' + r.node.value + '"';
+                        } else if (r.node.nodeType === Node.TEXT_NODE) {
+                            valueDiv.textContent = '"' + r.node.textContent.trim() + '"';
+                        } else if (r.node.outerHTML) {
+                            valueDiv.textContent = r.node.outerHTML.substring(0, 200);
+                        } else {
+                            const serializer = new XMLSerializer();
+                            valueDiv.textContent = serializer.serializeToString(r.node).substring(0, 200);
+                        }
+                        item.appendChild(valueDiv);
+                    } else {
+                        item.textContent = r.type + ': ' + r.value;
+                    }
+                    
+                    resultsList.appendChild(item);
+                });
+                
+            } catch (e) {
+                errorMsg.textContent = e.message;
+                errorMsg.style.display = 'block';
+                document.getElementById('matchCount').textContent = '错误';
+            }
+        }
+        
+        function getNodePath(node) {
+            if (!node.parentNode) return '';
+            const path = [];
+            let current = node;
+            while (current && current.nodeType === Node.ELEMENT_NODE) {
+                let name = current.nodeName.toLowerCase();
+                if (current.id) {
+                    name += '[@id="' + current.id + '"]';
+                }
+                path.unshift(name);
+                current = current.parentNode;
+            }
+            return '/' + path.join('/');
+        }
+        
+        function copyResults() {
+            const items = document.querySelectorAll('.result-item');
+            let text = '';
+            items.forEach(item => {
+                text += item.textContent + '\n';
+            });
+            navigator.clipboard.writeText(text).then(function() {
+                showToast('结果已复制！');
+            });
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); }, 2000);
+        }
+        
+        initTheme();
+        loadSampleXml();
+    </script>
+</body>
+</html>

@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphQL 查询构建器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #e535ab;
+            --secondary-color: #1a1a2e;
+            --accent-color: #f5f5f5;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+        
+        [data-theme="dark"] {
+            --accent-color: #2d2d44;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo svg {
+            width: 40px;
+            height: 40px;
+        }
+        
+        h1 {
+            margin: 0;
+            background: linear-gradient(135deg, var(--primary-color), #ff6b9d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .theme-toggle:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr 1fr;
+            gap: 1.5rem;
+            min-height: 70vh;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--accent-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--primary-color);
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .field-builder {
+            margin-bottom: 1rem;
+        }
+        
+        .field-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: rgba(229, 53, 171, 0.1);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .field-item:hover {
+            background: rgba(229, 53, 171, 0.2);
+        }
+        
+        .field-item.selected {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .field-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .nested-fields {
+            margin-left: 1.5rem;
+            border-left: 2px solid var(--primary-color);
+            padding-left: 0.5rem;
+        }
+        
+        textarea, pre {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            border-radius: var(--border-radius);
+            width: 100%;
+            min-height: 400px;
+            resize: vertical;
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .syntax-keyword { color: #569cd6; }
+        .syntax-field { color: #9cdcfe; }
+        .syntax-type { color: #4ec9b0; }
+        .syntax-string { color: #ce9178; }
+        .syntax-number { color: #b5cea8; }
+        .syntax-punctuation { color: #d4d4d4; }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            transition: var(--transition);
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background: #c42d93;
+            border-color: #c42d93;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .variables-section {
+            margin-top: 1rem;
+        }
+        
+        .variable-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .variable-input input {
+            margin-bottom: 0;
+        }
+        
+        .arguments-section {
+            margin-top: 1rem;
+        }
+        
+        .arg-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+        
+        .arg-item input, .arg-item select {
+            margin-bottom: 0;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 2rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: var(--transition);
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .operation-type {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .operation-type label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .operation-type input[type="radio"] {
+            margin: 0;
+        }
+        
+        .schema-input {
+            margin-bottom: 1rem;
+        }
+        
+        .preset-schemas {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .preset-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 5L90 27.5V72.5L50 95L10 72.5V27.5L50 5Z" stroke="#e535ab" stroke-width="4" fill="none"/>
+                    <circle cx="50" cy="50" r="15" fill="#e535ab"/>
+                    <circle cx="50" cy="5" r="8" fill="#e535ab"/>
+                    <circle cx="90" cy="27.5" r="8" fill="#e535ab"/>
+                    <circle cx="90" cy="72.5" r="8" fill="#e535ab"/>
+                    <circle cx="50" cy="95" r="8" fill="#e535ab"/>
+                    <circle cx="10" cy="72.5" r="8" fill="#e535ab"/>
+                    <circle cx="10" cy="27.5" r="8" fill="#e535ab"/>
+                </svg>
+                <h1>GraphQL 查询构建器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📋 字段选择器</h3>
+                </div>
+                
+                <div class="operation-type">
+                    <label>
+                        <input type="radio" name="operation" value="query" checked onchange="updateQuery()">
+                        Query
+                    </label>
+                    <label>
+                        <input type="radio" name="operation" value="mutation" onchange="updateQuery()">
+                        Mutation
+                    </label>
+                    <label>
+                        <input type="radio" name="operation" value="subscription" onchange="updateQuery()">
+                        Subscription
+                    </label>
+                </div>
+                
+                <div class="schema-input">
+                    <input type="text" id="operationName" placeholder="操作名称 (可选)" oninput="updateQuery()">
+                </div>
+                
+                <div class="preset-schemas">
+                    <button class="preset-btn btn-secondary" onclick="loadPreset('users')">用户</button>
+                    <button class="preset-btn btn-secondary" onclick="loadPreset('posts')">文章</button>
+                    <button class="preset-btn btn-secondary" onclick="loadPreset('products')">商品</button>
+                </div>
+                
+                <div id="fieldBuilder" class="field-builder">
+                    <!-- 动态生成字段 -->
+                </div>
+                
+                <div class="arguments-section">
+                    <h4>参数设置</h4>
+                    <div id="argumentsList"></div>
+                    <button class="btn-secondary" onclick="addArgument()" style="width: 100%; padding: 0.5rem;">
+                        + 添加参数
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📝 查询编辑器</h3>
+                    <div class="btn-group">
+                        <button class="btn-secondary" onclick="formatQuery()">格式化</button>
+                        <button class="btn-secondary" onclick="clearQuery()">清空</button>
+                    </div>
+                </div>
+                <textarea id="queryEditor" placeholder="在这里编写或编辑 GraphQL 查询..." oninput="updatePreview()"></textarea>
+                
+                <div class="variables-section">
+                    <h4>变量 (JSON)</h4>
+                    <textarea id="variablesEditor" style="min-height: 100px;" placeholder='{"id": "1"}'></textarea>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">👁️ 预览</h3>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="copyQuery()">复制查询</button>
+                        <button class="btn-secondary" onclick="copyWithVariables()">复制全部</button>
+                    </div>
+                </div>
+                <pre id="queryPreview"></pre>
+                
+                <div style="margin-top: 1rem;">
+                    <h4>cURL 命令</h4>
+                    <pre id="curlPreview" style="min-height: 100px;"></pre>
+                    <button class="btn-secondary" onclick="copyCurl()" style="margin-top: 0.5rem;">复制 cURL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // 预设 Schema
+        const presets = {
+            users: {
+                name: 'users',
+                fields: [
+                    { name: 'id', type: 'ID' },
+                    { name: 'name', type: 'String' },
+                    { name: 'email', type: 'String' },
+                    { name: 'avatar', type: 'String' },
+                    { name: 'createdAt', type: 'DateTime' },
+                    { 
+                        name: 'posts', 
+                        type: 'Post',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'title', type: 'String' },
+                            { name: 'content', type: 'String' }
+                        ]
+                    },
+                    {
+                        name: 'profile',
+                        type: 'Profile',
+                        fields: [
+                            { name: 'bio', type: 'String' },
+                            { name: 'website', type: 'String' },
+                            { name: 'location', type: 'String' }
+                        ]
+                    }
+                ]
+            },
+            posts: {
+                name: 'posts',
+                fields: [
+                    { name: 'id', type: 'ID' },
+                    { name: 'title', type: 'String' },
+                    { name: 'content', type: 'String' },
+                    { name: 'published', type: 'Boolean' },
+                    { name: 'createdAt', type: 'DateTime' },
+                    { name: 'updatedAt', type: 'DateTime' },
+                    {
+                        name: 'author',
+                        type: 'User',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'name', type: 'String' },
+                            { name: 'email', type: 'String' }
+                        ]
+                    },
+                    {
+                        name: 'comments',
+                        type: 'Comment',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'text', type: 'String' },
+                            { name: 'createdAt', type: 'DateTime' }
+                        ]
+                    },
+                    {
+                        name: 'tags',
+                        type: 'Tag',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'name', type: 'String' }
+                        ]
+                    }
+                ]
+            },
+            products: {
+                name: 'products',
+                fields: [
+                    { name: 'id', type: 'ID' },
+                    { name: 'name', type: 'String' },
+                    { name: 'description', type: 'String' },
+                    { name: 'price', type: 'Float' },
+                    { name: 'stock', type: 'Int' },
+                    { name: 'sku', type: 'String' },
+                    {
+                        name: 'category',
+                        type: 'Category',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'name', type: 'String' },
+                            { name: 'slug', type: 'String' }
+                        ]
+                    },
+                    {
+                        name: 'images',
+                        type: 'Image',
+                        fields: [
+                            { name: 'url', type: 'String' },
+                            { name: 'alt', type: 'String' }
+                        ]
+                    },
+                    {
+                        name: 'reviews',
+                        type: 'Review',
+                        fields: [
+                            { name: 'id', type: 'ID' },
+                            { name: 'rating', type: 'Int' },
+                            { name: 'comment', type: 'String' }
+                        ]
+                    }
+                ]
+            }
+        };
+        
+        let currentPreset = 'users';
+        let selectedFields = new Set();
+        let arguments_list = [];
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        // 加载预设
+        function loadPreset(preset) {
+            currentPreset = preset;
+            selectedFields.clear();
+            renderFieldBuilder();
+            updateQuery();
+        }
+        
+        // 安全地创建文本节点
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 渲染字段构建器
+        function renderFieldBuilder() {
+            const container = document.getElementById('fieldBuilder');
+            const preset = presets[currentPreset];
+            // 清空容器
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            // 递归添加字段
+            renderFieldsDOM(preset.fields, preset.name, container);
+        }
+        
+        // 使用DOM API递归渲染字段
+        function renderFieldsDOM(fields, parentPath, container) {
+            fields.forEach(field => {
+                const fieldPath = parentPath + '.' + field.name;
+                const hasNested = field.fields && field.fields.length > 0;
+                
+                const fieldItem = document.createElement('div');
+                fieldItem.className = 'field-item' + (selectedFields.has(fieldPath) ? ' selected' : '');
+                fieldItem.onclick = function(e) { toggleField(fieldPath, e); };
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = selectedFields.has(fieldPath);
+                fieldItem.appendChild(checkbox);
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = field.name;
+                fieldItem.appendChild(nameSpan);
+                
+                const typeSmall = document.createElement('small');
+                typeSmall.style.opacity = '0.7';
+                typeSmall.style.marginLeft = 'auto';
+                typeSmall.textContent = field.type;
+                fieldItem.appendChild(typeSmall);
+                
+                container.appendChild(fieldItem);
+                
+                if (hasNested) {
+                    const nestedDiv = document.createElement('div');
+                    nestedDiv.className = 'nested-fields';
+                    renderFieldsDOM(field.fields, fieldPath, nestedDiv);
+                    container.appendChild(nestedDiv);
+                }
+            });
+        }
+        
+        // 切换字段选择
+        function toggleField(fieldPath, event) {
+            event.stopPropagation();
+            if (selectedFields.has(fieldPath)) {
+                selectedFields.delete(fieldPath);
+            } else {
+                selectedFields.add(fieldPath);
+            }
+            renderFieldBuilder();
+            updateQuery();
+        }
+        
+        // 添加参数
+        function addArgument() {
+            arguments_list.push({ name: '', type: 'String', value: '' });
+            renderArguments();
+        }
+        
+        // 删除参数
+        function removeArgument(index) {
+            arguments_list.splice(index, 1);
+            renderArguments();
+            updateQuery();
+        }
+        
+        // 渲染参数列表
+        function renderArguments() {
+            const container = document.getElementById('argumentsList');
+            // 清空容器
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            
+            arguments_list.forEach((arg, index) => {
+                const argItem = document.createElement('div');
+                argItem.className = 'arg-item';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = '参数名';
+                nameInput.value = arg.name;
+                nameInput.onchange = function() { updateArgument(index, 'name', this.value); };
+                argItem.appendChild(nameInput);
+                
+                const typeSelect = document.createElement('select');
+                typeSelect.onchange = function() { updateArgument(index, 'type', this.value); };
+                ['String', 'Int', 'Float', 'Boolean', 'ID'].forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    opt.textContent = t;
+                    opt.selected = arg.type === t;
+                    typeSelect.appendChild(opt);
+                });
+                argItem.appendChild(typeSelect);
+                
+                const valueInput = document.createElement('input');
+                valueInput.type = 'text';
+                valueInput.placeholder = '默认值';
+                valueInput.value = arg.value;
+                valueInput.onchange = function() { updateArgument(index, 'value', this.value); };
+                argItem.appendChild(valueInput);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.style.padding = '0.5rem';
+                deleteBtn.onclick = function() { removeArgument(index); };
+                argItem.appendChild(deleteBtn);
+                
+                container.appendChild(argItem);
+            });
+        }
+        
+        // 更新参数
+        function updateArgument(index, key, value) {
+            arguments_list[index][key] = value;
+            updateQuery();
+        }
+        
+        // 构建查询字符串
+        function buildQuery() {
+            const operationType = document.querySelector('input[name="operation"]:checked').value;
+            const operationName = document.getElementById('operationName').value;
+            const preset = presets[currentPreset];
+            
+            // 构建选中字段的树结构
+            const fieldTree = {};
+            selectedFields.forEach(path => {
+                const parts = path.split('.');
+                let current = fieldTree;
+                parts.forEach((part, index) => {
+                    if (!current[part]) {
+                        current[part] = {};
+                    }
+                    current = current[part];
+                });
+            });
+            
+            // 生成查询字符串
+            function buildFieldString(tree, indent) {
+                const spaces = '  '.repeat(indent);
+                let result = '';
+                
+                Object.keys(tree).forEach(key => {
+                    if (key === preset.name) {
+                        // 根节点，添加参数
+                        const argsStr = arguments_list
+                            .filter(arg => arg.name)
+                            .map(arg => arg.name + ': $' + arg.name)
+                            .join(', ');
+                        result += spaces + key + (argsStr ? '(' + argsStr + ')' : '') + ' {\n';
+                        result += buildFieldString(tree[key], indent + 1);
+                        result += spaces + '}\n';
+                    } else if (Object.keys(tree[key]).length > 0) {
+                        result += spaces + key + ' {\n';
+                        result += buildFieldString(tree[key], indent + 1);
+                        result += spaces + '}\n';
+                    } else {
+                        result += spaces + key + '\n';
+                    }
+                });
+                
+                return result;
+            }
+            
+            // 构建变量定义
+            const varDefs = arguments_list
+                .filter(arg => arg.name)
+                .map(arg => '$' + arg.name + ': ' + arg.type)
+                .join(', ');
+            
+            let query = operationType;
+            if (operationName || varDefs) {
+                query += ' ' + (operationName || 'MyQuery');
+                if (varDefs) {
+                    query += '(' + varDefs + ')';
+                }
+            }
+            query += ' {\n';
+            query += buildFieldString(fieldTree, 1);
+            query += '}';
+            
+            return query;
+        }
+        
+        // 更新查询
+        function updateQuery() {
+            const query = buildQuery();
+            document.getElementById('queryEditor').value = query;
+            updatePreview();
+        }
+        
+        // 更新预览
+        function updatePreview() {
+            const query = document.getElementById('queryEditor').value;
+            const highlighted = highlightSyntax(query);
+            document.getElementById('queryPreview').textContent = query;
+            updateCurlPreview();
+        }
+        
+        // 语法高亮（简单版本）
+        function highlightSyntax(code) {
+            return code;
+        }
+        
+        // 更新 cURL 预览
+        function updateCurlPreview() {
+            const query = document.getElementById('queryEditor').value;
+            const variablesStr = document.getElementById('variablesEditor').value || '{}';
+            let variables = {};
+            try {
+                variables = JSON.parse(variablesStr);
+            } catch(e) {
+                variables = {};
+            }
+            
+            const body = JSON.stringify({ query: query, variables: variables });
+            const curlCmd = 'curl -X POST \\\n  -H "Content-Type: application/json" \\\n  -d \'' + body + '\' \\\n  YOUR_GRAPHQL_ENDPOINT';
+            
+            document.getElementById('curlPreview').textContent = curlCmd;
+        }
+        
+        // 格式化查询
+        function formatQuery() {
+            const editor = document.getElementById('queryEditor');
+            let query = editor.value;
+            
+            // 简单格式化
+            let indent = 0;
+            let formatted = '';
+            let inString = false;
+            
+            for (let i = 0; i < query.length; i++) {
+                const char = query[i];
+                
+                if (char === '"' && query[i-1] !== '\\') {
+                    inString = !inString;
+                    formatted += char;
+                } else if (!inString) {
+                    if (char === '{') {
+                        indent++;
+                        formatted += ' {\n' + '  '.repeat(indent);
+                    } else if (char === '}') {
+                        indent--;
+                        formatted += '\n' + '  '.repeat(indent) + '}';
+                    } else if (char === '\n') {
+                        formatted += '\n' + '  '.repeat(indent);
+                    } else if (char === ' ' && query[i+1] === ' ') {
+                        // 跳过多余空格
+                    } else {
+                        formatted += char;
+                    }
+                } else {
+                    formatted += char;
+                }
+            }
+            
+            editor.value = formatted.trim();
+            updatePreview();
+        }
+        
+        // 清空查询
+        function clearQuery() {
+            selectedFields.clear();
+            arguments_list = [];
+            document.getElementById('queryEditor').value = '';
+            document.getElementById('variablesEditor').value = '';
+            document.getElementById('operationName').value = '';
+            renderFieldBuilder();
+            renderArguments();
+            updatePreview();
+        }
+        
+        // 复制查询
+        function copyQuery() {
+            const query = document.getElementById('queryEditor').value;
+            navigator.clipboard.writeText(query).then(function() {
+                showToast('查询已复制到剪贴板！');
+            });
+        }
+        
+        // 复制查询和变量
+        function copyWithVariables() {
+            const query = document.getElementById('queryEditor').value;
+            const variablesStr = document.getElementById('variablesEditor').value || '{}';
+            let variables = {};
+            try {
+                variables = JSON.parse(variablesStr);
+            } catch(e) {
+                variables = {};
+            }
+            const full = JSON.stringify({ query: query, variables: variables }, null, 2);
+            navigator.clipboard.writeText(full).then(function() {
+                showToast('查询和变量已复制！');
+            });
+        }
+        
+        // 复制 cURL
+        function copyCurl() {
+            const curl = document.getElementById('curlPreview').textContent;
+            navigator.clipboard.writeText(curl).then(function() {
+                showToast('cURL 命令已复制！');
+            });
+        }
+        
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // 初始化
+        initTheme();
+        loadPreset('users');
+        renderArguments();
+    </script>
+</body>
+</html>

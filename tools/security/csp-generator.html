@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSP 策略生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--pico-primary);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .directive-card {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .directive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .directive-name {
+            font-weight: 600;
+            color: var(--pico-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .directive-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .directive-toggle input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .source-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .source-chip {
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            border: 2px solid var(--pico-muted-border-color);
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .source-chip:hover {
+            border-color: var(--pico-primary);
+        }
+        
+        .source-chip.selected {
+            background: var(--pico-primary);
+            border-color: var(--pico-primary);
+            color: white;
+        }
+        
+        .custom-sources {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .custom-sources input {
+            flex: 1;
+            min-width: 200px;
+            margin: 0;
+            padding: 0.5rem;
+        }
+        
+        .custom-sources button {
+            padding: 0.5rem 1rem;
+            margin: 0;
+        }
+        
+        .custom-source-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--pico-secondary-background);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .custom-source-tag button {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        
+        .output-section {
+            margin-top: 2rem;
+        }
+        
+        .output-card {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .output-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .output-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--pico-muted-border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .output-tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.2s;
+        }
+        
+        .output-tab.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        
+        .output-content {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            white-space: pre-wrap;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .presets {
+            margin-bottom: 2rem;
+        }
+        
+        .preset-btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-box {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+        
+        .directive-desc {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .directive-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    
+    <main class="container">
+        <header>
+            <h1>🛡️ CSP 策略生成器</h1>
+            <p>可视化生成 Content-Security-Policy 安全策略头</p>
+        </header>
+        
+        <section class="presets">
+            <strong>快速预设：</strong>
+            <button class="preset-btn secondary outline" onclick="applyPreset('strict')">严格模式</button>
+            <button class="preset-btn secondary outline" onclick="applyPreset('moderate')">中等安全</button>
+            <button class="preset-btn secondary outline" onclick="applyPreset('relaxed')">宽松模式</button>
+            <button class="preset-btn secondary outline" onclick="applyPreset('clear')">清空所有</button>
+        </section>
+        
+        <section id="directivesSection">
+            <!-- 指令将在这里生成 -->
+        </section>
+        
+        <section class="output-section">
+            <div class="output-card">
+                <h3>📄 生成的 CSP 策略</h3>
+                <div class="output-tabs">
+                    <button class="output-tab active" onclick="switchTab('header')">HTTP Header</button>
+                    <button class="output-tab" onclick="switchTab('meta')">Meta 标签</button>
+                    <button class="output-tab" onclick="switchTab('nginx')">Nginx 配置</button>
+                    <button class="output-tab" onclick="switchTab('apache')">Apache 配置</button>
+                </div>
+                <div class="output-content" id="outputContent"></div>
+                <div class="btn-group">
+                    <button onclick="copyOutput()">📋 复制到剪贴板</button>
+                    <button class="secondary" onclick="downloadOutput()">💾 下载配置</button>
+                </div>
+            </div>
+        </section>
+        
+        <div class="info-box">
+            <h4>💡 CSP 使用提示</h4>
+            <ul>
+                <li><code>'self'</code> - 仅允许同源资源</li>
+                <li><code>'none'</code> - 禁止所有资源</li>
+                <li><code>'unsafe-inline'</code> - 允许内联脚本/样式（有安全风险）</li>
+                <li><code>'unsafe-eval'</code> - 允许 eval() 函数（有安全风险）</li>
+                <li><code>https:</code> - 仅允许 HTTPS 资源</li>
+                <li><code>data:</code> - 允许 data: URI 资源</li>
+                <li><code>blob:</code> - 允许 blob: URI 资源</li>
+            </ul>
+        </div>
+    </main>
+    
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        
+        // CSP 指令定义
+        const directives = [
+            { name: 'default-src', desc: '默认策略，其他指令的后备值', icon: '🏠' },
+            { name: 'script-src', desc: '控制 JavaScript 脚本的加载来源', icon: '📜' },
+            { name: 'style-src', desc: '控制 CSS 样式表的加载来源', icon: '🎨' },
+            { name: 'img-src', desc: '控制图片资源的加载来源', icon: '🖼️' },
+            { name: 'font-src', desc: '控制字体文件的加载来源', icon: '🔤' },
+            { name: 'connect-src', desc: '控制 XHR、WebSocket 等连接目标', icon: '🔗' },
+            { name: 'media-src', desc: '控制音频和视频资源的加载来源', icon: '🎬' },
+            { name: 'object-src', desc: '控制 Flash 和其他插件的加载来源', icon: '📦' },
+            { name: 'frame-src', desc: '控制 iframe 框架的来源', icon: '🖥️' },
+            { name: 'frame-ancestors', desc: '控制哪些页面可以嵌入当前页面', icon: '👨‍👧' },
+            { name: 'worker-src', desc: '控制 Web Worker 脚本的来源', icon: '👷' },
+            { name: 'base-uri', desc: '限制 base 元素的 URL', icon: '🔗' },
+            { name: 'form-action', desc: '限制表单提交的目标 URL', icon: '📝' },
+            { name: 'report-uri', desc: '指定 CSP 违规报告的接收地址', icon: '📊' }
+        ];
+        
+        const sourceOptions = [
+            { value: "'self'", label: "'self'" },
+            { value: "'none'", label: "'none'" },
+            { value: "'unsafe-inline'", label: "'unsafe-inline'" },
+            { value: "'unsafe-eval'", label: "'unsafe-eval'" },
+            { value: "'strict-dynamic'", label: "'strict-dynamic'" },
+            { value: "https:", label: "https:" },
+            { value: "data:", label: "data:" },
+            { value: "blob:", label: "blob:" },
+            { value: "*", label: "* (任意)" }
+        ];
+        
+        // 存储状态
+        const state = {};
+        directives.forEach(d => {
+            state[d.name] = {
+                enabled: false,
+                sources: [],
+                customSources: []
+            };
+        });
+        
+        let currentTab = 'header';
+        
+        // 初始化界面
+        function initDirectives() {
+            const container = document.getElementById('directivesSection');
+            container.textContent = '';
+            
+            directives.forEach(directive => {
+                const card = document.createElement('div');
+                card.className = 'directive-card';
+                card.id = 'directive-' + directive.name;
+                
+                // Header
+                const header = document.createElement('div');
+                header.className = 'directive-header';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'directive-name';
+                nameDiv.textContent = directive.icon + ' ' + directive.name;
+                
+                const toggleDiv = document.createElement('div');
+                toggleDiv.className = 'directive-toggle';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'toggle-' + directive.name;
+                checkbox.onchange = function() {
+                    state[directive.name].enabled = this.checked;
+                    updateOutput();
+                };
+                
+                const label = document.createElement('label');
+                label.htmlFor = 'toggle-' + directive.name;
+                label.textContent = '启用';
+                
+                toggleDiv.appendChild(checkbox);
+                toggleDiv.appendChild(label);
+                header.appendChild(nameDiv);
+                header.appendChild(toggleDiv);
+                card.appendChild(header);
+                
+                // Description
+                const desc = document.createElement('div');
+                desc.className = 'directive-desc';
+                desc.textContent = directive.desc;
+                card.appendChild(desc);
+                
+                // Source options
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'source-options';
+                
+                sourceOptions.forEach(opt => {
+                    const chip = document.createElement('button');
+                    chip.className = 'source-chip';
+                    chip.textContent = opt.label;
+                    chip.dataset.value = opt.value;
+                    chip.dataset.directive = directive.name;
+                    chip.onclick = function() {
+                        this.classList.toggle('selected');
+                        const sources = state[directive.name].sources;
+                        const idx = sources.indexOf(opt.value);
+                        if (idx === -1) {
+                            sources.push(opt.value);
+                        } else {
+                            sources.splice(idx, 1);
+                        }
+                        updateOutput();
+                    };
+                    sourcesDiv.appendChild(chip);
+                });
+                card.appendChild(sourcesDiv);
+                
+                // Custom sources
+                const customDiv = document.createElement('div');
+                customDiv.className = 'custom-sources';
+                
+                const customInput = document.createElement('input');
+                customInput.type = 'text';
+                customInput.placeholder = '添加自定义来源 (如: https://cdn.example.com)';
+                customInput.id = 'custom-' + directive.name;
+                
+                const addBtn = document.createElement('button');
+                addBtn.className = 'secondary';
+                addBtn.textContent = '添加';
+                addBtn.onclick = function() {
+                    const input = document.getElementById('custom-' + directive.name);
+                    const value = input.value.trim();
+                    if (value && state[directive.name].customSources.indexOf(value) === -1) {
+                        state[directive.name].customSources.push(value);
+                        input.value = '';
+                        renderCustomSources(directive.name);
+                        updateOutput();
+                    }
+                };
+                
+                customDiv.appendChild(customInput);
+                customDiv.appendChild(addBtn);
+                card.appendChild(customDiv);
+                
+                // Custom sources tags container
+                const tagsDiv = document.createElement('div');
+                tagsDiv.id = 'tags-' + directive.name;
+                tagsDiv.style.marginTop = '0.5rem';
+                tagsDiv.style.display = 'flex';
+                tagsDiv.style.flexWrap = 'wrap';
+                tagsDiv.style.gap = '0.5rem';
+                card.appendChild(tagsDiv);
+                
+                container.appendChild(card);
+            });
+            
+            updateOutput();
+        }
+        
+        function renderCustomSources(directiveName) {
+            const tagsDiv = document.getElementById('tags-' + directiveName);
+            tagsDiv.textContent = '';
+            
+            state[directiveName].customSources.forEach((source, index) => {
+                const tag = document.createElement('span');
+                tag.className = 'custom-source-tag';
+                tag.textContent = source + ' ';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.onclick = function() {
+                    state[directiveName].customSources.splice(index, 1);
+                    renderCustomSources(directiveName);
+                    updateOutput();
+                };
+                tag.appendChild(removeBtn);
+                tagsDiv.appendChild(tag);
+            });
+        }
+        
+        function generateCSP() {
+            const parts = [];
+            
+            directives.forEach(d => {
+                const s = state[d.name];
+                if (s.enabled) {
+                    const allSources = s.sources.concat(s.customSources);
+                    if (allSources.length > 0) {
+                        parts.push(d.name + ' ' + allSources.join(' '));
+                    } else {
+                        parts.push(d.name + " 'none'");
+                    }
+                }
+            });
+            
+            return parts.join('; ');
+        }
+        
+        function updateOutput() {
+            const csp = generateCSP();
+            const outputDiv = document.getElementById('outputContent');
+            
+            if (!csp) {
+                outputDiv.textContent = '// 请启用并配置至少一个指令';
+                return;
+            }
+            
+            let output = '';
+            switch(currentTab) {
+                case 'header':
+                    output = 'Content-Security-Policy: ' + csp;
+                    break;
+                case 'meta':
+                    output = '<meta http-equiv="Content-Security-Policy" content="' + csp + '">';
+                    break;
+                case 'nginx':
+                    output = "add_header Content-Security-Policy \"" + csp + "\" always;";
+                    break;
+                case 'apache':
+                    output = "Header set Content-Security-Policy \"" + csp + "\"";
+                    break;
+            }
+            
+            outputDiv.textContent = output;
+        }
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.output-tab').forEach(t => {
+                t.classList.toggle('active', t.textContent.toLowerCase().indexOf(tab) !== -1 || 
+                    (tab === 'header' && t.textContent === 'HTTP Header') ||
+                    (tab === 'meta' && t.textContent === 'Meta 标签') ||
+                    (tab === 'nginx' && t.textContent === 'Nginx 配置') ||
+                    (tab === 'apache' && t.textContent === 'Apache 配置'));
+            });
+            document.querySelectorAll('.output-tab').forEach((t, i) => {
+                const tabs = ['header', 'meta', 'nginx', 'apache'];
+                t.classList.toggle('active', tabs[i] === tab);
+            });
+            updateOutput();
+        }
+        
+        function applyPreset(preset) {
+            // 重置所有
+            directives.forEach(d => {
+                state[d.name].enabled = false;
+                state[d.name].sources = [];
+                state[d.name].customSources = [];
+            });
+            
+            if (preset === 'strict') {
+                state['default-src'].enabled = true;
+                state['default-src'].sources = ["'none'"];
+                state['script-src'].enabled = true;
+                state['script-src'].sources = ["'self'"];
+                state['style-src'].enabled = true;
+                state['style-src'].sources = ["'self'"];
+                state['img-src'].enabled = true;
+                state['img-src'].sources = ["'self'"];
+                state['font-src'].enabled = true;
+                state['font-src'].sources = ["'self'"];
+                state['connect-src'].enabled = true;
+                state['connect-src'].sources = ["'self'"];
+                state['frame-ancestors'].enabled = true;
+                state['frame-ancestors'].sources = ["'none'"];
+                state['base-uri'].enabled = true;
+                state['base-uri'].sources = ["'self'"];
+                state['form-action'].enabled = true;
+                state['form-action'].sources = ["'self'"];
+            } else if (preset === 'moderate') {
+                state['default-src'].enabled = true;
+                state['default-src'].sources = ["'self'"];
+                state['script-src'].enabled = true;
+                state['script-src'].sources = ["'self'", "'unsafe-inline'"];
+                state['style-src'].enabled = true;
+                state['style-src'].sources = ["'self'", "'unsafe-inline'"];
+                state['img-src'].enabled = true;
+                state['img-src'].sources = ["'self'", "data:", "https:"];
+                state['font-src'].enabled = true;
+                state['font-src'].sources = ["'self'", "https:"];
+                state['connect-src'].enabled = true;
+                state['connect-src'].sources = ["'self'", "https:"];
+            } else if (preset === 'relaxed') {
+                state['default-src'].enabled = true;
+                state['default-src'].sources = ["'self'", "https:"];
+                state['script-src'].enabled = true;
+                state['script-src'].sources = ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"];
+                state['style-src'].enabled = true;
+                state['style-src'].sources = ["'self'", "'unsafe-inline'", "https:"];
+                state['img-src'].enabled = true;
+                state['img-src'].sources = ["*", "data:", "blob:"];
+            }
+            
+            // 更新 UI
+            directives.forEach(d => {
+                const checkbox = document.getElementById('toggle-' + d.name);
+                checkbox.checked = state[d.name].enabled;
+                
+                const chips = document.querySelectorAll('#directive-' + d.name + ' .source-chip');
+                chips.forEach(chip => {
+                    chip.classList.toggle('selected', state[d.name].sources.indexOf(chip.dataset.value) !== -1);
+                });
+                
+                renderCustomSources(d.name);
+            });
+            
+            updateOutput();
+        }
+        
+        function copyOutput() {
+            const output = document.getElementById('outputContent').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                showToast('已复制到剪贴板');
+            });
+        }
+        
+        function downloadOutput() {
+            const csp = generateCSP();
+            let content = '';
+            let filename = '';
+            
+            switch(currentTab) {
+                case 'header':
+                case 'meta':
+                    content = document.getElementById('outputContent').textContent;
+                    filename = 'csp-policy.txt';
+                    break;
+                case 'nginx':
+                    content = '# CSP Policy for Nginx\n' + document.getElementById('outputContent').textContent;
+                    filename = 'csp-nginx.conf';
+                    break;
+                case 'apache':
+                    content = '# CSP Policy for Apache\n' + document.getElementById('outputContent').textContent;
+                    filename = 'csp-apache.conf';
+                    break;
+            }
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:0.75rem 1.5rem;border-radius:8px;z-index:1000;';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 2000);
+        }
+        
+        // 初始化
+        initDirectives();
+    </script>
+</body>
+</html>

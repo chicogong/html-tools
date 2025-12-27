@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片马赛克</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --preview-bg: #f0f0f0;
+        }
+        [data-theme="dark"] {
+            --preview-bg: #2a2a2a;
+        }
+        body {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .control-group {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .preview-area {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+        }
+        #imageCanvas {
+            max-width: 100%;
+            border: 1px dashed var(--pico-muted-border-color);
+            cursor: crosshair;
+        }
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .upload-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .range-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .tool-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        .tool-option {
+            padding: 0.5rem;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .tool-option:hover {
+            border-color: var(--pico-primary);
+        }
+        .tool-option.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .brush-preview {
+            width: 100%;
+            height: 60px;
+            background: var(--preview-bg);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        .brush-shape {
+            background: var(--pico-primary);
+            border-radius: 50%;
+        }
+        .history-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .drop-hint {
+            color: var(--pico-muted-color);
+            font-size: 0.9rem;
+        }
+        .instructions {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            padding: 0.5rem;
+            background: var(--preview-bg);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片马赛克</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="control-group">
+                    <label>上传图片</label>
+                    <div class="upload-zone" id="uploadZone">
+                        <p>点击或拖拽图片</p>
+                        <p class="drop-hint">支持 JPG, PNG, WebP</p>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>马赛克工具</label>
+                    <div class="tool-options">
+                        <div class="tool-option active" data-tool="brush">画笔</div>
+                        <div class="tool-option" data-tool="rectangle">矩形</div>
+                        <div class="tool-option" data-tool="circle">圆形</div>
+                        <div class="tool-option" data-tool="full">全图</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>马赛克大小: <span class="range-value" id="blockSizeValue">15</span>px</label>
+                    <input type="range" id="blockSize" min="5" max="50" value="15">
+                </div>
+
+                <div class="control-group">
+                    <label>画笔大小: <span class="range-value" id="brushSizeValue">50</span>px</label>
+                    <input type="range" id="brushSize" min="20" max="200" value="50">
+                    <div class="brush-preview">
+                        <div class="brush-shape" id="brushPreview" style="width: 50px; height: 50px;"></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>马赛克类型</label>
+                    <select id="mosaicType">
+                        <option value="pixelate">像素化</option>
+                        <option value="blur">模糊</option>
+                        <option value="diamond">菱形</option>
+                        <option value="hexagon">六边形</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>模糊强度: <span class="range-value" id="blurStrengthValue">10</span></label>
+                    <input type="range" id="blurStrength" min="1" max="30" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label>历史记录</label>
+                    <div class="history-controls">
+                        <button id="undoBtn" class="outline secondary">撤销</button>
+                        <button id="redoBtn" class="outline secondary">重做</button>
+                        <button id="resetBtn" class="outline secondary">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="instructions">
+                        使用说明: 选择工具后在图片上绘制马赛克区域。画笔工具可以自由绘制,矩形和圆形工具可以选择区域。
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-area">
+                <div class="canvas-container">
+                    <canvas id="imageCanvas" width="800" height="600"></canvas>
+                </div>
+                <div class="btn-group">
+                    <button id="downloadPng" class="outline">下载 PNG</button>
+                    <button id="downloadJpg" class="outline">下载 JPG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        var themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', function() {
+            var html = document.documentElement;
+            var currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Elements
+        var canvas = document.getElementById('imageCanvas');
+        var ctx = canvas.getContext('2d');
+        var uploadZone = document.getElementById('uploadZone');
+        var fileInput = document.getElementById('fileInput');
+        var blockSizeInput = document.getElementById('blockSize');
+        var brushSizeInput = document.getElementById('brushSize');
+        var mosaicType = document.getElementById('mosaicType');
+        var blurStrengthInput = document.getElementById('blurStrength');
+        var brushPreview = document.getElementById('brushPreview');
+
+        var originalImage = null;
+        var currentTool = 'brush';
+        var isDrawing = false;
+        var startX, startY;
+        var history = [];
+        var historyIndex = -1;
+        var maxHistory = 20;
+
+        // Tool selection
+        document.querySelectorAll('.tool-option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tool-option').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+                
+                if (currentTool === 'full' && originalImage) {
+                    applyFullMosaic();
+                }
+            });
+        });
+
+        // Update range values
+        blockSizeInput.addEventListener('input', function() {
+            document.getElementById('blockSizeValue').textContent = blockSizeInput.value;
+        });
+
+        brushSizeInput.addEventListener('input', function() {
+            document.getElementById('brushSizeValue').textContent = brushSizeInput.value;
+            var size = parseInt(brushSizeInput.value);
+            brushPreview.style.width = Math.min(size, 60) + 'px';
+            brushPreview.style.height = Math.min(size, 60) + 'px';
+        });
+
+        blurStrengthInput.addEventListener('input', function() {
+            document.getElementById('blurStrengthValue').textContent = blurStrengthInput.value;
+        });
+
+        // File upload
+        uploadZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', function() {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                loadImage(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files[0]) {
+                loadImage(fileInput.files[0]);
+            }
+        });
+
+        function loadImage(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var img = new Image();
+                img.onload = function() {
+                    originalImage = img;
+                    
+                    // Scale if too large
+                    var maxSize = 1200;
+                    var scale = 1;
+                    if (img.width > maxSize || img.height > maxSize) {
+                        scale = Math.min(maxSize / img.width, maxSize / img.height);
+                    }
+                    
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Clear history
+                    history = [];
+                    historyIndex = -1;
+                    saveHistory();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Save history
+        function saveHistory() {
+            // Remove future states if we're not at the end
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // Add current state
+            history.push(canvas.toDataURL());
+            
+            // Limit history size
+            if (history.length > maxHistory) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+        }
+
+        // Undo
+        document.getElementById('undoBtn').addEventListener('click', function() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                var img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = history[historyIndex];
+            }
+        });
+
+        // Redo
+        document.getElementById('redoBtn').addEventListener('click', function() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                var img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = history[historyIndex];
+            }
+        });
+
+        // Reset
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (originalImage) {
+                ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+                saveHistory();
+            }
+        });
+
+        // Get canvas position
+        function getCanvasPosition(e) {
+            var rect = canvas.getBoundingClientRect();
+            var scaleX = canvas.width / rect.width;
+            var scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        // Apply mosaic to area
+        function applyMosaicToArea(x, y, w, h) {
+            var blockSize = parseInt(blockSizeInput.value);
+            var type = mosaicType.value;
+            var blurStrength = parseInt(blurStrengthInput.value);
+
+            // Ensure bounds
+            x = Math.max(0, Math.floor(x));
+            y = Math.max(0, Math.floor(y));
+            w = Math.min(canvas.width - x, Math.ceil(w));
+            h = Math.min(canvas.height - y, Math.ceil(h));
+
+            if (w <= 0 || h <= 0) return;
+
+            var imageData = ctx.getImageData(x, y, w, h);
+            var data = imageData.data;
+
+            if (type === 'pixelate') {
+                for (var py = 0; py < h; py += blockSize) {
+                    for (var px = 0; px < w; px += blockSize) {
+                        // Get average color
+                        var r = 0, g = 0, b = 0, count = 0;
+                        for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                            for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                                var idx = ((py + dy) * w + (px + dx)) * 4;
+                                r += data[idx];
+                                g += data[idx + 1];
+                                b += data[idx + 2];
+                                count++;
+                            }
+                        }
+                        r = Math.round(r / count);
+                        g = Math.round(g / count);
+                        b = Math.round(b / count);
+
+                        // Fill block
+                        for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                            for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                                var idx = ((py + dy) * w + (px + dx)) * 4;
+                                data[idx] = r;
+                                data[idx + 1] = g;
+                                data[idx + 2] = b;
+                            }
+                        }
+                    }
+                }
+            } else if (type === 'blur') {
+                // Simple box blur
+                var tempData = new Uint8ClampedArray(data);
+                var radius = blurStrength;
+                
+                for (var py = 0; py < h; py++) {
+                    for (var px = 0; px < w; px++) {
+                        var r = 0, g = 0, b = 0, count = 0;
+                        
+                        for (var dy = -radius; dy <= radius; dy++) {
+                            for (var dx = -radius; dx <= radius; dx++) {
+                                var ny = py + dy;
+                                var nx = px + dx;
+                                if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+                                    var idx = (ny * w + nx) * 4;
+                                    r += tempData[idx];
+                                    g += tempData[idx + 1];
+                                    b += tempData[idx + 2];
+                                    count++;
+                                }
+                            }
+                        }
+                        
+                        var idx = (py * w + px) * 4;
+                        data[idx] = Math.round(r / count);
+                        data[idx + 1] = Math.round(g / count);
+                        data[idx + 2] = Math.round(b / count);
+                    }
+                }
+            } else if (type === 'diamond' || type === 'hexagon') {
+                // Diamond/Hexagon pixelation
+                for (var py = 0; py < h; py += blockSize) {
+                    for (var px = 0; px < w; px += blockSize) {
+                        var r = 0, g = 0, b = 0, count = 0;
+                        var halfBlock = blockSize / 2;
+                        
+                        for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                            for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                                var idx = ((py + dy) * w + (px + dx)) * 4;
+                                r += data[idx];
+                                g += data[idx + 1];
+                                b += data[idx + 2];
+                                count++;
+                            }
+                        }
+                        r = Math.round(r / count);
+                        g = Math.round(g / count);
+                        b = Math.round(b / count);
+
+                        for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                            for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                                var inShape = true;
+                                if (type === 'diamond') {
+                                    inShape = Math.abs(dx - halfBlock) + Math.abs(dy - halfBlock) <= halfBlock;
+                                }
+                                
+                                var idx = ((py + dy) * w + (px + dx)) * 4;
+                                if (inShape) {
+                                    data[idx] = r;
+                                    data[idx + 1] = g;
+                                    data[idx + 2] = b;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, x, y);
+        }
+
+        // Apply full mosaic
+        function applyFullMosaic() {
+            applyMosaicToArea(0, 0, canvas.width, canvas.height);
+            saveHistory();
+        }
+
+        // Apply circular mosaic
+        function applyCircularMosaic(cx, cy, radius) {
+            var x = Math.max(0, cx - radius);
+            var y = Math.max(0, cy - radius);
+            var size = radius * 2;
+            
+            var blockSize = parseInt(blockSizeInput.value);
+            var type = mosaicType.value;
+            var blurStrength = parseInt(blurStrengthInput.value);
+
+            var w = Math.min(canvas.width - x, size);
+            var h = Math.min(canvas.height - y, size);
+
+            if (w <= 0 || h <= 0) return;
+
+            var imageData = ctx.getImageData(x, y, w, h);
+            var data = imageData.data;
+
+            for (var py = 0; py < h; py += blockSize) {
+                for (var px = 0; px < w; px += blockSize) {
+                    // Check if center of block is in circle
+                    var centerX = px + blockSize / 2;
+                    var centerY = py + blockSize / 2;
+                    var distX = centerX - radius;
+                    var distY = centerY - radius;
+                    
+                    if (distX * distX + distY * distY > radius * radius) continue;
+
+                    var r = 0, g = 0, b = 0, count = 0;
+                    for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                        for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                            var idx = ((py + dy) * w + (px + dx)) * 4;
+                            r += data[idx];
+                            g += data[idx + 1];
+                            b += data[idx + 2];
+                            count++;
+                        }
+                    }
+                    r = Math.round(r / count);
+                    g = Math.round(g / count);
+                    b = Math.round(b / count);
+
+                    for (var dy = 0; dy < blockSize && py + dy < h; dy++) {
+                        for (var dx = 0; dx < blockSize && px + dx < w; dx++) {
+                            var idx = ((py + dy) * w + (px + dx)) * 4;
+                            data[idx] = r;
+                            data[idx + 1] = g;
+                            data[idx + 2] = b;
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, x, y);
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', function(e) {
+            if (!originalImage) return;
+            isDrawing = true;
+            var pos = getCanvasPosition(e);
+            startX = pos.x;
+            startY = pos.y;
+            
+            if (currentTool === 'brush') {
+                var brushSize = parseInt(brushSizeInput.value);
+                applyCircularMosaic(pos.x, pos.y, brushSize / 2);
+            }
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (!isDrawing || !originalImage) return;
+            var pos = getCanvasPosition(e);
+            
+            if (currentTool === 'brush') {
+                var brushSize = parseInt(brushSizeInput.value);
+                applyCircularMosaic(pos.x, pos.y, brushSize / 2);
+            }
+        });
+
+        canvas.addEventListener('mouseup', function(e) {
+            if (!isDrawing || !originalImage) return;
+            isDrawing = false;
+            var pos = getCanvasPosition(e);
+            
+            if (currentTool === 'rectangle') {
+                var x = Math.min(startX, pos.x);
+                var y = Math.min(startY, pos.y);
+                var w = Math.abs(pos.x - startX);
+                var h = Math.abs(pos.y - startY);
+                applyMosaicToArea(x, y, w, h);
+            } else if (currentTool === 'circle') {
+                var cx = (startX + pos.x) / 2;
+                var cy = (startY + pos.y) / 2;
+                var rx = Math.abs(pos.x - startX) / 2;
+                var ry = Math.abs(pos.y - startY) / 2;
+                var radius = Math.max(rx, ry);
+                applyCircularMosaic(cx, cy, radius);
+            }
+            
+            saveHistory();
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveHistory();
+            }
+        });
+
+        // Download PNG
+        document.getElementById('downloadPng').addEventListener('click', function() {
+            var a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'mosaic.png';
+            a.click();
+        });
+
+        // Download JPG
+        document.getElementById('downloadJpg').addEventListener('click', function() {
+            var a = document.createElement('a');
+            a.href = canvas.toDataURL('image/jpeg', 0.9);
+            a.download = 'mosaic.jpg';
+            a.click();
+        });
+
+        // Initial canvas
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#999';
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('请上传图片', canvas.width / 2, canvas.height / 2);
+    </script>
+</body>
+</html>

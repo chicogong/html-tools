@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --preview-bg: #f0f0f0;
+        }
+        [data-theme="dark"] {
+            --preview-bg: #2a2a2a;
+        }
+        body {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .control-group {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .preview-area {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        #collageCanvas {
+            max-width: 100%;
+            border: 1px dashed var(--pico-muted-border-color);
+            background: white;
+        }
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .upload-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .image-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .image-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: var(--pico-card-background-color);
+            border-radius: 4px;
+            cursor: move;
+        }
+        .image-item img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .image-item .name {
+            flex: 1;
+            font-size: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .image-item .remove {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .range-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .layout-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .layout-option {
+            padding: 0.5rem;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .layout-option:hover {
+            border-color: var(--pico-primary);
+        }
+        .layout-option.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .color-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-inputs input[type="color"] {
+            width: 50px;
+            height: 35px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .drop-hint {
+            color: var(--pico-muted-color);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片拼接器</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="control-group">
+                    <label>上传图片</label>
+                    <div class="upload-zone" id="uploadZone">
+                        <p>点击或拖拽图片到此处</p>
+                        <p class="drop-hint">支持 JPG, PNG, WebP</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>已添加图片 (拖动排序)</label>
+                    <div class="image-list" id="imageList"></div>
+                </div>
+
+                <div class="control-group">
+                    <label>布局方式</label>
+                    <div class="layout-options">
+                        <div class="layout-option active" data-layout="grid">网格</div>
+                        <div class="layout-option" data-layout="horizontal">横向</div>
+                        <div class="layout-option" data-layout="vertical">纵向</div>
+                        <div class="layout-option" data-layout="2x2">2x2</div>
+                        <div class="layout-option" data-layout="3x3">3x3</div>
+                        <div class="layout-option" data-layout="masonry">瀑布流</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>列数: <span class="range-value" id="columnsValue">2</span></label>
+                    <input type="range" id="columns" min="1" max="6" value="2">
+                </div>
+
+                <div class="control-group">
+                    <label>间距: <span class="range-value" id="gapValue">10</span>px</label>
+                    <input type="range" id="gap" min="0" max="50" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label>圆角: <span class="range-value" id="radiusValue">0</span>px</label>
+                    <input type="range" id="radius" min="0" max="50" value="0">
+                </div>
+
+                <div class="control-group">
+                    <label>背景颜色</label>
+                    <div class="color-inputs">
+                        <input type="color" id="bgColor" value="#ffffff">
+                        <input type="text" id="bgColorText" value="#ffffff" maxlength="7">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>输出宽度: <span class="range-value" id="outputWidthValue">1200</span>px</label>
+                    <input type="range" id="outputWidth" min="400" max="3000" value="1200" step="100">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="equalSize" checked>
+                        等比缩放图片
+                    </label>
+                </div>
+            </div>
+
+            <div class="preview-area">
+                <canvas id="collageCanvas" width="800" height="600"></canvas>
+                <div class="btn-group">
+                    <button id="generateBtn">生成拼接图</button>
+                    <button id="clearBtn" class="secondary">清除所有</button>
+                    <button id="downloadPng" class="outline">下载 PNG</button>
+                    <button id="downloadJpg" class="outline">下载 JPG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        var themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', function() {
+            var html = document.documentElement;
+            var currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Elements
+        var canvas = document.getElementById('collageCanvas');
+        var ctx = canvas.getContext('2d');
+        var uploadZone = document.getElementById('uploadZone');
+        var fileInput = document.getElementById('fileInput');
+        var imageList = document.getElementById('imageList');
+        var columnsInput = document.getElementById('columns');
+        var gapInput = document.getElementById('gap');
+        var radiusInput = document.getElementById('radius');
+        var bgColor = document.getElementById('bgColor');
+        var bgColorText = document.getElementById('bgColorText');
+        var outputWidth = document.getElementById('outputWidth');
+        var equalSize = document.getElementById('equalSize');
+
+        var images = [];
+        var currentLayout = 'grid';
+        var draggedItem = null;
+
+        // Layout selection
+        document.querySelectorAll('.layout-option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.layout-option').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+                generateCollage();
+            });
+        });
+
+        // Sync color inputs
+        bgColor.addEventListener('input', function() {
+            bgColorText.value = bgColor.value;
+            generateCollage();
+        });
+        bgColorText.addEventListener('input', function() {
+            if (/^#[0-9A-Fa-f]{6}$/.test(bgColorText.value)) {
+                bgColor.value = bgColorText.value;
+                generateCollage();
+            }
+        });
+
+        // Update range values
+        var rangeInputs = [
+            { input: columnsInput, display: 'columnsValue' },
+            { input: gapInput, display: 'gapValue' },
+            { input: radiusInput, display: 'radiusValue' },
+            { input: outputWidth, display: 'outputWidthValue' }
+        ];
+
+        rangeInputs.forEach(function(item) {
+            item.input.addEventListener('input', function() {
+                document.getElementById(item.display).textContent = item.input.value;
+                generateCollage();
+            });
+        });
+
+        equalSize.addEventListener('change', generateCollage);
+
+        // File upload
+        uploadZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', function() {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(fileInput.files);
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(function(file) {
+                if (file.type.startsWith('image/')) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var img = new Image();
+                        img.onload = function() {
+                            images.push({
+                                img: img,
+                                name: file.name,
+                                src: e.target.result
+                            });
+                            updateImageList();
+                            generateCollage();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Update image list
+        function updateImageList() {
+            imageList.textContent = '';
+            images.forEach(function(item, index) {
+                var div = document.createElement('div');
+                div.className = 'image-item';
+                div.draggable = true;
+                div.dataset.index = index;
+
+                var img = document.createElement('img');
+                img.src = item.src;
+                div.appendChild(img);
+
+                var nameSpan = document.createElement('span');
+                nameSpan.className = 'name';
+                nameSpan.textContent = item.name;
+                div.appendChild(nameSpan);
+
+                var removeBtn = document.createElement('button');
+                removeBtn.className = 'remove outline secondary';
+                removeBtn.textContent = 'X';
+                removeBtn.addEventListener('click', function() {
+                    images.splice(index, 1);
+                    updateImageList();
+                    generateCollage();
+                });
+                div.appendChild(removeBtn);
+
+                // Drag events
+                div.addEventListener('dragstart', function(e) {
+                    draggedItem = div;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                div.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                div.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    if (draggedItem !== div) {
+                        var fromIndex = parseInt(draggedItem.dataset.index);
+                        var toIndex = parseInt(div.dataset.index);
+                        var temp = images[fromIndex];
+                        images.splice(fromIndex, 1);
+                        images.splice(toIndex, 0, temp);
+                        updateImageList();
+                        generateCollage();
+                    }
+                });
+
+                imageList.appendChild(div);
+            });
+        }
+
+        // Generate collage
+        function generateCollage() {
+            if (images.length === 0) {
+                canvas.width = 800;
+                canvas.height = 600;
+                ctx.fillStyle = bgColor.value;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#999';
+                ctx.font = '24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('请添加图片', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            var width = parseInt(outputWidth.value);
+            var gap = parseInt(gapInput.value);
+            var cols = parseInt(columnsInput.value);
+            var radius = parseInt(radiusInput.value);
+
+            var layout = calculateLayout(width, gap, cols);
+            
+            canvas.width = layout.width;
+            canvas.height = layout.height;
+
+            // Background
+            ctx.fillStyle = bgColor.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw images
+            layout.items.forEach(function(item, index) {
+                if (images[index]) {
+                    drawRoundedImage(ctx, images[index].img, item.x, item.y, item.w, item.h, radius);
+                }
+            });
+        }
+
+        // Calculate layout
+        function calculateLayout(totalWidth, gap, cols) {
+            var items = [];
+            var height = 0;
+
+            switch (currentLayout) {
+                case 'horizontal':
+                    var itemWidth = (totalWidth - gap * (images.length - 1)) / images.length;
+                    var maxHeight = 0;
+                    images.forEach(function(item) {
+                        var h = itemWidth * (item.img.height / item.img.width);
+                        if (h > maxHeight) maxHeight = h;
+                    });
+                    if (equalSize.checked) {
+                        images.forEach(function(item, i) {
+                            items.push({
+                                x: i * (itemWidth + gap),
+                                y: 0,
+                                w: itemWidth,
+                                h: maxHeight
+                            });
+                        });
+                    } else {
+                        images.forEach(function(item, i) {
+                            var h = itemWidth * (item.img.height / item.img.width);
+                            items.push({
+                                x: i * (itemWidth + gap),
+                                y: (maxHeight - h) / 2,
+                                w: itemWidth,
+                                h: h
+                            });
+                        });
+                    }
+                    height = maxHeight;
+                    break;
+
+                case 'vertical':
+                    var itemWidth = totalWidth;
+                    var y = 0;
+                    images.forEach(function(item) {
+                        var h = itemWidth * (item.img.height / item.img.width);
+                        items.push({ x: 0, y: y, w: itemWidth, h: h });
+                        y += h + gap;
+                    });
+                    height = y - gap;
+                    break;
+
+                case '2x2':
+                    cols = 2;
+                    // Fall through to grid
+                case '3x3':
+                    if (currentLayout === '3x3') cols = 3;
+                    // Fall through to grid
+                case 'grid':
+                    var itemWidth = (totalWidth - gap * (cols - 1)) / cols;
+                    var rows = Math.ceil(images.length / cols);
+                    var maxRowHeight = itemWidth;
+                    
+                    if (equalSize.checked) {
+                        for (var i = 0; i < images.length; i++) {
+                            var col = i % cols;
+                            var row = Math.floor(i / cols);
+                            items.push({
+                                x: col * (itemWidth + gap),
+                                y: row * (maxRowHeight + gap),
+                                w: itemWidth,
+                                h: maxRowHeight
+                            });
+                        }
+                        height = rows * (maxRowHeight + gap) - gap;
+                    } else {
+                        var rowHeights = [];
+                        for (var r = 0; r < rows; r++) {
+                            var maxH = 0;
+                            for (var c = 0; c < cols; c++) {
+                                var idx = r * cols + c;
+                                if (images[idx]) {
+                                    var h = itemWidth * (images[idx].img.height / images[idx].img.width);
+                                    if (h > maxH) maxH = h;
+                                }
+                            }
+                            rowHeights.push(maxH);
+                        }
+                        
+                        var y = 0;
+                        for (var i = 0; i < images.length; i++) {
+                            var col = i % cols;
+                            var row = Math.floor(i / cols);
+                            if (col === 0 && row > 0) {
+                                y += rowHeights[row - 1] + gap;
+                            }
+                            var h = itemWidth * (images[i].img.height / images[i].img.width);
+                            items.push({
+                                x: col * (itemWidth + gap),
+                                y: y + (rowHeights[row] - h) / 2,
+                                w: itemWidth,
+                                h: h
+                            });
+                        }
+                        height = y + rowHeights[rows - 1];
+                    }
+                    break;
+
+                case 'masonry':
+                    var itemWidth = (totalWidth - gap * (cols - 1)) / cols;
+                    var colHeights = new Array(cols).fill(0);
+                    
+                    images.forEach(function(item) {
+                        var minCol = 0;
+                        var minH = colHeights[0];
+                        for (var c = 1; c < cols; c++) {
+                            if (colHeights[c] < minH) {
+                                minH = colHeights[c];
+                                minCol = c;
+                            }
+                        }
+                        
+                        var h = itemWidth * (item.img.height / item.img.width);
+                        items.push({
+                            x: minCol * (itemWidth + gap),
+                            y: colHeights[minCol],
+                            w: itemWidth,
+                            h: h
+                        });
+                        colHeights[minCol] += h + gap;
+                    });
+                    
+                    height = Math.max.apply(null, colHeights) - gap;
+                    break;
+            }
+
+            return {
+                width: totalWidth,
+                height: Math.max(100, height),
+                items: items
+            };
+        }
+
+        // Draw rounded image
+        function drawRoundedImage(ctx, img, x, y, w, h, r) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.clip();
+
+            // Draw image to fill the area
+            var imgRatio = img.width / img.height;
+            var areaRatio = w / h;
+            var drawW, drawH, drawX, drawY;
+
+            if (imgRatio > areaRatio) {
+                drawH = h;
+                drawW = h * imgRatio;
+                drawX = x - (drawW - w) / 2;
+                drawY = y;
+            } else {
+                drawW = w;
+                drawH = w / imgRatio;
+                drawX = x;
+                drawY = y - (drawH - h) / 2;
+            }
+
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+            ctx.restore();
+        }
+
+        // Clear all
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            images = [];
+            updateImageList();
+            generateCollage();
+        });
+
+        // Generate button
+        document.getElementById('generateBtn').addEventListener('click', generateCollage);
+
+        // Download PNG
+        document.getElementById('downloadPng').addEventListener('click', function() {
+            var a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'collage.png';
+            a.click();
+        });
+
+        // Download JPG
+        document.getElementById('downloadJpg').addEventListener('click', function() {
+            var a = document.createElement('a');
+            a.href = canvas.toDataURL('image/jpeg', 0.9);
+            a.download = 'collage.jpg';
+            a.click();
+        });
+
+        // Initial render
+        generateCollage();
+    </script>
+</body>
+</html>

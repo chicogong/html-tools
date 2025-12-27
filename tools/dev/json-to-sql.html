@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 转 SQL</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #14b8a6;
+            --preview-bg: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --preview-bg: #1e293b;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+            background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 2px solid var(--pico-primary);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .panel-header h3 {
+            margin: 0;
+        }
+        
+        .code-area {
+            font-family: monospace;
+            font-size: 0.875rem;
+            min-height: 400px;
+            resize: vertical;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .copy-btn.copied {
+            background: #10b981;
+            border-color: #10b981;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            padding: 0.75rem;
+            background: #fef2f2;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        [data-theme="dark"] .error-message {
+            background: #450a0a;
+        }
+        
+        .options-section {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--preview-bg);
+            border-radius: 8px;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .option-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .preset-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .preset-btn {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .stat-item {
+            background: var(--pico-secondary-background);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--pico-primary);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .checkbox-item input {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>JSON 转 SQL</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon"></span>
+            </button>
+        </header>
+        
+        <div class="options-section">
+            <div class="options-grid">
+                <div class="option-group">
+                    <label>表名</label>
+                    <input type="text" id="table-name" value="users" oninput="generateSQL()">
+                </div>
+                <div class="option-group">
+                    <label>数据库类型</label>
+                    <select id="db-type" onchange="generateSQL()">
+                        <option value="mysql">MySQL</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="sqlite">SQLite</option>
+                        <option value="sqlserver">SQL Server</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label>SQL 类型</label>
+                    <select id="sql-type" onchange="generateSQL()">
+                        <option value="insert">INSERT</option>
+                        <option value="insert-batch">INSERT (批量)</option>
+                        <option value="replace">REPLACE</option>
+                        <option value="update">UPDATE</option>
+                    </select>
+                </div>
+            </div>
+            <div class="checkbox-group">
+                <label class="checkbox-item">
+                    <input type="checkbox" id="opt-quotes" checked onchange="generateSQL()">
+                    引号包裹值
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="opt-null" checked onchange="generateSQL()">
+                    NULL 处理
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="opt-escape" checked onchange="generateSQL()">
+                    转义特殊字符
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="opt-pretty" checked onchange="generateSQL()">
+                    格式化输出
+                </label>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>JSON 输入</h3>
+                    <div class="btn-group">
+                        <button class="btn-small" onclick="formatJson()">格式化</button>
+                        <button class="btn-small" onclick="clearInput()">清空</button>
+                    </div>
+                </div>
+                
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="loadExample('single')">单条数据</button>
+                    <button class="preset-btn" onclick="loadExample('array')">数组数据</button>
+                    <button class="preset-btn" onclick="loadExample('nested')">嵌套对象</button>
+                </div>
+                
+                <textarea class="code-area" id="json-input" placeholder="输入 JSON 数据..." oninput="generateSQL()">[
+  {
+    "id": 1,
+    "name": "张三",
+    "email": "zhangsan@example.com",
+    "age": 28,
+    "active": true
+  },
+  {
+    "id": 2,
+    "name": "李四",
+    "email": "lisi@example.com",
+    "age": 32,
+    "active": false
+  }
+]</textarea>
+                
+                <div id="input-error"></div>
+                
+                <div class="stats">
+                    <span class="stat-item">记录数: <span class="stat-value" id="record-count">0</span></span>
+                    <span class="stat-item">字段数: <span class="stat-value" id="field-count">0</span></span>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>SQL 输出</h3>
+                    <div class="btn-group">
+                        <button class="btn-small copy-btn" onclick="copySQL()">复制</button>
+                        <button class="btn-small" onclick="downloadSQL()">下载</button>
+                    </div>
+                </div>
+                
+                <textarea class="code-area" id="sql-output" readonly placeholder="生成的 SQL 语句将显示在这里..."></textarea>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Theme management
+        function initTheme() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+        
+        function toggleTheme() {
+            var currentTheme = document.documentElement.getAttribute('data-theme');
+            var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        
+        function updateThemeIcon(theme) {
+            document.getElementById('theme-icon').textContent = theme === 'light' ? '\u{1F319}' : '\u2600';
+        }
+        
+        function loadExample(type) {
+            var examples = {
+                'single': {
+                    "id": 1,
+                    "name": "张三",
+                    "email": "zhangsan@example.com",
+                    "age": 28,
+                    "active": true,
+                    "createdAt": "2024-01-15 10:30:00"
+                },
+                'array': [
+                    { "id": 1, "name": "张三", "email": "zhangsan@example.com", "age": 28, "active": true },
+                    { "id": 2, "name": "李四", "email": "lisi@example.com", "age": 32, "active": false },
+                    { "id": 3, "name": "王五", "email": "wangwu@example.com", "age": 25, "active": true }
+                ],
+                'nested': {
+                    "id": 1,
+                    "name": "张三",
+                    "profile": {
+                        "city": "北京",
+                        "phone": "13812345678"
+                    },
+                    "tags": ["vip", "new"]
+                }
+            };
+            
+            if (examples[type]) {
+                document.getElementById('json-input').value = JSON.stringify(examples[type], null, 2);
+                generateSQL();
+            }
+        }
+        
+        function formatJson() {
+            var input = document.getElementById('json-input');
+            var errorDiv = document.getElementById('input-error');
+            
+            try {
+                var json = JSON.parse(input.value);
+                input.value = JSON.stringify(json, null, 2);
+                errorDiv.textContent = '';
+            } catch (e) {
+                errorDiv.innerHTML = '<div class="error-message">JSON 格式错误: ' + e.message + '</div>';
+            }
+        }
+        
+        function clearInput() {
+            document.getElementById('json-input').value = '';
+            document.getElementById('sql-output').value = '';
+            document.getElementById('input-error').textContent = '';
+            document.getElementById('record-count').textContent = '0';
+            document.getElementById('field-count').textContent = '0';
+        }
+        
+        function generateSQL() {
+            var input = document.getElementById('json-input').value;
+            var output = document.getElementById('sql-output');
+            var errorDiv = document.getElementById('input-error');
+            
+            if (!input.trim()) {
+                output.value = '';
+                errorDiv.textContent = '';
+                return;
+            }
+            
+            try {
+                var json = JSON.parse(input);
+                errorDiv.textContent = '';
+                
+                var tableName = document.getElementById('table-name').value || 'table_name';
+                var dbType = document.getElementById('db-type').value;
+                var sqlType = document.getElementById('sql-type').value;
+                var useQuotes = document.getElementById('opt-quotes').checked;
+                var handleNull = document.getElementById('opt-null').checked;
+                var escapeChars = document.getElementById('opt-escape').checked;
+                var prettyPrint = document.getElementById('opt-pretty').checked;
+                
+                // Normalize to array
+                var data = Array.isArray(json) ? json : [json];
+                
+                // Flatten nested objects
+                data = data.map(function(item) {
+                    return flattenObject(item);
+                });
+                
+                if (data.length === 0) {
+                    output.value = '-- 没有数据';
+                    return;
+                }
+                
+                // Get all keys
+                var allKeys = [];
+                data.forEach(function(item) {
+                    Object.keys(item).forEach(function(key) {
+                        if (allKeys.indexOf(key) === -1) {
+                            allKeys.push(key);
+                        }
+                    });
+                });
+                
+                document.getElementById('record-count').textContent = data.length;
+                document.getElementById('field-count').textContent = allKeys.length;
+                
+                var sql = '';
+                var quote = getQuoteChar(dbType);
+                
+                if (sqlType === 'insert' || sqlType === 'replace') {
+                    var keyword = sqlType === 'replace' ? 'REPLACE' : 'INSERT';
+                    data.forEach(function(item) {
+                        var columns = allKeys.map(function(k) { return quote + k + quote; });
+                        var values = allKeys.map(function(k) {
+                            return formatValue(item[k], dbType, useQuotes, handleNull, escapeChars);
+                        });
+                        
+                        if (prettyPrint) {
+                            sql += keyword + ' INTO ' + quote + tableName + quote + ' (\n  ' + 
+                                   columns.join(',\n  ') + '\n) VALUES (\n  ' + 
+                                   values.join(',\n  ') + '\n);\n\n';
+                        } else {
+                            sql += keyword + ' INTO ' + quote + tableName + quote + ' (' + 
+                                   columns.join(', ') + ') VALUES (' + 
+                                   values.join(', ') + ');\n';
+                        }
+                    });
+                } else if (sqlType === 'insert-batch') {
+                    var columns = allKeys.map(function(k) { return quote + k + quote; });
+                    var allValues = data.map(function(item) {
+                        var values = allKeys.map(function(k) {
+                            return formatValue(item[k], dbType, useQuotes, handleNull, escapeChars);
+                        });
+                        return '(' + values.join(', ') + ')';
+                    });
+                    
+                    if (prettyPrint) {
+                        sql = 'INSERT INTO ' + quote + tableName + quote + ' (\n  ' + 
+                              columns.join(',\n  ') + '\n) VALUES\n  ' + 
+                              allValues.join(',\n  ') + ';\n';
+                    } else {
+                        sql = 'INSERT INTO ' + quote + tableName + quote + ' (' + 
+                              columns.join(', ') + ') VALUES ' + 
+                              allValues.join(', ') + ';\n';
+                    }
+                } else if (sqlType === 'update') {
+                    data.forEach(function(item) {
+                        var setClauses = allKeys.filter(function(k) {
+                            return k !== 'id';
+                        }).map(function(k) {
+                            return quote + k + quote + ' = ' + formatValue(item[k], dbType, useQuotes, handleNull, escapeChars);
+                        });
+                        
+                        var whereClause = item.id !== undefined ? 
+                            ' WHERE ' + quote + 'id' + quote + ' = ' + formatValue(item.id, dbType, useQuotes, handleNull, escapeChars) : 
+                            ' WHERE 1=1 /* 请添加条件 */';
+                        
+                        if (prettyPrint) {
+                            sql += 'UPDATE ' + quote + tableName + quote + ' SET\n  ' + 
+                                   setClauses.join(',\n  ') + '\n' + whereClause + ';\n\n';
+                        } else {
+                            sql += 'UPDATE ' + quote + tableName + quote + ' SET ' + 
+                                   setClauses.join(', ') + whereClause + ';\n';
+                        }
+                    });
+                }
+                
+                output.value = sql;
+                
+            } catch (e) {
+                errorDiv.innerHTML = '<div class="error-message">JSON 格式错误: ' + e.message + '</div>';
+                output.value = '';
+            }
+        }
+        
+        function flattenObject(obj, prefix) {
+            prefix = prefix || '';
+            var result = {};
+            
+            Object.keys(obj).forEach(function(key) {
+                var newKey = prefix ? prefix + '_' + key : key;
+                var value = obj[key];
+                
+                if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                    var nested = flattenObject(value, newKey);
+                    Object.keys(nested).forEach(function(nk) {
+                        result[nk] = nested[nk];
+                    });
+                } else if (Array.isArray(value)) {
+                    result[newKey] = JSON.stringify(value);
+                } else {
+                    result[newKey] = value;
+                }
+            });
+            
+            return result;
+        }
+        
+        function getQuoteChar(dbType) {
+            switch (dbType) {
+                case 'mysql': return '`';
+                case 'postgresql': return '"';
+                case 'sqlserver': return '[';
+                default: return '';
+            }
+        }
+        
+        function formatValue(value, dbType, useQuotes, handleNull, escapeChars) {
+            if (value === null || value === undefined) {
+                return handleNull ? 'NULL' : "''";
+            }
+            
+            if (typeof value === 'boolean') {
+                if (dbType === 'postgresql') {
+                    return value ? 'TRUE' : 'FALSE';
+                }
+                return value ? '1' : '0';
+            }
+            
+            if (typeof value === 'number') {
+                return String(value);
+            }
+            
+            var strValue = String(value);
+            
+            if (escapeChars) {
+                strValue = strValue.replace(/'/g, "''");
+                if (dbType === 'mysql') {
+                    strValue = strValue.replace(/\\/g, '\\\\');
+                }
+            }
+            
+            if (useQuotes) {
+                return "'" + strValue + "'";
+            }
+            
+            return strValue;
+        }
+        
+        function copySQL() {
+            var output = document.getElementById('sql-output');
+            
+            navigator.clipboard.writeText(output.value).then(function() {
+                var btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.textContent = '复制';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        function downloadSQL() {
+            var output = document.getElementById('sql-output').value;
+            if (!output) return;
+            
+            var blob = new Blob([output], { type: 'text/plain' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.sql';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Initialize
+        initTheme();
+        generateSQL();
+    </script>
+</body>
+</html>

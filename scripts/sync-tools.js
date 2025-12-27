@@ -140,10 +140,11 @@ function main() {
   }
   
   // 更新 SEO meta 标签中的工具数量
+  // 注意：只匹配 "包含 X 个工具" 或 "包含 X+ 个工具"，避免误改 "包含 12 个主要类别" 等文本
   const toolCount = tools.length;
-  indexHtml = indexHtml.replace(/包含 \d+ 个/g, `包含 ${toolCount} 个`);
+  indexHtml = indexHtml.replace(/包含 \d+ 个工具/g, `包含 ${toolCount} 个工具`);
   indexHtml = indexHtml.replace(/\d+\+ 个纯前端/g, `${toolCount}+ 个纯前端`);
-  indexHtml = indexHtml.replace(/包含 \d+\+ 个/g, `包含 ${toolCount}+ 个`);
+  indexHtml = indexHtml.replace(/包含 \d+\+ 个工具/g, `包含 ${toolCount}+ 个工具`);
   
   // 写入更新后的 index.html
   fs.writeFileSync(INDEX_HTML, indexHtml);

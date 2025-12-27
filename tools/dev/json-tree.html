@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 树形查看器 - JSON Tree Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .header-actions { display: flex; gap: 0.5rem; }
+        .theme-toggle { background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; cursor: pointer; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; height: calc(100vh - 120px); }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; height: auto; } }
+        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1rem; border: 1px solid var(--muted-border-color); display: flex; flex-direction: column; }
+        .panel h3 { margin: 0 0 0.5rem 0; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
+        .panel textarea { flex: 1; min-height: 300px; font-family: 'SF Mono', monospace; font-size: 0.85rem; resize: none; }
+        .tree-view { flex: 1; overflow: auto; font-family: 'SF Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
+        .tree-node { padding-left: 1.25rem; position: relative; }
+        .tree-node::before { content: ''; position: absolute; left: 0.4rem; top: 0; bottom: 0; width: 1px; background: var(--muted-border-color); }
+        .tree-key { color: #0369a1; cursor: pointer; }
+        .tree-key:hover { text-decoration: underline; }
+        .tree-string { color: #059669; }
+        .tree-number { color: #d97706; }
+        .tree-boolean { color: #7c3aed; }
+        .tree-null { color: #6b7280; }
+        .tree-toggle { cursor: pointer; user-select: none; display: inline-block; width: 1rem; text-align: center; }
+        .tree-toggle:hover { color: var(--primary-color); }
+        .tree-bracket { color: var(--muted-color); }
+        .tree-count { font-size: 0.75rem; color: var(--muted-color); margin-left: 0.25rem; }
+        .collapsed > .tree-node { display: none; }
+        .path-bar { background: var(--code-background-color); padding: 0.5rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 0.5rem; font-family: monospace; word-break: break-all; min-height: 2rem; }
+        .stats { font-size: 0.75rem; color: var(--muted-color); margin-top: 0.5rem; }
+        .search-box { margin-bottom: 0.5rem; }
+        .search-box input { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+        .highlight { background: #fef08a; padding: 0 2px; border-radius: 2px; }
+        [data-theme="dark"] .tree-key { color: #38bdf8; }
+        [data-theme="dark"] .tree-string { color: #4ade80; }
+        [data-theme="dark"] .tree-number { color: #fbbf24; }
+        [data-theme="dark"] .tree-boolean { color: #a78bfa; }
+        [data-theme="dark"] .highlight { background: #854d0e; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌳 JSON 树形查看器</h1>
+            <div class="header-actions">
+                <button class="outline" onclick="expandAll()">展开全部</button>
+                <button class="outline" onclick="collapseAll()">折叠全部</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </header>
+        <div class="main-grid">
+            <div class="panel">
+                <h3>📝 输入 JSON</h3>
+                <textarea id="jsonInput" placeholder="粘贴 JSON 数据..." oninput="parseJSON()"></textarea>
+                <div class="stats" id="inputStats"></div>
+            </div>
+            <div class="panel">
+                <h3>
+                    🌲 树形视图
+                    <button class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="copyPath()">复制路径</button>
+                </h3>
+                <div class="path-bar" id="pathBar">$</div>
+                <div class="search-box">
+                    <input type="search" id="searchInput" placeholder="🔍 搜索键名或值..." oninput="searchTree()">
+                </div>
+                <div class="tree-view" id="treeView"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let jsonData = null;
+        let currentPath = '$';
+        
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        
+        function parseJSON() {
+            const input = document.getElementById('jsonInput').value.trim();
+            const stats = document.getElementById('inputStats');
+            const tree = document.getElementById('treeView');
+            
+            if (!input) { tree.innerHTML = '<span style="color:var(--muted-color)">等待输入...</span>'; stats.textContent = ''; return; }
+            
+            try {
+                jsonData = JSON.parse(input);
+                stats.textContent = '✓ 有效 JSON · ' + input.length + ' 字符';
+                stats.style.color = '#059669';
+                tree.innerHTML = renderNode(jsonData, '$', '');
+            } catch (e) {
+                jsonData = null;
+                stats.textContent = '✗ ' + e.message;
+                stats.style.color = '#dc2626';
+                tree.innerHTML = '<span style="color:#dc2626">解析错误</span>';
+            }
+        }
+        
+        function renderNode(data, path, key) {
+            const type = Array.isArray(data) ? 'array' : typeof data;
+            
+            if (data === null) return '<span class="tree-null">null</span>';
+            if (type === 'string') return '<span class="tree-string">"' + escapeHtml(data) + '"</span>';
+            if (type === 'number') return '<span class="tree-number">' + data + '</span>';
+            if (type === 'boolean') return '<span class="tree-boolean">' + data + '</span>';
+            
+            const isArray = Array.isArray(data);
+            const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
+            const count = entries.length;
+            const bracket = isArray ? ['[', ']'] : ['{', '}'];
+            
+            if (count === 0) return '<span class="tree-bracket">' + bracket[0] + bracket[1] + '</span>';
+            
+            let html = '<span class="tree-toggle" onclick="toggleNode(this)">▼</span>';
+            html += '<span class="tree-bracket">' + bracket[0] + '</span>';
+            html += '<span class="tree-count">' + count + ' items</span>';
+            
+            entries.forEach(([k, v]) => {
+                const childPath = isArray ? path + '[' + k + ']' : path + '.' + k;
+                html += '<div class="tree-node">';
+                if (!isArray) html += '<span class="tree-key" onclick="setPath(\'' + childPath.replace(/'/g, "\\'") + '\')">' + escapeHtml(String(k)) + '</span>: ';
+                else html += '<span class="tree-key" onclick="setPath(\'' + childPath.replace(/'/g, "\\'") + '\')">[' + k + ']</span>: ';
+                html += renderNode(v, childPath, k);
+                html += '</div>';
+            });
+            
+            html += '<span class="tree-bracket">' + bracket[1] + '</span>';
+            return html;
+        }
+        
+        function toggleNode(el) {
+            const parent = el.parentElement;
+            parent.classList.toggle('collapsed');
+            el.textContent = parent.classList.contains('collapsed') ? '▶' : '▼';
+        }
+        
+        function expandAll() {
+            document.querySelectorAll('.collapsed').forEach(el => el.classList.remove('collapsed'));
+            document.querySelectorAll('.tree-toggle').forEach(el => el.textContent = '▼');
+        }
+        
+        function collapseAll() {
+            document.querySelectorAll('.tree-view > *').forEach(el => {
+                if (el.querySelector('.tree-node')) {
+                    el.classList.add('collapsed');
+                    const toggle = el.querySelector('.tree-toggle');
+                    if (toggle) toggle.textContent = '▶';
+                }
+            });
+        }
+        
+        function setPath(path) {
+            currentPath = path;
+            document.getElementById('pathBar').textContent = path;
+        }
+        
+        function copyPath() {
+            navigator.clipboard.writeText(currentPath);
+            showToast('路径已复制: ' + currentPath);
+        }
+        
+        function searchTree() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.outerHTML = el.textContent;
+            });
+            
+            if (!term) return;
+            
+            const walk = (node) => {
+                if (node.nodeType === 3 && node.textContent.toLowerCase().includes(term)) {
+                    const span = document.createElement('span');
+                    span.innerHTML = node.textContent.replace(new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<span class="highlight">$1</span>');
+                    node.parentNode.replaceChild(span, node);
+                } else if (node.nodeType === 1) {
+                    Array.from(node.childNodes).forEach(walk);
+                }
+            };
+            walk(document.getElementById('treeView'));
+        }
+        
+        function escapeHtml(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+    </script>
+</body>
+</html>

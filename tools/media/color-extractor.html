@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片取色器 - Color Extractor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        header h1 { margin: 0; font-size: 1.75rem; }
+        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; }
+        .main-grid { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; }
+        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--muted-border-color); }
+        .drop-zone { border: 2px dashed var(--muted-border-color); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 1rem; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary-color); background: rgba(139,92,246,0.1); }
+        .drop-zone input { display: none; }
+        .image-container { position: relative; display: none; }
+        .image-container img { max-width: 100%; border-radius: 8px; cursor: crosshair; }
+        .image-container canvas { display: none; }
+        .picked-color { display: none; padding: 1rem; background: var(--code-background-color); border-radius: 8px; margin-top: 1rem; }
+        .picked-color .preview { width: 60px; height: 60px; border-radius: 8px; margin-bottom: 0.5rem; border: 2px solid var(--muted-border-color); }
+        .picked-color .values { font-family: monospace; font-size: 0.85rem; }
+        .picked-color .values div { display: flex; justify-content: space-between; padding: 0.25rem 0; cursor: pointer; }
+        .picked-color .values div:hover { color: var(--primary-color); }
+        .palette-section h3 { margin-top: 0; font-size: 1rem; }
+        .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 0.5rem; }
+        .palette-color { aspect-ratio: 1; border-radius: 8px; cursor: pointer; position: relative; transition: transform 0.2s; border: 2px solid transparent; }
+        .palette-color:hover { transform: scale(1.1); z-index: 1; }
+        .palette-color.selected { border-color: var(--primary-color); }
+        .palette-color span { position: absolute; bottom: 2px; left: 2px; right: 2px; font-size: 0.6rem; background: rgba(0,0,0,0.5); color: white; padding: 0.1rem; border-radius: 3px; text-align: center; opacity: 0; transition: opacity 0.2s; }
+        .palette-color:hover span { opacity: 1; }
+        .options { margin: 1rem 0; }
+        .export-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+        .export-btns button { flex: 1; min-width: 80px; font-size: 0.85rem; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 图片取色器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        </header>
+        <div class="main-grid">
+            <div class="panel">
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" accept="image/*">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🖼️</div>
+                    <p>拖放图片或点击选择</p>
+                </div>
+                <div class="image-container" id="imageContainer">
+                    <img id="previewImage" onclick="pickColor(event)">
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div class="picked-color" id="pickedColor">
+                    <div class="preview" id="colorPreview"></div>
+                    <div class="values" id="colorValues"></div>
+                </div>
+            </div>
+            <div>
+                <div class="panel palette-section">
+                    <h3>🎨 提取的调色板</h3>
+                    <div class="options">
+                        <label>颜色数量
+                            <select id="colorCount" onchange="extractPalette()">
+                                <option value="5">5 色</option>
+                                <option value="8" selected>8 色</option>
+                                <option value="12">12 色</option>
+                                <option value="16">16 色</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="palette-grid" id="paletteGrid"></div>
+                    <div class="export-btns">
+                        <button onclick="exportCSS()">CSS</button>
+                        <button onclick="exportJSON()">JSON</button>
+                        <button onclick="exportSVG()">SVG</button>
+                    </div>
+                </div>
+                <div class="panel palette-section" style="margin-top: 1rem;">
+                    <h3>📋 历史记录</h3>
+                    <div class="palette-grid" id="historyGrid"></div>
+                    <button class="outline" style="width: 100%; margin-top: 0.5rem; font-size: 0.85rem;" onclick="clearHistory()">清空历史</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let imageData = null;
+        let palette = [];
+        let history = [];
+        
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); initDropZone(); loadHistory(); });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        
+        function initDropZone() {
+            const dz = document.getElementById('dropZone'), fi = document.getElementById('fileInput');
+            dz.addEventListener('click', () => fi.click());
+            dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+            dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+            dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+            fi.addEventListener('change', e => handleFile(e.target.files[0]));
+        }
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = document.getElementById('previewImage');
+                img.onload = () => {
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    document.getElementById('imageContainer').style.display = 'block';
+                    document.getElementById('dropZone').style.display = 'none';
+                    extractPalette();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function pickColor(e) {
+            if (!imageData) return;
+            const rect = e.target.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / rect.width * imageData.width);
+            const y = Math.floor((e.clientY - rect.top) / rect.height * imageData.height);
+            const i = (y * imageData.width + x) * 4;
+            const r = imageData.data[i], g = imageData.data[i + 1], b = imageData.data[i + 2];
+            showPickedColor(r, g, b);
+            addToHistory(r, g, b);
+        }
+        
+        function showPickedColor(r, g, b) {
+            const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            const hsl = rgbToHsl(r, g, b);
+            document.getElementById('pickedColor').style.display = 'block';
+            document.getElementById('colorPreview').style.background = hex;
+            document.getElementById('colorValues').innerHTML = 
+                '<div onclick="copy(\'' + hex + '\')">HEX: ' + hex + '</div>' +
+                '<div onclick="copy(\'rgb(' + r + ', ' + g + ', ' + b + ')\')">RGB: ' + r + ', ' + g + ', ' + b + '</div>' +
+                '<div onclick="copy(\'hsl(' + hsl[0] + ', ' + hsl[1] + '%, ' + hsl[2] + '%)\')">HSL: ' + hsl[0] + '°, ' + hsl[1] + '%, ' + hsl[2] + '%</div>';
+        }
+        
+        function extractPalette() {
+            if (!imageData) return;
+            const count = parseInt(document.getElementById('colorCount').value);
+            palette = quantize(imageData.data, count);
+            renderPalette();
+        }
+        
+        function quantize(data, count) {
+            const colors = [];
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 128) colors.push([data[i], data[i + 1], data[i + 2]]);
+            }
+            const sampled = [];
+            const step = Math.max(1, Math.floor(colors.length / 1000));
+            for (let i = 0; i < colors.length; i += step) sampled.push(colors[i]);
+            
+            let centroids = sampled.slice(0, count);
+            for (let iter = 0; iter < 10; iter++) {
+                const clusters = Array.from({length: count}, () => []);
+                sampled.forEach(c => {
+                    let minD = Infinity, minI = 0;
+                    centroids.forEach((cent, i) => {
+                        const d = Math.pow(c[0] - cent[0], 2) + Math.pow(c[1] - cent[1], 2) + Math.pow(c[2] - cent[2], 2);
+                        if (d < minD) { minD = d; minI = i; }
+                    });
+                    clusters[minI].push(c);
+                });
+                centroids = clusters.map((cl, i) => {
+                    if (cl.length === 0) return centroids[i];
+                    return [Math.round(cl.reduce((s, c) => s + c[0], 0) / cl.length), Math.round(cl.reduce((s, c) => s + c[1], 0) / cl.length), Math.round(cl.reduce((s, c) => s + c[2], 0) / cl.length)];
+                });
+            }
+            return centroids.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+        }
+        
+        function renderPalette() {
+            document.getElementById('paletteGrid').innerHTML = palette.map(c => {
+                const hex = '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+                return '<div class="palette-color" style="background:' + hex + '" onclick="copy(\'' + hex + '\');showPickedColor(' + c.join(',') + ')"><span>' + hex + '</span></div>';
+            }).join('');
+        }
+        
+        function addToHistory(r, g, b) {
+            const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+            history = history.filter(h => h !== hex);
+            history.unshift(hex);
+            if (history.length > 20) history = history.slice(0, 20);
+            localStorage.setItem('colorHistory', JSON.stringify(history));
+            renderHistory();
+        }
+        
+        function loadHistory() { const s = localStorage.getItem('colorHistory'); if (s) history = JSON.parse(s); renderHistory(); }
+        function renderHistory() {
+            document.getElementById('historyGrid').innerHTML = history.map(hex => '<div class="palette-color" style="background:' + hex + '" onclick="copy(\'' + hex + '\')"><span>' + hex + '</span></div>').join('');
+        }
+        function clearHistory() { history = []; localStorage.removeItem('colorHistory'); renderHistory(); }
+        
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) { h = s = 0; }
+            else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+        }
+        
+        function copy(text) { navigator.clipboard.writeText(text); showToast('已复制: ' + text); }
+        function exportCSS() { const css = ':root {\n' + palette.map((c, i) => '  --color-' + (i + 1) + ': #' + c.map(v => v.toString(16).padStart(2, '0')).join('') + ';').join('\n') + '\n}'; navigator.clipboard.writeText(css); showToast('CSS 已复制'); }
+        function exportJSON() { const json = JSON.stringify(palette.map(c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('')), null, 2); navigator.clipboard.writeText(json); showToast('JSON 已复制'); }
+        function exportSVG() {
+            const w = 50, h = 50;
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + (w * palette.length) + '" height="' + h + '">' + palette.map((c, i) => '<rect x="' + (i * w) + '" y="0" width="' + w + '" height="' + h + '" fill="#' + c.map(v => v.toString(16).padStart(2, '0')).join('') + '"/>').join('') + '</svg>';
+            const blob = new Blob([svg], {type: 'image/svg+xml'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'palette.svg'; a.click();
+        }
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+    </script>
+</body>
+</html>

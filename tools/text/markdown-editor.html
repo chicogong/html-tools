@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 编辑器 - 实时预览</title>
+    <meta name="description" content="在线 Markdown 编辑器，支持实时预览、GFM 语法、代码高亮、导出 HTML">
+    <meta name="keywords" content="markdown,编辑器,预览,gfm,md,写作,博客">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f0f23;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --border-color: #333;
+            --accent-color: #3b82f6;
+            --accent-hover: #60a5fa;
+        }
+        [data-theme="light"] {
+            --bg-primary: #fff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:hover { border-color: var(--accent-color); }
+        .btn-primary {
+            background: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .back-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .toolbar {
+            display: flex;
+            gap: 5px;
+            padding: 8px 15px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .toolbar-btn {
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+        .toolbar-btn:hover {
+            border-color: var(--accent-color);
+            background: var(--bg-secondary);
+        }
+        .toolbar-divider {
+            width: 1px;
+            background: var(--border-color);
+            margin: 0 5px;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-pane, .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .editor-pane { border-right: 1px solid var(--border-color); }
+
+        .pane-header {
+            padding: 8px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #editor {
+            flex: 1;
+            width: 100%;
+            background: var(--bg-primary);
+            border: none;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: Monaco, Menlo, "Ubuntu Mono", monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+        }
+
+        #preview {
+            flex: 1;
+            padding: 20px 25px;
+            overflow-y: auto;
+            background: var(--bg-primary);
+        }
+
+        /* Markdown preview styles */
+        #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        #preview h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border-color); }
+        #preview h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border-color); }
+        #preview h3 { font-size: 1.25em; }
+        #preview p { margin-bottom: 16px; line-height: 1.7; }
+        #preview a { color: var(--accent-color); text-decoration: none; }
+        #preview a:hover { text-decoration: underline; }
+        #preview code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 0.9em;
+        }
+        #preview pre {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        #preview pre code {
+            background: none;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        #preview blockquote {
+            border-left: 4px solid var(--accent-color);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: var(--text-secondary);
+        }
+        #preview ul, #preview ol {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+        #preview li { margin-bottom: 8px; line-height: 1.6; }
+        #preview table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        #preview th, #preview td {
+            border: 1px solid var(--border-color);
+            padding: 10px 12px;
+            text-align: left;
+        }
+        #preview th { background: var(--bg-tertiary); font-weight: 600; }
+        #preview img { max-width: 100%; border-radius: 8px; }
+        #preview hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 24px 0;
+        }
+        #preview input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .stats {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .editor-pane { border-right: none; border-bottom: 1px solid var(--border-color); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📝 Markdown 编辑器</h1>
+        <div class="header-actions">
+            <a href="../../index.html" class="back-link">← 返回</a>
+            <button class="btn" onclick="clearEditor()">🗑️ 清空</button>
+            <button class="btn" onclick="copyMarkdown()">📋 复制 MD</button>
+            <button class="btn" onclick="copyHTML()">📋 复制 HTML</button>
+            <button class="btn btn-primary" onclick="downloadMarkdown()">💾 保存</button>
+            <button class="btn" onclick="toggleTheme()">🌓</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <button class="toolbar-btn" onclick="insertText('**', '**')" title="粗体">𝐁</button>
+        <button class="toolbar-btn" onclick="insertText('*', '*')" title="斜体">𝐼</button>
+        <button class="toolbar-btn" onclick="insertText('~~', '~~')" title="删除线">S̶</button>
+        <button class="toolbar-btn" onclick="insertText('`', '`')" title="行内代码">&lt;/&gt;</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="insertLine('# ')" title="一级标题">H1</button>
+        <button class="toolbar-btn" onclick="insertLine('## ')" title="二级标题">H2</button>
+        <button class="toolbar-btn" onclick="insertLine('### ')" title="三级标题">H3</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="insertLine('- ')" title="无序列表">•</button>
+        <button class="toolbar-btn" onclick="insertLine('1. ')" title="有序列表">1.</button>
+        <button class="toolbar-btn" onclick="insertLine('- [ ] ')" title="任务列表">☐</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="insertLine('> ')" title="引用">❝</button>
+        <button class="toolbar-btn" onclick="insertText('[', '](url)')" title="链接">🔗</button>
+        <button class="toolbar-btn" onclick="insertText('![alt](', ')')" title="图片">🖼️</button>
+        <button class="toolbar-btn" onclick="insertCodeBlock()" title="代码块">```</button>
+        <button class="toolbar-btn" onclick="insertTable()" title="表格">⊞</button>
+        <button class="toolbar-btn" onclick="insertLine('---')" title="分割线">―</button>
+    </div>
+
+    <div class="main-container">
+        <div class="editor-pane">
+            <div class="pane-header">
+                <span>编辑</span>
+                <span class="stats" id="editorStats">0 字 | 0 行</span>
+            </div>
+            <textarea id="editor" spellcheck="false" placeholder="在这里输入 Markdown..."></textarea>
+        </div>
+        <div class="preview-pane">
+            <div class="pane-header">
+                <span>预览</span>
+            </div>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+
+        // Sample content
+        const sampleContent = `# Markdown 编辑器
+
+欢迎使用 Markdown 编辑器！支持 **实时预览** 和 *GFM 语法*。
+
+## 功能特性
+
+- 实时预览
+- 工具栏快捷按钮
+- 支持表格、代码块
+- 导出 HTML
+
+## 代码示例
+
+\`\`\`javascript
+function hello() {
+  console.log('Hello, Markdown!');
+}
+\`\`\`
+
+## 表格
+
+| 功能 | 快捷键 |
+|------|--------|
+| 粗体 | Ctrl+B |
+| 斜体 | Ctrl+I |
+| 链接 | Ctrl+K |
+
+## 引用
+
+> Markdown 让写作更简单。
+
+## 任务列表
+
+- [x] 学习 Markdown 语法
+- [ ] 写一篇博客
+- [ ] 分享给朋友
+
+---
+
+*开始编辑吧！*`;
+
+        // Theme handling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Configure marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // Update preview
+        function updatePreview() {
+            const md = editor.value;
+            preview.innerHTML = marked.parse(md);
+            updateStats();
+        }
+
+        // Update stats
+        function updateStats() {
+            const text = editor.value;
+            const chars = text.length;
+            const lines = text.split('\n').length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            document.getElementById('editorStats').textContent = `${chars} 字 | ${lines} 行`;
+        }
+
+        // Insert text at cursor
+        function insertText(before, after) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+            const selected = text.substring(start, end) || '文本';
+            
+            editor.value = text.substring(0, start) + before + selected + after + text.substring(end);
+            editor.focus();
+            editor.selectionStart = start + before.length;
+            editor.selectionEnd = start + before.length + selected.length;
+            updatePreview();
+        }
+
+        // Insert at line start
+        function insertLine(prefix) {
+            const start = editor.selectionStart;
+            const text = editor.value;
+            
+            // Find line start
+            let lineStart = start;
+            while (lineStart > 0 && text[lineStart - 1] !== '\n') {
+                lineStart--;
+            }
+            
+            editor.value = text.substring(0, lineStart) + prefix + text.substring(lineStart);
+            editor.focus();
+            editor.selectionStart = editor.selectionEnd = start + prefix.length;
+            updatePreview();
+        }
+
+        // Insert code block
+        function insertCodeBlock() {
+            const start = editor.selectionStart;
+            const text = editor.value;
+            const block = '\n```javascript\n// 代码\n```\n';
+            
+            editor.value = text.substring(0, start) + block + text.substring(start);
+            editor.focus();
+            editor.selectionStart = start + 15;
+            editor.selectionEnd = start + 19;
+            updatePreview();
+        }
+
+        // Insert table
+        function insertTable() {
+            const start = editor.selectionStart;
+            const text = editor.value;
+            const table = '\n| 列1 | 列2 | 列3 |\n|-----|-----|-----|\n| A1 | B1 | C1 |\n| A2 | B2 | C2 |\n';
+            
+            editor.value = text.substring(0, start) + table + text.substring(start);
+            editor.focus();
+            updatePreview();
+        }
+
+        // Clear editor
+        function clearEditor() {
+            if (confirm('确定要清空编辑器吗？')) {
+                editor.value = '';
+                updatePreview();
+            }
+        }
+
+        // Copy markdown
+        function copyMarkdown() {
+            navigator.clipboard.writeText(editor.value).then(() => {
+                alert('Markdown 已复制到剪贴板');
+            });
+        }
+
+        // Copy HTML
+        function copyHTML() {
+            navigator.clipboard.writeText(preview.innerHTML).then(() => {
+                alert('HTML 已复制到剪贴板');
+            });
+        }
+
+        // Download markdown
+        function downloadMarkdown() {
+            const blob = new Blob([editor.value], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Keyboard shortcuts
+        editor.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 'b':
+                        e.preventDefault();
+                        insertText('**', '**');
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        insertText('*', '*');
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        insertText('[', '](url)');
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        downloadMarkdown();
+                        break;
+                }
+            }
+            
+            // Tab handling
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 2;
+                updatePreview();
+            }
+        });
+
+        // Live preview
+        editor.addEventListener('input', updatePreview);
+
+        // Initialize
+        initTheme();
+        editor.value = sampleContent;
+        updatePreview();
+    </script>
+</body>
+</html>

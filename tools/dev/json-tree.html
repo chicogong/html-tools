@@ -3,191 +3,478 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON 树形查看器 - JSON Tree Viewer</title>
+    <title>JSON 可视化树 - HTML Tools</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
-        :root { --primary-color: #8b5cf6; }
+        :root {
+            --tool-primary: #f59e0b;
+            --tool-secondary: #d97706;
+            --type-string: #22c55e;
+            --type-number: #3b82f6;
+            --type-bool: #a855f7;
+            --type-null: #6b7280;
+            --type-key: #ef4444;
+        }
         body { padding: 1rem; min-height: 100vh; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
-        header h1 { margin: 0; font-size: 1.5rem; }
-        .header-actions { display: flex; gap: 0.5rem; }
-        .theme-toggle { background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; cursor: pointer; }
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; height: calc(100vh - 120px); }
-        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; height: auto; } }
-        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1rem; border: 1px solid var(--muted-border-color); display: flex; flex-direction: column; }
-        .panel h3 { margin: 0 0 0.5rem 0; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
-        .panel textarea { flex: 1; min-height: 300px; font-family: 'SF Mono', monospace; font-size: 0.85rem; resize: none; }
-        .tree-view { flex: 1; overflow: auto; font-family: 'SF Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
-        .tree-node { padding-left: 1.25rem; position: relative; }
-        .tree-node::before { content: ''; position: absolute; left: 0.4rem; top: 0; bottom: 0; width: 1px; background: var(--muted-border-color); }
-        .tree-key { color: #0369a1; cursor: pointer; }
-        .tree-key:hover { text-decoration: underline; }
-        .tree-string { color: #059669; }
-        .tree-number { color: #d97706; }
-        .tree-boolean { color: #7c3aed; }
-        .tree-null { color: #6b7280; }
-        .tree-toggle { cursor: pointer; user-select: none; display: inline-block; width: 1rem; text-align: center; }
-        .tree-toggle:hover { color: var(--primary-color); }
-        .tree-bracket { color: var(--muted-color); }
-        .tree-count { font-size: 0.75rem; color: var(--muted-color); margin-left: 0.25rem; }
-        .collapsed > .tree-node { display: none; }
-        .path-bar { background: var(--code-background-color); padding: 0.5rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 0.5rem; font-family: monospace; word-break: break-all; min-height: 2rem; }
-        .stats { font-size: 0.75rem; color: var(--muted-color); margin-top: 0.5rem; }
-        .search-box { margin-bottom: 0.5rem; }
-        .search-box input { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
-        .highlight { background: #fef08a; padding: 0 2px; border-radius: 2px; }
-        [data-theme="dark"] .tree-key { color: #38bdf8; }
-        [data-theme="dark"] .tree-string { color: #4ade80; }
-        [data-theme="dark"] .tree-number { color: #fbbf24; }
-        [data-theme="dark"] .tree-boolean { color: #a78bfa; }
-        [data-theme="dark"] .highlight { background: #854d0e; }
-        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+        }
+        h1 { margin: 0; font-size: 1.75rem; color: var(--tool-primary); }
+        .theme-toggle {
+            background: none; border: 2px solid var(--tool-primary);
+            color: var(--tool-primary); cursor: pointer; padding: 0.5rem;
+            border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .back-link {
+            color: var(--tool-primary); text-decoration: none;
+            display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;
+        }
+        .main-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+            height: calc(100vh - 150px); min-height: 500px;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; height: auto; }
+        }
+        .panel {
+            background: var(--pico-card-background-color);
+            border-radius: 12px; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column;
+        }
+        .panel-header {
+            padding: 0.75rem 1rem; background: var(--pico-secondary-background);
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 600;
+        }
+        .panel-actions { display: flex; gap: 0.5rem; }
+        .panel-actions button {
+            padding: 0.25rem 0.5rem; font-size: 0.75rem;
+            background: var(--pico-background-color); border: 1px solid var(--pico-muted-border-color);
+            border-radius: 4px; cursor: pointer;
+        }
+        .panel-actions button:hover {
+            background: var(--tool-primary); color: white; border-color: var(--tool-primary);
+        }
+        .panel-body { flex: 1; overflow: auto; }
+        #jsonInput {
+            width: 100%; height: 100%; border: none; resize: none;
+            padding: 1rem; font-family: monospace; font-size: 0.9rem;
+            background: transparent;
+        }
+        .tree-view { padding: 1rem; font-family: monospace; font-size: 0.85rem; }
+        .tree-node { margin-left: 1.25rem; }
+        .tree-root { margin-left: 0; }
+        .tree-line {
+            display: flex; align-items: flex-start; gap: 0.25rem;
+            padding: 0.15rem 0; line-height: 1.4;
+        }
+        .tree-toggle {
+            cursor: pointer; user-select: none; width: 1rem;
+            text-align: center; color: var(--pico-muted-color);
+            flex-shrink: 0;
+        }
+        .tree-toggle:hover { color: var(--tool-primary); }
+        .tree-key { color: var(--type-key); }
+        .tree-colon { color: var(--pico-muted-color); margin: 0 0.25rem; }
+        .tree-string { color: var(--type-string); }
+        .tree-string::before, .tree-string::after { content: '"'; opacity: 0.6; }
+        .tree-number { color: var(--type-number); }
+        .tree-boolean { color: var(--type-bool); }
+        .tree-null { color: var(--type-null); font-style: italic; }
+        .tree-bracket { color: var(--pico-muted-color); }
+        .tree-count {
+            color: var(--pico-muted-color); font-size: 0.75rem;
+            margin-left: 0.5rem; opacity: 0.7;
+        }
+        .tree-collapsed .tree-children { display: none; }
+        .tree-path {
+            padding: 0.5rem 1rem; background: var(--pico-code-background-color);
+            border-top: 1px solid var(--pico-muted-border-color);
+            font-family: monospace; font-size: 0.8rem;
+            color: var(--pico-muted-color); min-height: 2rem;
+        }
+        .tree-path code { color: var(--tool-primary); }
+        .error-msg {
+            padding: 1rem; color: var(--pico-del-color);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .stats-bar {
+            padding: 0.5rem 1rem; background: var(--pico-secondary-background);
+            border-top: 1px solid var(--pico-muted-border-color);
+            font-size: 0.8rem; color: var(--pico-muted-color);
+            display: flex; gap: 1.5rem; flex-wrap: wrap;
+        }
+        .toolbar {
+            padding: 0.5rem 1rem; background: var(--pico-secondary-background);
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            display: flex; gap: 0.5rem; flex-wrap: wrap;
+        }
+        .toolbar input {
+            padding: 0.3rem 0.6rem; font-size: 0.8rem;
+            border: 1px solid var(--pico-muted-border-color); border-radius: 4px;
+            min-width: 180px;
+        }
+        .highlight { background: rgba(245, 158, 11, 0.3); border-radius: 2px; }
+        .tree-line:hover { background: var(--pico-code-background-color); }
+        .tree-line.selected { background: rgba(245, 158, 11, 0.2); }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🌳 JSON 树形查看器</h1>
-            <div class="header-actions">
-                <button class="outline" onclick="expandAll()">展开全部</button>
-                <button class="outline" onclick="collapseAll()">折叠全部</button>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            <div>
+                <a href="../../index.html" class="back-link">← 返回工具列表</a>
+                <h1>JSON 可视化树</h1>
             </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span class="theme-icon">🌙</span>
+            </button>
         </header>
+        
         <div class="main-grid">
             <div class="panel">
-                <h3>📝 输入 JSON</h3>
-                <textarea id="jsonInput" placeholder="粘贴 JSON 数据..." oninput="parseJSON()"></textarea>
-                <div class="stats" id="inputStats"></div>
-            </div>
-            <div class="panel">
-                <h3>
-                    🌲 树形视图
-                    <button class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="copyPath()">复制路径</button>
-                </h3>
-                <div class="path-bar" id="pathBar">$</div>
-                <div class="search-box">
-                    <input type="search" id="searchInput" placeholder="🔍 搜索键名或值..." oninput="searchTree()">
+                <div class="panel-header">
+                    <span>JSON 输入</span>
+                    <div class="panel-actions">
+                        <button onclick="formatInput()">格式化</button>
+                        <button onclick="minifyInput()">压缩</button>
+                        <button onclick="clearInput()">清空</button>
+                        <button onclick="loadSample()">示例</button>
+                    </div>
                 </div>
-                <div class="tree-view" id="treeView"></div>
+                <div class="panel-body">
+                    <textarea id="jsonInput" placeholder="粘贴或输入 JSON 数据..." spellcheck="false"></textarea>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <span>树形视图</span>
+                    <div class="panel-actions">
+                        <button onclick="expandAll()">全部展开</button>
+                        <button onclick="collapseAll()">全部折叠</button>
+                        <button onclick="copyPath()">复制路径</button>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <input type="text" id="searchInput" placeholder="搜索键或值..." oninput="searchTree()">
+                </div>
+                <div class="panel-body">
+                    <div class="tree-view" id="treeView"></div>
+                </div>
+                <div class="tree-path" id="treePath">点击节点查看路径</div>
+                <div class="stats-bar" id="statsBar"></div>
             </div>
         </div>
     </div>
+    
     <script>
-        let jsonData = null;
-        let currentPath = '$';
+        var currentPath = '';
+        var jsonData = null;
         
-        document.addEventListener('DOMContentLoaded', () => { initTheme(); });
+        function toggleTheme() {
+            var html = document.documentElement;
+            var newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
         
-        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
-        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        var input = document.getElementById('jsonInput');
+        var debounceTimer;
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(parseAndRender, 300);
+        });
         
-        function parseJSON() {
-            const input = document.getElementById('jsonInput').value.trim();
-            const stats = document.getElementById('inputStats');
-            const tree = document.getElementById('treeView');
+        function parseAndRender() {
+            var text = input.value.trim();
+            var treeView = document.getElementById('treeView');
+            var statsBar = document.getElementById('statsBar');
             
-            if (!input) { tree.innerHTML = '<span style="color:var(--muted-color)">等待输入...</span>'; stats.textContent = ''; return; }
+            if (!text) {
+                treeView.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--pico-muted-color);">输入 JSON 数据开始可视化</div>';
+                statsBar.innerHTML = '';
+                jsonData = null;
+                return;
+            }
             
             try {
-                jsonData = JSON.parse(input);
-                stats.textContent = '✓ 有效 JSON · ' + input.length + ' 字符';
-                stats.style.color = '#059669';
-                tree.innerHTML = renderNode(jsonData, '$', '');
+                jsonData = JSON.parse(text);
+                var stats = getStats(jsonData);
+                treeView.innerHTML = renderNode(jsonData, '', true);
+                statsBar.innerHTML = '<span>对象: ' + stats.objects + '</span>' +
+                    '<span>数组: ' + stats.arrays + '</span>' +
+                    '<span>字符串: ' + stats.strings + '</span>' +
+                    '<span>数字: ' + stats.numbers + '</span>' +
+                    '<span>布尔: ' + stats.booleans + '</span>' +
+                    '<span>Null: ' + stats.nulls + '</span>' +
+                    '<span>深度: ' + stats.depth + '</span>';
             } catch (e) {
+                treeView.innerHTML = '<div class="error-msg">JSON 解析错误: ' + e.message + '</div>';
+                statsBar.innerHTML = '';
                 jsonData = null;
-                stats.textContent = '✗ ' + e.message;
-                stats.style.color = '#dc2626';
-                tree.innerHTML = '<span style="color:#dc2626">解析错误</span>';
             }
         }
         
-        function renderNode(data, path, key) {
-            const type = Array.isArray(data) ? 'array' : typeof data;
+        function renderNode(data, path, isRoot) {
+            var type = getType(data);
+            var html = '<div class="tree-node' + (isRoot ? ' tree-root' : '') + '">';
             
-            if (data === null) return '<span class="tree-null">null</span>';
-            if (type === 'string') return '<span class="tree-string">"' + escapeHtml(data) + '"</span>';
-            if (type === 'number') return '<span class="tree-number">' + data + '</span>';
-            if (type === 'boolean') return '<span class="tree-boolean">' + data + '</span>';
-            
-            const isArray = Array.isArray(data);
-            const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
-            const count = entries.length;
-            const bracket = isArray ? ['[', ']'] : ['{', '}'];
-            
-            if (count === 0) return '<span class="tree-bracket">' + bracket[0] + bracket[1] + '</span>';
-            
-            let html = '<span class="tree-toggle" onclick="toggleNode(this)">▼</span>';
-            html += '<span class="tree-bracket">' + bracket[0] + '</span>';
-            html += '<span class="tree-count">' + count + ' items</span>';
-            
-            entries.forEach(([k, v]) => {
-                const childPath = isArray ? path + '[' + k + ']' : path + '.' + k;
-                html += '<div class="tree-node">';
-                if (!isArray) html += '<span class="tree-key" onclick="setPath(\'' + childPath.replace(/'/g, "\\'") + '\')">' + escapeHtml(String(k)) + '</span>: ';
-                else html += '<span class="tree-key" onclick="setPath(\'' + childPath.replace(/'/g, "\\'") + '\')">[' + k + ']</span>: ';
-                html += renderNode(v, childPath, k);
+            if (type === 'object') {
+                var keys = Object.keys(data);
+                html += '<div class="tree-line" onclick="selectNode(this, \'' + escapePath(path) + '\')">';
+                if (keys.length > 0) {
+                    html += '<span class="tree-toggle" onclick="toggleNode(event, this)">▼</span>';
+                } else {
+                    html += '<span class="tree-toggle"></span>';
+                }
+                html += '<span class="tree-bracket">{</span>';
+                html += '<span class="tree-count">' + keys.length + ' keys</span>';
                 html += '</div>';
-            });
+                html += '<div class="tree-children">';
+                keys.forEach(function(key, idx) {
+                    var childPath = path ? path + '.' + key : key;
+                    if (key.match(/[.\[\]]/)) childPath = path ? path + '["' + key + '"]' : '["' + key + '"]';
+                    html += renderKeyValue(key, data[key], childPath, idx === keys.length - 1);
+                });
+                html += '</div>';
+                html += '<div class="tree-line"><span class="tree-toggle"></span><span class="tree-bracket">}</span></div>';
+            } else if (type === 'array') {
+                html += '<div class="tree-line" onclick="selectNode(this, \'' + escapePath(path) + '\')">';
+                if (data.length > 0) {
+                    html += '<span class="tree-toggle" onclick="toggleNode(event, this)">▼</span>';
+                } else {
+                    html += '<span class="tree-toggle"></span>';
+                }
+                html += '<span class="tree-bracket">[</span>';
+                html += '<span class="tree-count">' + data.length + ' items</span>';
+                html += '</div>';
+                html += '<div class="tree-children">';
+                data.forEach(function(item, idx) {
+                    var childPath = path + '[' + idx + ']';
+                    html += renderKeyValue(idx, item, childPath, idx === data.length - 1);
+                });
+                html += '</div>';
+                html += '<div class="tree-line"><span class="tree-toggle"></span><span class="tree-bracket">]</span></div>';
+            } else {
+                html += renderValue(data, path);
+            }
             
-            html += '<span class="tree-bracket">' + bracket[1] + '</span>';
+            html += '</div>';
             return html;
         }
         
-        function toggleNode(el) {
-            const parent = el.parentElement;
-            parent.classList.toggle('collapsed');
-            el.textContent = parent.classList.contains('collapsed') ? '▶' : '▼';
+        function renderKeyValue(key, value, path, isLast) {
+            var type = getType(value);
+            var html = '';
+            
+            if (type === 'object' || type === 'array') {
+                var count = type === 'object' ? Object.keys(value).length : value.length;
+                var bracket = type === 'object' ? '{' : '[';
+                var closeBracket = type === 'object' ? '}' : ']';
+                var label = type === 'object' ? count + ' keys' : count + ' items';
+                
+                html += '<div class="tree-node">';
+                html += '<div class="tree-line" onclick="selectNode(this, \'' + escapePath(path) + '\')">';
+                if (count > 0) {
+                    html += '<span class="tree-toggle" onclick="toggleNode(event, this)">▼</span>';
+                } else {
+                    html += '<span class="tree-toggle"></span>';
+                }
+                html += '<span class="tree-key">' + escapeHtml(String(key)) + '</span>';
+                html += '<span class="tree-colon">:</span>';
+                html += '<span class="tree-bracket">' + bracket + '</span>';
+                html += '<span class="tree-count">' + label + '</span>';
+                html += '</div>';
+                
+                if (count > 0) {
+                    html += '<div class="tree-children">';
+                    if (type === 'object') {
+                        var keys = Object.keys(value);
+                        keys.forEach(function(k, i) {
+                            var childPath = path + '.' + k;
+                            if (k.match(/[.\[\]]/)) childPath = path + '["' + k + '"]';
+                            html += renderKeyValue(k, value[k], childPath, i === keys.length - 1);
+                        });
+                    } else {
+                        value.forEach(function(item, i) {
+                            html += renderKeyValue(i, item, path + '[' + i + ']', i === value.length - 1);
+                        });
+                    }
+                    html += '</div>';
+                }
+                html += '<div class="tree-line"><span class="tree-toggle"></span><span class="tree-bracket">' + closeBracket + '</span></div>';
+                html += '</div>';
+            } else {
+                html += '<div class="tree-line" onclick="selectNode(this, \'' + escapePath(path) + '\')">';
+                html += '<span class="tree-toggle"></span>';
+                html += '<span class="tree-key">' + escapeHtml(String(key)) + '</span>';
+                html += '<span class="tree-colon">:</span>';
+                html += renderValueSpan(value);
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        function renderValue(value, path) {
+            return '<div class="tree-line" onclick="selectNode(this, \'' + escapePath(path) + '\')">' +
+                '<span class="tree-toggle"></span>' + renderValueSpan(value) + '</div>';
+        }
+        
+        function renderValueSpan(value) {
+            var type = getType(value);
+            if (type === 'string') {
+                return '<span class="tree-string">' + escapeHtml(value) + '</span>';
+            } else if (type === 'number') {
+                return '<span class="tree-number">' + value + '</span>';
+            } else if (type === 'boolean') {
+                return '<span class="tree-boolean">' + value + '</span>';
+            } else if (type === 'null') {
+                return '<span class="tree-null">null</span>';
+            }
+            return '<span>' + escapeHtml(String(value)) + '</span>';
+        }
+        
+        function getType(value) {
+            if (value === null) return 'null';
+            if (Array.isArray(value)) return 'array';
+            return typeof value;
+        }
+        
+        function getStats(data, depth) {
+            depth = depth || 1;
+            var stats = { objects: 0, arrays: 0, strings: 0, numbers: 0, booleans: 0, nulls: 0, depth: depth };
+            
+            function count(val, d) {
+                var type = getType(val);
+                if (type === 'object') {
+                    stats.objects++;
+                    Object.values(val).forEach(function(v) { count(v, d + 1); });
+                } else if (type === 'array') {
+                    stats.arrays++;
+                    val.forEach(function(v) { count(v, d + 1); });
+                } else if (type === 'string') stats.strings++;
+                else if (type === 'number') stats.numbers++;
+                else if (type === 'boolean') stats.booleans++;
+                else if (type === 'null') stats.nulls++;
+                if (d > stats.depth) stats.depth = d;
+            }
+            count(data, 1);
+            return stats;
+        }
+        
+        function toggleNode(e, el) {
+            e.stopPropagation();
+            var node = el.closest('.tree-node');
+            node.classList.toggle('tree-collapsed');
+            el.textContent = node.classList.contains('tree-collapsed') ? '▶' : '▼';
+        }
+        
+        function selectNode(el, path) {
+            document.querySelectorAll('.tree-line.selected').forEach(function(n) { n.classList.remove('selected'); });
+            el.classList.add('selected');
+            currentPath = path || '$';
+            document.getElementById('treePath').innerHTML = '路径: <code>' + (path || '$') + '</code>';
         }
         
         function expandAll() {
-            document.querySelectorAll('.collapsed').forEach(el => el.classList.remove('collapsed'));
-            document.querySelectorAll('.tree-toggle').forEach(el => el.textContent = '▼');
+            document.querySelectorAll('.tree-node.tree-collapsed').forEach(function(n) {
+                n.classList.remove('tree-collapsed');
+                var toggle = n.querySelector('.tree-toggle');
+                if (toggle && toggle.textContent === '▶') toggle.textContent = '▼';
+            });
         }
         
         function collapseAll() {
-            document.querySelectorAll('.tree-view > *').forEach(el => {
-                if (el.querySelector('.tree-node')) {
-                    el.classList.add('collapsed');
-                    const toggle = el.querySelector('.tree-toggle');
-                    if (toggle) toggle.textContent = '▶';
+            document.querySelectorAll('.tree-node').forEach(function(n) {
+                if (n.querySelector('.tree-children')) {
+                    n.classList.add('tree-collapsed');
+                    var toggle = n.querySelector('.tree-toggle');
+                    if (toggle && toggle.textContent === '▼') toggle.textContent = '▶';
                 }
             });
-        }
-        
-        function setPath(path) {
-            currentPath = path;
-            document.getElementById('pathBar').textContent = path;
         }
         
         function copyPath() {
-            navigator.clipboard.writeText(currentPath);
-            showToast('路径已复制: ' + currentPath);
+            if (currentPath) {
+                navigator.clipboard.writeText(currentPath);
+                alert('路径已复制: ' + currentPath);
+            }
         }
         
         function searchTree() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.highlight').forEach(el => {
-                el.outerHTML = el.textContent;
-            });
+            var query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.highlight').forEach(function(el) { el.classList.remove('highlight'); });
+            if (!query) return;
             
-            if (!term) return;
-            
-            const walk = (node) => {
-                if (node.nodeType === 3 && node.textContent.toLowerCase().includes(term)) {
-                    const span = document.createElement('span');
-                    span.innerHTML = node.textContent.replace(new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<span class="highlight">$1</span>');
-                    node.parentNode.replaceChild(span, node);
-                } else if (node.nodeType === 1) {
-                    Array.from(node.childNodes).forEach(walk);
+            document.querySelectorAll('.tree-key, .tree-string, .tree-number').forEach(function(el) {
+                if (el.textContent.toLowerCase().includes(query)) {
+                    el.classList.add('highlight');
+                    var node = el.closest('.tree-node');
+                    while (node) {
+                        node.classList.remove('tree-collapsed');
+                        var toggle = node.querySelector(':scope > .tree-line .tree-toggle');
+                        if (toggle && toggle.textContent === '▶') toggle.textContent = '▼';
+                        node = node.parentElement.closest('.tree-node');
+                    }
                 }
-            };
-            walk(document.getElementById('treeView'));
+            });
         }
         
-        function escapeHtml(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+        function formatInput() {
+            try {
+                var data = JSON.parse(input.value);
+                input.value = JSON.stringify(data, null, 2);
+            } catch (e) {}
+        }
+        
+        function minifyInput() {
+            try {
+                var data = JSON.parse(input.value);
+                input.value = JSON.stringify(data);
+            } catch (e) {}
+        }
+        
+        function clearInput() {
+            input.value = '';
+            parseAndRender();
+        }
+        
+        function loadSample() {
+            input.value = JSON.stringify({
+                "name": "HTML Tools",
+                "version": "1.0.0",
+                "description": "在线开发工具集合",
+                "features": ["JSON 格式化", "Base64 编解码", "时间戳转换", "颜色转换"],
+                "stats": { "tools": 150, "categories": 12, "active": true },
+                "author": { "name": "Developer", "email": "dev@example.com" },
+                "tags": null,
+                "config": { "theme": "dark", "lang": "zh-CN", "autoSave": false }
+            }, null, 2);
+            parseAndRender();
+        }
+        
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        
+        function escapePath(path) {
+            return path.replace(/'/g, "\\'");
+        }
+        
+        loadSample();
     </script>
 </body>
 </html>

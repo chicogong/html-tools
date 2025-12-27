@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel 预览器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --tool-primary: #217346;
+            --tool-secondary: #185c37;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+        }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+        }
+        h1 { margin: 0; font-size: 1.75rem; color: var(--tool-primary); }
+        .theme-toggle {
+            background: none; border: 2px solid var(--tool-primary);
+            color: var(--tool-primary); cursor: pointer; padding: 0.5rem;
+            border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .back-link {
+            color: var(--tool-primary); text-decoration: none;
+            display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;
+        }
+        .upload-section {
+            background: var(--pico-card-background-color); padding: 2rem;
+            border-radius: 12px; margin-bottom: 1.5rem; text-align: center;
+            border: 2px dashed var(--pico-muted-border-color);
+            transition: all 0.3s; cursor: pointer;
+        }
+        .upload-section:hover, .upload-section.dragover {
+            border-color: var(--tool-primary);
+            background: rgba(33, 115, 70, 0.05);
+        }
+        .upload-section input { display: none; }
+        .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .upload-text { color: var(--pico-muted-color); }
+        .upload-text strong { color: var(--tool-primary); }
+        .file-info {
+            background: var(--pico-card-background-color); padding: 1rem 1.5rem;
+            border-radius: 12px; margin-bottom: 1rem;
+            display: none; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .file-info.show { display: flex; }
+        .file-meta { display: flex; align-items: center; gap: 1rem; }
+        .file-icon { font-size: 2rem; }
+        .file-name { font-weight: 600; }
+        .file-size { color: var(--pico-muted-color); font-size: 0.85rem; }
+        .sheet-tabs {
+            display: flex; gap: 0.25rem; margin-bottom: 1rem;
+            overflow-x: auto; padding-bottom: 0.5rem;
+        }
+        .sheet-tab {
+            padding: 0.5rem 1rem; background: var(--pico-secondary-background);
+            border: none; border-radius: 8px 8px 0 0; cursor: pointer;
+            font-size: 0.9rem; white-space: nowrap; transition: all 0.2s;
+        }
+        .sheet-tab:hover { background: var(--pico-muted-border-color); }
+        .sheet-tab.active {
+            background: var(--tool-primary); color: white;
+        }
+        .table-container {
+            background: var(--pico-card-background-color);
+            border-radius: 12px; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .table-scroll {
+            overflow: auto; max-height: 600px;
+        }
+        .data-table {
+            width: 100%; border-collapse: collapse; font-size: 0.85rem;
+        }
+        .data-table th, .data-table td {
+            padding: 0.5rem 0.75rem; border: 1px solid var(--pico-muted-border-color);
+            text-align: left; white-space: nowrap;
+        }
+        .data-table th {
+            background: var(--tool-primary); color: white;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .data-table tr:nth-child(even) { background: var(--pico-code-background-color); }
+        .data-table tr:hover { background: rgba(33, 115, 70, 0.1); }
+        .row-num {
+            background: var(--pico-secondary-background) !important;
+            color: var(--pico-muted-color); text-align: center;
+            font-size: 0.75rem; min-width: 40px;
+            position: sticky; left: 0; z-index: 5;
+        }
+        .data-table th.row-num { z-index: 15; }
+        .toolbar {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 1rem;
+            background: var(--pico-secondary-background); border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .toolbar button {
+            padding: 0.4rem 0.8rem; font-size: 0.85rem;
+            background: var(--pico-background-color); border: 1px solid var(--pico-muted-border-color);
+            border-radius: 6px; cursor: pointer; transition: all 0.2s;
+        }
+        .toolbar button:hover {
+            background: var(--tool-primary); color: white; border-color: var(--tool-primary);
+        }
+        .toolbar input {
+            padding: 0.4rem 0.8rem; font-size: 0.85rem;
+            border: 1px solid var(--pico-muted-border-color); border-radius: 6px;
+            min-width: 200px;
+        }
+        .stats {
+            padding: 0.75rem 1rem; background: var(--pico-secondary-background);
+            border-top: 1px solid var(--pico-muted-border-color);
+            font-size: 0.85rem; color: var(--pico-muted-color);
+            display: flex; gap: 2rem; flex-wrap: wrap;
+        }
+        .empty-state {
+            padding: 3rem; text-align: center; color: var(--pico-muted-color);
+        }
+        .cell-number { color: #1d4ed8; text-align: right; }
+        .cell-date { color: #7c3aed; }
+        .cell-bool { color: #059669; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <a href="../../index.html" class="back-link">← 返回工具列表</a>
+                <h1>Excel 预览器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <main>
+            <div class="upload-section" id="uploadSection">
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.ods">
+                <div class="upload-icon">📊</div>
+                <p class="upload-text">
+                    拖拽文件到此处，或 <strong>点击选择文件</strong>
+                </p>
+                <p class="upload-text" style="font-size: 0.85rem;">
+                    支持 .xlsx, .xls, .csv, .ods 格式
+                </p>
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-meta">
+                    <span class="file-icon">📗</span>
+                    <div>
+                        <div class="file-name" id="fileName">-</div>
+                        <div class="file-size" id="fileSize">-</div>
+                    </div>
+                </div>
+                <button onclick="clearFile()" style="background: var(--error-color); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
+                    清除文件
+                </button>
+            </div>
+            
+            <div class="sheet-tabs" id="sheetTabs"></div>
+            
+            <div class="table-container" id="tableContainer" style="display: none;">
+                <div class="toolbar">
+                    <input type="text" id="searchInput" placeholder="搜索内容..." oninput="searchTable()">
+                    <button onclick="exportCSV()">导出 CSV</button>
+                    <button onclick="exportJSON()">导出 JSON</button>
+                    <button onclick="copyTable()">复制表格</button>
+                </div>
+                <div class="table-scroll" id="tableScroll">
+                    <table class="data-table" id="dataTable"></table>
+                </div>
+                <div class="stats" id="stats"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        var workbook = null;
+        var currentSheet = null;
+        var currentData = [];
+        
+        function toggleTheme() {
+            var html = document.documentElement;
+            var newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+        
+        var uploadSection = document.getElementById('uploadSection');
+        var fileInput = document.getElementById('fileInput');
+        
+        uploadSection.addEventListener('click', function() { fileInput.click(); });
+        uploadSection.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        uploadSection.addEventListener('dragleave', function() {
+            uploadSection.classList.remove('dragover');
+        });
+        uploadSection.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+        
+        function handleFile(file) {
+            var validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel', 'text/csv', 'application/vnd.oasis.opendocument.spreadsheet'];
+            var validExts = ['.xlsx', '.xls', '.csv', '.ods'];
+            var ext = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExts.includes(ext)) {
+                alert('不支持的文件格式');
+                return;
+            }
+            
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fileInfo').classList.add('show');
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+                    renderSheetTabs();
+                    selectSheet(workbook.SheetNames[0]);
+                    document.getElementById('tableContainer').style.display = 'block';
+                } catch (err) {
+                    alert('文件解析失败: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function renderSheetTabs() {
+            var tabs = document.getElementById('sheetTabs');
+            tabs.innerHTML = '';
+            workbook.SheetNames.forEach(function(name, idx) {
+                var btn = document.createElement('button');
+                btn.className = 'sheet-tab' + (idx === 0 ? ' active' : '');
+                btn.textContent = name;
+                btn.onclick = function() { selectSheet(name); };
+                tabs.appendChild(btn);
+            });
+        }
+        
+        function selectSheet(name) {
+            currentSheet = name;
+            document.querySelectorAll('.sheet-tab').forEach(function(tab) {
+                tab.classList.toggle('active', tab.textContent === name);
+            });
+            
+            var sheet = workbook.Sheets[name];
+            currentData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            renderTable(currentData);
+        }
+        
+        function renderTable(data) {
+            var table = document.getElementById('dataTable');
+            if (!data.length) {
+                table.innerHTML = '<tr><td class="empty-state">此工作表为空</td></tr>';
+                document.getElementById('stats').innerHTML = '';
+                return;
+            }
+            
+            var html = '<thead><tr><th class="row-num">#</th>';
+            var colCount = Math.max.apply(null, data.map(function(r) { return r.length; }));
+            for (var c = 0; c < colCount; c++) {
+                html += '<th>' + getColumnName(c) + '</th>';
+            }
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(function(row, idx) {
+                html += '<tr><td class="row-num">' + (idx + 1) + '</td>';
+                for (var c = 0; c < colCount; c++) {
+                    var cell = row[c];
+                    var cellClass = getCellClass(cell);
+                    var display = formatCell(cell);
+                    html += '<td class="' + cellClass + '">' + escapeHtml(display) + '</td>';
+                }
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+            
+            var stats = document.getElementById('stats');
+            var cellCount = data.reduce(function(sum, row) {
+                return sum + row.filter(function(c) { return c !== ''; }).length;
+            }, 0);
+            stats.innerHTML = '<span>行数: ' + data.length + '</span>' +
+                '<span>列数: ' + colCount + '</span>' +
+                '<span>非空单元格: ' + cellCount + '</span>';
+        }
+        
+        function getColumnName(idx) {
+            var name = '';
+            while (idx >= 0) {
+                name = String.fromCharCode(65 + (idx % 26)) + name;
+                idx = Math.floor(idx / 26) - 1;
+            }
+            return name;
+        }
+        
+        function getCellClass(val) {
+            if (typeof val === 'number') return 'cell-number';
+            if (val instanceof Date) return 'cell-date';
+            if (typeof val === 'boolean') return 'cell-bool';
+            return '';
+        }
+        
+        function formatCell(val) {
+            if (val === null || val === undefined || val === '') return '';
+            if (val instanceof Date) {
+                return val.toLocaleDateString('zh-CN') + ' ' + val.toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+            }
+            if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+            return String(val);
+        }
+        
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        
+        function searchTable() {
+            var query = document.getElementById('searchInput').value.toLowerCase();
+            var rows = document.querySelectorAll('#dataTable tbody tr');
+            rows.forEach(function(row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+        
+        function exportCSV() {
+            if (!workbook || !currentSheet) return;
+            var sheet = workbook.Sheets[currentSheet];
+            var csv = XLSX.utils.sheet_to_csv(sheet);
+            downloadFile(csv, currentSheet + '.csv', 'text/csv');
+        }
+        
+        function exportJSON() {
+            if (!currentData.length) return;
+            var headers = currentData[0];
+            var jsonData = currentData.slice(1).map(function(row) {
+                var obj = {};
+                headers.forEach(function(h, i) { obj[h || 'col' + i] = row[i]; });
+                return obj;
+            });
+            downloadFile(JSON.stringify(jsonData, null, 2), currentSheet + '.json', 'application/json');
+        }
+        
+        function downloadFile(content, filename, type) {
+            var blob = new Blob([content], { type: type });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function copyTable() {
+            if (!currentData.length) return;
+            var text = currentData.map(function(row) { return row.join('\t'); }).join('\n');
+            navigator.clipboard.writeText(text).then(function() {
+                alert('表格已复制到剪贴板');
+            });
+        }
+        
+        function clearFile() {
+            workbook = null;
+            currentSheet = null;
+            currentData = [];
+            fileInput.value = '';
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('sheetTabs').innerHTML = '';
+            document.getElementById('tableContainer').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

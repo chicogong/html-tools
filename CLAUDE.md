@@ -227,6 +227,82 @@ const TOOLS = [
   - SEO meta 标签中的工具数量
 - CI 会检查两者是否同步，不同步则构建失败
 
+## Sitemap 维护
+
+sitemap.xml 用于 SEO，帮助搜索引擎发现和索引所有工具页面。
+
+### 何时需要重新生成 Sitemap
+
+- 添加新工具后
+- 删除工具后
+- 修改工具 URL 后
+- 定期检查（确保 sitemap 与 tools.json 同步）
+
+### Sitemap 生成步骤
+
+**1. 检查当前状态**
+```bash
+# 统计 sitemap 中的 URL 数量
+grep -c "<loc>" sitemap.xml
+
+# 统计 tools.json 中的工具数量
+node -e "const data = require('./tools.json'); console.log('Total tools:', data.tools.length);"
+```
+
+**2. 重新生成 sitemap.xml**
+
+sitemap.xml 需要根据 tools.json 手动生成，包含：
+- 1 个主页 URL (priority: 1.0, changefreq: weekly)
+- N 个工具页 URL (priority: 0.8, changefreq: monthly)
+- 正确的域名: `tools.realtime-ai.chat`
+- 当前日期作为 lastmod
+
+**3. 验证 XML 格式**
+```bash
+# 验证 XML 格式是否正确
+xmllint --noout sitemap.xml && echo "✅ XML 格式验证通过"
+```
+
+**4. 提交更改**
+```bash
+# 提交 sitemap 更新
+git add sitemap.xml
+git commit -m "chore: regenerate sitemap with all N tools from tools.json"
+git push
+```
+
+### Sitemap 格式规范
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 主页 -->
+  <url>
+    <loc>https://tools.realtime-ai.chat/</loc>
+    <lastmod>2025-12-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 工具页 -->
+  <url>
+    <loc>https://tools.realtime-ai.chat/tools/dev/json-formatter.html</loc>
+    <lastmod>2025-12-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- ... 更多工具 ... -->
+</urlset>
+```
+
+### 重要提醒
+
+- **数据源**: sitemap.xml 应该基于 tools.json 生成，确保两者一致
+- **URL 数量**: 总 URL 数 = 1 (主页) + tools.json 中的工具数量
+- **域名**: 必须使用 `tools.realtime-ai.chat`，不能是 GitHub Pages 域名
+- **日期格式**: lastmod 使用 `YYYY-MM-DD` 格式 (ISO 8601)
+- **验证**: 提交前必须用 xmllint 验证 XML 格式
+
 ## 样式约定
 
 - **字体**:

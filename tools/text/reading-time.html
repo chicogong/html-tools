@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅读时间估算 - Reading Time Calculator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #3b82f6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; text-align: center; }
+        .stat-card .icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .stat-card .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat-card .label { font-size: 0.75rem; color: var(--pico-muted-color); }
+        .settings { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+        .settings-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        .settings-row label { font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; }
+        .settings-row input[type="number"] { width: 80px; margin: 0; }
+        .settings-row select { width: auto; margin: 0; }
+        .input-panel { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+        .input-panel textarea { min-height: 300px; font-size: 1rem; line-height: 1.6; }
+        .detail-stats { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; }
+        .detail-stats h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .detail-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+        .detail-item:last-child { border-bottom: none; }
+        .detail-item .name { color: var(--pico-muted-color); }
+        .detail-item .value { font-weight: 500; }
+        .time-display { font-size: 2.5rem; font-weight: 700; color: var(--primary); text-align: center; padding: 1.5rem; background: var(--pico-card-background-color); border-radius: 10px; margin-bottom: 1rem; }
+        .time-display .unit { font-size: 1rem; font-weight: normal; color: var(--pico-muted-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📖 阅读时间估算</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+        <div class="time-display"><span id="readingTime">0</span> <span class="unit">分钟阅读</span></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="icon">📝</div><div class="value" id="charCount">0</div><div class="label">总字符</div></div>
+            <div class="stat-card"><div class="icon">🔤</div><div class="value" id="wordCount">0</div><div class="label">单词/词组</div></div>
+            <div class="stat-card"><div class="icon">📄</div><div class="value" id="paraCount">0</div><div class="label">段落</div></div>
+            <div class="stat-card"><div class="icon">📏</div><div class="value" id="lineCount">0</div><div class="label">行数</div></div>
+        </div>
+        <div class="settings">
+            <div class="settings-row">
+                <label>阅读速度：<input type="number" id="readSpeed" value="300" min="50" max="1000"> <select id="speedUnit"><option value="cpm">字/分钟</option><option value="wpm">词/分钟</option></select></label>
+                <label>语言类型：<select id="langType"><option value="zh">中文</option><option value="en">英文</option><option value="mixed">中英混合</option></select></label>
+            </div>
+        </div>
+        <div class="input-panel">
+            <textarea id="inputText" placeholder="粘贴或输入文本内容..."></textarea>
+        </div>
+        <div class="detail-stats">
+            <h3>详细统计</h3>
+            <div class="detail-grid">
+                <div><div class="detail-item"><span class="name">中文字符</span><span class="value" id="zhCount">0</span></div><div class="detail-item"><span class="name">英文字符</span><span class="value" id="enCount">0</span></div><div class="detail-item"><span class="name">数字</span><span class="value" id="numCount">0</span></div></div>
+                <div><div class="detail-item"><span class="name">标点符号</span><span class="value" id="punctCount">0</span></div><div class="detail-item"><span class="name">空格</span><span class="value" id="spaceCount">0</span></div><div class="detail-item"><span class="name">英文单词</span><span class="value" id="enWordCount">0</span></div></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const $ = id => document.getElementById(id);
+        function analyze() {
+            const text = $('inputText').value;
+            const speed = parseInt($('readSpeed').value) || 300;
+            const speedUnit = $('speedUnit').value;
+            const langType = $('langType').value;
+            // Character counts
+            const zhChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+            const enChars = (text.match(/[a-zA-Z]/g) || []).length;
+            const numChars = (text.match(/[0-9]/g) || []).length;
+            const punctChars = (text.match(/[，。！？、；：""''（）【】《》\.,!?;:'"()\[\]{}]/g) || []).length;
+            const spaces = (text.match(/\s/g) || []).length;
+            const enWords = (text.match(/[a-zA-Z]+/g) || []).length;
+            // Basic stats
+            const totalChars = text.length;
+            const lines = text.split('\n').length;
+            const paras = text.split(/\n\s*\n/).filter(p => p.trim()).length || (text.trim() ? 1 : 0);
+            // Calculate reading time
+            let readingMinutes = 0;
+            if (langType === 'zh') {
+                readingMinutes = zhChars / speed;
+            } else if (langType === 'en') {
+                readingMinutes = speedUnit === 'wpm' ? enWords / speed : enChars / speed;
+            } else {
+                // Mixed: Chinese chars + English words
+                const zhTime = zhChars / 300;
+                const enTime = enWords / 200;
+                readingMinutes = zhTime + enTime;
+            }
+            // Update UI
+            $('readingTime').textContent = Math.max(1, Math.ceil(readingMinutes));
+            $('charCount').textContent = totalChars;
+            $('wordCount').textContent = zhChars + enWords;
+            $('paraCount').textContent = paras;
+            $('lineCount').textContent = lines;
+            $('zhCount').textContent = zhChars;
+            $('enCount').textContent = enChars;
+            $('numCount').textContent = numChars;
+            $('punctCount').textContent = punctChars;
+            $('spaceCount').textContent = spaces;
+            $('enWordCount').textContent = enWords;
+        }
+        $('inputText').oninput = analyze;
+        $('readSpeed').oninput = analyze;
+        $('speedUnit').onchange = analyze;
+        $('langType').onchange = analyze;
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        $('themeToggle').onclick = toggleTheme;
+        loadTheme();
+    </script>
+</body>
+</html>

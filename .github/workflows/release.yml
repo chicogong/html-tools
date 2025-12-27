@@ -5,20 +5,102 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: actions/checkout@v4
         with:
-          generate_release_notes: true
+          fetch-depth: 0
+      
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Create release archive
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          # Create dist folder
+          mkdir -p dist
+          
+          # Copy all necessary files
+          cp -r tools dist/
+          cp -r screenshots dist/
+          cp index.html dist/
+          cp tools.json dist/
+          cp README.md dist/
+          cp LICENSE dist/
+          
+          # Create zip archive
+          cd dist
+          zip -r "../webutils-${VERSION}.zip" .
+          cd ..
+          
+          # Create tar.gz archive
+          tar -czvf "webutils-${VERSION}.tar.gz" -C dist .
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" "$LAST_TAG"..HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" -20)
+          fi
+          {
+            echo "CHANGELOG<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+      
+      - name: Count tools
+        id: tools
+        run: |
+          TOOL_COUNT=$(cat tools.json | jq '.tools | length')
+          echo "COUNT=$TOOL_COUNT" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          TOOL_COUNT: ${{ steps.tools.outputs.COUNT }}
+          CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}
+        with:
+          name: WebUtils ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## WebUtils ${{ steps.version.outputs.VERSION }}
+            
+            **${{ steps.tools.outputs.COUNT }}+ 纯前端在线工具集**
+            
+            ### 特性
+            - 单文件架构，无需构建
+            - 可离线使用
+            - 隐私优先，数据不上传
+            
+            ### 下载
+            - `webutils-${{ steps.version.outputs.VERSION }}.zip` - ZIP 压缩包
+            - `webutils-${{ steps.version.outputs.VERSION }}.tar.gz` - TAR.GZ 压缩包
+            
+            ### 使用方法
+            1. 下载并解压
+            2. 用浏览器打开 `index.html`
+            3. 享受离线工具！
+            
+            ### 更新日志
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ---
+            
+            [在线文档](https://github.com/chicogong/html-tools#readme) | [在线体验](https://tools.realtime-ai.chat)
+          files: |
+            webutils-${{ steps.version.outputs.VERSION }}.zip
+            webutils-${{ steps.version.outputs.VERSION }}.tar.gz
           draft: false
           prerelease: false

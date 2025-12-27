@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>剪贴板历史 - Clipboard History</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        header h1 { margin: 0; font-size: 1.75rem; }
+        .header-actions { display: flex; gap: 0.5rem; }
+        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; }
+        .panel { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--muted-border-color); margin-bottom: 1rem; }
+        .input-area { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .input-area textarea { flex: 1; min-height: 80px; resize: vertical; }
+        .history-list { max-height: 500px; overflow-y: auto; }
+        .history-item { background: var(--code-background-color); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; position: relative; }
+        .history-item:hover { outline: 2px solid var(--primary-color); }
+        .history-item .content { font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow: hidden; }
+        .history-item .content.expanded { max-height: none; }
+        .history-item .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted-color); }
+        .history-item .actions { display: flex; gap: 0.25rem; }
+        .history-item .actions button { background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px; }
+        .history-item .actions button:hover { background: var(--primary-color); color: white; }
+        .search-box { margin-bottom: 1rem; }
+        .stats { display: flex; gap: 1rem; font-size: 0.85rem; color: var(--muted-color); margin-bottom: 1rem; }
+        .empty-state { text-align: center; padding: 2rem; color: var(--muted-color); }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: var(--primary-color); color: white; border-radius: 8px; z-index: 1000; }
+        .tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; margin-right: 0.25rem; }
+        .tag-url { background: #dbeafe; color: #1d4ed8; }
+        .tag-email { background: #fce7f3; color: #be185d; }
+        .tag-code { background: #d1fae5; color: #047857; }
+        .tag-json { background: #fef3c7; color: #b45309; }
+        [data-theme="dark"] .tag-url { background: #1e3a5f; color: #93c5fd; }
+        [data-theme="dark"] .tag-email { background: #5b1c3f; color: #f9a8d4; }
+        [data-theme="dark"] .tag-code { background: #064e3b; color: #6ee7b7; }
+        [data-theme="dark"] .tag-json { background: #78350f; color: #fcd34d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 剪贴板历史</h1>
+            <div class="header-actions">
+                <button class="outline" onclick="exportHistory()">📥 导出</button>
+                <button class="outline" onclick="clearHistory()">🗑️ 清空</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+            </div>
+        </header>
+        <div class="panel">
+            <div class="input-area">
+                <textarea id="inputText" placeholder="粘贴内容到这里，或点击监听按钮自动捕获..."></textarea>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button onclick="addFromInput()">➕ 添加</button>
+                    <button onclick="pasteFromClipboard()">📋 粘贴</button>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="search" id="searchInput" placeholder="🔍 搜索历史记录..." oninput="renderHistory()">
+            </div>
+            <div class="stats">
+                <span>📊 共 <strong id="totalCount">0</strong> 条记录</span>
+                <span>💾 占用 <strong id="totalSize">0 KB</strong></span>
+            </div>
+        </div>
+        <div class="history-list" id="historyList">
+            <div class="empty-state">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">📭</div>
+                <p>暂无剪贴板历史<br><small>粘贴内容或点击添加按钮开始</small></p>
+            </div>
+        </div>
+    </div>
+    <script>
+        let history = [];
+        const MAX_ITEMS = 100;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadHistory();
+            renderHistory();
+        });
+        
+        function initTheme() { const s = localStorage.getItem('theme'); if (s) document.documentElement.setAttribute('data-theme', s); }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); }
+        
+        function loadHistory() { const s = localStorage.getItem('clipboardHistory'); if (s) try { history = JSON.parse(s); } catch(e) { history = []; } }
+        function saveHistory() { localStorage.setItem('clipboardHistory', JSON.stringify(history.slice(0, MAX_ITEMS))); }
+        
+        function addToHistory(text) {
+            if (!text || !text.trim()) return;
+            text = text.trim();
+            const existing = history.findIndex(h => h.content === text);
+            if (existing !== -1) history.splice(existing, 1);
+            history.unshift({ content: text, timestamp: Date.now(), tags: detectTags(text) });
+            if (history.length > MAX_ITEMS) history = history.slice(0, MAX_ITEMS);
+            saveHistory();
+            renderHistory();
+        }
+        
+        function detectTags(text) {
+            const tags = [];
+            if (/https?:\/\//.test(text)) tags.push('url');
+            if (/[\w.-]+@[\w.-]+\.\w+/.test(text)) tags.push('email');
+            if (/^[\s]*[\{\[]/.test(text)) try { JSON.parse(text); tags.push('json'); } catch(e) {}
+            if (/function|const |let |var |=>|import |export /.test(text)) tags.push('code');
+            return tags;
+        }
+        
+        function renderHistory() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = history.filter(h => h.content.toLowerCase().includes(search));
+            const list = document.getElementById('historyList');
+            
+            document.getElementById('totalCount').textContent = history.length;
+            document.getElementById('totalSize').textContent = (new Blob([JSON.stringify(history)]).size / 1024).toFixed(1) + ' KB';
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div style="font-size: 3rem; margin-bottom: 0.5rem;">📭</div><p>暂无剪贴板历史</p></div>';
+                return;
+            }
+            
+            list.innerHTML = filtered.map((item, i) => {
+                const tagsHtml = item.tags ? item.tags.map(t => '<span class="tag tag-' + t + '">' + t + '</span>').join('') : '';
+                const time = new Date(item.timestamp).toLocaleString();
+                const preview = item.content.length > 200 ? item.content.slice(0, 200) + '...' : item.content;
+                return '<div class="history-item" data-index="' + i + '">' +
+                    '<div class="content">' + escapeHtml(preview) + '</div>' +
+                    '<div class="meta">' +
+                        '<span>' + tagsHtml + time + '</span>' +
+                        '<div class="actions">' +
+                            '<button onclick="copyItem(' + i + ')">📋 复制</button>' +
+                            '<button onclick="deleteItem(' + i + ')">🗑️</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+        
+        function addFromInput() { const t = document.getElementById('inputText').value; addToHistory(t); document.getElementById('inputText').value = ''; showToast('已添加'); }
+        async function pasteFromClipboard() { try { const t = await navigator.clipboard.readText(); document.getElementById('inputText').value = t; addToHistory(t); showToast('已粘贴并添加'); } catch(e) { showToast('无法读取剪贴板'); } }
+        async function copyItem(i) { await navigator.clipboard.writeText(history[i].content); showToast('已复制'); }
+        function deleteItem(i) { history.splice(i, 1); saveHistory(); renderHistory(); }
+        function clearHistory() { if (confirm('确定清空所有历史记录？')) { history = []; saveHistory(); renderHistory(); } }
+        function exportHistory() { const b = new Blob([JSON.stringify(history, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'clipboard-history.json'; a.click(); }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function showToast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); }
+    </script>
+</body>
+</html>

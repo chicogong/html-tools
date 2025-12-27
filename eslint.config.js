@@ -61,16 +61,18 @@ export default [
     rules: {
       // 代码质量规则 - 调整为警告而非错误
       'no-unused-vars': ['warn', {
-        argsIgnorePattern: '^_|^e$|^event$|^error$', // 忽略常见的事件参数
-        varsIgnorePattern: '^_'
+        argsIgnorePattern: '^_|^e$|^event$|^error$|^err$', // 忽略常见的事件参数和错误参数
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_|^e$|^err$|^error$' // 忽略 catch 块中的错误参数
       }],
       'no-dupe-keys': 'warn', // 重复键改为警告（数据文件可能有重复）
-      'no-empty': 'warn', // 空块改为警告（有时故意留空）
+      'no-empty': ['warn', { allowEmptyCatch: true }], // 空块改为警告，允许空 catch
       'no-case-declarations': 'off', // 关闭 case 声明检查（常见模式）
       'no-redeclare': 'warn', // 重复声明改为警告
       'no-useless-escape': 'warn', // 无用转义改为警告
       'no-control-regex': 'warn', // 控制字符正则改为警告
       'no-misleading-character-class': 'warn', // 误导性字符类改为警告
+      'no-prototype-builtins': 'warn', // Object.prototype 方法改为警告
 
       // 代码风格规则
       'no-console': 'off', // 允许 console（调试工具需要）

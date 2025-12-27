@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE 事件流调试器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --tool-primary: #ec4899; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        h1 { margin: 0; font-size: 1.75rem; color: var(--tool-primary); }
+        .theme-toggle { background: none; border: 2px solid var(--tool-primary); color: var(--tool-primary); cursor: pointer; padding: 0.5rem; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .back-link { color: var(--tool-primary); text-decoration: none; font-size: 0.9rem; }
+        .connect-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .url-input { flex: 1; min-width: 250px; font-family: monospace; }
+        .connect-btn { padding: 0.5rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .connect-btn.connect { background: var(--tool-primary); color: white; }
+        .connect-btn.disconnect { background: #ef4444; color: white; }
+        .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.5rem 1rem; background: var(--pico-secondary-background); border-radius: 6px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .status-dot.disconnected { background: #6b7280; }
+        .status-dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
+        .status-dot.connected { background: #22c55e; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .panel { background: var(--pico-card-background-color); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 1rem; }
+        .panel-header { padding: 0.75rem 1rem; background: var(--pico-secondary-background); border-bottom: 1px solid var(--pico-muted-border-color); font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .events-container { height: 450px; overflow-y: auto; padding: 1rem; }
+        .event { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; background: var(--pico-code-background-color); border-left: 3px solid var(--tool-primary); }
+        .event-message { border-left-color: #22c55e; }
+        .event-open { border-left-color: #3b82f6; }
+        .event-error { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .event-custom { border-left-color: #f59e0b; }
+        .event-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--pico-muted-color); margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+        .event-type { font-weight: 600; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; }
+        .event-type.message { background: #dcfce7; color: #166534; }
+        .event-type.open { background: #dbeafe; color: #1e40af; }
+        .event-type.error { background: #fee2e2; color: #991b1b; }
+        .event-type.custom { background: #fef3c7; color: #92400e; }
+        .event-data { white-space: pre-wrap; word-break: break-all; }
+        .event-id { color: var(--pico-muted-color); font-size: 0.75rem; }
+        .stats { font-size: 0.8rem; color: var(--pico-muted-color); display: flex; gap: 1rem; flex-wrap: wrap; }
+        .clear-btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; background: none; border: 1px solid var(--pico-muted-border-color); border-radius: 4px; cursor: pointer; }
+        .clear-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
+        .filter-row { display: flex; gap: 0.5rem; align-items: center; }
+        .filter-input { font-size: 0.8rem; padding: 0.25rem 0.5rem; border: 1px solid var(--pico-muted-border-color); border-radius: 4px; width: 120px; }
+        .empty-state { text-align: center; color: var(--pico-muted-color); padding: 3rem; }
+        .info-panel { padding: 1rem; font-size: 0.85rem; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .info-item { background: var(--pico-code-background-color); padding: 0.75rem; border-radius: 6px; }
+        .info-label { font-size: 0.75rem; color: var(--pico-muted-color); margin-bottom: 0.25rem; }
+        .info-value { font-family: monospace; word-break: break-all; }
+        .presets { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .preset-btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; background: var(--pico-secondary-background); border: 1px solid var(--pico-muted-border-color); border-radius: 4px; cursor: pointer; }
+        .preset-btn:hover { border-color: var(--tool-primary); color: var(--tool-primary); }
+        .auto-scroll-toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+        .auto-scroll-toggle input { width: auto; margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <a href="../../index.html" class="back-link">← 返回工具列表</a>
+                <h1>SSE 事件流调试器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <div class="connect-bar">
+            <input type="text" id="sseUrl" class="url-input" placeholder="https://example.com/events" value="">
+            <button id="connectBtn" class="connect-btn connect" onclick="toggleConnection()">连接</button>
+            <div class="status-indicator">
+                <span id="statusDot" class="status-dot disconnected"></span>
+                <span id="statusText">未连接</span>
+            </div>
+        </div>
+        
+        <div class="presets">
+            <span style="font-size: 0.85rem; color: var(--pico-muted-color);">测试端点:</span>
+            <button class="preset-btn" onclick="setUrl('https://sse.dev/test')">sse.dev 测试</button>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <span>连接信息</span>
+            </div>
+            <div class="info-panel">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">连接状态</div>
+                        <div class="info-value" id="readyState">CLOSED</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">连接时长</div>
+                        <div class="info-value" id="duration">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">最后事件 ID</div>
+                        <div class="info-value" id="lastEventId">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">事件计数</div>
+                        <div class="info-value" id="eventCount">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <span>事件流</span>
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <div class="filter-row">
+                        <input type="text" id="eventFilter" class="filter-input" placeholder="过滤事件类型...">
+                    </div>
+                    <label class="auto-scroll-toggle">
+                        <input type="checkbox" id="autoScroll" checked>
+                        自动滚动
+                    </label>
+                    <button class="clear-btn" onclick="clearEvents()">清空</button>
+                </div>
+            </div>
+            <div id="eventsContainer" class="events-container">
+                <div class="empty-state">连接 SSE 端点开始接收事件流</div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">SSE 说明</div>
+            <div class="info-panel" style="font-size: 0.85rem; color: var(--pico-muted-color);">
+                <p style="margin: 0 0 0.5rem;"><strong>Server-Sent Events (SSE)</strong> 是一种服务器向客户端推送数据的技术，基于 HTTP 协议。</p>
+                <p style="margin: 0;">特点：单向通信（服务器 → 客户端）、自动重连、支持自定义事件类型、轻量级文本协议。</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        var eventSource = null;
+        var events = [];
+        var eventCount = 0;
+        var connectTime = null;
+        var durationTimer = null;
+        
+        function toggleTheme() {
+            var html = document.documentElement;
+            var newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+        
+        function setUrl(url) { document.getElementById('sseUrl').value = url; }
+        
+        function toggleConnection() {
+            if (eventSource) { disconnect(); } else { connect(); }
+        }
+        
+        function connect() {
+            var url = document.getElementById('sseUrl').value.trim();
+            if (!url) { alert('请输入 SSE URL'); return; }
+            
+            updateStatus('connecting');
+            addEvent('open', '正在连接...', null);
+            
+            try {
+                eventSource = new EventSource(url);
+                connectTime = Date.now();
+                startDurationTimer();
+                
+                eventSource.onopen = function() {
+                    updateStatus('connected');
+                    updateReadyState();
+                    addEvent('open', '连接已建立', null);
+                };
+                
+                eventSource.onmessage = function(e) {
+                    eventCount++;
+                    document.getElementById('eventCount').textContent = eventCount;
+                    if (e.lastEventId) document.getElementById('lastEventId').textContent = e.lastEventId;
+                    addEvent('message', e.data, e.lastEventId);
+                };
+                
+                eventSource.onerror = function() {
+                    updateReadyState();
+                    if (eventSource.readyState === EventSource.CLOSED) {
+                        addEvent('error', '连接已关闭', null);
+                        disconnect();
+                    } else {
+                        addEvent('error', '连接错误，正在重连...', null);
+                    }
+                };
+                
+            } catch (err) {
+                addEvent('error', '创建连接失败: ' + err.message, null);
+                updateStatus('disconnected');
+            }
+        }
+        
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            updateStatus('disconnected');
+            updateReadyState();
+            stopDurationTimer();
+            addEvent('open', '连接已断开', null);
+        }
+        
+        function updateStatus(status) {
+            var dot = document.getElementById('statusDot');
+            var text = document.getElementById('statusText');
+            var btn = document.getElementById('connectBtn');
+            
+            dot.className = 'status-dot ' + status;
+            
+            if (status === 'connected') {
+                text.textContent = '已连接';
+                btn.textContent = '断开';
+                btn.className = 'connect-btn disconnect';
+            } else if (status === 'connecting') {
+                text.textContent = '连接中...';
+            } else {
+                text.textContent = '未连接';
+                btn.textContent = '连接';
+                btn.className = 'connect-btn connect';
+            }
+        }
+        
+        function updateReadyState() {
+            var states = ['CONNECTING', 'OPEN', 'CLOSED'];
+            var state = eventSource ? states[eventSource.readyState] : 'CLOSED';
+            document.getElementById('readyState').textContent = state;
+        }
+        
+        function startDurationTimer() {
+            durationTimer = setInterval(function() {
+                if (connectTime) {
+                    var seconds = Math.floor((Date.now() - connectTime) / 1000);
+                    var mins = Math.floor(seconds / 60);
+                    var secs = seconds % 60;
+                    document.getElementById('duration').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+                }
+            }, 1000);
+        }
+        
+        function stopDurationTimer() {
+            if (durationTimer) { clearInterval(durationTimer); durationTimer = null; }
+            document.getElementById('duration').textContent = '-';
+            connectTime = null;
+        }
+        
+        function addEvent(type, data, id) {
+            events.push({ type: type, data: data, id: id, time: new Date() });
+            renderEvents();
+            if (document.getElementById('autoScroll').checked) scrollToBottom();
+        }
+        
+        function renderEvents() {
+            var container = document.getElementById('eventsContainer');
+            var filter = document.getElementById('eventFilter').value.toLowerCase();
+            var filtered = events.filter(function(e) {
+                return !filter || e.type.toLowerCase().includes(filter);
+            });
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state">暂无事件</div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(function(e) {
+                var formatted = e.data;
+                try { formatted = JSON.stringify(JSON.parse(e.data), null, 2); } catch(err) {}
+                
+                return '<div class="event event-' + e.type + '">' +
+                    '<div class="event-header">' +
+                    '<span class="event-type ' + e.type + '">' + e.type.toUpperCase() + '</span>' +
+                    '<span>' + formatTime(e.time) + (e.id ? ' <span class="event-id">ID: ' + e.id + '</span>' : '') + '</span>' +
+                    '</div>' +
+                    '<div class="event-data">' + escapeHtml(formatted) + '</div></div>';
+            }).join('');
+        }
+        
+        function scrollToBottom() {
+            var container = document.getElementById('eventsContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function clearEvents() {
+            events = [];
+            eventCount = 0;
+            document.getElementById('eventCount').textContent = '0';
+            document.getElementById('lastEventId').textContent = '-';
+            renderEvents();
+        }
+        
+        function formatTime(date) {
+            return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+        }
+        
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        
+        document.getElementById('eventFilter').addEventListener('input', renderEvents);
+        
+        window.addEventListener('beforeunload', function() { if (eventSource) eventSource.close(); });
+    </script>
+</body>
+</html>

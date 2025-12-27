@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Schema 验证器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --editor-bg: #0f172a;
+        }
+
+        [data-theme="light"] {
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --editor-bg: #f8fafc;
+        }
+
+        body { padding: 2rem; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 { margin: 0; font-size: 1.75rem; }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            width: 42px;
+            height: 42px;
+        }
+
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .editor-grid { grid-template-columns: 1fr; }
+        }
+
+        .editor-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--border-color);
+        }
+
+        .editor-title { font-weight: 600; }
+
+        .editor-actions { display: flex; gap: 0.5rem; }
+
+        .editor-actions button {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .editor-actions button:hover { background: rgba(255,255,255,0.2); }
+
+        .editor-body textarea {
+            width: 100%;
+            height: 350px;
+            padding: 1rem;
+            border: none;
+            background: var(--editor-bg);
+            color: inherit;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            resize: none;
+        }
+
+        .editor-body textarea:focus { outline: none; }
+
+        .editor-footer {
+            padding: 0.5rem 1rem;
+            background: var(--border-color);
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--border-color); color: inherit; }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-icon { font-size: 2rem; }
+
+        .result-title { font-size: 1.25rem; font-weight: 600; }
+
+        .result-success { color: var(--success); }
+        .result-error { color: var(--danger); }
+
+        .error-list { margin-top: 1rem; }
+
+        .error-item {
+            padding: 0.75rem 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .error-path {
+            font-family: monospace;
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .error-message { margin-top: 0.25rem; color: var(--muted-color); }
+
+        .sample-btns {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .sample-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--border-color);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .sample-btn:hover { background: var(--primary); color: white; }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .info-box h4 { margin: 0 0 0.5rem 0; color: #3b82f6; }
+
+        .valid-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .valid-indicator.valid { background: var(--success); }
+        .valid-indicator.invalid { background: var(--danger); }
+        .valid-indicator.unknown { background: var(--border-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 JSON Schema 验证器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+
+        <div class="sample-btns">
+            <span style="font-size: 0.875rem; margin-right: 0.5rem;">示例:</span>
+            <button class="sample-btn" onclick="loadSample('user')">用户对象</button>
+            <button class="sample-btn" onclick="loadSample('product')">产品信息</button>
+            <button class="sample-btn" onclick="loadSample('config')">配置文件</button>
+            <button class="sample-btn" onclick="loadSample('api')">API 响应</button>
+        </div>
+
+        <div class="editor-grid">
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📄 JSON Schema</div>
+                    <div class="editor-actions">
+                        <button onclick="formatEditor('schema')">格式化</button>
+                        <button onclick="copyText('schemaInput')">复制</button>
+                        <button onclick="clearEditor('schema')">清除</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <textarea id="schemaInput" placeholder="输入 JSON Schema..." oninput="updateStatus('schema')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span><span class="valid-indicator unknown" id="schemaIndicator"></span><span id="schemaStatus">等待输入</span></span>
+                    <span id="schemaStats">0 字符</span>
+                </div>
+            </div>
+
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📝 JSON 数据</div>
+                    <div class="editor-actions">
+                        <button onclick="formatEditor('data')">格式化</button>
+                        <button onclick="copyText('dataInput')">复制</button>
+                        <button onclick="clearEditor('data')">清除</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <textarea id="dataInput" placeholder="输入要验证的 JSON 数据..." oninput="updateStatus('data')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span><span class="valid-indicator unknown" id="dataIndicator"></span><span id="dataStatus">等待输入</span></span>
+                    <span id="dataStats">0 字符</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="validate()">✅ 验证</button>
+            <button class="btn btn-secondary" onclick="swapEditors()">🔄 交换</button>
+            <button class="btn btn-secondary" onclick="generateSchema()">🪄 生成 Schema</button>
+        </div>
+
+        <div class="result-card" id="resultCard" style="display: none;">
+            <div class="result-header">
+                <span class="result-icon" id="resultIcon">✅</span>
+                <span class="result-title" id="resultTitle">验证通过</span>
+            </div>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="info-box">
+            <h4>💡 JSON Schema 说明</h4>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+                <li>支持 JSON Schema Draft-07 规范</li>
+                <li>支持 <code>type</code>, <code>properties</code>, <code>required</code>, <code>enum</code> 等关键字</li>
+                <li>支持 <code>pattern</code> 正则验证、<code>minimum/maximum</code> 数值范围</li>
+                <li>支持 <code>$ref</code> 引用和 <code>definitions</code> 定义</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ajv@8.12.0/dist/ajv7.bundle.min.js"></script>
+    <script>
+        const samples = {
+            user: {
+                schema: {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "User",
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "integer", "minimum": 1 },
+                        "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+                        "email": { "type": "string", "format": "email" },
+                        "age": { "type": "integer", "minimum": 0, "maximum": 150 },
+                        "role": { "type": "string", "enum": ["admin", "user", "guest"] }
+                    },
+                    "required": ["id", "name", "email"]
+                },
+                data: {
+                    "id": 1,
+                    "name": "张三",
+                    "email": "zhangsan@example.com",
+                    "age": 28,
+                    "role": "admin"
+                }
+            },
+            product: {
+                schema: {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "Product",
+                    "type": "object",
+                    "properties": {
+                        "sku": { "type": "string", "pattern": "^[A-Z]{2}-[0-9]{4}$" },
+                        "name": { "type": "string" },
+                        "price": { "type": "number", "minimum": 0 },
+                        "currency": { "type": "string", "enum": ["CNY", "USD", "EUR"] },
+                        "inStock": { "type": "boolean" },
+                        "tags": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["sku", "name", "price"]
+                },
+                data: {
+                    "sku": "AB-1234",
+                    "name": "无线鼠标",
+                    "price": 129.99,
+                    "currency": "CNY",
+                    "inStock": true,
+                    "tags": ["电子产品", "配件", "热销"]
+                }
+            },
+            config: {
+                schema: {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "AppConfig",
+                    "type": "object",
+                    "properties": {
+                        "server": {
+                            "type": "object",
+                            "properties": {
+                                "host": { "type": "string" },
+                                "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+                            },
+                            "required": ["host", "port"]
+                        },
+                        "database": {
+                            "type": "object",
+                            "properties": {
+                                "url": { "type": "string" },
+                                "maxConnections": { "type": "integer", "default": 10 }
+                            }
+                        },
+                        "debug": { "type": "boolean", "default": false }
+                    },
+                    "required": ["server"]
+                },
+                data: {
+                    "server": { "host": "localhost", "port": 8080 },
+                    "database": { "url": "postgres://localhost:5432/mydb", "maxConnections": 20 },
+                    "debug": true
+                }
+            },
+            api: {
+                schema: {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "APIResponse",
+                    "type": "object",
+                    "properties": {
+                        "success": { "type": "boolean" },
+                        "code": { "type": "integer" },
+                        "message": { "type": "string" },
+                        "data": {
+                            "oneOf": [
+                                { "type": "object" },
+                                { "type": "array" },
+                                { "type": "null" }
+                            ]
+                        },
+                        "timestamp": { "type": "string", "format": "date-time" }
+                    },
+                    "required": ["success", "code"]
+                },
+                data: {
+                    "success": true,
+                    "code": 200,
+                    "message": "操作成功",
+                    "data": { "items": [], "total": 0 },
+                    "timestamp": "2024-01-15T10:30:00Z"
+                }
+            }
+        };
+
+        let ajv;
+
+        function initAjv() {
+            ajv = new ajv7({ allErrors: true, verbose: true });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function loadSample(type) {
+            const sample = samples[type];
+            document.getElementById('schemaInput').value = JSON.stringify(sample.schema, null, 2);
+            document.getElementById('dataInput').value = JSON.stringify(sample.data, null, 2);
+            updateStatus('schema');
+            updateStatus('data');
+        }
+
+        function updateStatus(type) {
+            const input = document.getElementById(type + 'Input');
+            const indicator = document.getElementById(type + 'Indicator');
+            const status = document.getElementById(type + 'Status');
+            const stats = document.getElementById(type + 'Stats');
+            const content = input.value;
+
+            stats.textContent = content.length + ' 字符';
+
+            if (!content.trim()) {
+                indicator.className = 'valid-indicator unknown';
+                status.textContent = '等待输入';
+                return;
+            }
+
+            try {
+                JSON.parse(content);
+                indicator.className = 'valid-indicator valid';
+                status.textContent = 'JSON 有效';
+            } catch (e) {
+                indicator.className = 'valid-indicator invalid';
+                status.textContent = 'JSON 无效';
+            }
+        }
+
+        function formatEditor(type) {
+            const input = document.getElementById(type === 'schema' ? 'schemaInput' : 'dataInput');
+            try {
+                const obj = JSON.parse(input.value);
+                input.value = JSON.stringify(obj, null, 2);
+                updateStatus(type);
+            } catch (e) {
+                alert('JSON 格式错误，无法格式化');
+            }
+        }
+
+        function clearEditor(type) {
+            document.getElementById(type === 'schema' ? 'schemaInput' : 'dataInput').value = '';
+            updateStatus(type);
+        }
+
+        function copyText(id) {
+            navigator.clipboard.writeText(document.getElementById(id).value);
+        }
+
+        function swapEditors() {
+            const schemaInput = document.getElementById('schemaInput');
+            const dataInput = document.getElementById('dataInput');
+            const temp = schemaInput.value;
+            schemaInput.value = dataInput.value;
+            dataInput.value = temp;
+            updateStatus('schema');
+            updateStatus('data');
+        }
+
+        function validate() {
+            const schemaStr = document.getElementById('schemaInput').value.trim();
+            const dataStr = document.getElementById('dataInput').value.trim();
+
+            if (!schemaStr || !dataStr) {
+                showResult(false, '请输入 Schema 和数据');
+                return;
+            }
+
+            let schema, data;
+            try {
+                schema = JSON.parse(schemaStr);
+            } catch (e) {
+                showResult(false, 'Schema JSON 格式错误: ' + e.message);
+                return;
+            }
+
+            try {
+                data = JSON.parse(dataStr);
+            } catch (e) {
+                showResult(false, '数据 JSON 格式错误: ' + e.message);
+                return;
+            }
+
+            try {
+                const validateFn = ajv.compile(schema);
+                const valid = validateFn(data);
+
+                if (valid) {
+                    showResult(true, '数据完全符合 Schema 定义');
+                } else {
+                    showErrors(validateFn.errors);
+                }
+            } catch (e) {
+                showResult(false, 'Schema 编译错误: ' + e.message);
+            }
+        }
+
+        function showResult(success, message) {
+            const card = document.getElementById('resultCard');
+            const icon = document.getElementById('resultIcon');
+            const title = document.getElementById('resultTitle');
+            const content = document.getElementById('resultContent');
+
+            card.style.display = 'block';
+            icon.textContent = success ? '✅' : '❌';
+            title.textContent = success ? '验证通过' : '验证失败';
+            title.className = 'result-title ' + (success ? 'result-success' : 'result-error');
+            content.textContent = message;
+        }
+
+        function showErrors(errors) {
+            const card = document.getElementById('resultCard');
+            const icon = document.getElementById('resultIcon');
+            const title = document.getElementById('resultTitle');
+            const content = document.getElementById('resultContent');
+
+            card.style.display = 'block';
+            icon.textContent = '❌';
+            title.textContent = '验证失败 (' + errors.length + ' 个错误)';
+            title.className = 'result-title result-error';
+
+            content.textContent = '';
+            const errorList = document.createElement('div');
+            errorList.className = 'error-list';
+
+            errors.forEach(err => {
+                const item = document.createElement('div');
+                item.className = 'error-item';
+
+                const path = document.createElement('div');
+                path.className = 'error-path';
+                path.textContent = err.instancePath || '(root)';
+
+                const msg = document.createElement('div');
+                msg.className = 'error-message';
+                msg.textContent = err.message;
+
+                item.appendChild(path);
+                item.appendChild(msg);
+                errorList.appendChild(item);
+            });
+
+            content.appendChild(errorList);
+        }
+
+        function generateSchema() {
+            const dataStr = document.getElementById('dataInput').value.trim();
+            if (!dataStr) {
+                alert('请先输入 JSON 数据');
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(dataStr);
+            } catch (e) {
+                alert('JSON 格式错误');
+                return;
+            }
+
+            const schema = inferSchema(data);
+            document.getElementById('schemaInput').value = JSON.stringify(schema, null, 2);
+            updateStatus('schema');
+        }
+
+        function inferSchema(value) {
+            if (value === null) {
+                return { type: 'null' };
+            }
+
+            const type = typeof value;
+
+            if (type === 'boolean') {
+                return { type: 'boolean' };
+            }
+
+            if (type === 'number') {
+                return Number.isInteger(value) ? { type: 'integer' } : { type: 'number' };
+            }
+
+            if (type === 'string') {
+                const schema = { type: 'string' };
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+                    schema.format = 'date-time';
+                } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    schema.format = 'email';
+                } else if (/^https?:\/\//.test(value)) {
+                    schema.format = 'uri';
+                }
+                return schema;
+            }
+
+            if (Array.isArray(value)) {
+                const schema = { type: 'array' };
+                if (value.length > 0) {
+                    schema.items = inferSchema(value[0]);
+                }
+                return schema;
+            }
+
+            if (type === 'object') {
+                const schema = {
+                    type: 'object',
+                    properties: {},
+                    required: []
+                };
+
+                for (const [key, val] of Object.entries(value)) {
+                    schema.properties[key] = inferSchema(val);
+                    schema.required.push(key);
+                }
+
+                return schema;
+            }
+
+            return {};
+        }
+
+        // 初始化
+        initTheme();
+        initAjv();
+        loadSample('user');
+    </script>
+</body>
+</html>

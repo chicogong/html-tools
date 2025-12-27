@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cron 表达式解析器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --tool-primary: #8b5cf6;
+            --tool-secondary: #a78bfa;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+        }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+        }
+        h1 { margin: 0; font-size: 1.75rem; color: var(--tool-primary); }
+        .theme-toggle {
+            background: none; border: 2px solid var(--tool-primary);
+            color: var(--tool-primary); cursor: pointer; padding: 0.5rem;
+            border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .back-link {
+            color: var(--tool-primary); text-decoration: none;
+            display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;
+        }
+        .input-section {
+            background: var(--pico-card-background-color); padding: 1.5rem;
+            border-radius: 12px; margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .cron-input-wrapper {
+            display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;
+        }
+        .cron-input-wrapper input {
+            flex: 1; min-width: 200px; font-family: monospace;
+            font-size: 1.25rem; letter-spacing: 2px;
+        }
+        .cron-input-wrapper button {
+            background: var(--tool-primary); border-color: var(--tool-primary);
+        }
+        .presets { margin-top: 1rem; }
+        .presets label { font-size: 0.85rem; margin-bottom: 0.5rem; display: block; }
+        .preset-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .preset-btn {
+            padding: 0.25rem 0.75rem; font-size: 0.8rem;
+            background: var(--pico-secondary-background);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 20px; cursor: pointer; transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background: var(--tool-primary); color: white;
+            border-color: var(--tool-primary);
+        }
+        .result-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .result-section { grid-template-columns: 1fr; } }
+        .result-card {
+            background: var(--pico-card-background-color); padding: 1.5rem;
+            border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .result-card h3 {
+            margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem;
+            color: var(--tool-primary); display: flex; align-items: center; gap: 0.5rem;
+        }
+        .human-readable {
+            font-size: 1.1rem; line-height: 1.6; padding: 1rem;
+            background: var(--pico-code-background-color);
+            border-radius: 8px; margin-bottom: 1rem;
+        }
+        .field-breakdown {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;
+        }
+        .field-item {
+            text-align: center; padding: 0.75rem;
+            background: var(--pico-code-background-color); border-radius: 8px;
+        }
+        .field-item .value {
+            font-family: monospace; font-size: 1.25rem; font-weight: bold;
+            color: var(--tool-primary); display: block; margin-bottom: 0.25rem;
+        }
+        .field-item .label {
+            font-size: 0.75rem; color: var(--pico-muted-color); text-transform: uppercase;
+        }
+        .field-item .meaning { font-size: 0.8rem; margin-top: 0.25rem; }
+        .next-runs { list-style: none; padding: 0; margin: 0; }
+        .next-runs li {
+            padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color);
+            font-family: monospace; font-size: 0.9rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .next-runs li:last-child { border-bottom: none; }
+        .next-runs .relative { font-size: 0.8rem; color: var(--pico-muted-color); font-family: inherit; }
+        .error-message {
+            color: var(--error-color); padding: 1rem;
+            background: rgba(239, 68, 68, 0.1); border-radius: 8px; display: none;
+        }
+        .error-message.show { display: block; }
+        .validation-status {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem;
+        }
+        .validation-status.valid { background: rgba(16, 185, 129, 0.1); color: var(--success-color); }
+        .validation-status.invalid { background: rgba(239, 68, 68, 0.1); color: var(--error-color); }
+        .tabs {
+            display: flex; gap: 0.5rem; margin-bottom: 1rem;
+            border-bottom: 2px solid var(--pico-muted-border-color); padding-bottom: 0.5rem;
+        }
+        .tab-btn {
+            padding: 0.5rem 1rem; background: none; border: none; cursor: pointer;
+            font-size: 0.9rem; color: var(--pico-muted-color);
+            border-radius: 8px 8px 0 0; transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--tool-primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .builder-section {
+            background: var(--pico-card-background-color); padding: 1.5rem;
+            border-radius: 12px; margin-bottom: 1.5rem;
+        }
+        .builder-section h3 { margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: var(--tool-primary); }
+        .builder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .builder-field label { display: block; font-size: 0.8rem; margin-bottom: 0.25rem; color: var(--pico-muted-color); }
+        .builder-field input { width: 100%; font-size: 0.9rem; padding: 0.5rem; }
+        .special-chars { margin-top: 1.5rem; padding: 1rem; background: var(--pico-code-background-color); border-radius: 8px; }
+        .special-chars h4 { margin: 0 0 0.75rem 0; font-size: 0.9rem; }
+        .char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.85rem; }
+        .char-item { display: flex; gap: 0.5rem; }
+        .char-item code { background: var(--tool-primary); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+        .copy-btn { background: none; border: none; cursor: pointer; padding: 0.25rem; color: var(--pico-muted-color); }
+        .copy-btn:hover { color: var(--tool-primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <a href="../../index.html" class="back-link">← 返回工具列表</a>
+                <h1>Cron 表达式解析器</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <main>
+            <div class="input-section">
+                <div class="cron-input-wrapper">
+                    <input type="text" id="cronInput" placeholder="* * * * *" value="0 9 * * 1-5">
+                    <button onclick="parseCron()">解析</button>
+                </div>
+                <div class="presets">
+                    <label>常用预设：</label>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-cron="* * * * *">每分钟</button>
+                        <button class="preset-btn" data-cron="0 * * * *">每小时</button>
+                        <button class="preset-btn" data-cron="0 0 * * *">每天午夜</button>
+                        <button class="preset-btn" data-cron="0 9 * * 1-5">工作日上午9点</button>
+                        <button class="preset-btn" data-cron="0 0 * * 0">每周日午夜</button>
+                        <button class="preset-btn" data-cron="0 0 1 * *">每月1号</button>
+                        <button class="preset-btn" data-cron="0 0 1 1 *">每年1月1号</button>
+                        <button class="preset-btn" data-cron="*/5 * * * *">每5分钟</button>
+                        <button class="preset-btn" data-cron="0 */2 * * *">每2小时</button>
+                        <button class="preset-btn" data-cron="30 4 * * *">每天凌晨4:30</button>
+                        <button class="preset-btn" data-cron="0 22 * * 1-5">工作日晚上10点</button>
+                        <button class="preset-btn" data-cron="0 0 15 * *">每月15号</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="parse">解析结果</button>
+                <button class="tab-btn" data-tab="builder">可视化构建器</button>
+                <button class="tab-btn" data-tab="reference">语法参考</button>
+            </div>
+            
+            <div id="parseTab" class="tab-content active">
+                <div id="validationStatus" class="validation-status valid">
+                    <span class="status-icon">✓</span>
+                    <span class="status-text">有效的 Cron 表达式</span>
+                </div>
+                <div id="errorMessage" class="error-message"></div>
+                <div class="result-section">
+                    <div class="result-card">
+                        <h3>📖 可读描述</h3>
+                        <div id="humanReadable" class="human-readable">在工作日（周一至周五）的上午 9:00 执行</div>
+                        <h3>🔍 字段分解</h3>
+                        <div id="fieldBreakdown" class="field-breakdown"></div>
+                    </div>
+                    <div class="result-card">
+                        <h3>⏰ 接下来的执行时间 <button class="copy-btn" onclick="copyNextRuns()" title="复制">📋</button></h3>
+                        <ul id="nextRuns" class="next-runs"></ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="builderTab" class="tab-content">
+                <div class="builder-section">
+                    <h3>可视化构建器</h3>
+                    <div class="builder-grid">
+                        <div class="builder-field"><label>分钟 (0-59)</label><input type="text" id="buildMinute" value="0"></div>
+                        <div class="builder-field"><label>小时 (0-23)</label><input type="text" id="buildHour" value="9"></div>
+                        <div class="builder-field"><label>日 (1-31)</label><input type="text" id="buildDay" value="*"></div>
+                        <div class="builder-field"><label>月 (1-12)</label><input type="text" id="buildMonth" value="*"></div>
+                        <div class="builder-field"><label>星期 (0-6, 0=周日)</label><input type="text" id="buildWeekday" value="1-5"></div>
+                    </div>
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button onclick="applyBuilder()" style="background: var(--tool-primary); border-color: var(--tool-primary);">应用到解析器</button>
+                    </div>
+                </div>
+                <div class="special-chars">
+                    <h4>特殊字符说明</h4>
+                    <div class="char-grid">
+                        <div class="char-item"><code>*</code> <span>任意值</span></div>
+                        <div class="char-item"><code>,</code> <span>值列表 (1,3,5)</span></div>
+                        <div class="char-item"><code>-</code> <span>范围 (1-5)</span></div>
+                        <div class="char-item"><code>/</code> <span>步长 (*/5 = 每5单位)</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="referenceTab" class="tab-content">
+                <div class="result-card">
+                    <h3>Cron 表达式格式</h3>
+                    <pre style="background: var(--pico-code-background-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; overflow-x: auto;">┌───────────── 分钟 (0 - 59)
+│ ┌───────────── 小时 (0 - 23)
+│ │ ┌───────────── 日 (1 - 31)
+│ │ │ ┌───────────── 月 (1 - 12)
+│ │ │ │ ┌───────────── 星期 (0 - 6, 周日=0)
+│ │ │ │ │
+* * * * *</pre>
+                    <h3>字段取值范围</h3>
+                    <table>
+                        <thead><tr><th>字段</th><th>取值范围</th><th>特殊字符</th></tr></thead>
+                        <tbody>
+                            <tr><td>分钟</td><td>0-59</td><td>* , - /</td></tr>
+                            <tr><td>小时</td><td>0-23</td><td>* , - /</td></tr>
+                            <tr><td>日</td><td>1-31</td><td>* , - /</td></tr>
+                            <tr><td>月</td><td>1-12</td><td>* , - /</td></tr>
+                            <tr><td>星期</td><td>0-6</td><td>* , - /</td></tr>
+                        </tbody>
+                    </table>
+                    <h3 style="margin-top: 1.5rem;">常用示例</h3>
+                    <table>
+                        <thead><tr><th>表达式</th><th>描述</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>* * * * *</code></td><td>每分钟</td></tr>
+                            <tr><td><code>0 * * * *</code></td><td>每小时整点</td></tr>
+                            <tr><td><code>0 0 * * *</code></td><td>每天午夜</td></tr>
+                            <tr><td><code>0 9 * * 1-5</code></td><td>工作日上午9点</td></tr>
+                            <tr><td><code>*/15 * * * *</code></td><td>每15分钟</td></tr>
+                            <tr><td><code>0 0 1 * *</code></td><td>每月1号午夜</td></tr>
+                            <tr><td><code>0 0 * * 0</code></td><td>每周日午夜</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        function toggleTheme() {
+            var html = document.documentElement;
+            var newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+        
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+            });
+        });
+        
+        document.querySelectorAll('.preset-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('cronInput').value = btn.dataset.cron;
+                parseCron();
+            });
+        });
+        
+        var fieldNames = ['分钟', '小时', '日', '月', '星期'];
+        var fieldRanges = [{min:0,max:59},{min:0,max:23},{min:1,max:31},{min:1,max:12},{min:0,max:6}];
+        var weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        
+        function validateField(value, idx) {
+            var range = fieldRanges[idx];
+            if (value === '*') return true;
+            if (value.indexOf('*/') === 0) return !isNaN(parseInt(value.substring(2)));
+            var parts = value.split(',');
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                if (part.indexOf('-') !== -1) {
+                    var nums = part.split('-').map(Number);
+                    if (isNaN(nums[0]) || isNaN(nums[1]) || nums[0] < range.min || nums[1] > range.max) return false;
+                } else if (part.indexOf('/') !== -1) {
+                    continue;
+                } else {
+                    var num = parseInt(part);
+                    if (isNaN(num) || num < range.min || num > range.max) return false;
+                }
+            }
+            return true;
+        }
+        
+        function parseFieldMeaning(value, idx) {
+            if (value === '*') return '每' + fieldNames[idx].replace('星期', '天');
+            if (value.indexOf('*/') === 0) return '每 ' + value.substring(2) + ' ' + fieldNames[idx];
+            if (idx === 4) {
+                if (value.indexOf('-') !== -1) {
+                    var nums = value.split('-').map(Number);
+                    return weekdayNames[nums[0]] + ' 至 ' + weekdayNames[nums[1]];
+                }
+                return weekdayNames[parseInt(value)] || value;
+            }
+            if (value.indexOf('-') !== -1) {
+                var nums = value.split('-');
+                return nums[0] + ' 至 ' + nums[1];
+            }
+            return value;
+        }
+        
+        function generateHumanReadable(parts) {
+            var minute = parts[0], hour = parts[1], day = parts[2], month = parts[3], weekday = parts[4];
+            if (parts.every(function(p) { return p === '*'; })) return '每分钟执行';
+            if (hour === '*' && day === '*' && month === '*' && weekday === '*') {
+                if (minute === '0') return '每小时整点执行';
+                if (minute.indexOf('*/') === 0) return '每 ' + minute.substring(2) + ' 分钟执行';
+                return '每小时的第 ' + minute + ' 分钟执行';
+            }
+            if (day === '*' && month === '*' && weekday === '*') {
+                return '每天 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
+            }
+            if (weekday === '1-5' && day === '*' && month === '*') {
+                return '在工作日（周一至周五）的 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
+            }
+            if (weekday !== '*' && day === '*' && month === '*') {
+                return '在' + parseFieldMeaning(weekday, 4) + '的 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
+            }
+            if (day !== '*' && month === '*' && weekday === '*') {
+                return '每月 ' + day + ' 号 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
+            }
+            return '在指定时间执行';
+        }
+        
+        function matchesField(value, field) {
+            if (field === '*') return true;
+            if (field.indexOf('*/') === 0) return value % parseInt(field.substring(2)) === 0;
+            var parts = field.split(',');
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                if (part.indexOf('-') !== -1) {
+                    var nums = part.split('-').map(Number);
+                    if (value >= nums[0] && value <= nums[1]) return true;
+                } else if (parseInt(part) === value) return true;
+            }
+            return false;
+        }
+        
+        function getNextRuns(parts, count) {
+            count = count || 10;
+            var runs = [], current = new Date(), iterations = 0;
+            current.setSeconds(0); current.setMilliseconds(0);
+            while (runs.length < count && iterations < 10000) {
+                iterations++;
+                current = new Date(current.getTime() + 60000);
+                if (!matchesField(current.getMonth() + 1, parts[3])) continue;
+                if (!matchesField(current.getDate(), parts[2])) continue;
+                if (!matchesField(current.getDay(), parts[4])) continue;
+                if (!matchesField(current.getHours(), parts[1])) continue;
+                if (!matchesField(current.getMinutes(), parts[0])) continue;
+                runs.push(new Date(current));
+            }
+            return runs;
+        }
+        
+        function formatDate(date) {
+            return date.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit'});
+        }
+        
+        function getRelativeTime(date) {
+            var diffMins = Math.floor((date - new Date()) / 60000);
+            var diffHours = Math.floor(diffMins / 60);
+            var diffDays = Math.floor(diffHours / 24);
+            if (diffMins < 60) return diffMins + ' 分钟后';
+            if (diffHours < 24) return diffHours + ' 小时后';
+            return diffDays + ' 天后';
+        }
+        
+        function parseCron() {
+            var input = document.getElementById('cronInput').value.trim();
+            var parts = input.split(/\s+/);
+            var validationStatus = document.getElementById('validationStatus');
+            var errorMessage = document.getElementById('errorMessage');
+            
+            if (parts.length !== 5) {
+                validationStatus.className = 'validation-status invalid';
+                validationStatus.querySelector('.status-icon').textContent = '✗';
+                validationStatus.querySelector('.status-text').textContent = '无效：需要 5 个字段';
+                errorMessage.textContent = '期望 5 个字段，得到 ' + parts.length + ' 个';
+                errorMessage.classList.add('show');
+                return;
+            }
+            
+            for (var i = 0; i < 5; i++) {
+                if (!validateField(parts[i], i)) {
+                    validationStatus.className = 'validation-status invalid';
+                    validationStatus.querySelector('.status-icon').textContent = '✗';
+                    validationStatus.querySelector('.status-text').textContent = '无效的 ' + fieldNames[i] + ' 字段';
+                    errorMessage.textContent = '"' + parts[i] + '" 不是有效值';
+                    errorMessage.classList.add('show');
+                    return;
+                }
+            }
+            
+            validationStatus.className = 'validation-status valid';
+            validationStatus.querySelector('.status-icon').textContent = '✓';
+            validationStatus.querySelector('.status-text').textContent = '有效的 Cron 表达式';
+            errorMessage.classList.remove('show');
+            
+            document.getElementById('humanReadable').textContent = generateHumanReadable(parts);
+            
+            var fieldBreakdown = document.getElementById('fieldBreakdown');
+            fieldBreakdown.textContent = '';
+            parts.forEach(function(part, i) {
+                var div = document.createElement('div');
+                div.className = 'field-item';
+                div.innerHTML = '<span class="value">' + part + '</span><span class="label">' + fieldNames[i] + '</span><span class="meaning">' + parseFieldMeaning(part, i) + '</span>';
+                fieldBreakdown.appendChild(div);
+            });
+            
+            var nextRuns = document.getElementById('nextRuns');
+            nextRuns.textContent = '';
+            getNextRuns(parts).forEach(function(date) {
+                var li = document.createElement('li');
+                li.innerHTML = '<span>' + formatDate(date) + '</span><span class="relative">' + getRelativeTime(date) + '</span>';
+                nextRuns.appendChild(li);
+            });
+            
+            document.getElementById('buildMinute').value = parts[0];
+            document.getElementById('buildHour').value = parts[1];
+            document.getElementById('buildDay').value = parts[2];
+            document.getElementById('buildMonth').value = parts[3];
+            document.getElementById('buildWeekday').value = parts[4];
+        }
+        
+        function applyBuilder() {
+            var cron = [
+                document.getElementById('buildMinute').value || '*',
+                document.getElementById('buildHour').value || '*',
+                document.getElementById('buildDay').value || '*',
+                document.getElementById('buildMonth').value || '*',
+                document.getElementById('buildWeekday').value || '*'
+            ].join(' ');
+            document.getElementById('cronInput').value = cron;
+            document.querySelector('.tab-btn[data-tab="parse"]').click();
+            parseCron();
+        }
+        
+        function copyNextRuns() {
+            var items = document.querySelectorAll('#nextRuns li span:first-child');
+            var text = Array.from(items).map(function(s) { return s.textContent; }).join('\n');
+            navigator.clipboard.writeText(text);
+        }
+        
+        document.getElementById('cronInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') parseCron();
+        });
+        
+        parseCron();
+    </script>
+</body>
+</html>

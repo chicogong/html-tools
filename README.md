@@ -250,10 +250,30 @@
 
 | 文件 | 用途 |
 |------|------|
-| `sitemap.xml` | 站点地图，包含所有工具页面 |
+| `sitemap.xml` | 站点地图，包含所有工具页面 (150 URLs) |
 | `robots.txt` | 搜索引擎爬虫规则 |
 | `llms.txt` | AI/LLM 友好的网站描述 |
-| `index.html` | 含 Schema.org 结构化数据 (JSON-LD) |
+| `index.html` | 含 Schema.org 结构化数据 (WebApplication, FAQPage, WebSite) |
+| `manifest.json` | PWA 配置文件，支持应用安装 |
+| `favicon.svg` | 矢量品牌图标 (3×3 网格设计) |
+| `favicon-16x16.png` | 浏览器标签页图标 |
+| `favicon-32x32.png` | 高清浏览器图标 |
+| `apple-touch-icon.png` | iOS/macOS 主屏幕图标 (180×180) |
+
+### SEO 优化特性 (2025-12-27)
+
+- ✅ **Favicon & 品牌识别**: 简约 3×3 网格设计,多尺寸支持
+- ✅ **PWA 支持**: 可安装为原生应用,4 个快捷方式到常用工具
+- ✅ **结构化数据**:
+  - WebApplication Schema (详细应用信息)
+  - FAQPage Schema (8 个常见问题)
+  - WebSite Schema (站内搜索功能)
+  - BreadcrumbList Schema (工具页面面包屑导航)
+- ✅ **性能优化**: 字体 preload + async 加载,无渲染阻塞
+- ✅ **Open Graph**: 完整社交媒体预览支持 (Twitter, Facebook, LinkedIn)
+- ✅ **移动优化**: viewport meta, touch icons, PWA installable
+
+**预计 Lighthouse 评分**: SEO 98/100 | Performance 90/100 | Accessibility 95/100
 
 ## 使用方式
 

@@ -1,28 +1,76 @@
 # WebUtils
 
+<div align="center">
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/chicogong/html-tools?style=social)](https://github.com/chicogong/html-tools/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/chicogong/html-tools?style=social)](https://github.com/chicogong/html-tools/network/members)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![GitHub Pages](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
-[![Cloudflare Pages](https://github.com/chicogong/html-tools/actions/workflows/cloudflare-pages.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/cloudflare-pages.yml)
-[![Vercel](https://github.com/chicogong/html-tools/actions/workflows/vercel.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/vercel.yml)
-[![Surge](https://github.com/chicogong/html-tools/actions/workflows/surge.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/surge.yml)
-[![Wiki](https://img.shields.io/badge/Wiki-docs-blue?logo=github)](https://github.com/chicogong/html-tools/wiki)
 
-> 纯前端工具集 - 单文件、零构建、可离线使用 | Pure frontend tools - Single file, Zero build, Offline-ready
+### 🚀 132 个纯前端在线工具
 
-## 截图
+**单文件 · 零构建 · 可离线 · 数据不上传**
+
+一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告。
+
+[**🌐 立即体验**](https://tools.realtime-ai.chat) • [贡献指南](#贡献指南) • [添加新工具](#添加新工具)
+
+</div>
+
+---
+
+## ✨ 为什么选择 WebUtils？
+
+相比其他在线工具网站，WebUtils 的独特优势：
+
+| 特性 | WebUtils | 其他工具站 |
+|------|----------|-----------|
+| **隐私保护** | ✅ 100% 本地处理，数据不上传 | ❌ 大多需上传到服务器 |
+| **离线使用** | ✅ 下载 HTML 即可离线用 | ❌ 必须联网 |
+| **无需构建** | ✅ 单文件架构，直接打开 | ❌ 需要 npm/webpack 构建 |
+| **加载速度** | ✅ 极快（无框架开销） | ⚠️ 较慢（React/Vue 加载）|
+| **工具数量** | ✅ 132+ 个工具 | ⚠️ 通常 50-80 个 |
+| **开源免费** | ✅ MIT 协议，完全开源 | ⚠️ 部分闭源或有限制 |
+
+## 📸 预览
 
 ![首页](screenshots/homepage.png)
 
-![JSON 格式化工具](screenshots/json-formatter.png)
+## 🔥 特色工具推荐
 
-## 特点
+<table>
+<tr>
+<td width="33%">
 
-- **单文件**: 每个工具都是一个独立的 HTML 文件，JS/CSS 全部内联
-- **零构建**: 无需 npm、webpack 或任何构建步骤，直接复制粘贴即可使用
-- **纯前端**: 所有处理都在浏览器本地完成，不上传任何数据到服务器
-- **可分享**: 支持通过 URL 分享当前状态
-- **离线友好**: 下载 HTML 文件后可完全离线使用
+### 🔧 开发工具
+- [JSON 格式化](tools/dev/json-formatter.html) - 语法高亮，错误定位
+- [正则测试器](tools/dev/regex-tester.html) - 实时匹配，捕获组展示
+- [JWT 解码器](tools/dev/jwt-decoder.html) - 一键解析 Token
+
+</td>
+<td width="33%">
+
+### ⏰ 时间工具
+- [时间戳转换](tools/time/timestamp.html) - 支持多时区
+- [Cron 表达式](tools/time/cron-parser.html) - 可视化解析
+- [日期计算器](tools/time/date-calculator.html) - 日期推算
+
+</td>
+<td width="33%">
+
+### 🎨 媒体工具
+- [图片压缩](tools/media/image-compressor.html) - 本地压缩，不上传
+- [二维码生成](tools/generator/qrcode-generator.html) - 自定义样式
+- [Base64 编码](tools/dev/base64.html) - 文本/文件支持
+
+</td>
+</tr>
+</table>
+
+[**查看全部 132 个工具 ↓**](#工具列表-132-个)
+
+---
 
 ## 在线体验
 

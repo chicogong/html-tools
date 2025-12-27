@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cURL to Code 转换器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --editor-bg: #0f172a;
+        }
+
+        [data-theme="light"] {
+            --card-bg: #fff;
+            --border-color: #e2e8f0;
+            --editor-bg: #f8fafc;
+        }
+
+        body { padding: 2rem; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 { margin: 0; font-size: 1.75rem; }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            width: 42px;
+            height: 42px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; }
+
+        textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: var(--editor-bg);
+            color: inherit;
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        textarea:focus { outline: none; border-color: var(--primary); }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--border-color); color: inherit; }
+
+        .actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+
+        .language-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+
+        .lang-tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .lang-tab:hover { border-color: var(--primary); }
+        .lang-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .code-output {
+            position: relative;
+            background: #0f172a;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .code-header span { color: #94a3b8; font-size: 0.75rem; }
+
+        .code-header button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .code-header button:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .code-output pre { margin: 0; padding: 1rem; overflow-x: auto; max-height: 500px; }
+
+        .code-output code {
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 0.8125rem;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        .parsed-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--editor-bg);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .parsed-info h4 { margin: 0 0 0.75rem; font-size: 0.875rem; }
+        .parsed-item { display: flex; margin-bottom: 0.5rem; }
+        .parsed-label { font-weight: 600; min-width: 80px; color: var(--primary); }
+        .parsed-value { word-break: break-all; }
+
+        .sample-btns { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+
+        .sample-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--border-color);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .sample-btn:hover { background: var(--primary); color: white; }
+
+        .status-bar {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-bar.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: var(--success);
+        }
+
+        .status-bar.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .info-box h4 { margin: 0 0 0.5rem; color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 cURL to Code 转换器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+
+        <div class="card">
+            <div class="card-title">📥 输入 cURL 命令</div>
+            <textarea id="curlInput" placeholder="粘贴 cURL 命令..."></textarea>
+            
+            <div class="actions">
+                <button class="btn btn-primary" onclick="convertCurl()">🔄 转换</button>
+                <button class="btn btn-secondary" onclick="clearAll()">清除</button>
+            </div>
+
+            <div class="sample-btns">
+                <span style="font-size: 0.875rem; margin-right: 0.5rem;">示例:</span>
+                <button class="sample-btn" onclick="loadSample('get')">GET 请求</button>
+                <button class="sample-btn" onclick="loadSample('post')">POST JSON</button>
+                <button class="sample-btn" onclick="loadSample('auth')">Bearer 认证</button>
+                <button class="sample-btn" onclick="loadSample('form')">表单数据</button>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+
+        <div class="card" id="outputCard" style="display: none;">
+            <div class="card-title">📤 生成的代码</div>
+            
+            <div class="language-tabs">
+                <button class="lang-tab active" data-lang="javascript">JavaScript</button>
+                <button class="lang-tab" data-lang="python">Python</button>
+                <button class="lang-tab" data-lang="go">Go</button>
+                <button class="lang-tab" data-lang="php">PHP</button>
+                <button class="lang-tab" data-lang="java">Java</button>
+                <button class="lang-tab" data-lang="node">Node.js</button>
+            </div>
+
+            <div class="code-output">
+                <div class="code-header">
+                    <span id="langLabel">JavaScript (fetch)</span>
+                    <button onclick="copyCode()">📋 复制代码</button>
+                </div>
+                <pre><code id="codeOutput"></code></pre>
+            </div>
+
+            <div class="parsed-info" id="parsedInfo"></div>
+        </div>
+
+        <div class="card info-box">
+            <h4>💡 支持的 cURL 选项</h4>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+                <li><code>-X, --request</code> - HTTP 方法</li>
+                <li><code>-H, --header</code> - 请求头</li>
+                <li><code>-d, --data</code> - POST 数据</li>
+                <li><code>-u, --user</code> - 基本认证</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const samples = {
+            get: 'curl -X GET "https://api.example.com/users?page=1" -H "Accept: application/json"',
+            post: 'curl -X POST "https://api.example.com/users" -H "Content-Type: application/json" -d \'{"name": "张三", "email": "test@example.com"}\'',
+            auth: 'curl -X GET "https://api.example.com/protected" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."',
+            form: 'curl -X POST "https://api.example.com/login" -d "username=admin&password=secret"'
+        };
+
+        let parsedCurl = null;
+        let currentLang = 'javascript';
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        document.querySelectorAll('.lang-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentLang = tab.dataset.lang;
+                if (parsedCurl) generateCode(parsedCurl);
+            });
+        });
+
+        function loadSample(type) {
+            document.getElementById('curlInput').value = samples[type];
+            convertCurl();
+        }
+
+        function parseCurl(curlCmd) {
+            curlCmd = curlCmd.replace(/\\\s*\n/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            const result = { method: 'GET', url: '', headers: {}, data: null };
+
+            curlCmd = curlCmd.replace(/^curl\s+/, '');
+
+            const urlMatch = curlCmd.match(/(['"]?)(https?:\/\/[^\s'"]+)\1/);
+            if (urlMatch) result.url = urlMatch[2];
+
+            const methodMatch = curlCmd.match(/-X\s+(['"]?)(\w+)\1/i);
+            if (methodMatch) result.method = methodMatch[2].toUpperCase();
+
+            const headerRegex = /-H\s+(['"])(.*?)\1/g;
+            let headerMatch;
+            while ((headerMatch = headerRegex.exec(curlCmd)) !== null) {
+                const colonIndex = headerMatch[2].indexOf(':');
+                if (colonIndex > 0) {
+                    result.headers[headerMatch[2].substring(0, colonIndex).trim()] = headerMatch[2].substring(colonIndex + 1).trim();
+                }
+            }
+
+            const dataMatch = curlCmd.match(/-d\s+(['"])([\s\S]*?)\1/);
+            if (dataMatch) {
+                result.data = dataMatch[2];
+                if (!methodMatch) result.method = 'POST';
+            }
+
+            return result;
+        }
+
+        function convertCurl() {
+            const curlInput = document.getElementById('curlInput').value.trim();
+            if (!curlInput) { showStatus('请输入 cURL 命令', 'error'); return; }
+
+            try {
+                parsedCurl = parseCurl(curlInput);
+                if (!parsedCurl.url) { showStatus('无法解析 URL', 'error'); return; }
+                generateCode(parsedCurl);
+                renderParsedInfo(parsedCurl);
+                document.getElementById('outputCard').style.display = 'block';
+                showStatus('转换成功', 'success');
+            } catch (e) {
+                showStatus('解析错误: ' + e.message, 'error');
+            }
+        }
+
+        function generateCode(p) {
+            const generators = { javascript: genJS, python: genPython, go: genGo, php: genPHP, java: genJava, node: genNode };
+            const names = { javascript: 'JavaScript (fetch)', python: 'Python (requests)', go: 'Go (net/http)', php: 'PHP (cURL)', java: 'Java (HttpClient)', node: 'Node.js (axios)' };
+            document.getElementById('codeOutput').textContent = generators[currentLang](p);
+            document.getElementById('langLabel').textContent = names[currentLang];
+        }
+
+        function genJS(p) {
+            let code = "const response = await fetch('" + p.url + "', {\n  method: '" + p.method + "'";
+            if (Object.keys(p.headers).length > 0) {
+                code += ",\n  headers: {\n";
+                Object.entries(p.headers).forEach(([k, v], i, arr) => {
+                    code += "    '" + k + "': '" + v + "'" + (i < arr.length - 1 ? ',' : '') + "\n";
+                });
+                code += "  }";
+            }
+            if (p.data) code += ",\n  body: '" + p.data.replace(/'/g, "\\'") + "'";
+            code += "\n});\n\nconst data = await response.json();\nconsole.log(data);";
+            return code;
+        }
+
+        function genPython(p) {
+            let code = "import requests\n\nresponse = requests." + p.method.toLowerCase() + "(\n    '" + p.url + "'";
+            if (Object.keys(p.headers).length > 0) {
+                code += ",\n    headers={\n";
+                Object.entries(p.headers).forEach(([k, v]) => { code += "        '" + k + "': '" + v + "',\n"; });
+                code += "    }";
+            }
+            if (p.data) code += ",\n    data='" + p.data + "'";
+            code += "\n)\n\nprint(response.json())";
+            return code;
+        }
+
+        function genGo(p) {
+            let code = "package main\n\nimport (\n    \"fmt\"\n    \"io/ioutil\"\n    \"net/http\"\n";
+            if (p.data) code += '    "strings"\n';
+            code += ")\n\nfunc main() {\n";
+            if (p.data) {
+                code += "    payload := strings.NewReader(`" + p.data + "`)\n";
+                code += '    req, _ := http.NewRequest("' + p.method + '", "' + p.url + '", payload)\n';
+            } else {
+                code += '    req, _ := http.NewRequest("' + p.method + '", "' + p.url + '", nil)\n';
+            }
+            Object.entries(p.headers).forEach(([k, v]) => { code += '    req.Header.Add("' + k + '", "' + v + '")\n'; });
+            code += "\n    client := &http.Client{}\n    resp, _ := client.Do(req)\n    defer resp.Body.Close()\n\n    body, _ := ioutil.ReadAll(resp.Body)\n    fmt.Println(string(body))\n}";
+            return code;
+        }
+
+        function genPHP(p) {
+            let code = "<?php\n\n$curl = curl_init();\n\ncurl_setopt_array($curl, [\n";
+            code += '    CURLOPT_URL => "' + p.url + '",\n    CURLOPT_RETURNTRANSFER => true,\n    CURLOPT_CUSTOMREQUEST => "' + p.method + '",\n';
+            if (Object.keys(p.headers).length > 0) {
+                code += "    CURLOPT_HTTPHEADER => [\n";
+                Object.entries(p.headers).forEach(([k, v]) => { code += '        "' + k + ': ' + v + '",\n'; });
+                code += "    ],\n";
+            }
+            if (p.data) code += "    CURLOPT_POSTFIELDS => '" + p.data.replace(/'/g, "\\'") + "',\n";
+            code += "]);\n\n$response = curl_exec($curl);\ncurl_close($curl);\n\necho $response;\n?>";
+            return code;
+        }
+
+        function genJava(p) {
+            let code = 'import java.net.URI;\nimport java.net.http.HttpClient;\nimport java.net.http.HttpRequest;\nimport java.net.http.HttpResponse;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        HttpClient client = HttpClient.newHttpClient();\n\n        HttpRequest request = HttpRequest.newBuilder()\n            .uri(URI.create("' + p.url + '"))\n            .method("' + p.method + '"';
+            if (p.data) code += ', HttpRequest.BodyPublishers.ofString("' + p.data.replace(/"/g, '\\"') + '"))\n';
+            else code += ", HttpRequest.BodyPublishers.noBody())\n";
+            Object.entries(p.headers).forEach(([k, v]) => { code += '            .header("' + k + '", "' + v + '")\n'; });
+            code += '            .build();\n\n        HttpResponse<String> response = client.send(request,\n            HttpResponse.BodyHandlers.ofString());\n\n        System.out.println(response.body());\n    }\n}';
+            return code;
+        }
+
+        function genNode(p) {
+            let code = "const axios = require('axios');\n\naxios({\n  method: '" + p.method.toLowerCase() + "',\n  url: '" + p.url + "'";
+            if (Object.keys(p.headers).length > 0) {
+                code += ",\n  headers: {\n";
+                Object.entries(p.headers).forEach(([k, v], i, arr) => {
+                    code += "    '" + k + "': '" + v + "'" + (i < arr.length - 1 ? ',' : '') + "\n";
+                });
+                code += "  }";
+            }
+            if (p.data) code += ",\n  data: '" + p.data.replace(/'/g, "\\'") + "'";
+            code += "\n})\n  .then(response => console.log(response.data))\n  .catch(error => console.error(error));";
+            return code;
+        }
+
+        function renderParsedInfo(p) {
+            const container = document.getElementById('parsedInfo');
+            container.textContent = '';
+            
+            const h4 = document.createElement('h4');
+            h4.textContent = '📋 解析结果';
+            container.appendChild(h4);
+
+            [
+                { label: 'URL', value: p.url },
+                { label: '方法', value: p.method },
+                { label: '请求头', value: Object.keys(p.headers).length + ' 个' },
+                ...(p.data ? [{ label: '数据', value: p.data.substring(0, 80) + (p.data.length > 80 ? '...' : '') }] : [])
+            ].forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'parsed-item';
+                const label = document.createElement('span');
+                label.className = 'parsed-label';
+                label.textContent = item.label + ':';
+                const value = document.createElement('span');
+                value.className = 'parsed-value';
+                value.textContent = item.value;
+                div.appendChild(label);
+                div.appendChild(value);
+                container.appendChild(div);
+            });
+        }
+
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = msg;
+            bar.className = 'status-bar ' + type;
+            setTimeout(() => { bar.className = 'status-bar'; }, 3000);
+        }
+
+        function copyCode() {
+            navigator.clipboard.writeText(document.getElementById('codeOutput').textContent).then(() => showStatus('代码已复制', 'success'));
+        }
+
+        function clearAll() {
+            document.getElementById('curlInput').value = '';
+            document.getElementById('outputCard').style.display = 'none';
+            parsedCurl = null;
+        }
+
+        initTheme();
+    </script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON ⇄ YAML 转换器 - HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        [data-theme="dark"] {
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --editor-bg: #0f172a;
+        }
+
+        [data-theme="light"] {
+            --card-bg: #fff;
+            --border-color: #e2e8f0;
+            --editor-bg: #f8fafc;
+        }
+
+        body {
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            width: 42px;
+            height: 42px;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        @media (max-width: 900px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+            .convert-controls {
+                flex-direction: row !important;
+                justify-content: center;
+            }
+        }
+
+        .editor-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .editor-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .editor-actions button {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .editor-actions button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .editor-body {
+            flex: 1;
+            position: relative;
+        }
+
+        .editor-body textarea {
+            width: 100%;
+            height: 500px;
+            padding: 1rem;
+            border: none;
+            background: var(--editor-bg);
+            color: inherit;
+            font-family: Monaco, Menlo, 'Ubuntu Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            resize: none;
+        }
+
+        .editor-body textarea:focus {
+            outline: none;
+        }
+
+        .editor-footer {
+            padding: 0.5rem 1rem;
+            background: var(--border-color);
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted-color);
+        }
+
+        .convert-controls {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 0;
+        }
+
+        .convert-btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.5rem;
+            background: var(--primary);
+            color: white;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .convert-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
+        }
+
+        .options-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .option-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .option-group select,
+        .option-group input[type="number"] {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background: var(--card-bg);
+            color: inherit;
+        }
+
+        .option-group input[type="number"] {
+            width: 60px;
+        }
+
+        .option-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .status-bar {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-bar.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: var(--success);
+        }
+
+        .status-bar.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .sample-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .sample-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--border-color);
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .sample-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .info-box h4 {
+            margin: 0 0 0.5rem;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 JSON ⇄ YAML 转换器</h1>
+            <div class="header-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+            </div>
+        </header>
+
+        <div class="options-bar">
+            <div class="option-group">
+                <label>缩进空格:</label>
+                <input type="number" id="indentSize" value="2" min="1" max="8">
+            </div>
+            <div class="option-group">
+                <label>YAML 引号样式:</label>
+                <select id="quoteStyle">
+                    <option value="minimal">最少引号</option>
+                    <option value="single">单引号</option>
+                    <option value="double">双引号</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <input type="checkbox" id="sortKeys">
+                <label for="sortKeys">按键名排序</label>
+            </div>
+            <div class="sample-buttons">
+                <span style="font-size: 0.875rem; margin-right: 0.5rem;">示例:</span>
+                <button class="sample-btn" onclick="loadSample('simple')">简单对象</button>
+                <button class="sample-btn" onclick="loadSample('nested')">嵌套结构</button>
+                <button class="sample-btn" onclick="loadSample('array')">数组数据</button>
+                <button class="sample-btn" onclick="loadSample('config')">配置文件</button>
+            </div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📄 JSON</div>
+                    <div class="editor-actions">
+                        <button onclick="formatJSON()">格式化</button>
+                        <button onclick="minifyJSON()">压缩</button>
+                        <button onclick="copyText('jsonInput')">复制</button>
+                        <button onclick="clearText('jsonInput')">清除</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <textarea id="jsonInput" placeholder="在此输入或粘贴 JSON..." oninput="updateStats('json')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span id="jsonStats">0 字符 | 0 行</span>
+                    <span id="jsonValid"></span>
+                </div>
+            </div>
+
+            <div class="convert-controls">
+                <button class="convert-btn" onclick="jsonToYaml()" title="JSON → YAML">→</button>
+                <button class="convert-btn" onclick="yamlToJson()" title="YAML → JSON">←</button>
+            </div>
+
+            <div class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">📝 YAML</div>
+                    <div class="editor-actions">
+                        <button onclick="copyText('yamlInput')">复制</button>
+                        <button onclick="clearText('yamlInput')">清除</button>
+                        <button onclick="downloadFile('yaml')">下载</button>
+                    </div>
+                </div>
+                <div class="editor-body">
+                    <textarea id="yamlInput" placeholder="在此输入或粘贴 YAML..." oninput="updateStats('yaml')"></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span id="yamlStats">0 字符 | 0 行</span>
+                    <span id="yamlValid"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+
+        <div class="info-box">
+            <h4>💡 使用说明</h4>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+                <li>支持 JSON 和 YAML 双向转换</li>
+                <li>自动检测输入格式有效性</li>
+                <li>支持复杂嵌套结构、数组、多行字符串</li>
+                <li>YAML 支持锚点(&)和别名(*) 语法</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script>
+        // 示例数据
+        const samples = {
+            simple: {
+                name: "示例项目",
+                version: "1.0.0",
+                description: "一个简单的示例",
+                author: "开发者",
+                license: "MIT"
+            },
+            nested: {
+                database: {
+                    host: "localhost",
+                    port: 5432,
+                    credentials: {
+                        username: "admin",
+                        password: "secret"
+                    }
+                },
+                cache: {
+                    enabled: true,
+                    ttl: 3600
+                }
+            },
+            array: {
+                users: [
+                    { id: 1, name: "张三", role: "admin" },
+                    { id: 2, name: "李四", role: "user" },
+                    { id: 3, name: "王五", role: "user" }
+                ],
+                tags: ["javascript", "yaml", "json", "converter"]
+            },
+            config: {
+                server: {
+                    host: "0.0.0.0",
+                    port: 8080,
+                    ssl: {
+                        enabled: true,
+                        cert: "/path/to/cert.pem",
+                        key: "/path/to/key.pem"
+                    }
+                },
+                logging: {
+                    level: "info",
+                    format: "json",
+                    outputs: ["stdout", "file"]
+                },
+                features: {
+                    authentication: true,
+                    rateLimit: {
+                        enabled: true,
+                        maxRequests: 100,
+                        windowMs: 60000
+                    }
+                }
+            }
+        };
+
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 加载示例
+        function loadSample(type) {
+            const json = JSON.stringify(samples[type], null, 2);
+            document.getElementById('jsonInput').value = json;
+            updateStats('json');
+            jsonToYaml();
+        }
+
+        // JSON 转 YAML
+        function jsonToYaml() {
+            const jsonInput = document.getElementById('jsonInput').value.trim();
+            if (!jsonInput) {
+                showStatus('请输入 JSON 内容', 'error');
+                return;
+            }
+
+            try {
+                const obj = JSON.parse(jsonInput);
+                const indent = parseInt(document.getElementById('indentSize').value) || 2;
+                const sortKeys = document.getElementById('sortKeys').checked;
+                const quoteStyle = document.getElementById('quoteStyle').value;
+
+                let quotingType;
+                if (quoteStyle === 'single') quotingType = "'";
+                else if (quoteStyle === 'double') quotingType = '"';
+
+                const yamlOptions = {
+                    indent: indent,
+                    sortKeys: sortKeys,
+                    lineWidth: -1,
+                    quotingType: quotingType,
+                    forceQuotes: quoteStyle !== 'minimal'
+                };
+
+                const yaml = jsyaml.dump(obj, yamlOptions);
+                document.getElementById('yamlInput').value = yaml;
+                updateStats('yaml');
+                showStatus('JSON → YAML 转换成功', 'success');
+            } catch (e) {
+                showStatus('JSON 解析错误: ' + e.message, 'error');
+            }
+        }
+
+        // YAML 转 JSON
+        function yamlToJson() {
+            const yamlInput = document.getElementById('yamlInput').value.trim();
+            if (!yamlInput) {
+                showStatus('请输入 YAML 内容', 'error');
+                return;
+            }
+
+            try {
+                const obj = jsyaml.load(yamlInput);
+                const indent = parseInt(document.getElementById('indentSize').value) || 2;
+                const sortKeys = document.getElementById('sortKeys').checked;
+
+                let json;
+                if (sortKeys) {
+                    json = JSON.stringify(obj, Object.keys(obj).sort(), indent);
+                } else {
+                    json = JSON.stringify(obj, null, indent);
+                }
+
+                document.getElementById('jsonInput').value = json;
+                updateStats('json');
+                showStatus('YAML → JSON 转换成功', 'success');
+            } catch (e) {
+                showStatus('YAML 解析错误: ' + e.message, 'error');
+            }
+        }
+
+        // 格式化 JSON
+        function formatJSON() {
+            const jsonInput = document.getElementById('jsonInput').value.trim();
+            if (!jsonInput) return;
+
+            try {
+                const obj = JSON.parse(jsonInput);
+                const indent = parseInt(document.getElementById('indentSize').value) || 2;
+                document.getElementById('jsonInput').value = JSON.stringify(obj, null, indent);
+                updateStats('json');
+            } catch (e) {
+                showStatus('JSON 格式化错误: ' + e.message, 'error');
+            }
+        }
+
+        // 压缩 JSON
+        function minifyJSON() {
+            const jsonInput = document.getElementById('jsonInput').value.trim();
+            if (!jsonInput) return;
+
+            try {
+                const obj = JSON.parse(jsonInput);
+                document.getElementById('jsonInput').value = JSON.stringify(obj);
+                updateStats('json');
+            } catch (e) {
+                showStatus('JSON 压缩错误: ' + e.message, 'error');
+            }
+        }
+
+        // 更新统计信息
+        function updateStats(type) {
+            const textarea = document.getElementById(type + 'Input');
+            const stats = document.getElementById(type + 'Stats');
+            const valid = document.getElementById(type + 'Valid');
+            const content = textarea.value;
+
+            const chars = content.length;
+            const lines = content ? content.split('\n').length : 0;
+            stats.textContent = chars + ' 字符 | ' + lines + ' 行';
+
+            // 验证格式
+            if (content.trim()) {
+                try {
+                    if (type === 'json') {
+                        JSON.parse(content);
+                    } else {
+                        jsyaml.load(content);
+                    }
+                    valid.textContent = '✓ 有效';
+                    valid.style.color = 'var(--success)';
+                } catch (e) {
+                    valid.textContent = '✗ 无效';
+                    valid.style.color = 'var(--danger)';
+                }
+            } else {
+                valid.textContent = '';
+            }
+        }
+
+        // 显示状态
+        function showStatus(message, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = message;
+            bar.className = 'status-bar ' + type;
+            setTimeout(() => {
+                bar.className = 'status-bar';
+            }, 3000);
+        }
+
+        // 复制文本
+        function copyText(id) {
+            const textarea = document.getElementById(id);
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                showStatus('已复制到剪贴板', 'success');
+            });
+        }
+
+        // 清除文本
+        function clearText(id) {
+            document.getElementById(id).value = '';
+            updateStats(id.replace('Input', ''));
+        }
+
+        // 下载文件
+        function downloadFile(type) {
+            const content = document.getElementById(type + 'Input').value;
+            if (!content) {
+                showStatus('没有内容可下载', 'error');
+                return;
+            }
+
+            const ext = type === 'json' ? '.json' : '.yaml';
+            const mime = type === 'json' ? 'application/json' : 'text/yaml';
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data' + ext;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 初始化
+        initTheme();
+        loadSample('config');
+    </script>
+</body>
+</html>

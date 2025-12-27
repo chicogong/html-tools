@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色混合器 - Color Mixer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary: #8b5cf6; }
+        body { padding: 1rem; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .mixer-section { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+        @media (max-width: 700px) { .mixer-section { grid-template-columns: 1fr; } }
+        .color-input { background: var(--pico-card-background-color); border-radius: 10px; padding: 1rem; text-align: center; }
+        .color-input h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; }
+        .color-preview { width: 100%; height: 80px; border-radius: 8px; margin-bottom: 0.75rem; border: 2px solid var(--pico-muted-border-color); }
+        .color-input input[type="color"] { width: 60px; height: 40px; padding: 0; border: none; cursor: pointer; }
+        .color-input input[type="text"] { margin: 0.5rem 0 0 0; font-family: monospace; text-align: center; }
+        .mix-controls { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+        .mix-controls .icon { font-size: 2rem; }
+        .mix-controls select { margin: 0; width: auto; }
+        .result-section { background: var(--pico-card-background-color); border-radius: 10px; padding: 1.5rem; }
+        .result-section h3 { margin: 0 0 1rem 0; font-size: 1rem; }
+        .result-preview { height: 100px; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 600; }
+        .result-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
+        .value-item { background: var(--pico-muted-border-color); padding: 0.75rem; border-radius: 6px; text-align: center; }
+        .value-item .label { font-size: 0.75rem; color: var(--pico-muted-color); margin-bottom: 0.25rem; }
+        .value-item .value { font-family: monospace; font-weight: 500; cursor: pointer; }
+        .value-item .value:hover { text-decoration: underline; }
+        .ratio-slider { margin: 1rem 0; }
+        .ratio-slider label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
+        .ratio-slider input { margin: 0; width: 100%; }
+        .presets { margin-top: 1rem; }
+        .presets h4 { margin: 0 0 0.5rem 0; font-size: 0.85rem; }
+        .preset-colors { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+        .preset-color { width: 28px; height: 28px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+        .preset-color:hover { border-color: var(--primary); }
+        .gradient-preview { height: 40px; border-radius: 6px; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 颜色混合器</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+        <div class="mixer-section">
+            <div class="color-input">
+                <h3>颜色 A</h3>
+                <div class="color-preview" id="previewA"></div>
+                <input type="color" id="colorA" value="#3b82f6">
+                <input type="text" id="hexA" value="#3b82f6" placeholder="#000000">
+                <div class="presets"><h4>预设色</h4><div class="preset-colors" id="presetsA"></div></div>
+            </div>
+            <div class="mix-controls">
+                <div class="icon">⟷</div>
+                <select id="mixMode">
+                    <option value="rgb">RGB 混合</option>
+                    <option value="hsl">HSL 混合</option>
+                    <option value="multiply">正片叠底</option>
+                    <option value="screen">滤色</option>
+                </select>
+            </div>
+            <div class="color-input">
+                <h3>颜色 B</h3>
+                <div class="color-preview" id="previewB"></div>
+                <input type="color" id="colorB" value="#22c55e">
+                <input type="text" id="hexB" value="#22c55e" placeholder="#000000">
+                <div class="presets"><h4>预设色</h4><div class="preset-colors" id="presetsB"></div></div>
+            </div>
+        </div>
+        <div class="result-section">
+            <h3>混合结果</h3>
+            <div class="ratio-slider">
+                <label><span>颜色 A</span><span id="ratioLabel">50%</span><span>颜色 B</span></label>
+                <input type="range" id="ratio" min="0" max="100" value="50">
+            </div>
+            <div class="result-preview" id="resultPreview"></div>
+            <div class="result-values">
+                <div class="value-item"><div class="label">HEX</div><div class="value" id="resultHex" onclick="copyValue(this)">#000000</div></div>
+                <div class="value-item"><div class="label">RGB</div><div class="value" id="resultRgb" onclick="copyValue(this)">rgb(0,0,0)</div></div>
+                <div class="value-item"><div class="label">HSL</div><div class="value" id="resultHsl" onclick="copyValue(this)">hsl(0,0%,0%)</div></div>
+            </div>
+            <div class="gradient-preview" id="gradientPreview"></div>
+        </div>
+    </div>
+    <script>
+        const $ = id => document.getElementById(id);
+        const presetColors = ['#ef4444','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6','#8b5cf6','#ec4899','#000000','#ffffff','#6b7280','#1f2937'];
+        function hexToRgb(hex) { const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16); return {r,g,b}; }
+        function rgbToHex(r,g,b) { return '#' + [r,g,b].map(x => Math.round(x).toString(16).padStart(2,'0')).join(''); }
+        function rgbToHsl(r,g,b) { r/=255; g/=255; b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2; let h=0,s=0; if(max!==min){ const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min); switch(max){ case r:h=((g-b)/d+(g<b?6:0))/6;break; case g:h=((b-r)/d+2)/6;break; case b:h=((r-g)/d+4)/6;break; }} return {h:Math.round(h*360),s:Math.round(s*100),l:Math.round(l*100)}; }
+        function hslToRgb(h,s,l) { h/=360; s/=100; l/=100; let r,g,b; if(s===0){r=g=b=l;}else{ const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;}; const q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q; r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3); } return {r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)}; }
+        function mixColors() {
+            const hexA = $('hexA').value, hexB = $('hexB').value;
+            const ratio = $('ratio').value / 100;
+            const rgbA = hexToRgb(hexA), rgbB = hexToRgb(hexB);
+            const mode = $('mixMode').value;
+            let result;
+            if (mode === 'rgb') {
+                result = { r: rgbA.r*(1-ratio)+rgbB.r*ratio, g: rgbA.g*(1-ratio)+rgbB.g*ratio, b: rgbA.b*(1-ratio)+rgbB.b*ratio };
+            } else if (mode === 'hsl') {
+                const hslA = rgbToHsl(rgbA.r,rgbA.g,rgbA.b), hslB = rgbToHsl(rgbB.r,rgbB.g,rgbB.b);
+                let h = hslA.h*(1-ratio)+hslB.h*ratio;
+                if (Math.abs(hslA.h-hslB.h) > 180) { h = ((hslA.h+360)*(1-ratio)+hslB.h*ratio) % 360; }
+                const s = hslA.s*(1-ratio)+hslB.s*ratio, l = hslA.l*(1-ratio)+hslB.l*ratio;
+                result = hslToRgb(h,s,l);
+            } else if (mode === 'multiply') {
+                result = { r: rgbA.r*rgbB.r/255, g: rgbA.g*rgbB.g/255, b: rgbA.b*rgbB.b/255 };
+            } else if (mode === 'screen') {
+                result = { r: 255-(255-rgbA.r)*(255-rgbB.r)/255, g: 255-(255-rgbA.g)*(255-rgbB.g)/255, b: 255-(255-rgbA.b)*(255-rgbB.b)/255 };
+            }
+            const hex = rgbToHex(result.r, result.g, result.b);
+            const hsl = rgbToHsl(Math.round(result.r), Math.round(result.g), Math.round(result.b));
+            $('resultPreview').style.background = hex;
+            $('resultPreview').textContent = hex;
+            $('resultPreview').style.color = hsl.l > 50 ? '#000' : '#fff';
+            $('resultHex').textContent = hex;
+            $('resultRgb').textContent = `rgb(${Math.round(result.r)},${Math.round(result.g)},${Math.round(result.b)})`;
+            $('resultHsl').textContent = `hsl(${hsl.h},${hsl.s}%,${hsl.l}%)`;
+            $('gradientPreview').style.background = `linear-gradient(to right, ${hexA}, ${hex}, ${hexB})`;
+            $('ratioLabel').textContent = Math.round(ratio * 100) + '%';
+        }
+        function updatePreview(id, color) { $(id).style.background = color; }
+        function setupColorInput(colorId, hexId, previewId, presetsId) {
+            const colorInput = $(colorId), hexInput = $(hexId);
+            colorInput.oninput = () => { hexInput.value = colorInput.value; updatePreview(previewId, colorInput.value); mixColors(); };
+            hexInput.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value)) { colorInput.value = hexInput.value; updatePreview(previewId, hexInput.value); mixColors(); } };
+            $(presetsId).innerHTML = presetColors.map(c => `<div class="preset-color" style="background:${c}" onclick="document.getElementById('${colorId}').value='${c}';document.getElementById('${hexId}').value='${c}';updatePreview('${previewId}','${c}');mixColors();"></div>`).join('');
+            updatePreview(previewId, colorInput.value);
+        }
+        function copyValue(el) { navigator.clipboard.writeText(el.textContent); alert('已复制: ' + el.textContent); }
+        setupColorInput('colorA', 'hexA', 'previewA', 'presetsA');
+        setupColorInput('colorB', 'hexB', 'previewB', 'presetsB');
+        $('ratio').oninput = mixColors;
+        $('mixMode').onchange = mixColors;
+        function loadTheme() { const t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'; }
+        function toggleTheme() { const c = document.documentElement.getAttribute('data-theme'); const n = c === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙'; }
+        $('themeToggle').onclick = toggleTheme;
+        loadTheme();
+        mixColors();
+    </script>
+</body>
+</html>

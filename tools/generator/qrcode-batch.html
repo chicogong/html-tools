@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码批量生成器 | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        :root { --primary: #06b6d4; }
+        body { padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .panel { background: var(--pico-card-background-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .setting-item label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+        .setting-item input, .setting-item select { width: 100%; padding: 0.4rem; }
+        textarea { width: 100%; min-height: 150px; font-family: monospace; }
+        .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .qr-item { background: var(--pico-background-color); border-radius: 8px; padding: 1rem; text-align: center; }
+        .qr-item canvas { max-width: 100%; height: auto; }
+        .qr-item .label { margin-top: 0.5rem; font-size: 0.8rem; color: var(--pico-muted-color); word-break: break-all; max-height: 3em; overflow: hidden; }
+        .qr-item .actions { margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: center; }
+        .qr-item .actions button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .stats { padding: 0.75rem; background: var(--pico-background-color); border-radius: 6px; margin-bottom: 1rem; }
+        .color-input { display: flex; align-items: center; gap: 0.5rem; }
+        .color-input input[type="color"] { width: 40px; height: 30px; padding: 0; border: none; cursor: pointer; }
+        .progress { display: none; margin-top: 1rem; }
+        .progress-bar { height: 4px; background: var(--pico-muted-border-color); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📱 二维码批量生成器</h1>
+            <button id="themeToggle" class="outline">🌙</button>
+        </header>
+
+        <div class="panel">
+            <div class="settings">
+                <div class="setting-item">
+                    <label>尺寸 (px)</label>
+                    <input type="number" id="size" value="200" min="50" max="500">
+                </div>
+                <div class="setting-item">
+                    <label>容错级别</label>
+                    <select id="errorLevel">
+                        <option value="L">L (7%)</option>
+                        <option value="M" selected>M (15%)</option>
+                        <option value="Q">Q (25%)</option>
+                        <option value="H">H (30%)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>前景色</label>
+                    <div class="color-input">
+                        <input type="color" id="fgColor" value="#000000">
+                        <input type="text" id="fgColorText" value="#000000" style="flex:1">
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>背景色</label>
+                    <div class="color-input">
+                        <input type="color" id="bgColor" value="#ffffff">
+                        <input type="text" id="bgColorText" value="#ffffff" style="flex:1">
+                    </div>
+                </div>
+            </div>
+
+            <label style="font-size:0.9rem">输入内容 (每行一个)</label>
+            <textarea id="input" placeholder="https://example.com
+https://google.com
+https://github.com
+或任意文本内容...">https://example.com
+https://google.com
+https://github.com
+Hello World
+测试文本</textarea>
+
+            <div class="btn-row">
+                <button onclick="generate()">生成二维码</button>
+                <button onclick="downloadAll()" class="outline">📦 下载全部 (ZIP)</button>
+                <button onclick="clearAll()" class="outline">🗑️ 清空</button>
+            </div>
+
+            <div class="progress" id="progress">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            </div>
+        </div>
+
+        <div class="stats" id="stats" style="display:none">
+            已生成 <strong id="count">0</strong> 个二维码
+        </div>
+
+        <div class="qr-grid" id="qrGrid"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+    <script>
+        // Sync color inputs
+        document.getElementById('fgColor').addEventListener('input', e => {
+            document.getElementById('fgColorText').value = e.target.value;
+        });
+        document.getElementById('fgColorText').addEventListener('input', e => {
+            document.getElementById('fgColor').value = e.target.value;
+        });
+        document.getElementById('bgColor').addEventListener('input', e => {
+            document.getElementById('bgColorText').value = e.target.value;
+        });
+        document.getElementById('bgColorText').addEventListener('input', e => {
+            document.getElementById('bgColor').value = e.target.value;
+        });
+
+        let qrCodes = [];
+
+        async function generate() {
+            const input = document.getElementById('input').value;
+            const lines = input.split('\n').map(l => l.trim()).filter(l => l);
+            
+            if (lines.length === 0) return;
+
+            const size = parseInt(document.getElementById('size').value) || 200;
+            const errorLevel = document.getElementById('errorLevel').value;
+            const fgColor = document.getElementById('fgColor').value;
+            const bgColor = document.getElementById('bgColor').value;
+
+            const grid = document.getElementById('qrGrid');
+            grid.innerHTML = '';
+            qrCodes = [];
+
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('stats').style.display = 'block';
+
+            for (let i = 0; i < lines.length; i++) {
+                const text = lines[i];
+                const div = document.createElement('div');
+                div.className = 'qr-item';
+                
+                const canvas = document.createElement('canvas');
+                canvas.id = `qr-${i}`;
+                
+                try {
+                    await QRCode.toCanvas(canvas, text, {
+                        width: size,
+                        margin: 2,
+                        errorCorrectionLevel: errorLevel,
+                        color: { dark: fgColor, light: bgColor }
+                    });
+                    
+                    qrCodes.push({ canvas, text, index: i });
+                    
+                    div.innerHTML = `
+                        <div class="qr-canvas"></div>
+                        <div class="label" title="${escapeHtml(text)}">${escapeHtml(text.substring(0, 50))}${text.length > 50 ? '...' : ''}</div>
+                        <div class="actions">
+                            <button onclick="downloadSingle(${i})">下载</button>
+                            <button onclick="copySingle(${i})">复制</button>
+                        </div>
+                    `;
+                    div.querySelector('.qr-canvas').appendChild(canvas);
+                    
+                } catch (e) {
+                    div.innerHTML = `<div style="color:var(--pico-del-color);padding:1rem;">生成失败</div>`;
+                }
+                
+                grid.appendChild(div);
+                
+                // Update progress
+                document.getElementById('progressFill').style.width = ((i + 1) / lines.length * 100) + '%';
+                document.getElementById('count').textContent = i + 1;
+                
+                // Small delay for UI update
+                await new Promise(r => setTimeout(r, 10));
+            }
+
+            document.getElementById('progress').style.display = 'none';
+        }
+
+        function downloadSingle(index) {
+            const qr = qrCodes.find(q => q.index === index);
+            if (!qr) return;
+            
+            const a = document.createElement('a');
+            a.href = qr.canvas.toDataURL('image/png');
+            a.download = `qrcode_${index + 1}.png`;
+            a.click();
+        }
+
+        async function copySingle(index) {
+            const qr = qrCodes.find(q => q.index === index);
+            if (!qr) return;
+            
+            qr.canvas.toBlob(async blob => {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            });
+        }
+
+        async function downloadAll() {
+            if (qrCodes.length === 0) return;
+            
+            const zip = new JSZip();
+            
+            for (const qr of qrCodes) {
+                const dataUrl = qr.canvas.toDataURL('image/png');
+                const base64 = dataUrl.split(',')[1];
+                const filename = `qrcode_${qr.index + 1}.png`;
+                zip.file(filename, base64, { base64: true });
+            }
+            
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'qrcodes.zip';
+            a.click();
+        }
+
+        function clearAll() {
+            document.getElementById('qrGrid').innerHTML = '';
+            document.getElementById('stats').style.display = 'none';
+            qrCodes = [];
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Theme toggle
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('themeToggle').onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+        };
+    </script>
+</body>
+</html>

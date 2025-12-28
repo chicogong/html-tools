@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片加边框 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #14b8a6, #0d9488); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .drop-zone input { display: none; }
+        .style-options { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+        .style-btn { padding: 0.75rem 1.25rem; border: 2px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer; transition: all 0.2s; }
+        .style-btn:hover { border-color: var(--accent); }
+        .style-btn.active { border-color: var(--accent); background: rgba(99, 102, 241, 0.2); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .slider-row { display: flex; align-items: center; gap: 1rem; }
+        .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+        .slider-row .value { min-width: 60px; font-weight: 600; text-align: right; }
+        input[type="color"] { width: 100%; height: 40px; border: none; border-radius: 0.5rem; cursor: pointer; }
+        .color-presets { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .color-preset { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid var(--border); }
+        .color-preset:hover { transform: scale(1.1); }
+        .preview-container { display: flex; justify-content: center; align-items: center; margin: 1.5rem 0; min-height: 300px; background: var(--bg-tertiary); border-radius: 0.5rem; padding: 2rem; }
+        .preview-container canvas { max-width: 100%; max-height: 500px; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🖼️ 图片加边框</h1>
+        <p>为图片添加各种边框效果</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                <div style="font-size: 3rem;">🖼️</div>
+                <p>点击选择图片或拖放图片到此处</p>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="editSection">
+            <h3 style="margin-bottom: 1rem;">边框样式</h3>
+            <div class="style-options">
+                <button class="style-btn active" data-style="solid" onclick="setStyle('solid')">实线</button>
+                <button class="style-btn" data-style="double" onclick="setStyle('double')">双线</button>
+                <button class="style-btn" data-style="shadow" onclick="setStyle('shadow')">阴影</button>
+                <button class="style-btn" data-style="polaroid" onclick="setStyle('polaroid')">拍立得</button>
+                <button class="style-btn" data-style="film" onclick="setStyle('film')">胶片</button>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>边框宽度</label>
+                    <div class="slider-row">
+                        <input type="range" id="borderWidth" min="1" max="100" value="20" oninput="updatePreview()">
+                        <span class="value" id="borderWidthValue">20px</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>边框颜色</label>
+                    <input type="color" id="borderColor" value="#ffffff" onchange="updatePreview()">
+                    <div class="color-presets">
+                        <div class="color-preset" style="background: #ffffff" onclick="setColor('#ffffff')"></div>
+                        <div class="color-preset" style="background: #000000" onclick="setColor('#000000')"></div>
+                        <div class="color-preset" style="background: #f5f5dc" onclick="setColor('#f5f5dc')"></div>
+                        <div class="color-preset" style="background: #d4af37" onclick="setColor('#d4af37')"></div>
+                        <div class="color-preset" style="background: #c0c0c0" onclick="setColor('#c0c0c0')"></div>
+                        <div class="color-preset" style="background: #8b4513" onclick="setColor('#8b4513')"></div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>圆角</label>
+                    <div class="slider-row">
+                        <input type="range" id="borderRadius" min="0" max="50" value="0" oninput="updatePreview()">
+                        <span class="value" id="borderRadiusValue">0px</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="download()">💾 下载图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let originalImage = null;
+        let borderStyle = 'solid';
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    updatePreview();
+                    document.getElementById('editSection').classList.remove('hidden');
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function setStyle(style) {
+            borderStyle = style;
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.style === style);
+            });
+            updatePreview();
+        }
+        
+        function setColor(color) {
+            document.getElementById('borderColor').value = color;
+            updatePreview();
+        }
+        
+        function updatePreview() {
+            if (!originalImage) return;
+            
+            const borderWidth = parseInt(document.getElementById('borderWidth').value);
+            const borderColor = document.getElementById('borderColor').value;
+            const borderRadius = parseInt(document.getElementById('borderRadius').value);
+            
+            document.getElementById('borderWidthValue').textContent = borderWidth + 'px';
+            document.getElementById('borderRadiusValue').textContent = borderRadius + 'px';
+            
+            let padding = borderWidth;
+            let bottomPadding = borderWidth;
+            
+            if (borderStyle === 'polaroid') {
+                bottomPadding = borderWidth * 3;
+            } else if (borderStyle === 'film') {
+                padding = borderWidth * 1.5;
+            }
+            
+            canvas.width = originalImage.width + padding * 2;
+            canvas.height = originalImage.height + padding + bottomPadding;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw border based on style
+            if (borderStyle === 'solid') {
+                drawRoundedRect(0, 0, canvas.width, canvas.height, borderRadius, borderColor);
+                ctx.drawImage(originalImage, padding, padding);
+            } else if (borderStyle === 'double') {
+                drawRoundedRect(0, 0, canvas.width, canvas.height, borderRadius, borderColor);
+                const innerGap = 4;
+                ctx.fillStyle = '#333';
+                drawRoundedRect(innerGap, innerGap, canvas.width - innerGap * 2, canvas.height - innerGap * 2, borderRadius, '#333');
+                drawRoundedRect(innerGap * 2, innerGap * 2, canvas.width - innerGap * 4, canvas.height - innerGap * 4, borderRadius, borderColor);
+                ctx.drawImage(originalImage, padding, padding);
+            } else if (borderStyle === 'shadow') {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 20;
+                ctx.shadowOffsetX = 10;
+                ctx.shadowOffsetY = 10;
+                ctx.fillStyle = borderColor;
+                ctx.fillRect(padding/2, padding/2, originalImage.width + padding, originalImage.height + padding);
+                ctx.shadowColor = 'transparent';
+                ctx.drawImage(originalImage, padding, padding);
+            } else if (borderStyle === 'polaroid') {
+                ctx.fillStyle = borderColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(originalImage, padding, padding);
+            } else if (borderStyle === 'film') {
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Film holes
+                const holeSize = 10;
+                const holeGap = 20;
+                ctx.fillStyle = '#fff';
+                for (let y = holeGap; y < canvas.height - holeGap; y += holeGap) {
+                    ctx.beginPath();
+                    ctx.arc(holeSize, y, holeSize/2, 0, Math.PI * 2);
+                    ctx.arc(canvas.width - holeSize, y, holeSize/2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.drawImage(originalImage, padding, padding);
+            }
+        }
+        
+        function drawRoundedRect(x, y, w, h, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        function download() {
+            const link = document.createElement('a');
+            link.download = 'bordered_image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片旋转 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #10b981, #059669); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .drop-zone input { display: none; }
+        .rotate-buttons { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+        .rotate-btn { padding: 1rem 1.5rem; border: 2px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer; transition: all 0.2s; font-size: 1.2rem; }
+        .rotate-btn:hover { border-color: var(--accent); background: rgba(99, 102, 241, 0.2); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .slider-row { display: flex; align-items: center; gap: 1rem; }
+        .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+        .slider-row .value { min-width: 60px; font-weight: 600; text-align: right; }
+        input[type="color"] { width: 60px; height: 40px; border: none; border-radius: 0.5rem; cursor: pointer; }
+        .preview-container { display: flex; justify-content: center; align-items: center; margin: 1.5rem 0; min-height: 300px; background: var(--bg-tertiary); border-radius: 0.5rem; padding: 1rem; overflow: hidden; }
+        .preview-container canvas { max-width: 100%; max-height: 500px; transition: transform 0.3s; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hidden { display: none; }
+        .info { text-align: center; margin: 1rem 0; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🔄 图片旋转</h1>
+        <p>旋转图片任意角度</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                <div style="font-size: 3rem;">🖼️</div>
+                <p>点击选择图片或拖放图片到此处</p>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="editSection">
+            <h3 style="margin-bottom: 1rem; text-align: center;">快速旋转</h3>
+            <div class="rotate-buttons">
+                <button class="rotate-btn" onclick="rotate(-90)">↺ 左转90°</button>
+                <button class="rotate-btn" onclick="rotate(90)">↻ 右转90°</button>
+                <button class="rotate-btn" onclick="rotate(180)">🔃 旋转180°</button>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>自定义角度</label>
+                    <div class="slider-row">
+                        <input type="range" id="angle" min="-180" max="180" value="0" oninput="updateAngle()">
+                        <span class="value" id="angleValue">0°</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>背景颜色</label>
+                    <div class="slider-row">
+                        <input type="color" id="bgColor" value="#ffffff" onchange="applyRotation()">
+                        <label style="margin-left: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="transparent" onchange="applyRotation()">
+                            透明背景
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info" id="sizeInfo">原始尺寸: - | 旋转后: -</div>
+            
+            <div class="preview-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="resetRotation()">🔄 重置</button>
+                <button class="btn btn-success" onclick="download()">💾 下载图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let originalImage = null;
+        let currentAngle = 0;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    currentAngle = 0;
+                    document.getElementById('angle').value = 0;
+                    document.getElementById('angleValue').textContent = '0°';
+                    applyRotation();
+                    document.getElementById('editSection').classList.remove('hidden');
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function rotate(deg) {
+            currentAngle = (currentAngle + deg) % 360;
+            document.getElementById('angle').value = currentAngle;
+            document.getElementById('angleValue').textContent = currentAngle + '°';
+            applyRotation();
+        }
+        
+        function updateAngle() {
+            currentAngle = parseInt(document.getElementById('angle').value);
+            document.getElementById('angleValue').textContent = currentAngle + '°';
+            applyRotation();
+        }
+        
+        function applyRotation() {
+            if (!originalImage) return;
+            
+            const angle = currentAngle * Math.PI / 180;
+            const bgColor = document.getElementById('bgColor').value;
+            const transparent = document.getElementById('transparent').checked;
+            
+            // Calculate new canvas size
+            const sin = Math.abs(Math.sin(angle));
+            const cos = Math.abs(Math.cos(angle));
+            const newWidth = Math.ceil(originalImage.width * cos + originalImage.height * sin);
+            const newHeight = Math.ceil(originalImage.width * sin + originalImage.height * cos);
+            
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            
+            // Clear and fill background
+            ctx.clearRect(0, 0, newWidth, newHeight);
+            if (!transparent) {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, newWidth, newHeight);
+            }
+            
+            // Rotate and draw
+            ctx.save();
+            ctx.translate(newWidth / 2, newHeight / 2);
+            ctx.rotate(angle);
+            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+            ctx.restore();
+            
+            // Update info
+            document.getElementById('sizeInfo').textContent = 
+                `原始尺寸: ${originalImage.width}×${originalImage.height} | 旋转后: ${newWidth}×${newHeight}`;
+        }
+        
+        function resetRotation() {
+            currentAngle = 0;
+            document.getElementById('angle').value = 0;
+            document.getElementById('angleValue').textContent = '0°';
+            applyRotation();
+        }
+        
+        function download() {
+            const link = document.createElement('a');
+            link.download = 'rotated_image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

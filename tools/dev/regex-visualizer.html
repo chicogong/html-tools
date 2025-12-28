@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则表达式可视化 - HTML Tools</title>
+    <meta name="description" content="在线正则表达式可视化测试工具，实时高亮匹配结果，支持分组捕获显示">
+    <meta name="keywords" content="正则表达式,regex,可视化,测试,匹配">
+    <link rel="canonical" href="https://html-tools.cnb.cool/tools/dev/regex-visualizer.html">
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --text-color: #333;
+            --border-color: #ddd;
+            --card-bg: #fff;
+            --primary-color: #ff5722;
+            --primary-hover: #e64a19;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --match-bg: #ffeb3b;
+            --match-text: #333;
+            --group-colors: #e3f2fd, #f3e5f5, #e8f5e9, #fff3e0, #fce4ec, #e0f7fa;
+        }
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --card-bg: #2d2d2d;
+            --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --match-bg: #ff9800;
+            --match-text: #000;
+            --group-colors: #1a237e, #4a148c, #1b5e20, #e65100, #880e4f, #006064;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        .subtitle {
+            color: var(--text-color);
+            opacity: 0.7;
+            font-size: 0.95rem;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+        .theme-toggle:hover {
+            border-color: var(--primary-color);
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .regex-input-group {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            flex-wrap: wrap;
+        }
+        .regex-wrapper {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            align-items: center;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-color);
+            padding: 0 12px;
+            transition: border-color 0.3s;
+        }
+        .regex-wrapper:focus-within {
+            border-color: var(--primary-color);
+        }
+        .regex-wrapper .slash {
+            color: var(--primary-color);
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .regex-wrapper input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px 8px;
+            font-size: 16px;
+            font-family: Consolas, Monaco, monospace;
+            color: var(--text-color);
+            outline: none;
+        }
+        .flags-input {
+            width: 80px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            background: var(--bg-color);
+            color: var(--text-color);
+            text-align: center;
+        }
+        .flags-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .flag-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .flag-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .flag-btn:hover {
+            border-color: var(--primary-color);
+        }
+        .flag-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        .error-message {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            border-radius: 6px;
+            color: #f44336;
+            font-size: 14px;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: Consolas, Monaco, monospace;
+            resize: vertical;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .result-area {
+            min-height: 150px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-color);
+            font-family: Consolas, Monaco, monospace;
+            font-size: 15px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .match {
+            background: var(--match-bg);
+            color: var(--match-text);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        .stat-item {
+            font-size: 14px;
+        }
+        .stat-item span {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .matches-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .match-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            align-items: flex-start;
+        }
+        .match-item:last-child {
+            border-bottom: none;
+        }
+        .match-index {
+            background: var(--primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .match-content {
+            flex: 1;
+            font-family: monospace;
+        }
+        .match-value {
+            background: var(--match-bg);
+            color: var(--match-text);
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-bottom: 6px;
+            display: inline-block;
+        }
+        .match-position {
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.6;
+        }
+        .match-groups {
+            margin-top: 8px;
+            padding-left: 12px;
+            border-left: 2px solid var(--border-color);
+        }
+        .group-item {
+            font-size: 13px;
+            margin: 4px 0;
+        }
+        .group-label {
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+        .group-value {
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+        }
+        .presets {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .preset-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .preset-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .reference {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .ref-group h4 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        .ref-item {
+            display: flex;
+            gap: 10px;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        .ref-item code {
+            background: var(--bg-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            min-width: 50px;
+            text-align: center;
+        }
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+    
+    <div class="container">
+        <header>
+            <h1>🔍 正则表达式可视化</h1>
+            <p class="subtitle">实时测试正则表达式，高亮显示匹配结果和分组捕获</p>
+        </header>
+
+        <div class="card">
+            <div class="card-title">正则表达式</div>
+            <div class="presets">
+                <button class="preset-btn" onclick="setPreset('email')">邮箱</button>
+                <button class="preset-btn" onclick="setPreset('phone')">手机号</button>
+                <button class="preset-btn" onclick="setPreset('url')">URL</button>
+                <button class="preset-btn" onclick="setPreset('ip')">IP地址</button>
+                <button class="preset-btn" onclick="setPreset('date')">日期</button>
+                <button class="preset-btn" onclick="setPreset('chinese')">中文</button>
+                <button class="preset-btn" onclick="setPreset('html')">HTML标签</button>
+            </div>
+            <div class="regex-input-group">
+                <div class="regex-wrapper">
+                    <span class="slash">/</span>
+                    <input type="text" id="regexInput" placeholder="输入正则表达式..." value="">
+                    <span class="slash">/</span>
+                </div>
+                <input type="text" class="flags-input" id="flagsInput" placeholder="gi" value="g">
+            </div>
+            <div class="flag-buttons">
+                <button class="flag-btn active" data-flag="g" onclick="toggleFlag('g')">g 全局</button>
+                <button class="flag-btn" data-flag="i" onclick="toggleFlag('i')">i 忽略大小写</button>
+                <button class="flag-btn" data-flag="m" onclick="toggleFlag('m')">m 多行</button>
+                <button class="flag-btn" data-flag="s" onclick="toggleFlag('s')">s 点匹配所有</button>
+                <button class="flag-btn" data-flag="u" onclick="toggleFlag('u')">u Unicode</button>
+            </div>
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">测试文本</div>
+            <textarea id="testText" placeholder="输入要测试的文本...">Hello, my email is test@example.com and another one is hello@world.org
+You can also reach me at +86 13812345678 or visit https://example.com
+Today is 2024-01-15, IP address: 192.168.1.1
+这是一段中文测试文本，包含一些HTML标签：<div class="test">内容</div></textarea>
+        </div>
+
+        <div class="two-col">
+            <div class="card">
+                <div class="card-title">高亮结果</div>
+                <div class="result-area" id="highlightResult"></div>
+                <div class="stats" id="stats"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">匹配详情</div>
+                <div class="matches-list" id="matchesList">
+                    <div style="text-align: center; color: var(--text-color); opacity: 0.6; padding: 20px;">
+                        输入正则表达式开始匹配
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">正则表达式参考</div>
+            <div class="reference">
+                <div class="ref-group">
+                    <h4>字符类</h4>
+                    <div class="ref-item"><code>.</code> 任意字符</div>
+                    <div class="ref-item"><code>\d</code> 数字 [0-9]</div>
+                    <div class="ref-item"><code>\w</code> 单词字符</div>
+                    <div class="ref-item"><code>\s</code> 空白字符</div>
+                    <div class="ref-item"><code>[abc]</code> 字符集</div>
+                    <div class="ref-item"><code>[^abc]</code> 否定字符集</div>
+                </div>
+                <div class="ref-group">
+                    <h4>量词</h4>
+                    <div class="ref-item"><code>*</code> 0 或更多</div>
+                    <div class="ref-item"><code>+</code> 1 或更多</div>
+                    <div class="ref-item"><code>?</code> 0 或 1</div>
+                    <div class="ref-item"><code>{n}</code> 恰好 n 次</div>
+                    <div class="ref-item"><code>{n,}</code> n 次或更多</div>
+                    <div class="ref-item"><code>{n,m}</code> n 到 m 次</div>
+                </div>
+                <div class="ref-group">
+                    <h4>边界</h4>
+                    <div class="ref-item"><code>^</code> 字符串开始</div>
+                    <div class="ref-item"><code>$</code> 字符串结束</div>
+                    <div class="ref-item"><code>\b</code> 单词边界</div>
+                    <div class="ref-item"><code>\B</code> 非单词边界</div>
+                </div>
+                <div class="ref-group">
+                    <h4>分组</h4>
+                    <div class="ref-item"><code>(abc)</code> 捕获组</div>
+                    <div class="ref-item"><code>(?:abc)</code> 非捕获组</div>
+                    <div class="ref-item"><code>(?&lt;name&gt;abc)</code> 命名捕获</div>
+                    <div class="ref-item"><code>a|b</code> 或</div>
+                    <div class="ref-item"><code>\1</code> 反向引用</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Initialize theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        const presets = {
+            email: { pattern: '[\\w.-]+@[\\w.-]+\\.\\w+', flags: 'gi', text: null },
+            phone: { pattern: '1[3-9]\\d{9}', flags: 'g', text: null },
+            url: { pattern: 'https?://[\\w.-]+(?:/[\\w./-]*)?', flags: 'gi', text: null },
+            ip: { pattern: '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}', flags: 'g', text: null },
+            date: { pattern: '\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}', flags: 'g', text: null },
+            chinese: { pattern: '[\\u4e00-\\u9fa5]+', flags: 'g', text: null },
+            html: { pattern: '<([a-z]+)[^>]*>.*?</\\1>', flags: 'gis', text: null }
+        };
+
+        const regexInput = document.getElementById('regexInput');
+        const flagsInput = document.getElementById('flagsInput');
+        const testText = document.getElementById('testText');
+        const highlightResult = document.getElementById('highlightResult');
+        const matchesList = document.getElementById('matchesList');
+        const errorMessage = document.getElementById('errorMessage');
+        const stats = document.getElementById('stats');
+
+        function setPreset(name) {
+            const preset = presets[name];
+            if (preset) {
+                regexInput.value = preset.pattern;
+                flagsInput.value = preset.flags;
+                updateFlagButtons();
+                runMatch();
+            }
+        }
+
+        function toggleFlag(flag) {
+            let flags = flagsInput.value;
+            if (flags.includes(flag)) {
+                flags = flags.replace(flag, '');
+            } else {
+                flags += flag;
+            }
+            flagsInput.value = flags;
+            updateFlagButtons();
+            runMatch();
+        }
+
+        function updateFlagButtons() {
+            const flags = flagsInput.value;
+            document.querySelectorAll('.flag-btn').forEach(btn => {
+                const flag = btn.dataset.flag;
+                btn.classList.toggle('active', flags.includes(flag));
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function runMatch() {
+            const pattern = regexInput.value;
+            const flags = flagsInput.value;
+            const text = testText.value;
+
+            // Clear previous results
+            errorMessage.classList.remove('show');
+            
+            if (!pattern) {
+                highlightResult.innerHTML = escapeHtml(text);
+                matchesList.innerHTML = '<div style="text-align: center; color: var(--text-color); opacity: 0.6; padding: 20px;">输入正则表达式开始匹配</div>';
+                stats.innerHTML = '';
+                return;
+            }
+
+            let regex;
+            try {
+                regex = new RegExp(pattern, flags);
+            } catch (e) {
+                errorMessage.textContent = '正则表达式错误: ' + e.message;
+                errorMessage.classList.add('show');
+                highlightResult.innerHTML = escapeHtml(text);
+                matchesList.innerHTML = '';
+                stats.innerHTML = '';
+                return;
+            }
+
+            // Find all matches
+            const matches = [];
+            let match;
+            const globalRegex = new RegExp(pattern, flags.includes('g') ? flags : flags + 'g');
+            
+            while ((match = globalRegex.exec(text)) !== null) {
+                matches.push({
+                    value: match[0],
+                    index: match.index,
+                    groups: match.slice(1),
+                    namedGroups: match.groups || {}
+                });
+                
+                // Prevent infinite loop for zero-length matches
+                if (match[0].length === 0) {
+                    globalRegex.lastIndex++;
+                }
+            }
+
+            // Highlight matches
+            if (matches.length > 0) {
+                let result = '';
+                let lastIndex = 0;
+                
+                matches.forEach((m) => {
+                    result += escapeHtml(text.slice(lastIndex, m.index));
+                    result += '<span class="match">' + escapeHtml(m.value) + '</span>';
+                    lastIndex = m.index + m.value.length;
+                });
+                result += escapeHtml(text.slice(lastIndex));
+                
+                highlightResult.innerHTML = result;
+            } else {
+                highlightResult.innerHTML = escapeHtml(text);
+            }
+
+            // Show matches list
+            if (matches.length > 0) {
+                const groupColors = ['#e3f2fd', '#f3e5f5', '#e8f5e9', '#fff3e0', '#fce4ec', '#e0f7fa'];
+                
+                matchesList.innerHTML = matches.map((m, i) => {
+                    let groupsHtml = '';
+                    
+                    // Numbered groups
+                    if (m.groups.length > 0) {
+                        groupsHtml = '<div class="match-groups">';
+                        m.groups.forEach((g, gi) => {
+                            const color = groupColors[gi % groupColors.length];
+                            groupsHtml += `<div class="group-item">
+                                <span class="group-label">组 ${gi + 1}:</span>
+                                <span class="group-value" style="background: ${color}">${g !== undefined ? escapeHtml(g) : '(空)'}</span>
+                            </div>`;
+                        });
+                        groupsHtml += '</div>';
+                    }
+                    
+                    // Named groups
+                    const namedKeys = Object.keys(m.namedGroups);
+                    if (namedKeys.length > 0) {
+                        if (!groupsHtml) groupsHtml = '<div class="match-groups">';
+                        else groupsHtml = groupsHtml.slice(0, -6); // Remove closing div
+                        
+                        namedKeys.forEach((key, ki) => {
+                            const color = groupColors[(m.groups.length + ki) % groupColors.length];
+                            groupsHtml += `<div class="group-item">
+                                <span class="group-label">${key}:</span>
+                                <span class="group-value" style="background: ${color}">${escapeHtml(m.namedGroups[key])}</span>
+                            </div>`;
+                        });
+                        groupsHtml += '</div>';
+                    }
+                    
+                    return `<div class="match-item">
+                        <span class="match-index">#${i + 1}</span>
+                        <div class="match-content">
+                            <span class="match-value">${escapeHtml(m.value)}</span>
+                            <div class="match-position">位置: ${m.index} - ${m.index + m.value.length}</div>
+                            ${groupsHtml}
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                matchesList.innerHTML = '<div style="text-align: center; color: var(--text-color); opacity: 0.6; padding: 20px;">无匹配结果</div>';
+            }
+
+            // Update stats
+            stats.innerHTML = `
+                <div class="stat-item">匹配数量: <span>${matches.length}</span></div>
+                <div class="stat-item">文本长度: <span>${text.length}</span></div>
+                <div class="stat-item">表达式: <span>/${pattern}/${flags}</span></div>
+            `;
+        }
+
+        // Event listeners
+        regexInput.addEventListener('input', runMatch);
+        flagsInput.addEventListener('input', () => {
+            updateFlagButtons();
+            runMatch();
+        });
+        testText.addEventListener('input', runMatch);
+
+        // Initialize
+        updateFlagButtons();
+        runMatch();
+    </script>
+</body>
+</html>

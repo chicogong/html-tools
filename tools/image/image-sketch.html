@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转素描 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #64748b, #475569); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .drop-zone input { display: none; }
+        .style-options { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+        .style-btn { padding: 0.75rem 1.5rem; border: 2px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer; transition: all 0.2s; }
+        .style-btn:hover { border-color: var(--accent); }
+        .style-btn.active { border-color: var(--accent); background: rgba(99, 102, 241, 0.2); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .slider-row { display: flex; align-items: center; gap: 1rem; }
+        .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+        .slider-row .value { min-width: 50px; font-weight: 600; text-align: right; }
+        .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+        @media (max-width: 768px) { .preview-grid { grid-template-columns: 1fr; } }
+        .preview-box { background: var(--bg-tertiary); border-radius: 0.5rem; overflow: hidden; }
+        .preview-header { padding: 0.75rem 1rem; background: var(--bg-primary); font-weight: 600; text-align: center; }
+        .preview-image { padding: 1rem; display: flex; align-items: center; justify-content: center; min-height: 250px; }
+        .preview-image img, .preview-image canvas { max-width: 100%; max-height: 400px; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hidden { display: none; }
+        .loading { text-align: center; padding: 2rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>✏️ 图片转素描</h1>
+        <p>将照片转换为素描或铅笔画风格</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                <div style="font-size: 3rem;">🖼️</div>
+                <p>点击选择图片或拖放图片到此处</p>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="editSection">
+            <h3 style="margin-bottom: 1rem;">选择风格</h3>
+            <div class="style-options">
+                <button class="style-btn active" data-style="pencil" onclick="setStyle('pencil')">✏️ 铅笔素描</button>
+                <button class="style-btn" data-style="charcoal" onclick="setStyle('charcoal')">🖤 炭笔画</button>
+                <button class="style-btn" data-style="outline" onclick="setStyle('outline')">✍️ 轮廓线稿</button>
+                <button class="style-btn" data-style="crosshatch" onclick="setStyle('crosshatch')">📐 交叉线</button>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>线条强度</label>
+                    <div class="slider-row">
+                        <input type="range" id="intensity" min="1" max="100" value="50" oninput="applyEffect()">
+                        <span class="value" id="intensityValue">50</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>对比度</label>
+                    <div class="slider-row">
+                        <input type="range" id="contrast" min="0" max="200" value="100" oninput="applyEffect()">
+                        <span class="value" id="contrastValue">100%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="loading hidden" id="loading">处理中...</div>
+            
+            <div class="preview-grid">
+                <div class="preview-box">
+                    <div class="preview-header">原图</div>
+                    <div class="preview-image">
+                        <img id="originalPreview" alt="Original">
+                    </div>
+                </div>
+                <div class="preview-box">
+                    <div class="preview-header">效果图</div>
+                    <div class="preview-image">
+                        <canvas id="canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="download()">💾 下载图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let originalImage = null;
+        let currentStyle = 'pencil';
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    document.getElementById('originalPreview').src = originalImage.src;
+                    applyEffect();
+                    document.getElementById('editSection').classList.remove('hidden');
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function setStyle(style) {
+            currentStyle = style;
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.style === style);
+            });
+            applyEffect();
+        }
+        
+        function applyEffect() {
+            if (!originalImage) return;
+            
+            const intensity = parseInt(document.getElementById('intensity').value);
+            const contrast = parseInt(document.getElementById('contrast').value);
+            
+            document.getElementById('intensityValue').textContent = intensity;
+            document.getElementById('contrastValue').textContent = contrast + '%';
+            
+            document.getElementById('loading').classList.remove('hidden');
+            
+            setTimeout(() => {
+                canvas.width = originalImage.width;
+                canvas.height = originalImage.height;
+                
+                ctx.drawImage(originalImage, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Convert to grayscale first
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                    data[i] = data[i + 1] = data[i + 2] = gray;
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                // Apply style-specific effects
+                switch (currentStyle) {
+                    case 'pencil':
+                        applyPencilEffect(intensity, contrast);
+                        break;
+                    case 'charcoal':
+                        applyCharcoalEffect(intensity, contrast);
+                        break;
+                    case 'outline':
+                        applyOutlineEffect(intensity, contrast);
+                        break;
+                    case 'crosshatch':
+                        applyCrosshatchEffect(intensity, contrast);
+                        break;
+                }
+                
+                document.getElementById('loading').classList.add('hidden');
+            }, 50);
+        }
+        
+        function applyPencilEffect(intensity, contrast) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Invert
+            const inverted = new Uint8ClampedArray(data.length);
+            for (let i = 0; i < data.length; i += 4) {
+                inverted[i] = 255 - data[i];
+                inverted[i + 1] = 255 - data[i + 1];
+                inverted[i + 2] = 255 - data[i + 2];
+                inverted[i + 3] = 255;
+            }
+            
+            // Apply gaussian blur to inverted
+            const blurRadius = Math.max(1, Math.floor(intensity / 10));
+            const blurred = gaussianBlur(inverted, canvas.width, canvas.height, blurRadius);
+            
+            // Color dodge blend
+            for (let i = 0; i < data.length; i += 4) {
+                for (let c = 0; c < 3; c++) {
+                    const base = data[i + c];
+                    const blend = blurred[i + c];
+                    data[i + c] = blend === 255 ? 255 : Math.min(255, (base * 256) / (256 - blend));
+                }
+                
+                // Apply contrast
+                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                for (let c = 0; c < 3; c++) {
+                    data[i + c] = Math.max(0, Math.min(255, factor * (data[i + c] - 128) + 128));
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function applyCharcoalEffect(intensity, contrast) {
+            applyPencilEffect(intensity, contrast);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Add noise for texture
+            const noiseAmount = intensity / 100 * 30;
+            for (let i = 0; i < data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * noiseAmount;
+                data[i] = Math.max(0, Math.min(255, data[i] + noise));
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+            }
+            
+            // Darken
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = data[i] * 0.85;
+                data[i + 1] = data[i + 1] * 0.85;
+                data[i + 2] = data[i + 2] * 0.85;
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function applyOutlineEffect(intensity, contrast) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Sobel edge detection
+            const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+            const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+            
+            const output = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gx = 0, gy = 0;
+                    
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const idx = ((y + ky) * width + (x + kx)) * 4;
+                            const kidx = (ky + 1) * 3 + (kx + 1);
+                            gx += data[idx] * sobelX[kidx];
+                            gy += data[idx] * sobelY[kidx];
+                        }
+                    }
+                    
+                    let magnitude = Math.sqrt(gx * gx + gy * gy);
+                    magnitude = magnitude * (intensity / 50);
+                    
+                    const idx = (y * width + x) * 4;
+                    const edge = 255 - Math.min(255, magnitude);
+                    output[idx] = output[idx + 1] = output[idx + 2] = edge;
+                    output[idx + 3] = 255;
+                }
+            }
+            
+            // Apply contrast
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            for (let i = 0; i < output.length; i += 4) {
+                for (let c = 0; c < 3; c++) {
+                    output[i + c] = Math.max(0, Math.min(255, factor * (output[i + c] - 128) + 128));
+                }
+            }
+            
+            ctx.putImageData(new ImageData(output, width, height), 0, 0);
+        }
+        
+        function applyCrosshatchEffect(intensity, contrast) {
+            applyOutlineEffect(intensity, contrast);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Add crosshatch pattern based on darkness
+            const spacing = Math.max(3, 10 - intensity / 15);
+            
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const idx = (y * canvas.width + x) * 4;
+                    const brightness = data[idx];
+                    
+                    if (brightness < 200) {
+                        const density = (200 - brightness) / 200;
+                        if ((x + y) % spacing < density * spacing / 2 ||
+                            (x - y + canvas.height) % spacing < density * spacing / 2) {
+                            data[idx] = data[idx + 1] = data[idx + 2] = Math.max(0, brightness - 50);
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function gaussianBlur(data, width, height, radius) {
+            const output = new Uint8ClampedArray(data.length);
+            const kernel = createGaussianKernel(radius);
+            const kSize = radius * 2 + 1;
+            
+            // Horizontal pass
+            const temp = new Uint8ClampedArray(data.length);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let r = 0, g = 0, b = 0, sum = 0;
+                    for (let k = -radius; k <= radius; k++) {
+                        const px = Math.max(0, Math.min(width - 1, x + k));
+                        const idx = (y * width + px) * 4;
+                        const weight = kernel[k + radius];
+                        r += data[idx] * weight;
+                        g += data[idx + 1] * weight;
+                        b += data[idx + 2] * weight;
+                        sum += weight;
+                    }
+                    const idx = (y * width + x) * 4;
+                    temp[idx] = r / sum;
+                    temp[idx + 1] = g / sum;
+                    temp[idx + 2] = b / sum;
+                    temp[idx + 3] = 255;
+                }
+            }
+            
+            // Vertical pass
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let r = 0, g = 0, b = 0, sum = 0;
+                    for (let k = -radius; k <= radius; k++) {
+                        const py = Math.max(0, Math.min(height - 1, y + k));
+                        const idx = (py * width + x) * 4;
+                        const weight = kernel[k + radius];
+                        r += temp[idx] * weight;
+                        g += temp[idx + 1] * weight;
+                        b += temp[idx + 2] * weight;
+                        sum += weight;
+                    }
+                    const idx = (y * width + x) * 4;
+                    output[idx] = r / sum;
+                    output[idx + 1] = g / sum;
+                    output[idx + 2] = b / sum;
+                    output[idx + 3] = 255;
+                }
+            }
+            
+            return output;
+        }
+        
+        function createGaussianKernel(radius) {
+            const kernel = [];
+            const sigma = radius / 3;
+            for (let i = -radius; i <= radius; i++) {
+                kernel.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
+            }
+            return kernel;
+        }
+        
+        function download() {
+            const link = document.createElement('a');
+            link.download = 'sketch_image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

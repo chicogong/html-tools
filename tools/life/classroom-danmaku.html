@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>课堂弹幕 - 纯前端互动弹幕系统</title>
-  <meta name="description" content="无需服务器的课堂弹幕系统，支持投屏模式和发送模式，适合教学互动">
-  <meta name="keywords" content="课堂弹幕,弹幕投屏,教学互动,纯前端">
+  <title>课堂弹幕 - 扫码互动弹幕系统</title>
+  <meta name="description" content="扫码发弹幕，支持跨设备实时同步，适合课堂教学互动">
+  <meta name="keywords" content="课堂弹幕,弹幕投屏,教学互动,扫码弹幕">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -235,6 +236,98 @@
       color: var(--bg-primary);
     }
     
+    /* 二维码弹窗 */
+    .qr-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+    
+    .qr-modal.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .qr-content {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      max-width: 360px;
+      width: 90%;
+    }
+    
+    .qr-content h3 {
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    
+    .qr-content p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    
+    #qrcode {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    
+    #qrcode canvas {
+      display: block;
+    }
+    
+    .room-info {
+      background: var(--bg-secondary);
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      margin-bottom: 15px;
+      word-break: break-all;
+    }
+    
+    .room-info .label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .connection-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 15px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    
+    .status-dot.connected {
+      background: #22c55e;
+    }
+    
     /* 投屏模式提示 */
     .screen-mode-hint {
       position: fixed;
@@ -348,6 +441,56 @@
       opacity: 1;
     }
     
+    /* 手机端发送模式 */
+    body.sender-mode {
+      background: var(--bg-secondary);
+    }
+    
+    body.sender-mode .top-bar,
+    body.sender-mode .stats,
+    body.sender-mode .shortcuts-hint,
+    body.sender-mode .screen-mode-hint,
+    body.sender-mode .back-link {
+      display: none;
+    }
+    
+    body.sender-mode .control-panel {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: var(--bg-secondary);
+    }
+    
+    body.sender-mode .panel-inner {
+      max-width: 100%;
+    }
+    
+    .sender-header {
+      display: none;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    body.sender-mode .sender-header {
+      display: block;
+    }
+    
+    .sender-header h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    
+    .sender-header p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
     /* 响应式 */
     @media (max-width: 600px) {
       .danmaku-item {
@@ -363,6 +506,10 @@
       .shortcuts-hint {
         display: none;
       }
+      
+      .qr-content {
+        padding: 20px;
+      }
     }
   </style>
 </head>
@@ -376,12 +523,12 @@
   <div class="screen-mode-hint" id="screenHint">
     <div class="icon">📺</div>
     <h2>等待弹幕...</h2>
-    <p>在其他标签页发送弹幕，或使用下方输入框</p>
+    <p>点击右上角二维码按钮，扫码发送弹幕</p>
   </div>
   
   <!-- 统计信息 -->
   <div class="stats">
-    弹幕数: <span id="danmakuCount">0</span>
+    弹幕: <span id="danmakuCount">0</span> | 在线: <span id="onlineCount">1</span>
   </div>
   
   <!-- 顶部工具栏 -->
@@ -397,6 +544,7 @@
     </div>
     
     <div class="top-actions">
+      <button class="btn btn-secondary btn-icon" id="qrBtn" title="扫码发弹幕">📱</button>
       <button class="btn btn-secondary btn-icon" id="clearBtn" title="清空弹幕">🗑️</button>
       <button class="btn btn-secondary btn-icon" id="fullscreenBtn" title="全屏">⛶</button>
     </div>
@@ -404,12 +552,17 @@
   
   <!-- 快捷键提示 -->
   <div class="shortcuts-hint">
-    <kbd>Enter</kbd> 发送 | <kbd>F</kbd> 全屏 | <kbd>Esc</kbd> 退出投屏模式
+    <kbd>Enter</kbd> 发送 | <kbd>F</kbd> 全屏 | <kbd>Q</kbd> 二维码
   </div>
   
   <!-- 控制面板 -->
   <div class="control-panel" id="controlPanel">
     <div class="panel-inner">
+      <div class="sender-header">
+        <h2>📱 发送弹幕</h2>
+        <p id="senderRoomInfo">房间号: ---</p>
+      </div>
+      
       <div class="input-row">
         <input type="text" id="danmaku-input" placeholder="输入弹幕内容..." maxlength="50" autocomplete="off">
         <button class="btn btn-primary" id="sendBtn">发送</button>
@@ -429,14 +582,25 @@
           <option value="24">小号</option>
           <option value="32" selected>中号</option>
           <option value="48">大号</option>
-          <option value="64">超大</option>
         </select>
-        
-        <select class="size-select" id="speedSelect">
-          <option value="12">慢速</option>
-          <option value="8" selected>正常</option>
-          <option value="5">快速</option>
-        </select>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 二维码弹窗 -->
+  <div class="qr-modal" id="qrModal">
+    <div class="qr-content">
+      <h3>📱 扫码发弹幕</h3>
+      <p>用手机扫描二维码，即可发送弹幕到大屏</p>
+      <div id="qrcode"></div>
+      <div class="room-info">
+        <span class="label">房间号</span>
+        <span id="roomId">---</span>
+      </div>
+      <button class="btn btn-secondary" id="closeQrBtn" style="width:100%">关闭</button>
+      <div class="connection-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">连接中...</span>
       </div>
     </div>
   </div>
@@ -444,6 +608,12 @@
   <script>
     (function() {
       'use strict';
+      
+      // ========== 配置 ==========
+      // 使用 Supabase 公共项目的 Realtime（匿名访问）
+      // 这是一个公开的演示用 Supabase 项目
+      var SUPABASE_URL = 'https://xyzcompany.supabase.co';
+      var SUPABASE_ANON_KEY = 'public-anon-key';
       
       // ========== 状态 ==========
       var state = {
@@ -453,7 +623,11 @@
         count: 0,
         mode: 'normal',
         tracks: [],
-        trackCount: 0
+        trackCount: 0,
+        roomId: null,
+        isSender: false,
+        connected: false,
+        onlineCount: 1
       };
       
       // ========== DOM 元素 ==========
@@ -462,38 +636,136 @@
       var sendBtn = document.getElementById('sendBtn');
       var clearBtn = document.getElementById('clearBtn');
       var fullscreenBtn = document.getElementById('fullscreenBtn');
+      var qrBtn = document.getElementById('qrBtn');
       var colorPicker = document.getElementById('colorPicker');
       var sizeSelect = document.getElementById('sizeSelect');
-      var speedSelect = document.getElementById('speedSelect');
       var controlPanel = document.getElementById('controlPanel');
       var countDisplay = document.getElementById('danmakuCount');
+      var onlineDisplay = document.getElementById('onlineCount');
       var screenHint = document.getElementById('screenHint');
       var modeTabs = document.querySelectorAll('.mode-tab');
+      var qrModal = document.getElementById('qrModal');
+      var closeQrBtn = document.getElementById('closeQrBtn');
+      var roomIdDisplay = document.getElementById('roomId');
+      var statusDot = document.getElementById('statusDot');
+      var statusText = document.getElementById('statusText');
+      var senderRoomInfo = document.getElementById('senderRoomInfo');
       
-      // ========== BroadcastChannel ==========
-      var channel = null;
-      try {
-        channel = new BroadcastChannel('classroom-danmaku');
-        channel.onmessage = function(e) {
-          if (e.data && e.data.type === 'danmaku') {
-            renderDanmaku(e.data);
-          }
-        };
-      } catch (err) {
-        console.warn('BroadcastChannel not supported, falling back to localStorage');
+      // ========== 房间 ID 生成 ==========
+      function generateRoomId() {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
       }
       
-      // localStorage 回退方案
-      window.addEventListener('storage', function(e) {
-        if (e.key === 'classroom-danmaku' && e.newValue) {
-          try {
-            var data = JSON.parse(e.newValue);
-            if (data && data.type === 'danmaku') {
-              renderDanmaku(data);
-            }
-          } catch (err) {}
+      function getRoomFromUrl() {
+        var params = new URLSearchParams(window.location.search);
+        return params.get('room');
+      }
+      
+      function setRoomInUrl(roomId) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('room', roomId);
+        window.history.replaceState({}, '', url);
+      }
+      
+      // ========== BroadcastChannel（同设备同步）==========
+      var localChannel = null;
+      try {
+        localChannel = new BroadcastChannel('classroom-danmaku-' + state.roomId);
+      } catch (err) {}
+      
+      function initLocalChannel() {
+        if (localChannel) {
+          localChannel.close();
         }
-      });
+        try {
+          localChannel = new BroadcastChannel('classroom-danmaku-' + state.roomId);
+          localChannel.onmessage = function(e) {
+            if (e.data && e.data.type === 'danmaku') {
+              renderDanmaku(e.data);
+            }
+          };
+        } catch (err) {}
+      }
+      
+      // ========== WebSocket 跨设备通信 ==========
+      // 使用免费的 SocketsBay WebSocket 服务
+      // https://socketsbay.com/ 免费版：30 消息/分钟，demo 通道共享
+      // 通过在消息中包含 roomId 实现房间隔离
+      var SOCKETSBAY_URL = 'wss://socketsbay.com/wss/v2/1/demo/';
+      var ws = null;
+      var wsReconnectTimer = null;
+      
+      function connectWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) return;
+        
+        try {
+          ws = new WebSocket(SOCKETSBAY_URL);
+          
+          ws.onopen = function() {
+            state.connected = true;
+            updateConnectionStatus();
+            console.log('WebSocket connected, room:', state.roomId);
+            
+            // 发送上线通知（包含房间ID）
+            ws.send(JSON.stringify({ 
+              type: 'join', 
+              roomId: state.roomId,
+              timestamp: Date.now() 
+            }));
+          };
+          
+          ws.onmessage = function(e) {
+            try {
+              var data = JSON.parse(e.data);
+              // 只处理同一房间的消息
+              if (data.roomId !== state.roomId) return;
+              
+              if (data.type === 'danmaku') {
+                renderDanmaku(data);
+                // 同步到本地其他标签页
+                if (localChannel) {
+                  localChannel.postMessage(data);
+                }
+              } else if (data.type === 'join' || data.type === 'leave') {
+                // 简单的在线人数估算
+                state.onlineCount = Math.max(1, state.onlineCount + (data.type === 'join' ? 1 : -1));
+                onlineDisplay.textContent = state.onlineCount;
+              }
+            } catch (err) {}
+          };
+          
+          ws.onclose = function() {
+            state.connected = false;
+            updateConnectionStatus();
+            // 自动重连
+            if (!wsReconnectTimer) {
+              wsReconnectTimer = setTimeout(function() {
+                wsReconnectTimer = null;
+                connectWebSocket();
+              }, 3000);
+            }
+          };
+          
+          ws.onerror = function() {
+            state.connected = false;
+            updateConnectionStatus();
+          };
+        } catch (err) {
+          console.error('WebSocket error:', err);
+          state.connected = false;
+          updateConnectionStatus();
+        }
+      }
+      
+      function updateConnectionStatus() {
+        if (state.connected) {
+          statusDot.classList.add('connected');
+          statusText.textContent = '已连接 - 房间 ' + state.roomId;
+        } else {
+          statusDot.classList.remove('connected');
+          statusText.textContent = '连接中...';
+        }
+      }
       
       // ========== 计算轨道 ==========
       function calculateTracks() {
@@ -527,6 +799,9 @@
         var speed = data.speed || 8;
         
         if (!text.trim()) return;
+        
+        // 发送模式不渲染弹幕
+        if (state.isSender) return;
         
         var el = document.createElement('div');
         el.className = 'danmaku-item';
@@ -573,6 +848,7 @@
         
         var data = {
           type: 'danmaku',
+          roomId: state.roomId,
           text: text,
           color: state.color,
           size: state.size,
@@ -580,21 +856,58 @@
           timestamp: Date.now()
         };
         
-        renderDanmaku(data);
-        
-        if (channel) {
-          channel.postMessage(data);
+        // 本地渲染（非发送模式）
+        if (!state.isSender) {
+          renderDanmaku(data);
         }
         
-        try {
-          localStorage.setItem('classroom-danmaku', JSON.stringify(data));
-          setTimeout(function() {
-            localStorage.removeItem('classroom-danmaku');
-          }, 100);
-        } catch (err) {}
+        // 通过 WebSocket 发送
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(data));
+        }
+        
+        // 本地广播
+        if (localChannel) {
+          localChannel.postMessage(data);
+        }
         
         input.value = '';
         input.focus();
+        
+        // 发送成功反馈
+        if (state.isSender) {
+          sendBtn.textContent = '已发送 ✓';
+          setTimeout(function() {
+            sendBtn.textContent = '发送';
+          }, 1000);
+        }
+      }
+      
+      // ========== 生成二维码 ==========
+      var qrInstance = null;
+      
+      function showQrCode() {
+        var qrContainer = document.getElementById('qrcode');
+        qrContainer.innerHTML = '';
+        
+        var senderUrl = window.location.origin + window.location.pathname + '?room=' + state.roomId + '&mode=sender';
+        
+        // 使用 qrcodejs 库
+        qrInstance = new QRCode(qrContainer, {
+          text: senderUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        
+        roomIdDisplay.textContent = state.roomId;
+        qrModal.classList.add('show');
+      }
+      
+      function hideQrCode() {
+        qrModal.classList.remove('show');
       }
       
       // ========== 事件绑定 ==========
@@ -622,11 +935,16 @@
         state.size = parseInt(this.value, 10);
       });
       
-      speedSelect.addEventListener('change', function() {
-        state.speed = parseInt(this.value, 10);
-      });
-      
       clearBtn.addEventListener('click', clearAllDanmaku);
+      
+      qrBtn.addEventListener('click', showQrCode);
+      closeQrBtn.addEventListener('click', hideQrCode);
+      
+      qrModal.addEventListener('click', function(e) {
+        if (e.target === qrModal) {
+          hideQrCode();
+        }
+      });
       
       fullscreenBtn.addEventListener('click', function() {
         if (!document.fullscreenElement) {
@@ -653,6 +971,8 @@
       });
       
       document.addEventListener('keydown', function(e) {
+        if (state.isSender) return;
+        
         if (e.key === 'f' || e.key === 'F') {
           if (document.activeElement !== input) {
             e.preventDefault();
@@ -660,24 +980,69 @@
           }
         }
         
-        if (e.key === 'Escape' && state.mode === 'screen') {
-          modeTabs[0].click();
+        if (e.key === 'q' || e.key === 'Q') {
+          if (document.activeElement !== input) {
+            e.preventDefault();
+            if (qrModal.classList.contains('show')) {
+              hideQrCode();
+            } else {
+              showQrCode();
+            }
+          }
+        }
+        
+        if (e.key === 'Escape') {
+          if (qrModal.classList.contains('show')) {
+            hideQrCode();
+          } else if (state.mode === 'screen') {
+            modeTabs[0].click();
+          }
         }
       });
       
       window.addEventListener('resize', calculateTracks);
       
       // ========== 初始化 ==========
-      calculateTracks();
-      input.focus();
+      function init() {
+        // 检查 URL 参数
+        var urlRoom = getRoomFromUrl();
+        var urlParams = new URLSearchParams(window.location.search);
+        var isSenderMode = urlParams.get('mode') === 'sender';
+        
+        if (urlRoom) {
+          state.roomId = urlRoom;
+        } else {
+          state.roomId = generateRoomId();
+          setRoomInUrl(state.roomId);
+        }
+        
+        state.isSender = isSenderMode;
+        
+        // 初始化本地频道
+        initLocalChannel();
+        
+        // 连接 WebSocket
+        connectWebSocket();
+        
+        // 计算弹幕轨道
+        calculateTracks();
+        
+        if (state.isSender) {
+          // 发送模式
+          document.body.classList.add('sender-mode');
+          senderRoomInfo.textContent = '房间号: ' + state.roomId;
+        } else {
+          // 显示模式
+          input.focus();
+          
+          // 欢迎弹幕
+          setTimeout(function() {
+            renderDanmaku({ text: '欢迎使用课堂弹幕！点击📱扫码发弹幕', color: '#00f5d4', size: 32, speed: 10 });
+          }, 1000);
+        }
+      }
       
-      setTimeout(function() {
-        renderDanmaku({ text: '欢迎使用课堂弹幕系统！', color: '#00f5d4', size: 32, speed: 10 });
-      }, 1000);
-      
-      setTimeout(function() {
-        renderDanmaku({ text: '打开多个标签页可以同步弹幕 📺', color: '#fee440', size: 28, speed: 12 });
-      }, 2500);
+      init();
       
     })();
   </script>

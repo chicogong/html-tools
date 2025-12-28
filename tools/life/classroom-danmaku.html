@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>课堂弹幕 - 纯前端互动弹幕系统</title>
+  <meta name="description" content="无需服务器的课堂弹幕系统，支持投屏模式和发送模式，适合教学互动">
+  <meta name="keywords" content="课堂弹幕,弹幕投屏,教学互动,纯前端">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a24;
+      --text-primary: #e4e4e7;
+      --text-secondary: #a1a1aa;
+      --accent: #00f5d4;
+      --accent-glow: rgba(0, 245, 212, 0.3);
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* 弹幕画布 */
+    #danmaku-stage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    .danmaku-item {
+      position: absolute;
+      white-space: nowrap;
+      font-size: 32px;
+      font-weight: 600;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5);
+      animation: danmaku-move linear forwards;
+      will-change: transform;
+    }
+    
+    @keyframes danmaku-move {
+      from { transform: translateX(0); }
+      to { transform: translateX(calc(-100% - 100vw)); }
+    }
+    
+    /* 控制面板 */
+    .control-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, var(--bg-secondary) 0%, transparent 100%);
+      padding: 60px 20px 20px;
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+    
+    .control-panel.hidden {
+      transform: translateY(100%);
+    }
+    
+    .panel-inner {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    #danmaku-input {
+      flex: 1;
+      padding: 14px 18px;
+      font-size: 16px;
+      background: var(--bg-card);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    #danmaku-input:focus {
+      border-color: var(--accent);
+    }
+    
+    #danmaku-input::placeholder {
+      color: var(--text-secondary);
+    }
+    
+    .btn {
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+    
+    .btn-primary:hover {
+      box-shadow: 0 0 20px var(--accent-glow);
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: #252530;
+    }
+    
+    .options-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .color-picker {
+      display: flex;
+      gap: 6px;
+    }
+    
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .color-btn:hover {
+      transform: scale(1.1);
+    }
+    
+    .color-btn.active {
+      border-color: var(--text-primary);
+      box-shadow: 0 0 10px currentColor;
+    }
+    
+    .size-select {
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: none;
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    /* 顶部工具栏 */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, var(--bg-secondary) 0%, transparent 100%);
+      z-index: 100;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .logo-icon {
+      font-size: 24px;
+    }
+    
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn-icon {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    /* 模式切换 */
+    .mode-tabs {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    
+    .mode-tab {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .mode-tab.active {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+    
+    /* 投屏模式提示 */
+    .screen-mode-hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: var(--text-secondary);
+      pointer-events: none;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+    
+    .screen-mode-hint.has-danmaku {
+      opacity: 0;
+    }
+    
+    .screen-mode-hint .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    .screen-mode-hint h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+    
+    .screen-mode-hint p {
+      font-size: 16px;
+    }
+    
+    /* 统计信息 */
+    .stats {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: var(--bg-card);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      z-index: 50;
+    }
+    
+    .stats span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    
+    /* 快捷键提示 */
+    .shortcuts-hint {
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-card);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+      z-index: 50;
+    }
+    
+    .shortcuts-hint kbd {
+      background: var(--bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 0 2px;
+    }
+    
+    /* 全屏投屏模式 */
+    body.screen-mode .control-panel,
+    body.screen-mode .top-bar,
+    body.screen-mode .stats,
+    body.screen-mode .shortcuts-hint {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    body.screen-mode:hover .top-bar {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    /* 返回链接 */
+    .back-link {
+      position: fixed;
+      top: 15px;
+      left: 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    
+    .back-link:hover {
+      color: var(--accent);
+    }
+    
+    body.screen-mode .back-link {
+      opacity: 0;
+    }
+    
+    body.screen-mode:hover .back-link {
+      opacity: 1;
+    }
+    
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .danmaku-item {
+        font-size: 24px;
+      }
+      
+      .top-bar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+      }
+      
+      .shortcuts-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="../../index.html" class="back-link">← 返回工具集</a>
+  
+  <!-- 弹幕舞台 -->
+  <div id="danmaku-stage"></div>
+  
+  <!-- 投屏模式提示 -->
+  <div class="screen-mode-hint" id="screenHint">
+    <div class="icon">📺</div>
+    <h2>等待弹幕...</h2>
+    <p>在其他标签页发送弹幕，或使用下方输入框</p>
+  </div>
+  
+  <!-- 统计信息 -->
+  <div class="stats">
+    弹幕数: <span id="danmakuCount">0</span>
+  </div>
+  
+  <!-- 顶部工具栏 -->
+  <div class="top-bar">
+    <div class="logo">
+      <span class="logo-icon">💬</span>
+      <span>课堂弹幕</span>
+    </div>
+    
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="normal">互动模式</button>
+      <button class="mode-tab" data-mode="screen">投屏模式</button>
+    </div>
+    
+    <div class="top-actions">
+      <button class="btn btn-secondary btn-icon" id="clearBtn" title="清空弹幕">🗑️</button>
+      <button class="btn btn-secondary btn-icon" id="fullscreenBtn" title="全屏">⛶</button>
+    </div>
+  </div>
+  
+  <!-- 快捷键提示 -->
+  <div class="shortcuts-hint">
+    <kbd>Enter</kbd> 发送 | <kbd>F</kbd> 全屏 | <kbd>Esc</kbd> 退出投屏模式
+  </div>
+  
+  <!-- 控制面板 -->
+  <div class="control-panel" id="controlPanel">
+    <div class="panel-inner">
+      <div class="input-row">
+        <input type="text" id="danmaku-input" placeholder="输入弹幕内容..." maxlength="50" autocomplete="off">
+        <button class="btn btn-primary" id="sendBtn">发送</button>
+      </div>
+      
+      <div class="options-row">
+        <div class="color-picker" id="colorPicker">
+          <button class="color-btn active" style="background: #ffffff" data-color="#ffffff"></button>
+          <button class="color-btn" style="background: #00f5d4" data-color="#00f5d4"></button>
+          <button class="color-btn" style="background: #fee440" data-color="#fee440"></button>
+          <button class="color-btn" style="background: #f72585" data-color="#f72585"></button>
+          <button class="color-btn" style="background: #4cc9f0" data-color="#4cc9f0"></button>
+          <button class="color-btn" style="background: #7209b7" data-color="#7209b7"></button>
+        </div>
+        
+        <select class="size-select" id="sizeSelect">
+          <option value="24">小号</option>
+          <option value="32" selected>中号</option>
+          <option value="48">大号</option>
+          <option value="64">超大</option>
+        </select>
+        
+        <select class="size-select" id="speedSelect">
+          <option value="12">慢速</option>
+          <option value="8" selected>正常</option>
+          <option value="5">快速</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    (function() {
+      'use strict';
+      
+      // ========== 状态 ==========
+      var state = {
+        color: '#ffffff',
+        size: 32,
+        speed: 8,
+        count: 0,
+        mode: 'normal',
+        tracks: [],
+        trackCount: 0
+      };
+      
+      // ========== DOM 元素 ==========
+      var stage = document.getElementById('danmaku-stage');
+      var input = document.getElementById('danmaku-input');
+      var sendBtn = document.getElementById('sendBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var fullscreenBtn = document.getElementById('fullscreenBtn');
+      var colorPicker = document.getElementById('colorPicker');
+      var sizeSelect = document.getElementById('sizeSelect');
+      var speedSelect = document.getElementById('speedSelect');
+      var controlPanel = document.getElementById('controlPanel');
+      var countDisplay = document.getElementById('danmakuCount');
+      var screenHint = document.getElementById('screenHint');
+      var modeTabs = document.querySelectorAll('.mode-tab');
+      
+      // ========== BroadcastChannel ==========
+      var channel = null;
+      try {
+        channel = new BroadcastChannel('classroom-danmaku');
+        channel.onmessage = function(e) {
+          if (e.data && e.data.type === 'danmaku') {
+            renderDanmaku(e.data);
+          }
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel not supported, falling back to localStorage');
+      }
+      
+      // localStorage 回退方案
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'classroom-danmaku' && e.newValue) {
+          try {
+            var data = JSON.parse(e.newValue);
+            if (data && data.type === 'danmaku') {
+              renderDanmaku(data);
+            }
+          } catch (err) {}
+        }
+      });
+      
+      // ========== 计算轨道 ==========
+      function calculateTracks() {
+        var trackHeight = 50;
+        state.trackCount = Math.floor(window.innerHeight * 0.7 / trackHeight);
+        state.tracks = new Array(state.trackCount).fill(0);
+      }
+      
+      function getAvailableTrack() {
+        var now = Date.now();
+        var minTime = Infinity;
+        var bestTrack = 0;
+        
+        for (var i = 0; i < state.trackCount; i++) {
+          if (state.tracks[i] <= now) {
+            return i;
+          }
+          if (state.tracks[i] < minTime) {
+            minTime = state.tracks[i];
+            bestTrack = i;
+          }
+        }
+        return bestTrack;
+      }
+      
+      // ========== 渲染弹幕 ==========
+      function renderDanmaku(data) {
+        var text = data.text || '';
+        var color = data.color || '#ffffff';
+        var size = data.size || 32;
+        var speed = data.speed || 8;
+        
+        if (!text.trim()) return;
+        
+        var el = document.createElement('div');
+        el.className = 'danmaku-item';
+        el.textContent = text;
+        el.style.color = color;
+        el.style.fontSize = size + 'px';
+        
+        var track = getAvailableTrack();
+        var topPos = 50 + track * 50;
+        el.style.top = topPos + 'px';
+        el.style.right = '-100%';
+        
+        var duration = speed + (text.length * 0.1);
+        el.style.animationDuration = duration + 's';
+        
+        state.tracks[track] = Date.now() + (duration * 0.4 * 1000);
+        
+        stage.appendChild(el);
+        
+        state.count++;
+        countDisplay.textContent = state.count;
+        
+        screenHint.classList.add('has-danmaku');
+        
+        el.addEventListener('animationend', function() {
+          el.remove();
+        });
+      }
+      
+      // ========== 清空弹幕 ==========
+      function clearAllDanmaku() {
+        while (stage.firstChild) {
+          stage.removeChild(stage.firstChild);
+        }
+        state.count = 0;
+        countDisplay.textContent = '0';
+        screenHint.classList.remove('has-danmaku');
+      }
+      
+      // ========== 发送弹幕 ==========
+      function sendDanmaku() {
+        var text = input.value.trim();
+        if (!text) return;
+        
+        var data = {
+          type: 'danmaku',
+          text: text,
+          color: state.color,
+          size: state.size,
+          speed: state.speed,
+          timestamp: Date.now()
+        };
+        
+        renderDanmaku(data);
+        
+        if (channel) {
+          channel.postMessage(data);
+        }
+        
+        try {
+          localStorage.setItem('classroom-danmaku', JSON.stringify(data));
+          setTimeout(function() {
+            localStorage.removeItem('classroom-danmaku');
+          }, 100);
+        } catch (err) {}
+        
+        input.value = '';
+        input.focus();
+      }
+      
+      // ========== 事件绑定 ==========
+      sendBtn.addEventListener('click', sendDanmaku);
+      
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendDanmaku();
+        }
+      });
+      
+      colorPicker.addEventListener('click', function(e) {
+        var btn = e.target.closest('.color-btn');
+        if (!btn) return;
+        
+        colorPicker.querySelectorAll('.color-btn').forEach(function(b) {
+          b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        state.color = btn.dataset.color;
+      });
+      
+      sizeSelect.addEventListener('change', function() {
+        state.size = parseInt(this.value, 10);
+      });
+      
+      speedSelect.addEventListener('change', function() {
+        state.speed = parseInt(this.value, 10);
+      });
+      
+      clearBtn.addEventListener('click', clearAllDanmaku);
+      
+      fullscreenBtn.addEventListener('click', function() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(function() {});
+        } else {
+          document.exitFullscreen();
+        }
+      });
+      
+      modeTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          modeTabs.forEach(function(t) { t.classList.remove('active'); });
+          this.classList.add('active');
+          state.mode = this.dataset.mode;
+          
+          if (state.mode === 'screen') {
+            document.body.classList.add('screen-mode');
+            controlPanel.classList.add('hidden');
+          } else {
+            document.body.classList.remove('screen-mode');
+            controlPanel.classList.remove('hidden');
+          }
+        });
+      });
+      
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'f' || e.key === 'F') {
+          if (document.activeElement !== input) {
+            e.preventDefault();
+            fullscreenBtn.click();
+          }
+        }
+        
+        if (e.key === 'Escape' && state.mode === 'screen') {
+          modeTabs[0].click();
+        }
+      });
+      
+      window.addEventListener('resize', calculateTracks);
+      
+      // ========== 初始化 ==========
+      calculateTracks();
+      input.focus();
+      
+      setTimeout(function() {
+        renderDanmaku({ text: '欢迎使用课堂弹幕系统！', color: '#00f5d4', size: 32, speed: 10 });
+      }, 1000);
+      
+      setTimeout(function() {
+        renderDanmaku({ text: '打开多个标签页可以同步弹幕 📺', color: '#fee440', size: 28, speed: 12 });
+      }, 2500);
+      
+    })();
+  </script>
+</body>
+</html>

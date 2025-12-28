@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
 const INDEX_HTML = path.join(ROOT_DIR, 'index.html');
+const README_MD = path.join(ROOT_DIR, 'README.md');
 
 // 分类顺序
 const CATEGORY_ORDER = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai', 'life', 'animation'];
@@ -166,6 +167,9 @@ function main() {
   
   // 更新 GitHub 仓库描述
   updateGitHubDescription(toolCount);
+  
+  // 更新 README.md 中的工具数量
+  updateReadme(toolCount);
 }
 
 /**
@@ -196,6 +200,39 @@ function updateGitHubDescription(toolCount) {
   } catch {
     // gh CLI 可能未安装或未认证，静默忽略
     console.log('\n⚠️  Could not update GitHub repo description (gh CLI not available or not authenticated)');
+  }
+}
+
+/**
+ * 更新 README.md 中的工具数量
+ */
+function updateReadme(toolCount) {
+  try {
+    if (!fs.existsSync(README_MD)) {
+      return;
+    }
+    
+    let readme = fs.readFileSync(README_MD, 'utf8');
+    const original = readme;
+    
+    // 更新 badge 中的数量: Tools-164+-blue -> Tools-549+-blue
+    readme = readme.replace(/Tools-\d+\+-/g, `Tools-${toolCount}+-`);
+    
+    // 更新标题中的数量: 🚀 164+ 纯前端 -> 🚀 549+ 纯前端
+    readme = readme.replace(/🚀\s*\d+\+\s*纯前端/g, `🚀 ${toolCount}+ 纯前端`);
+    
+    // 更新工具列表标题: 工具列表 (164 个) -> 工具列表 (549 个)
+    readme = readme.replace(/工具列表[^)]*\(\d+\s*个\)/g, `工具列表 (${toolCount} 个)`);
+    readme = readme.replace(/#工具列表-\d+-个/g, `#工具列表-${toolCount}-个`);
+    
+    if (readme !== original) {
+      fs.writeFileSync(README_MD, readme);
+      console.log(`✅ Updated README.md: ${toolCount}+ tools`);
+    } else {
+      console.log(`📋 README.md already up to date`);
+    }
+  } catch (err) {
+    console.log(`\n⚠️  Could not update README.md: ${err.message}`);
   }
 }
 

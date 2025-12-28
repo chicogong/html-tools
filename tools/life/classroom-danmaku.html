@@ -7,7 +7,7 @@
   <meta name="description" content="扫码发弹幕，支持跨设备实时同步，适合课堂教学互动">
   <meta name="keywords" content="课堂弹幕,弹幕投屏,教学互动,扫码弹幕">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script></script>
+  <script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -53,6 +53,168 @@
     @keyframes danmaku-move {
       from { transform: translateX(0); }
       to { transform: translateX(calc(-100% - 100vw)); }
+    }
+    
+    /* ========== 留言墙模式 ========== */
+    #message-wall {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 80px 20px 180px;
+      overflow: hidden;
+      display: none;
+      z-index: 10;
+    }
+    
+    body.wall-mode #message-wall {
+      display: block;
+    }
+    
+    body.wall-mode #danmaku-stage {
+      display: none;
+    }
+    
+    body.wall-mode .screen-hint {
+      display: none;
+    }
+    
+    .wall-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .wall-bubble {
+      position: absolute;
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 18px;
+      font-weight: 500;
+      max-width: 280px;
+      word-wrap: break-word;
+      white-space: normal;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      animation: bubble-appear 0.5s ease-out forwards;
+      transition: transform 0.3s ease;
+    }
+    
+    .wall-bubble:hover {
+      transform: scale(1.05);
+      z-index: 100;
+    }
+    
+    .wall-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 20px;
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid currentColor;
+      opacity: 0.8;
+    }
+    
+    @keyframes bubble-appear {
+      0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    @keyframes bubble-float {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+    
+    .wall-bubble.floating {
+      animation: bubble-appear 0.5s ease-out forwards, bubble-float 4s ease-in-out infinite 0.5s;
+    }
+    
+    /* 气泡颜色主题 */
+    .wall-bubble.theme-cyan {
+      background: linear-gradient(135deg, #00f5d4 0%, #00b4d8 100%);
+      color: #000;
+    }
+    .wall-bubble.theme-cyan::before {
+      border-top-color: #00b4d8;
+    }
+    
+    .wall-bubble.theme-pink {
+      background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+      color: #fff;
+    }
+    .wall-bubble.theme-pink::before {
+      border-top-color: #c44569;
+    }
+    
+    .wall-bubble.theme-yellow {
+      background: linear-gradient(135deg, #ffd93d 0%, #ff9500 100%);
+      color: #000;
+    }
+    .wall-bubble.theme-yellow::before {
+      border-top-color: #ff9500;
+    }
+    
+    .wall-bubble.theme-purple {
+      background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+      color: #fff;
+    }
+    .wall-bubble.theme-purple::before {
+      border-top-color: #7c3aed;
+    }
+    
+    .wall-bubble.theme-blue {
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      color: #fff;
+    }
+    .wall-bubble.theme-blue::before {
+      border-top-color: #0284c7;
+    }
+    
+    .wall-bubble.theme-green {
+      background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+      color: #000;
+    }
+    .wall-bubble.theme-green::before {
+      border-top-color: #16a34a;
+    }
+    
+    /* 留言墙空状态 */
+    .wall-empty {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    
+    .wall-empty-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+    
+    .wall-empty-text {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    
+    .wall-empty-hint {
+      font-size: 16px;
+      opacity: 0.7;
     }
     
     /* 控制面板 */
@@ -520,6 +682,17 @@
   <!-- 弹幕舞台 -->
   <div id="danmaku-stage"></div>
   
+  <!-- 留言墙 -->
+  <div id="message-wall">
+    <div class="wall-container" id="wallContainer">
+      <div class="wall-empty" id="wallEmpty">
+        <div class="wall-empty-icon">💭</div>
+        <div class="wall-empty-text">等待留言...</div>
+        <div class="wall-empty-hint">发送的消息将以气泡形式永久展示在这里</div>
+      </div>
+    </div>
+  </div>
+  
   <!-- 投屏模式提示 -->
   <div class="screen-mode-hint" id="screenHint">
     <div class="icon">📺</div>
@@ -540,7 +713,8 @@
     </div>
     
     <div class="mode-tabs">
-      <button class="mode-tab active" data-mode="normal">互动模式</button>
+      <button class="mode-tab active" data-mode="normal">弹幕模式</button>
+      <button class="mode-tab" data-mode="wall">留言墙</button>
       <button class="mode-tab" data-mode="screen">投屏模式</button>
     </div>
     
@@ -651,6 +825,11 @@
       var statusDot = document.getElementById('statusDot');
       var statusText = document.getElementById('statusText');
       var senderRoomInfo = document.getElementById('senderRoomInfo');
+      var wallContainer = document.getElementById('wallContainer');
+      var wallEmpty = document.getElementById('wallEmpty');
+      
+      // 留言墙消息存储
+      var wallMessages = [];
       
       // ========== 房间 ID 生成 ==========
       function generateRoomId() {
@@ -806,6 +985,95 @@
         return bestTrack;
       }
       
+      // ========== 颜色到主题映射 ==========
+      function getWallTheme(color) {
+        var themes = {
+          '#ffffff': 'cyan',
+          '#00f5d4': 'cyan',
+          '#ffd93d': 'yellow',
+          '#ff6b9d': 'pink',
+          '#38bdf8': 'blue',
+          '#a855f7': 'purple'
+        };
+        return themes[color] || ['cyan', 'pink', 'yellow', 'purple', 'blue', 'green'][Math.floor(Math.random() * 6)];
+      }
+      
+      // ========== 渲染留言墙气泡 ==========
+      function renderWallBubble(data) {
+        var text = data.text || '';
+        var color = data.color || '#ffffff';
+        
+        if (!text.trim()) return;
+        
+        // 隐藏空状态提示
+        if (wallEmpty) {
+          wallEmpty.style.display = 'none';
+        }
+        
+        var bubble = document.createElement('div');
+        bubble.className = 'wall-bubble floating theme-' + getWallTheme(color);
+        bubble.textContent = text;
+        
+        // 随机位置，避免重叠
+        var containerRect = wallContainer.getBoundingClientRect();
+        var maxX = containerRect.width - 300;
+        var maxY = containerRect.height - 100;
+        
+        // 尝试找一个不重叠的位置
+        var attempts = 0;
+        var x, y;
+        do {
+          x = Math.random() * maxX;
+          y = Math.random() * maxY;
+          attempts++;
+        } while (attempts < 10 && isOverlapping(x, y, 280, 60));
+        
+        bubble.style.left = x + 'px';
+        bubble.style.top = y + 'px';
+        
+        // 随机延迟浮动动画
+        bubble.style.animationDelay = '0s, ' + (Math.random() * 2) + 's';
+        
+        wallContainer.appendChild(bubble);
+        
+        // 存储消息
+        wallMessages.push({
+          text: text,
+          color: color,
+          x: x,
+          y: y,
+          element: bubble
+        });
+        
+        // 限制最大消息数
+        if (wallMessages.length > 50) {
+          var oldest = wallMessages.shift();
+          if (oldest.element && oldest.element.parentNode) {
+            oldest.element.style.opacity = '0';
+            oldest.element.style.transform = 'scale(0.5)';
+            setTimeout(function() {
+              if (oldest.element.parentNode) {
+                oldest.element.remove();
+              }
+            }, 500);
+          }
+        }
+        
+        state.count++;
+        countDisplay.textContent = state.count;
+      }
+      
+      // 检查位置是否重叠
+      function isOverlapping(x, y, width, height) {
+        for (var i = 0; i < wallMessages.length; i++) {
+          var msg = wallMessages[i];
+          if (Math.abs(msg.x - x) < width && Math.abs(msg.y - y) < height) {
+            return true;
+          }
+        }
+        return false;
+      }
+      
       // ========== 渲染弹幕 ==========
       function renderDanmaku(data) {
         var text = data.text || '';
@@ -815,9 +1083,16 @@
         
         if (!text.trim()) return;
         
-        // 发送模式不渲染弹幕
+        // 发送模式不渲染
         if (state.isSender) return;
         
+        // 留言墙模式使用气泡渲染
+        if (state.mode === 'wall') {
+          renderWallBubble(data);
+          return;
+        }
+        
+        // 弹幕模式
         var el = document.createElement('div');
         el.className = 'danmaku-item';
         el.textContent = text;
@@ -848,9 +1123,19 @@
       
       // ========== 清空弹幕 ==========
       function clearAllDanmaku() {
+        // 清空弹幕
         while (stage.firstChild) {
           stage.removeChild(stage.firstChild);
         }
+        
+        // 清空留言墙
+        wallMessages = [];
+        var bubbles = wallContainer.querySelectorAll('.wall-bubble');
+        bubbles.forEach(function(b) { b.remove(); });
+        if (wallEmpty) {
+          wallEmpty.style.display = 'block';
+        }
+        
         state.count = 0;
         countDisplay.textContent = '0';
         screenHint.classList.remove('has-danmaku');
@@ -976,11 +1261,16 @@
           this.classList.add('active');
           state.mode = this.dataset.mode;
           
+          // 清除所有模式类
+          document.body.classList.remove('screen-mode', 'wall-mode');
+          
           if (state.mode === 'screen') {
             document.body.classList.add('screen-mode');
             controlPanel.classList.add('hidden');
+          } else if (state.mode === 'wall') {
+            document.body.classList.add('wall-mode');
+            controlPanel.classList.remove('hidden');
           } else {
-            document.body.classList.remove('screen-mode');
             controlPanel.classList.remove('hidden');
           }
         });

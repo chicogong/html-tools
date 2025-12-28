@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>反应时间测试 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #10b981;
+            --border: #2a2a3a;
+            --red: #ef4444;
+            --green: #22c55e;
+            --blue: #3b82f6;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e5e5e5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; color: #064e3b; margin-bottom: 3px; }
+        .header p { font-size: 12px; opacity: 0.8; color: #064e3b; }
+        .theme-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-box {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .stat-value.best { color: #fbbf24; }
+        .game-area {
+            flex: 1;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        .game-area.waiting {
+            background: var(--red);
+        }
+        .game-area.ready {
+            background: var(--green);
+        }
+        .game-area.result {
+            background: var(--blue);
+        }
+        .game-area.early {
+            background: #f97316;
+        }
+        .game-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .game-subtext {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            margin-top: 10px;
+        }
+        .result-time {
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .result-unit {
+            font-size: 24px;
+            opacity: 0.9;
+        }
+        .result-rating {
+            font-size: 20px;
+            margin-top: 15px;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+        }
+        .history-section {
+            margin-top: 15px;
+        }
+        .history-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .clear-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .history-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 10px 5px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .history-item .time {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .history-item .index {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+        .info-box {
+            margin-top: 15px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid var(--border);
+        }
+        .info-box h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+        .rating-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 12px;
+        }
+        .rating-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+        .rating-item .label { color: var(--text-secondary); }
+        .rating-item .range { font-weight: 500; }
+        @media (max-width: 480px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
+            .stat-value { font-size: 18px; }
+            .game-text { font-size: 22px; }
+            .result-time { font-size: 56px; }
+            .history-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ 反应时间测试</h1>
+        <p>测试你的反应速度</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-label">尝试次数</div>
+                <div class="stat-value" id="attempts">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">平均反应</div>
+                <div class="stat-value" id="average">-- ms</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">最佳成绩</div>
+                <div class="stat-value best" id="best">-- ms</div>
+            </div>
+        </div>
+
+        <div class="game-area waiting" id="gameArea" onclick="handleClick()">
+            <div class="game-text" id="gameText">
+                等待绿色出现后点击！
+                <div class="game-subtext">点击任意位置开始</div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">
+                <span>最近记录</span>
+                <button class="clear-btn" onclick="clearHistory()">清除记录</button>
+            </div>
+            <div class="history-grid" id="historyGrid">
+                <div class="history-item"><div class="time">--</div><div class="index">#1</div></div>
+                <div class="history-item"><div class="time">--</div><div class="index">#2</div></div>
+                <div class="history-item"><div class="time">--</div><div class="index">#3</div></div>
+                <div class="history-item"><div class="time">--</div><div class="index">#4</div></div>
+                <div class="history-item"><div class="time">--</div><div class="index">#5</div></div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>反应时间评级</h3>
+            <div class="rating-list">
+                <div class="rating-item"><span class="label">极速</span><span class="range">< 150ms</span></div>
+                <div class="rating-item"><span class="label">非常快</span><span class="range">150-200ms</span></div>
+                <div class="rating-item"><span class="label">快速</span><span class="range">200-250ms</span></div>
+                <div class="rating-item"><span class="label">平均</span><span class="range">250-300ms</span></div>
+                <div class="rating-item"><span class="label">较慢</span><span class="range">300-350ms</span></div>
+                <div class="rating-item"><span class="label">慢</span><span class="range">> 350ms</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        let state = 'idle'; // idle, waiting, ready, result, early
+        let startTime = 0;
+        let timeoutId = null;
+        let results = [];
+        let bestTime = Infinity;
+
+        // DOM 元素
+        const gameArea = document.getElementById('gameArea');
+        const gameText = document.getElementById('gameText');
+        const attemptsEl = document.getElementById('attempts');
+        const averageEl = document.getElementById('average');
+        const bestEl = document.getElementById('best');
+        const historyGrid = document.getElementById('historyGrid');
+
+        // 加载历史记录
+        function loadHistory() {
+            const saved = localStorage.getItem('reactionTimeHistory');
+            if (saved) {
+                results = JSON.parse(saved);
+                bestTime = Math.min(...results, Infinity);
+                updateStats();
+                updateHistoryDisplay();
+            }
+        }
+
+        // 保存历史记录
+        function saveHistory() {
+            localStorage.setItem('reactionTimeHistory', JSON.stringify(results.slice(-100)));
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            attemptsEl.textContent = results.length;
+            if (results.length > 0) {
+                const avg = Math.round(results.reduce((a, b) => a + b, 0) / results.length);
+                averageEl.textContent = avg + ' ms';
+                bestEl.textContent = bestTime + ' ms';
+            }
+        }
+
+        // 更新历史记录显示
+        function updateHistoryDisplay() {
+            const recent = results.slice(-5).reverse();
+            const items = historyGrid.querySelectorAll('.history-item');
+            items.forEach((item, i) => {
+                const time = item.querySelector('.time');
+                if (recent[i]) {
+                    time.textContent = recent[i] + 'ms';
+                } else {
+                    time.textContent = '--';
+                }
+            });
+        }
+
+        // 获取评级
+        function getRating(time) {
+            if (time < 150) return '🚀 极速！';
+            if (time < 200) return '⚡ 非常快！';
+            if (time < 250) return '🏃 快速';
+            if (time < 300) return '👍 平均水平';
+            if (time < 350) return '🐢 较慢';
+            return '💤 需要加油';
+        }
+
+        // 处理点击
+        function handleClick() {
+            if (state === 'idle' || state === 'result' || state === 'early') {
+                startWaiting();
+            } else if (state === 'waiting') {
+                handleEarly();
+            } else if (state === 'ready') {
+                handleSuccess();
+            }
+        }
+
+        // 开始等待
+        function startWaiting() {
+            state = 'waiting';
+            gameArea.className = 'game-area waiting';
+            gameText.innerHTML = '等待绿色...<div class="game-subtext">不要提前点击！</div>';
+            
+            // 随机延迟 1-5 秒
+            const delay = 1000 + Math.random() * 4000;
+            timeoutId = setTimeout(() => {
+                showGreen();
+            }, delay);
+        }
+
+        // 显示绿色
+        function showGreen() {
+            state = 'ready';
+            startTime = performance.now();
+            gameArea.className = 'game-area ready';
+            gameText.innerHTML = '点击！';
+            
+            // 播放提示音
+            playSound(800, 0.1);
+        }
+
+        // 提前点击
+        function handleEarly() {
+            state = 'early';
+            clearTimeout(timeoutId);
+            gameArea.className = 'game-area early';
+            gameText.innerHTML = '太早了！<div class="game-subtext">等绿色出现再点击<br>点击重试</div>';
+            playSound(200, 0.15);
+        }
+
+        // 成功点击
+        function handleSuccess() {
+            const endTime = performance.now();
+            const reactionTime = Math.round(endTime - startTime);
+            
+            state = 'result';
+            gameArea.className = 'game-area result';
+            
+            // 记录结果
+            results.push(reactionTime);
+            if (reactionTime < bestTime) {
+                bestTime = reactionTime;
+            }
+            
+            // 显示结果
+            const rating = getRating(reactionTime);
+            gameText.innerHTML = `
+                <div class="result-time">${reactionTime}<span class="result-unit">ms</span></div>
+                <div class="result-rating">${rating}</div>
+                <div class="game-subtext">点击继续</div>
+            `;
+            
+            // 更新显示
+            updateStats();
+            updateHistoryDisplay();
+            saveHistory();
+            
+            // 播放成功音
+            if (reactionTime < 200) {
+                playSound(1200, 0.1);
+                setTimeout(() => playSound(1500, 0.1), 100);
+            } else {
+                playSound(600, 0.1);
+            }
+        }
+
+        // 清除历史
+        function clearHistory() {
+            if (confirm('确定要清除所有记录吗？')) {
+                results = [];
+                bestTime = Infinity;
+                localStorage.removeItem('reactionTimeHistory');
+                updateStats();
+                updateHistoryDisplay();
+                attemptsEl.textContent = '0';
+                averageEl.textContent = '-- ms';
+                bestEl.textContent = '-- ms';
+            }
+        }
+
+        // 播放音效
+        function playSound(freq, duration) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        // 键盘支持
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                handleClick();
+            }
+        });
+
+        // 主题切换
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.querySelector('.theme-toggle');
+            if (body.getAttribute('data-theme') === 'light') {
+                body.removeAttribute('data-theme');
+                btn.textContent = '🌙';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('data-theme', 'light');
+                btn.textContent = '☀️';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // 初始化
+        (function init() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+                document.querySelector('.theme-toggle').textContent = '☀️';
+            }
+            loadHistory();
+        })();
+    </script>
+</body>
+</html>

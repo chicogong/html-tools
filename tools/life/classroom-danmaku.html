@@ -7,6 +7,7 @@
   <meta name="description" content="扫码发弹幕，支持跨设备实时同步，适合课堂教学互动">
   <meta name="keywords" content="课堂弹幕,弹幕投屏,教学互动,扫码弹幕">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -687,38 +688,50 @@
         } catch (err) {}
       }
       
-      // ========== WebSocket 跨设备通信 ==========
-      // 使用免费的 SocketsBay WebSocket 服务
-      // https://socketsbay.com/ 免费版：30 消息/分钟，demo 通道共享
-      // 通过在消息中包含 roomId 实现房间隔离
-      var SOCKETSBAY_URL = 'wss://socketsbay.com/wss/v2/1/demo/';
-      var ws = null;
-      var wsReconnectTimer = null;
+      // ========== MQTT 跨设备通信 ==========
+      // 使用免费的 HiveMQ 公共 MQTT Broker
+      // https://www.hivemq.com/mqtt/public-mqtt-broker/
+      // MQTT topic 天然支持房间隔离
+      var MQTT_BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+      var mqttClient = null;
+      var mqttReconnectTimer = null;
       
-      function connectWebSocket() {
-        if (ws && ws.readyState === WebSocket.OPEN) return;
+      function connectMQTT() {
+        if (mqttClient && mqttClient.connected) return;
         
         try {
-          ws = new WebSocket(SOCKETSBAY_URL);
+          var clientId = 'danmaku_' + Math.random().toString(36).substring(2, 10);
+          var topic = 'classroom-danmaku/' + state.roomId;
           
-          ws.onopen = function() {
+          mqttClient = mqtt.connect(MQTT_BROKER, {
+            clientId: clientId,
+            clean: true,
+            connectTimeout: 10000,
+            reconnectPeriod: 3000
+          });
+          
+          mqttClient.on('connect', function() {
             state.connected = true;
             updateConnectionStatus();
-            console.log('WebSocket connected, room:', state.roomId);
+            console.log('MQTT connected, room:', state.roomId);
             
-            // 发送上线通知（包含房间ID）
-            ws.send(JSON.stringify({ 
-              type: 'join', 
-              roomId: state.roomId,
-              timestamp: Date.now() 
-            }));
-          };
+            // 订阅房间 topic
+            mqttClient.subscribe(topic, function(err) {
+              if (!err) {
+                console.log('Subscribed to:', topic);
+                // 发送上线通知
+                mqttClient.publish(topic, JSON.stringify({ 
+                  type: 'join', 
+                  roomId: state.roomId,
+                  timestamp: Date.now() 
+                }));
+              }
+            });
+          });
           
-          ws.onmessage = function(e) {
+          mqttClient.on('message', function(receivedTopic, message) {
             try {
-              var data = JSON.parse(e.data);
-              // 只处理同一房间的消息
-              if (data.roomId !== state.roomId) return;
+              var data = JSON.parse(message.toString());
               
               if (data.type === 'danmaku') {
                 renderDanmaku(data);
@@ -731,27 +744,29 @@
                 state.onlineCount = Math.max(1, state.onlineCount + (data.type === 'join' ? 1 : -1));
                 onlineDisplay.textContent = state.onlineCount;
               }
-            } catch (err) {}
-          };
-          
-          ws.onclose = function() {
-            state.connected = false;
-            updateConnectionStatus();
-            // 自动重连
-            if (!wsReconnectTimer) {
-              wsReconnectTimer = setTimeout(function() {
-                wsReconnectTimer = null;
-                connectWebSocket();
-              }, 3000);
+            } catch (err) {
+              console.error('Message parse error:', err);
             }
-          };
+          });
           
-          ws.onerror = function() {
+          mqttClient.on('close', function() {
             state.connected = false;
             updateConnectionStatus();
-          };
+          });
+          
+          mqttClient.on('error', function(err) {
+            console.error('MQTT error:', err);
+            state.connected = false;
+            updateConnectionStatus();
+          });
+          
+          mqttClient.on('offline', function() {
+            state.connected = false;
+            updateConnectionStatus();
+          });
+          
         } catch (err) {
-          console.error('WebSocket error:', err);
+          console.error('MQTT connection error:', err);
           state.connected = false;
           updateConnectionStatus();
         }
@@ -861,9 +876,10 @@
           renderDanmaku(data);
         }
         
-        // 通过 WebSocket 发送
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(data));
+        // 通过 MQTT 发送
+        if (mqttClient && mqttClient.connected) {
+          var topic = 'classroom-danmaku/' + state.roomId;
+          mqttClient.publish(topic, JSON.stringify(data));
         }
         
         // 本地广播
@@ -1021,8 +1037,8 @@
         // 初始化本地频道
         initLocalChannel();
         
-        // 连接 WebSocket
-        connectWebSocket();
+        // 连接 MQTT
+        connectMQTT();
         
         // 计算弹幕轨道
         calculateTracks();

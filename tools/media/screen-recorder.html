@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏幕录制器 - 网页录屏工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+            --recording-color: #dc3545;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .source-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .source-card {
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .source-card:hover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .source-card.active {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .source-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .source-card h3 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .source-card p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .preview-container {
+            position: relative;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: #000;
+            margin-bottom: 1rem;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #preview {
+            max-width: 100%;
+            max-height: 500px;
+            display: none;
+        }
+        
+        #preview.visible {
+            display: block;
+        }
+        
+        .recording-indicator {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .recording-indicator.visible {
+            opacity: 1;
+        }
+        
+        .recording-indicator .dot {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .timer {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .timer.visible {
+            opacity: 1;
+        }
+        
+        .empty-state {
+            color: #888;
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        .record-btn {
+            background: var(--primary-color) !important;
+            min-width: 150px;
+        }
+        
+        .record-btn.recording {
+            background: var(--recording-color) !important;
+        }
+        
+        .recordings-section {
+            margin-top: 2rem;
+        }
+        
+        .recordings-section h2 {
+            margin-bottom: 1rem;
+        }
+        
+        .recordings-list {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .recording-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .recording-item video {
+            width: 200px;
+            height: auto;
+            border-radius: var(--border-radius);
+            background: #000;
+        }
+        
+        .recording-info {
+            flex: 1;
+        }
+        
+        .recording-info h4 {
+            margin: 0 0 0.25rem 0;
+        }
+        
+        .recording-info p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .recording-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .recording-actions button {
+            margin: 0;
+            padding: 0.5rem 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .recording-item {
+                grid-template-columns: 1fr;
+            }
+            
+            .recording-item video {
+                width: 100%;
+            }
+        }
+        
+        .settings-panel {
+            background: var(--pico-card-background-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .settings-panel h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1rem;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-item input {
+            margin: 0;
+        }
+        
+        .supported-info {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .not-supported {
+            background: rgba(220, 53, 69, 0.1);
+            border-color: var(--recording-color);
+            color: var(--recording-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>屏幕录制器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
+        </header>
+        
+        <main>
+            <div class="supported-info" id="supportInfo">
+                正在检测浏览器支持...
+            </div>
+            
+            <div class="source-selector">
+                <div class="source-card" data-source="screen">
+                    <div class="icon">🖥️</div>
+                    <h3>录制屏幕</h3>
+                    <p>录制整个屏幕或窗口</p>
+                </div>
+                <div class="source-card" data-source="window">
+                    <div class="icon">🪟</div>
+                    <h3>录制窗口</h3>
+                    <p>录制特定应用窗口</p>
+                </div>
+                <div class="source-card" data-source="tab">
+                    <div class="icon">📑</div>
+                    <h3>录制标签页</h3>
+                    <p>录制浏览器标签页</p>
+                </div>
+                <div class="source-card" data-source="camera">
+                    <div class="icon">📷</div>
+                    <h3>录制摄像头</h3>
+                    <p>录制摄像头画面</p>
+                </div>
+            </div>
+            
+            <div class="settings-panel">
+                <h3>录制设置</h3>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="resolution">分辨率</label>
+                        <select id="resolution">
+                            <option value="auto">自动</option>
+                            <option value="1920x1080">1920 x 1080 (1080p)</option>
+                            <option value="1280x720">1280 x 720 (720p)</option>
+                            <option value="854x480">854 x 480 (480p)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="framerate">帧率</label>
+                        <select id="framerate">
+                            <option value="30">30 fps</option>
+                            <option value="60">60 fps</option>
+                            <option value="24">24 fps</option>
+                            <option value="15">15 fps</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="format">输出格式</label>
+                        <select id="format">
+                            <option value="video/webm">WebM</option>
+                            <option value="video/webm;codecs=vp9">WebM (VP9)</option>
+                            <option value="video/webm;codecs=h264">WebM (H264)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="includeAudio" checked>
+                        <span>录制系统音频</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="includeMic">
+                        <span>录制麦克风</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="showCursor" checked>
+                        <span>显示鼠标光标</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="preview-container">
+                <video id="preview" autoplay muted playsinline></video>
+                <div class="recording-indicator" id="recordingIndicator">
+                    <div class="dot"></div>
+                    <span>录制中</span>
+                </div>
+                <div class="timer" id="timer">00:00:00</div>
+                <div class="empty-state" id="emptyState">
+                    <p>选择录制源并点击"开始录制"</p>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="startBtn" class="record-btn" disabled>开始录制</button>
+                <button id="pauseBtn" class="secondary" disabled>暂停</button>
+                <button id="stopBtn" class="outline" disabled>停止</button>
+            </div>
+            
+            <div class="recordings-section" id="recordingsSection" style="display: none;">
+                <h2>录制列表</h2>
+                <div class="recordings-list" id="recordingsList"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // DOM Elements
+        const preview = document.getElementById('preview');
+        const emptyState = document.getElementById('emptyState');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const timer = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const recordingsList = document.getElementById('recordingsList');
+        const recordingsSection = document.getElementById('recordingsSection');
+        const supportInfo = document.getElementById('supportInfo');
+        
+        // Settings elements
+        const resolutionSelect = document.getElementById('resolution');
+        const framerateSelect = document.getElementById('framerate');
+        const formatSelect = document.getElementById('format');
+        const includeAudioCheckbox = document.getElementById('includeAudio');
+        const includeMicCheckbox = document.getElementById('includeMic');
+        const showCursorCheckbox = document.getElementById('showCursor');
+        
+        // State
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordings = [];
+        let selectedSource = null;
+        let timerInterval = null;
+        let recordingStartTime = null;
+        let pausedTime = 0;
+        let isPaused = false;
+        
+        // Check browser support
+        function checkSupport() {
+            const hasGetDisplayMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+            const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            const hasMediaRecorder = typeof MediaRecorder !== 'undefined';
+            
+            if (hasGetDisplayMedia && hasMediaRecorder) {
+                supportInfo.textContent = '您的浏览器支持屏幕录制功能';
+                supportInfo.classList.remove('not-supported');
+            } else {
+                supportInfo.textContent = '您的浏览器不完全支持屏幕录制功能，请使用最新版本的 Chrome、Edge 或 Firefox';
+                supportInfo.classList.add('not-supported');
+            }
+        }
+        
+        checkSupport();
+        
+        // Source selection
+        document.querySelectorAll('.source-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.source-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                selectedSource = card.dataset.source;
+                startBtn.disabled = false;
+            });
+        });
+        
+        // Start recording
+        startBtn.addEventListener('click', async () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                return;
+            }
+            
+            try {
+                await getMediaStream();
+                startRecording();
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('启动录制失败: ' + error.message);
+            }
+        });
+        
+        // Pause/Resume recording
+        pauseBtn.addEventListener('click', () => {
+            if (!mediaRecorder) return;
+            
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.pause();
+                pauseBtn.textContent = '继续';
+                isPaused = true;
+                pausedTime = Date.now() - recordingStartTime;
+            } else if (mediaRecorder.state === 'paused') {
+                mediaRecorder.resume();
+                pauseBtn.textContent = '暂停';
+                isPaused = false;
+                recordingStartTime = Date.now() - pausedTime;
+            }
+        });
+        
+        // Stop recording
+        stopBtn.addEventListener('click', () => {
+            stopRecording();
+        });
+        
+        // Get media stream based on source
+        async function getMediaStream() {
+            const resolution = resolutionSelect.value;
+            const framerate = parseInt(framerateSelect.value);
+            const includeAudio = includeAudioCheckbox.checked;
+            const includeMic = includeMicCheckbox.checked;
+            const showCursor = showCursorCheckbox.checked;
+            
+            let videoConstraints = {
+                frameRate: framerate,
+                cursor: showCursor ? 'always' : 'never'
+            };
+            
+            if (resolution !== 'auto') {
+                const [width, height] = resolution.split('x').map(Number);
+                videoConstraints.width = { ideal: width };
+                videoConstraints.height = { ideal: height };
+            }
+            
+            // Stop existing stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            
+            let displayMediaOptions = {
+                video: videoConstraints,
+                audio: includeAudio
+            };
+            
+            if (selectedSource === 'camera') {
+                // Camera recording
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: videoConstraints,
+                    audio: includeMic
+                });
+            } else {
+                // Screen/window/tab recording
+                if (selectedSource === 'tab') {
+                    displayMediaOptions.preferCurrentTab = true;
+                }
+                
+                mediaStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+                
+                // Add microphone if requested
+                if (includeMic) {
+                    try {
+                        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        micStream.getAudioTracks().forEach(track => {
+                            mediaStream.addTrack(track);
+                        });
+                    } catch (e) {
+                        console.warn('Could not get microphone access:', e);
+                    }
+                }
+            }
+            
+            // Show preview
+            preview.srcObject = mediaStream;
+            preview.classList.add('visible');
+            emptyState.style.display = 'none';
+            
+            // Handle stream end
+            mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
+                stopRecording();
+            });
+        }
+        
+        // Start MediaRecorder
+        function startRecording() {
+            recordedChunks = [];
+            
+            const format = formatSelect.value;
+            const options = { mimeType: format };
+            
+            // Check if format is supported
+            if (!MediaRecorder.isTypeSupported(format)) {
+                // Fallback to default
+                delete options.mimeType;
+            }
+            
+            mediaRecorder = new MediaRecorder(mediaStream, options);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+                addRecording(blob);
+                
+                // Reset UI
+                recordingIndicator.classList.remove('visible');
+                timer.classList.remove('visible');
+                startBtn.classList.remove('recording');
+                startBtn.textContent = '开始录制';
+                pauseBtn.disabled = true;
+                stopBtn.disabled = true;
+                
+                clearInterval(timerInterval);
+            };
+            
+            mediaRecorder.start(1000); // Collect data every second
+            
+            // Update UI
+            recordingIndicator.classList.add('visible');
+            timer.classList.add('visible');
+            startBtn.classList.add('recording');
+            startBtn.textContent = '录制中...';
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            
+            // Start timer
+            recordingStartTime = Date.now();
+            pausedTime = 0;
+            isPaused = false;
+            timerInterval = setInterval(updateTimer, 1000);
+            updateTimer();
+        }
+        
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            preview.classList.remove('visible');
+            emptyState.style.display = 'block';
+            startBtn.disabled = false;
+            pauseBtn.textContent = '暂停';
+        }
+        
+        // Update timer display
+        function updateTimer() {
+            if (isPaused) return;
+            
+            const elapsed = Date.now() - recordingStartTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            timer.textContent = 
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+        }
+        
+        // Add recording to list
+        function addRecording(blob) {
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date();
+            const duration = Date.now() - recordingStartTime;
+            
+            const recording = {
+                id: Date.now(),
+                url: url,
+                blob: blob,
+                timestamp: timestamp,
+                duration: duration,
+                size: blob.size
+            };
+            
+            recordings.unshift(recording);
+            renderRecordings();
+        }
+        
+        // Render recordings list
+        function renderRecordings() {
+            if (recordings.length === 0) {
+                recordingsSection.style.display = 'none';
+                return;
+            }
+            
+            recordingsSection.style.display = 'block';
+            recordingsList.replaceChildren();
+            
+            recordings.forEach(recording => {
+                const item = document.createElement('div');
+                item.className = 'recording-item';
+                
+                const video = document.createElement('video');
+                video.src = recording.url;
+                video.controls = true;
+                video.preload = 'metadata';
+                
+                const info = document.createElement('div');
+                info.className = 'recording-info';
+                
+                const title = document.createElement('h4');
+                title.textContent = '录制 ' + formatDate(recording.timestamp);
+                
+                const details = document.createElement('p');
+                details.textContent = 
+                    '时长: ' + formatDuration(recording.duration) + 
+                    ' | 大小: ' + formatFileSize(recording.size);
+                
+                info.appendChild(title);
+                info.appendChild(details);
+                
+                const actions = document.createElement('div');
+                actions.className = 'recording-actions';
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = '下载';
+                downloadBtn.addEventListener('click', () => downloadRecording(recording));
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'outline secondary';
+                deleteBtn.textContent = '删除';
+                deleteBtn.addEventListener('click', () => deleteRecording(recording.id));
+                
+                actions.appendChild(downloadBtn);
+                actions.appendChild(deleteBtn);
+                
+                item.appendChild(video);
+                item.appendChild(info);
+                item.appendChild(actions);
+                
+                recordingsList.appendChild(item);
+            });
+        }
+        
+        // Download recording
+        function downloadRecording(recording) {
+            const link = document.createElement('a');
+            link.href = recording.url;
+            link.download = 'recording_' + formatDate(recording.timestamp, true) + '.webm';
+            link.click();
+        }
+        
+        // Delete recording
+        function deleteRecording(id) {
+            const index = recordings.findIndex(r => r.id === id);
+            if (index !== -1) {
+                URL.revokeObjectURL(recordings[index].url);
+                recordings.splice(index, 1);
+                renderRecordings();
+            }
+        }
+        
+        // Utility functions
+        function formatDate(date, forFilename = false) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const s = String(date.getSeconds()).padStart(2, '0');
+            
+            if (forFilename) {
+                return y + m + d + '_' + h + min + s;
+            }
+            return y + '-' + m + '-' + d + ' ' + h + ':' + min + ':' + s;
+        }
+        
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) {
+                return hours + '时' + (minutes % 60) + '分' + (seconds % 60) + '秒';
+            }
+            if (minutes > 0) {
+                return minutes + '分' + (seconds % 60) + '秒';
+            }
+            return seconds + '秒';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            recordings.forEach(r => URL.revokeObjectURL(r.url));
+        });
+    </script>
+</body>
+</html>

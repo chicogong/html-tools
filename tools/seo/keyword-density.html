@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键词密度分析器 - SEO工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-primary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stat-card h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--pico-primary);
+        }
+        .stat-card p {
+            margin: 0.5rem 0 0 0;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        .keyword-table {
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .keyword-table th {
+            text-align: left;
+        }
+        .density-bar {
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            height: 20px;
+            overflow: hidden;
+        }
+        .density-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .optimal {
+            color: #22c55e;
+        }
+        .warning {
+            color: #f59e0b;
+        }
+        .danger {
+            color: #ef4444;
+        }
+        textarea {
+            min-height: 200px;
+        }
+        .keyword-input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .keyword-input-group input {
+            flex: 1;
+        }
+        .keyword-input-group button {
+            flex-shrink: 0;
+        }
+        .tips {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            border-left: 4px solid var(--pico-primary);
+        }
+        .tips h4 {
+            margin-top: 0;
+        }
+        .tips ul {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🔍 关键词密度分析器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+
+        <article>
+            <h3>输入内容</h3>
+            <textarea id="content" placeholder="在此粘贴您要分析的文章内容..."></textarea>
+            
+            <div class="keyword-input-group">
+                <input type="text" id="targetKeyword" placeholder="输入目标关键词（可选，用于重点分析）">
+                <button onclick="analyzeContent()">分析内容</button>
+            </div>
+        </article>
+
+        <div id="results" style="display: none;">
+            <h3>📊 分析结果</h3>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="totalWords">0</h3>
+                    <p>总字数</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalChars">0</h3>
+                    <p>总字符数</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="uniqueWords">0</h3>
+                    <p>独立词汇</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="avgWordLength">0</h3>
+                    <p>平均词长</p>
+                </div>
+            </div>
+
+            <div id="targetKeywordResult" style="display: none;">
+                <h4>🎯 目标关键词分析</h4>
+                <article>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span id="targetKeywordText" style="font-weight: bold;"></span>
+                        <span id="targetKeywordDensity" style="font-size: 1.2rem;"></span>
+                    </div>
+                    <div class="density-bar">
+                        <div class="density-fill" id="targetDensityBar" style="width: 0%;"></div>
+                    </div>
+                    <p id="targetKeywordAdvice" style="margin-top: 0.5rem;"></p>
+                </article>
+            </div>
+
+            <h4>📈 高频词汇排行</h4>
+            <table class="keyword-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>关键词</th>
+                        <th>出现次数</th>
+                        <th>密度</th>
+                        <th>密度条</th>
+                    </tr>
+                </thead>
+                <tbody id="keywordTableBody">
+                </tbody>
+            </table>
+
+            <div class="tips">
+                <h4>💡 SEO建议</h4>
+                <ul>
+                    <li>目标关键词密度建议保持在 <strong>1%-3%</strong> 之间</li>
+                    <li>避免关键词堆砌，密度超过5%可能被搜索引擎判定为作弊</li>
+                    <li>自然地将关键词分布在标题、段落首句和正文中</li>
+                    <li>使用同义词和相关词来丰富内容的语义</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+
+        // 中文分词（简单实现）
+        function segmentChinese(text) {
+            // 移除标点符号和特殊字符
+            const cleanText = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ' ');
+            
+            // 分离中文和英文
+            const words = [];
+            let currentWord = '';
+            let currentType = null; // 'cn' for Chinese, 'en' for English
+            
+            for (let char of cleanText) {
+                if (/[\u4e00-\u9fa5]/.test(char)) {
+                    if (currentType === 'en' && currentWord) {
+                        words.push(currentWord.toLowerCase());
+                        currentWord = '';
+                    }
+                    // 中文字符单独作为词（简单处理）
+                    words.push(char);
+                    currentType = 'cn';
+                } else if (/[a-zA-Z0-9]/.test(char)) {
+                    currentWord += char;
+                    currentType = 'en';
+                } else {
+                    if (currentWord) {
+                        words.push(currentWord.toLowerCase());
+                        currentWord = '';
+                    }
+                    currentType = null;
+                }
+            }
+            
+            if (currentWord) {
+                words.push(currentWord.toLowerCase());
+            }
+            
+            return words.filter(w => w.length > 0);
+        }
+
+        // 提取2-4字的中文词组
+        function extractPhrases(text) {
+            const phrases = [];
+            const cleanText = text.replace(/[^\u4e00-\u9fa5]/g, '');
+            
+            for (let len = 2; len <= 4; len++) {
+                for (let i = 0; i <= cleanText.length - len; i++) {
+                    phrases.push(cleanText.substring(i, i + len));
+                }
+            }
+            
+            return phrases;
+        }
+
+        // 安全地创建表格行
+        function createTableRow(rank, word, count, density, barWidth, densityClass) {
+            const row = document.createElement('tr');
+            
+            const rankCell = document.createElement('td');
+            rankCell.textContent = rank;
+            
+            const wordCell = document.createElement('td');
+            const strong = document.createElement('strong');
+            strong.textContent = word;
+            wordCell.appendChild(strong);
+            
+            const countCell = document.createElement('td');
+            countCell.textContent = count;
+            
+            const densityCell = document.createElement('td');
+            densityCell.className = densityClass;
+            densityCell.textContent = density.toFixed(2) + '%';
+            
+            const barCell = document.createElement('td');
+            const barContainer = document.createElement('div');
+            barContainer.className = 'density-bar';
+            const barFill = document.createElement('div');
+            barFill.className = 'density-fill';
+            barFill.style.width = barWidth + '%';
+            barContainer.appendChild(barFill);
+            barCell.appendChild(barContainer);
+            
+            row.appendChild(rankCell);
+            row.appendChild(wordCell);
+            row.appendChild(countCell);
+            row.appendChild(densityCell);
+            row.appendChild(barCell);
+            
+            return row;
+        }
+
+        // 分析内容
+        function analyzeContent() {
+            const content = document.getElementById('content').value.trim();
+            const targetKeyword = document.getElementById('targetKeyword').value.trim();
+            
+            if (!content) {
+                alert('请输入要分析的内容');
+                return;
+            }
+
+            // 基础统计
+            const totalChars = content.replace(/\s/g, '').length;
+            const words = segmentChinese(content);
+            const totalWords = words.length;
+
+            // 词频统计
+            const wordCount = {};
+            words.forEach(word => {
+                if (word.length >= 1) {
+                    wordCount[word] = (wordCount[word] || 0) + 1;
+                }
+            });
+
+            // 添加中文词组统计
+            const phrases = extractPhrases(content);
+            const phraseCount = {};
+            phrases.forEach(phrase => {
+                phraseCount[phrase] = (phraseCount[phrase] || 0) + 1;
+            });
+
+            // 合并单字和词组，只保留出现2次以上的
+            const combinedCount = { ...wordCount };
+            Object.keys(phraseCount).forEach(phrase => {
+                if (phraseCount[phrase] >= 2) {
+                    combinedCount[phrase] = phraseCount[phrase];
+                }
+            });
+
+            // 排序
+            const sortedWords = Object.entries(combinedCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 20);
+
+            // 计算平均词长
+            const avgLength = words.length > 0 
+                ? (words.reduce((sum, w) => sum + w.length, 0) / words.length).toFixed(1)
+                : 0;
+
+            // 更新统计数据
+            document.getElementById('totalWords').textContent = totalWords;
+            document.getElementById('totalChars').textContent = totalChars;
+            document.getElementById('uniqueWords').textContent = Object.keys(wordCount).length;
+            document.getElementById('avgWordLength').textContent = avgLength;
+
+            // 目标关键词分析
+            if (targetKeyword) {
+                const keywordRegex = new RegExp(targetKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                const matches = content.match(keywordRegex) || [];
+                const keywordCount = matches.length;
+                const density = totalWords > 0 ? (keywordCount / totalWords * 100) : 0;
+
+                document.getElementById('targetKeywordResult').style.display = 'block';
+                document.getElementById('targetKeywordText').textContent = targetKeyword;
+                document.getElementById('targetKeywordDensity').textContent = density.toFixed(2) + '% (' + keywordCount + '次)';
+                
+                const barWidth = Math.min(density * 10, 100);
+                document.getElementById('targetDensityBar').style.width = barWidth + '%';
+
+                let advice = '';
+                let densityClass = '';
+                if (density < 0.5) {
+                    advice = '⚠️ 关键词密度偏低，建议适当增加关键词出现次数';
+                    densityClass = 'warning';
+                } else if (density <= 3) {
+                    advice = '✅ 关键词密度在理想范围内，继续保持';
+                    densityClass = 'optimal';
+                } else if (density <= 5) {
+                    advice = '⚠️ 关键词密度偏高，注意不要过度优化';
+                    densityClass = 'warning';
+                } else {
+                    advice = '❌ 关键词密度过高，有堆砌嫌疑，建议减少使用';
+                    densityClass = 'danger';
+                }
+                document.getElementById('targetKeywordAdvice').textContent = advice;
+                document.getElementById('targetKeywordAdvice').className = densityClass;
+                document.getElementById('targetKeywordDensity').className = densityClass;
+            } else {
+                document.getElementById('targetKeywordResult').style.display = 'none';
+            }
+
+            // 生成关键词表格
+            const tbody = document.getElementById('keywordTableBody');
+            tbody.textContent = '';
+            
+            sortedWords.forEach(([word, count], index) => {
+                const density = (count / totalWords * 100);
+                const barWidth = Math.min(density * 10, 100);
+                
+                let densityClass = 'optimal';
+                if (density > 5) densityClass = 'danger';
+                else if (density > 3) densityClass = 'warning';
+
+                const row = createTableRow(index + 1, word, count, density, barWidth, densityClass);
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // 回车键触发分析
+        document.getElementById('targetKeyword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeContent();
+            }
+        });
+    </script>
+</body>
+</html>

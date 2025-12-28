@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接器 - 多图合并工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            cursor: grab;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .preview-item:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .preview-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+        }
+        
+        .preview-item .index-badge {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .layout-options {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .layout-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-background-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .layout-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .canvas-container {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+        
+        [data-theme="dark"] .canvas-container {
+            background: #2a2a2a;
+        }
+        
+        #collageCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .color-input-wrapper input[type="color"] {
+            width: 50px;
+            height: 38px;
+            padding: 2px;
+            border-radius: var(--border-radius);
+        }
+        
+        .empty-state {
+            color: var(--pico-muted-color);
+            text-align: center;
+            padding: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片拼接器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
+        </header>
+        
+        <main>
+            <div class="upload-zone" id="uploadZone">
+                <p>点击或拖拽图片到此处上传</p>
+                <p><small>支持 JPG、PNG、WebP 等格式，可选择多张图片</small></p>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+            
+            <div class="preview-grid" id="previewGrid"></div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>排列方式</label>
+                    <div class="layout-options">
+                        <button class="layout-btn active" data-layout="horizontal">横向排列</button>
+                        <button class="layout-btn" data-layout="vertical">纵向排列</button>
+                        <button class="layout-btn" data-layout="grid">网格排列</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="columns">网格列数</label>
+                    <input type="number" id="columns" min="1" max="10" value="2">
+                </div>
+                
+                <div class="control-group">
+                    <label for="spacing">图片间距 (px)</label>
+                    <input type="number" id="spacing" min="0" max="100" value="10">
+                </div>
+                
+                <div class="control-group">
+                    <label for="bgColor">背景颜色</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="bgColor" value="#ffffff">
+                        <input type="text" id="bgColorText" value="#ffffff" style="width: 100px;">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="maxWidth">最大宽度 (px)</label>
+                    <input type="number" id="maxWidth" min="100" max="5000" value="1920">
+                </div>
+                
+                <div class="control-group">
+                    <label for="quality">输出质量</label>
+                    <input type="range" id="quality" min="0.1" max="1" step="0.1" value="0.9">
+                    <small id="qualityValue">90%</small>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="collageCanvas"></canvas>
+                <div class="empty-state" id="emptyState">
+                    <p>请先上传图片</p>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="generateBtn" disabled>生成拼接图</button>
+                <button id="downloadBtn" class="secondary" disabled>下载图片</button>
+                <button id="clearBtn" class="outline secondary">清空所有</button>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // State
+        let images = [];
+        let currentLayout = 'horizontal';
+        
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewGrid = document.getElementById('previewGrid');
+        const canvas = document.getElementById('collageCanvas');
+        const ctx = canvas.getContext('2d');
+        const emptyState = document.getElementById('emptyState');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const columnsInput = document.getElementById('columns');
+        const spacingInput = document.getElementById('spacing');
+        const bgColorInput = document.getElementById('bgColor');
+        const bgColorText = document.getElementById('bgColorText');
+        const maxWidthInput = document.getElementById('maxWidth');
+        const qualityInput = document.getElementById('quality');
+        const qualityValue = document.getElementById('qualityValue');
+        
+        // Event Listeners
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        
+        // Layout buttons
+        document.querySelectorAll('.layout-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+            });
+        });
+        
+        // Color sync
+        bgColorInput.addEventListener('input', () => {
+            bgColorText.value = bgColorInput.value;
+        });
+        bgColorText.addEventListener('input', () => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(bgColorText.value)) {
+                bgColorInput.value = bgColorText.value;
+            }
+        });
+        
+        // Quality display
+        qualityInput.addEventListener('input', () => {
+            qualityValue.textContent = Math.round(qualityInput.value * 100) + '%';
+        });
+        
+        // Buttons
+        generateBtn.addEventListener('click', generateCollage);
+        downloadBtn.addEventListener('click', downloadImage);
+        clearBtn.addEventListener('click', clearAll);
+        
+        // Handle file upload
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        images.push({
+                            img: img,
+                            src: e.target.result,
+                            name: file.name
+                        });
+                        updatePreview();
+                        updateButtons();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // Update preview grid
+        function updatePreview() {
+            previewGrid.replaceChildren();
+            images.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.draggable = true;
+                div.dataset.index = index;
+                
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.alt = item.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '\u00d7';
+                removeBtn.addEventListener('click', () => removeImage(index));
+                
+                const indexBadge = document.createElement('span');
+                indexBadge.className = 'index-badge';
+                indexBadge.textContent = index + 1;
+                
+                div.appendChild(img);
+                div.appendChild(removeBtn);
+                div.appendChild(indexBadge);
+                
+                // Drag events for reordering
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                
+                previewGrid.appendChild(div);
+            });
+        }
+        
+        // Drag and drop for reordering
+        let dragIndex = null;
+        
+        function handleDragStart(e) {
+            dragIndex = parseInt(this.dataset.index);
+            this.classList.add('dragging');
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropIndex = parseInt(this.dataset.index);
+            if (dragIndex !== null && dragIndex !== dropIndex) {
+                const [removed] = images.splice(dragIndex, 1);
+                images.splice(dropIndex, 0, removed);
+                updatePreview();
+            }
+        }
+        
+        // Remove image
+        function removeImage(index) {
+            images.splice(index, 1);
+            updatePreview();
+            updateButtons();
+            if (images.length === 0) {
+                canvas.width = 0;
+                canvas.height = 0;
+                emptyState.style.display = 'block';
+            }
+        }
+        
+        // Update button states
+        function updateButtons() {
+            const hasImages = images.length > 0;
+            generateBtn.disabled = !hasImages;
+            clearBtn.disabled = !hasImages;
+        }
+        
+        // Generate collage
+        function generateCollage() {
+            if (images.length === 0) return;
+            
+            const spacing = parseInt(spacingInput.value) || 0;
+            const maxWidth = parseInt(maxWidthInput.value) || 1920;
+            const columns = parseInt(columnsInput.value) || 2;
+            const bgColor = bgColorInput.value;
+            
+            let canvasWidth, canvasHeight;
+            const positions = [];
+            
+            if (currentLayout === 'horizontal') {
+                // Horizontal layout - same height
+                const targetHeight = 400;
+                let totalWidth = 0;
+                const scaledImages = images.map(item => {
+                    const scale = targetHeight / item.img.height;
+                    const scaledWidth = item.img.width * scale;
+                    totalWidth += scaledWidth;
+                    return { ...item, scaledWidth, scaledHeight: targetHeight };
+                });
+                
+                totalWidth += spacing * (images.length - 1);
+                
+                // Scale down if exceeds max width
+                let finalScale = 1;
+                if (totalWidth > maxWidth) {
+                    finalScale = maxWidth / totalWidth;
+                }
+                
+                canvasWidth = Math.round(totalWidth * finalScale);
+                canvasHeight = Math.round(targetHeight * finalScale);
+                
+                let x = 0;
+                scaledImages.forEach((item, i) => {
+                    const w = Math.round(item.scaledWidth * finalScale);
+                    const h = Math.round(item.scaledHeight * finalScale);
+                    positions.push({ img: item.img, x, y: 0, w, h });
+                    x += w + Math.round(spacing * finalScale);
+                });
+                
+            } else if (currentLayout === 'vertical') {
+                // Vertical layout - same width
+                const targetWidth = Math.min(800, maxWidth);
+                let totalHeight = 0;
+                const scaledImages = images.map(item => {
+                    const scale = targetWidth / item.img.width;
+                    const scaledHeight = item.img.height * scale;
+                    totalHeight += scaledHeight;
+                    return { ...item, scaledWidth: targetWidth, scaledHeight };
+                });
+                
+                totalHeight += spacing * (images.length - 1);
+                
+                canvasWidth = targetWidth;
+                canvasHeight = Math.round(totalHeight);
+                
+                let y = 0;
+                scaledImages.forEach((item, i) => {
+                    positions.push({ img: item.img, x: 0, y, w: item.scaledWidth, h: Math.round(item.scaledHeight) });
+                    y += Math.round(item.scaledHeight) + spacing;
+                });
+                
+            } else {
+                // Grid layout
+                const cols = Math.min(columns, images.length);
+                const rows = Math.ceil(images.length / cols);
+                const cellWidth = Math.floor((maxWidth - spacing * (cols - 1)) / cols);
+                const cellHeight = cellWidth; // Square cells
+                
+                canvasWidth = cols * cellWidth + spacing * (cols - 1);
+                canvasHeight = rows * cellHeight + spacing * (rows - 1);
+                
+                images.forEach((item, i) => {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    const x = col * (cellWidth + spacing);
+                    const y = row * (cellHeight + spacing);
+                    
+                    // Fit image in cell
+                    const imgRatio = item.img.width / item.img.height;
+                    let drawWidth, drawHeight, drawX, drawY;
+                    
+                    if (imgRatio > 1) {
+                        drawHeight = cellHeight;
+                        drawWidth = cellHeight * imgRatio;
+                        drawX = x - (drawWidth - cellWidth) / 2;
+                        drawY = y;
+                    } else {
+                        drawWidth = cellWidth;
+                        drawHeight = cellWidth / imgRatio;
+                        drawX = x;
+                        drawY = y - (drawHeight - cellHeight) / 2;
+                    }
+                    
+                    positions.push({ 
+                        img: item.img, 
+                        x: drawX, 
+                        y: drawY, 
+                        w: drawWidth, 
+                        h: drawHeight,
+                        clipX: x,
+                        clipY: y,
+                        clipW: cellWidth,
+                        clipH: cellHeight
+                    });
+                });
+            }
+            
+            // Draw to canvas
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            
+            positions.forEach(pos => {
+                if (pos.clipW !== undefined) {
+                    // Grid layout with clipping
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(pos.clipX, pos.clipY, pos.clipW, pos.clipH);
+                    ctx.clip();
+                    ctx.drawImage(pos.img, pos.x, pos.y, pos.w, pos.h);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(pos.img, pos.x, pos.y, pos.w, pos.h);
+                }
+            });
+            
+            emptyState.style.display = 'none';
+            downloadBtn.disabled = false;
+        }
+        
+        // Download image
+        function downloadImage() {
+            const quality = parseFloat(qualityInput.value);
+            const link = document.createElement('a');
+            link.download = 'collage_' + Date.now() + '.jpg';
+            link.href = canvas.toDataURL('image/jpeg', quality);
+            link.click();
+        }
+        
+        // Clear all
+        function clearAll() {
+            images = [];
+            previewGrid.replaceChildren();
+            canvas.width = 0;
+            canvas.height = 0;
+            emptyState.style.display = 'block';
+            generateBtn.disabled = true;
+            downloadBtn.disabled = true;
+            clearBtn.disabled = true;
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>

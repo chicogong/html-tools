@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.editorconfig 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+        }
+        .panel h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .form-grid.full {
+            grid-template-columns: 1fr;
+        }
+        .section-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+        .section-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
+            background: var(--pico-background-color);
+            border-radius: var(--pico-border-radius);
+            border-left: 4px solid var(--pico-primary);
+            cursor: pointer;
+        }
+        .section-item:hover {
+            background: var(--pico-primary-focus);
+        }
+        .section-item.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .btn-small {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        .preview-area {
+            background: var(--pico-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            min-height: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .preset-buttons button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        .empty-state {
+            text-align: center;
+            color: var(--pico-muted-color);
+            padding: 2rem;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin: 0;
+        }
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.25rem;
+        }
+        fieldset {
+            margin-bottom: 1rem;
+        }
+        legend {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="header">
+            <h1>.editorconfig 生成器</h1>
+            <button id="themeToggle" class="outline">深色模式</button>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="panel">
+                    <h3>快速预设</h3>
+                    <div class="preset-buttons">
+                        <button class="secondary" onclick="loadPreset('web')">Web 前端</button>
+                        <button class="secondary" onclick="loadPreset('node')">Node.js</button>
+                        <button class="secondary" onclick="loadPreset('python')">Python</button>
+                        <button class="secondary" onclick="loadPreset('java')">Java</button>
+                        <button class="secondary" onclick="loadPreset('go')">Go</button>
+                        <button class="secondary" onclick="loadPreset('rust')">Rust</button>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;">
+                    <h3>全局设置</h3>
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="rootFlag" checked>
+                        <span>root = true (标记为根配置文件)</span>
+                    </label>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;">
+                    <h3>文件类型规则</h3>
+                    <div class="section-list" id="sectionList">
+                        <div class="empty-state">暂无规则，请添加</div>
+                    </div>
+                    <button onclick="addSection()" style="width: 100%;">添加规则</button>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;" id="editPanel" style="display: none;">
+                    <h3>编辑规则 <span id="editingPattern"></span></h3>
+                    
+                    <label>
+                        文件匹配模式
+                        <input type="text" id="pattern" placeholder="*">
+                        <div class="help-text">例如: *, *.js, *.{js,ts}, Makefile</div>
+                    </label>
+
+                    <div class="form-grid">
+                        <label>
+                            缩进风格
+                            <select id="indentStyle">
+                                <option value="">不设置</option>
+                                <option value="space">space (空格)</option>
+                                <option value="tab">tab (制表符)</option>
+                            </select>
+                        </label>
+                        <label>
+                            缩进大小
+                            <select id="indentSize">
+                                <option value="">不设置</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                                <option value="8">8</option>
+                                <option value="tab">tab</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <label>
+                            换行符
+                            <select id="endOfLine">
+                                <option value="">不设置</option>
+                                <option value="lf">lf (Unix/Mac)</option>
+                                <option value="crlf">crlf (Windows)</option>
+                                <option value="cr">cr (旧 Mac)</option>
+                            </select>
+                        </label>
+                        <label>
+                            字符集
+                            <select id="charset">
+                                <option value="">不设置</option>
+                                <option value="utf-8">utf-8</option>
+                                <option value="utf-8-bom">utf-8-bom</option>
+                                <option value="utf-16be">utf-16be</option>
+                                <option value="utf-16le">utf-16le</option>
+                                <option value="latin1">latin1</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <label>
+                            末尾空白
+                            <select id="trimTrailing">
+                                <option value="">不设置</option>
+                                <option value="true">移除</option>
+                                <option value="false">保留</option>
+                            </select>
+                        </label>
+                        <label>
+                            末尾换行
+                            <select id="insertFinalNewline">
+                                <option value="">不设置</option>
+                                <option value="true">插入</option>
+                                <option value="false">不插入</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <label>
+                        最大行长度
+                        <input type="number" id="maxLineLength" placeholder="不限制" min="0">
+                    </label>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button onclick="saveSection()" style="flex: 1;">保存规则</button>
+                        <button class="secondary" onclick="cancelEdit()">取消</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel">
+                    <h3>预览输出</h3>
+                    <div class="toolbar">
+                        <button class="secondary" onclick="copyConfig()">复制内容</button>
+                        <button class="secondary" onclick="downloadConfig()">下载文件</button>
+                        <button class="secondary" onclick="clearAll()">清空全部</button>
+                    </div>
+                    <div class="preview-area" id="preview"># EditorConfig 帮助开发者在不同编辑器之间保持一致的编码风格
+# https://editorconfig.org
+
+root = true</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const rootFlagInput = document.getElementById('rootFlag');
+        const sectionListEl = document.getElementById('sectionList');
+        const previewEl = document.getElementById('preview');
+        const editingPatternEl = document.getElementById('editingPattern');
+
+        // 表单元素
+        const patternInput = document.getElementById('pattern');
+        const indentStyleSelect = document.getElementById('indentStyle');
+        const indentSizeSelect = document.getElementById('indentSize');
+        const endOfLineSelect = document.getElementById('endOfLine');
+        const charsetSelect = document.getElementById('charset');
+        const trimTrailingSelect = document.getElementById('trimTrailing');
+        const insertFinalNewlineSelect = document.getElementById('insertFinalNewline');
+        const maxLineLengthInput = document.getElementById('maxLineLength');
+
+        let sections = [];
+        let editingIndex = -1;
+
+        // 预设配置
+        const presets = {
+            web: [
+                { pattern: '*', indent_style: 'space', indent_size: '2', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.md', trim_trailing_whitespace: 'false' },
+                { pattern: 'Makefile', indent_style: 'tab' },
+                { pattern: '*.{json,yml,yaml}', indent_size: '2' }
+            ],
+            node: [
+                { pattern: '*', indent_style: 'space', indent_size: '2', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.md', trim_trailing_whitespace: 'false' },
+                { pattern: 'package.json', indent_size: '2' }
+            ],
+            python: [
+                { pattern: '*', indent_style: 'space', indent_size: '4', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.py', max_line_length: '88' },
+                { pattern: 'Makefile', indent_style: 'tab' }
+            ],
+            java: [
+                { pattern: '*', indent_style: 'space', indent_size: '4', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.xml', indent_size: '2' },
+                { pattern: 'Makefile', indent_style: 'tab' }
+            ],
+            go: [
+                { pattern: '*', indent_style: 'tab', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.go', indent_style: 'tab' },
+                { pattern: 'Makefile', indent_style: 'tab' }
+            ],
+            rust: [
+                { pattern: '*', indent_style: 'space', indent_size: '4', end_of_line: 'lf', charset: 'utf-8', trim_trailing_whitespace: 'true', insert_final_newline: 'true' },
+                { pattern: '*.rs', indent_size: '4' },
+                { pattern: 'Makefile', indent_style: 'tab' }
+            ]
+        };
+
+        // 主题切换
+        function initTheme() {
+            const savedTheme = localStorage.getItem('editorconfig-gen-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        }
+
+        function updateThemeButton(theme) {
+            themeToggle.textContent = theme === 'dark' ? '浅色模式' : '深色模式';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('editorconfig-gen-theme', newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        // 加载预设
+        function loadPreset(name) {
+            if (sections.length > 0 && !confirm('这将替换当前配置，确定继续吗？')) {
+                return;
+            }
+            sections = JSON.parse(JSON.stringify(presets[name]));
+            editingIndex = -1;
+            renderSectionList();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 渲染规则列表
+        function renderSectionList() {
+            if (sections.length === 0) {
+                sectionListEl.innerHTML = '<div class="empty-state">暂无规则，请添加</div>';
+                return;
+            }
+
+            sectionListEl.innerHTML = sections.map((s, i) => `
+                <div class="section-item ${i === editingIndex ? 'active' : ''}" onclick="editSection(${i})">
+                    <span>[${s.pattern}]</span>
+                    <button class="btn-small outline" onclick="event.stopPropagation(); deleteSection(${i})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        // 添加规则
+        function addSection() {
+            sections.push({ pattern: '*' });
+            editingIndex = sections.length - 1;
+            renderSectionList();
+            loadSectionToForm(editingIndex);
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 编辑规则
+        function editSection(index) {
+            editingIndex = index;
+            renderSectionList();
+            loadSectionToForm(index);
+        }
+
+        // 加载规则到表单
+        function loadSectionToForm(index) {
+            const section = sections[index];
+            editingPatternEl.textContent = `[${section.pattern}]`;
+            
+            patternInput.value = section.pattern || '*';
+            indentStyleSelect.value = section.indent_style || '';
+            indentSizeSelect.value = section.indent_size || '';
+            endOfLineSelect.value = section.end_of_line || '';
+            charsetSelect.value = section.charset || '';
+            trimTrailingSelect.value = section.trim_trailing_whitespace || '';
+            insertFinalNewlineSelect.value = section.insert_final_newline || '';
+            maxLineLengthInput.value = section.max_line_length || '';
+        }
+
+        // 保存规则
+        function saveSection() {
+            if (editingIndex < 0) return;
+
+            const pattern = patternInput.value.trim() || '*';
+            
+            sections[editingIndex] = {
+                pattern
+            };
+
+            if (indentStyleSelect.value) sections[editingIndex].indent_style = indentStyleSelect.value;
+            if (indentSizeSelect.value) sections[editingIndex].indent_size = indentSizeSelect.value;
+            if (endOfLineSelect.value) sections[editingIndex].end_of_line = endOfLineSelect.value;
+            if (charsetSelect.value) sections[editingIndex].charset = charsetSelect.value;
+            if (trimTrailingSelect.value) sections[editingIndex].trim_trailing_whitespace = trimTrailingSelect.value;
+            if (insertFinalNewlineSelect.value) sections[editingIndex].insert_final_newline = insertFinalNewlineSelect.value;
+            if (maxLineLengthInput.value) sections[editingIndex].max_line_length = maxLineLengthInput.value;
+
+            renderSectionList();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 取消编辑
+        function cancelEdit() {
+            editingIndex = -1;
+            renderSectionList();
+            clearForm();
+        }
+
+        // 清空表单
+        function clearForm() {
+            editingPatternEl.textContent = '';
+            patternInput.value = '*';
+            indentStyleSelect.value = '';
+            indentSizeSelect.value = '';
+            endOfLineSelect.value = '';
+            charsetSelect.value = '';
+            trimTrailingSelect.value = '';
+            insertFinalNewlineSelect.value = '';
+            maxLineLengthInput.value = '';
+        }
+
+        // 删除规则
+        function deleteSection(index) {
+            if (confirm('确定要删除这条规则吗？')) {
+                sections.splice(index, 1);
+                if (editingIndex === index) {
+                    editingIndex = -1;
+                    clearForm();
+                } else if (editingIndex > index) {
+                    editingIndex--;
+                }
+                renderSectionList();
+                updatePreview();
+                saveToStorage();
+            }
+        }
+
+        // 更新预览
+        function updatePreview() {
+            let output = '# EditorConfig 帮助开发者在不同编辑器之间保持一致的编码风格\n';
+            output += '# https://editorconfig.org\n\n';
+
+            if (rootFlagInput.checked) {
+                output += 'root = true\n';
+            }
+
+            sections.forEach(section => {
+                output += `\n[${section.pattern}]\n`;
+                
+                if (section.indent_style) output += `indent_style = ${section.indent_style}\n`;
+                if (section.indent_size) output += `indent_size = ${section.indent_size}\n`;
+                if (section.end_of_line) output += `end_of_line = ${section.end_of_line}\n`;
+                if (section.charset) output += `charset = ${section.charset}\n`;
+                if (section.trim_trailing_whitespace) output += `trim_trailing_whitespace = ${section.trim_trailing_whitespace}\n`;
+                if (section.insert_final_newline) output += `insert_final_newline = ${section.insert_final_newline}\n`;
+                if (section.max_line_length) output += `max_line_length = ${section.max_line_length}\n`;
+            });
+
+            previewEl.textContent = output;
+        }
+
+        // 复制
+        function copyConfig() {
+            navigator.clipboard.writeText(previewEl.textContent).then(() => {
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        // 下载
+        function downloadConfig() {
+            const content = previewEl.textContent;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '.editorconfig';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 清空
+        function clearAll() {
+            if (confirm('确定要清空所有配置吗？')) {
+                sections = [];
+                editingIndex = -1;
+                clearForm();
+                renderSectionList();
+                updatePreview();
+                saveToStorage();
+            }
+        }
+
+        // 保存到本地存储
+        function saveToStorage() {
+            localStorage.setItem('editorconfig-gen-data', JSON.stringify({
+                root: rootFlagInput.checked,
+                sections
+            }));
+        }
+
+        // 从本地存储加载
+        function loadFromStorage() {
+            const saved = localStorage.getItem('editorconfig-gen-data');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    rootFlagInput.checked = data.root !== false;
+                    sections = data.sections || [];
+                    renderSectionList();
+                    updatePreview();
+                } catch (e) {
+                    console.error('Failed to load saved data:', e);
+                }
+            }
+        }
+
+        // 监听 root 变化
+        rootFlagInput.addEventListener('change', () => {
+            updatePreview();
+            saveToStorage();
+        });
+
+        // 初始化
+        initTheme();
+        loadFromStorage();
+    </script>
+</body>
+</html>

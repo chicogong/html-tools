@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS 配置生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--pico-primary);
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .config-section {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .config-section h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--pico-primary);
+            padding-bottom: 0.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-group small {
+            color: var(--pico-muted-color);
+            display: block;
+            margin-top: 0.25rem;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-item input {
+            margin: 0;
+        }
+        
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem;
+            border: 1px solid var(--pico-form-element-border-color);
+            border-radius: 4px;
+            background: var(--pico-form-element-background-color);
+            min-height: 44px;
+        }
+        
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        
+        .tag-input {
+            flex: 1;
+            min-width: 150px;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 0.25rem;
+        }
+        
+        .output-section {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .output-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .output-tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: var(--pico-secondary-background);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .output-tab.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        
+        .output-content {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .warning-box.show {
+            display: block;
+        }
+        
+        .info-box {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .checkbox-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    
+    <main class="container">
+        <header>
+            <h1>🌐 CORS 配置生成器</h1>
+            <p>可视化配置跨域资源共享 (CORS) 策略</p>
+        </header>
+        
+        <div class="config-section">
+            <h3>🎯 允许的来源 (Origins)</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="allowAllOrigins" onchange="updateConfig()">
+                    允许所有来源 (Access-Control-Allow-Origin: *)
+                </label>
+                <small>⚠️ 不推荐在生产环境使用，可能存在安全风险</small>
+            </div>
+            <div class="form-group" id="originsGroup">
+                <label>指定允许的来源</label>
+                <div class="tag-input-container" id="originsContainer">
+                    <input type="text" class="tag-input" id="originInput" placeholder="输入域名后按回车添加，如：https://example.com">
+                </div>
+                <small>输入完整的 URL 包括协议，如 https://example.com</small>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h3>📋 允许的 HTTP 方法 (Methods)</h3>
+            <div class="checkbox-group">
+                <label class="checkbox-item"><input type="checkbox" value="GET" checked onchange="updateConfig()"> GET</label>
+                <label class="checkbox-item"><input type="checkbox" value="POST" checked onchange="updateConfig()"> POST</label>
+                <label class="checkbox-item"><input type="checkbox" value="PUT" onchange="updateConfig()"> PUT</label>
+                <label class="checkbox-item"><input type="checkbox" value="DELETE" onchange="updateConfig()"> DELETE</label>
+                <label class="checkbox-item"><input type="checkbox" value="PATCH" onchange="updateConfig()"> PATCH</label>
+                <label class="checkbox-item"><input type="checkbox" value="OPTIONS" checked onchange="updateConfig()"> OPTIONS</label>
+                <label class="checkbox-item"><input type="checkbox" value="HEAD" onchange="updateConfig()"> HEAD</label>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h3>📨 允许的请求头 (Headers)</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="allowAllHeaders" onchange="updateConfig()">
+                    允许所有请求头 (Access-Control-Allow-Headers: *)
+                </label>
+            </div>
+            <div class="form-group" id="headersGroup">
+                <label>指定允许的请求头</label>
+                <div class="tag-input-container" id="headersContainer">
+                    <input type="text" class="tag-input" id="headerInput" placeholder="输入请求头后按回车添加，如：Authorization">
+                </div>
+            </div>
+            <div class="checkbox-group" style="margin-top: 0.5rem;">
+                <label class="checkbox-item"><input type="checkbox" data-header="Content-Type" checked onchange="togglePresetHeader(this)"> Content-Type</label>
+                <label class="checkbox-item"><input type="checkbox" data-header="Authorization" onchange="togglePresetHeader(this)"> Authorization</label>
+                <label class="checkbox-item"><input type="checkbox" data-header="X-Requested-With" onchange="togglePresetHeader(this)"> X-Requested-With</label>
+                <label class="checkbox-item"><input type="checkbox" data-header="Accept" checked onchange="togglePresetHeader(this)"> Accept</label>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h3>📤 暴露的响应头 (Expose Headers)</h3>
+            <div class="form-group">
+                <div class="tag-input-container" id="exposeHeadersContainer">
+                    <input type="text" class="tag-input" id="exposeHeaderInput" placeholder="输入要暴露给前端的响应头，如：X-Total-Count">
+                </div>
+                <small>指定哪些响应头可以被前端 JavaScript 访问</small>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h3>⚙️ 其他选项</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="allowCredentials" onchange="updateConfig()">
+                    允许携带凭证 (Access-Control-Allow-Credentials: true)
+                </label>
+                <small>允许跨域请求携带 Cookie 等凭证信息</small>
+            </div>
+            <div class="form-group">
+                <label for="maxAge">预检请求缓存时间 (秒)</label>
+                <input type="number" id="maxAge" value="86400" min="0" onchange="updateConfig()">
+                <small>Access-Control-Max-Age: 浏览器缓存预检请求结果的时间</small>
+            </div>
+        </div>
+        
+        <div class="warning-box" id="warningBox">
+            <strong>⚠️ 安全警告：</strong>
+            <span id="warningText"></span>
+        </div>
+        
+        <div class="output-section">
+            <h3>📄 生成的配置</h3>
+            <div class="output-tabs">
+                <button class="output-tab active" onclick="switchTab('headers')">HTTP Headers</button>
+                <button class="output-tab" onclick="switchTab('nginx')">Nginx</button>
+                <button class="output-tab" onclick="switchTab('apache')">Apache</button>
+                <button class="output-tab" onclick="switchTab('express')">Express.js</button>
+                <button class="output-tab" onclick="switchTab('spring')">Spring Boot</button>
+            </div>
+            <div class="output-content" id="outputContent"></div>
+            <div class="btn-group">
+                <button onclick="copyOutput()">📋 复制配置</button>
+                <button class="secondary" onclick="downloadConfig()">💾 下载配置</button>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h4>💡 CORS 工作原理</h4>
+            <ul>
+                <li><strong>简单请求</strong>：GET/POST/HEAD 且只使用简单头，直接发送</li>
+                <li><strong>预检请求</strong>：复杂请求会先发送 OPTIONS 请求进行预检</li>
+                <li><strong>凭证模式</strong>：携带 Cookie 时，Origin 不能为 *</li>
+                <li><strong>安全建议</strong>：生产环境应明确指定允许的来源，避免使用 *</li>
+            </ul>
+        </div>
+    </main>
+    
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        
+        // 状态
+        const state = {
+            origins: [],
+            headers: ['Content-Type', 'Accept'],
+            exposeHeaders: [],
+            currentTab: 'headers'
+        };
+        
+        // Tag 输入处理
+        function setupTagInput(inputId, containerId, stateKey) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(containerId);
+            
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = this.value.trim();
+                    if (value && state[stateKey].indexOf(value) === -1) {
+                        state[stateKey].push(value);
+                        renderTags(containerId, stateKey);
+                        this.value = '';
+                        updateConfig();
+                    }
+                }
+            });
+        }
+        
+        function renderTags(containerId, stateKey) {
+            const container = document.getElementById(containerId);
+            const input = container.querySelector('.tag-input');
+            
+            // 移除现有标签
+            container.querySelectorAll('.tag').forEach(tag => tag.remove());
+            
+            // 添加标签
+            state[stateKey].forEach((value, index) => {
+                const tag = document.createElement('span');
+                tag.className = 'tag';
+                tag.textContent = value + ' ';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.onclick = function() {
+                    state[stateKey].splice(index, 1);
+                    renderTags(containerId, stateKey);
+                    updateConfig();
+                    
+                    // 更新预设复选框
+                    if (stateKey === 'headers') {
+                        const checkbox = document.querySelector('input[data-header="' + value + '"]');
+                        if (checkbox) checkbox.checked = false;
+                    }
+                };
+                tag.appendChild(removeBtn);
+                container.insertBefore(tag, input);
+            });
+        }
+        
+        function togglePresetHeader(checkbox) {
+            const header = checkbox.dataset.header;
+            const index = state.headers.indexOf(header);
+            
+            if (checkbox.checked && index === -1) {
+                state.headers.push(header);
+            } else if (!checkbox.checked && index !== -1) {
+                state.headers.splice(index, 1);
+            }
+            
+            renderTags('headersContainer', 'headers');
+            updateConfig();
+        }
+        
+        // 初始化
+        setupTagInput('originInput', 'originsContainer', 'origins');
+        setupTagInput('headerInput', 'headersContainer', 'headers');
+        setupTagInput('exposeHeaderInput', 'exposeHeadersContainer', 'exposeHeaders');
+        renderTags('headersContainer', 'headers');
+        
+        function getConfig() {
+            const allowAllOrigins = document.getElementById('allowAllOrigins').checked;
+            const allowAllHeaders = document.getElementById('allowAllHeaders').checked;
+            const allowCredentials = document.getElementById('allowCredentials').checked;
+            const maxAge = document.getElementById('maxAge').value;
+            
+            const methods = [];
+            document.querySelectorAll('.checkbox-group input[value]').forEach(cb => {
+                if (cb.checked && cb.value) methods.push(cb.value);
+            });
+            
+            return {
+                allowAllOrigins,
+                origins: state.origins,
+                methods,
+                allowAllHeaders,
+                headers: state.headers,
+                exposeHeaders: state.exposeHeaders,
+                allowCredentials,
+                maxAge: parseInt(maxAge) || 86400
+            };
+        }
+        
+        function updateConfig() {
+            const config = getConfig();
+            
+            // 显示/隐藏来源输入
+            document.getElementById('originsGroup').style.display = config.allowAllOrigins ? 'none' : 'block';
+            document.getElementById('headersGroup').style.display = config.allowAllHeaders ? 'none' : 'block';
+            
+            // 警告检查
+            const warnings = [];
+            if (config.allowAllOrigins) {
+                warnings.push('允许所有来源可能导致安全问题');
+            }
+            if (config.allowCredentials && config.allowAllOrigins) {
+                warnings.push('携带凭证时不能使用 * 作为来源，浏览器会拒绝此配置');
+            }
+            
+            const warningBox = document.getElementById('warningBox');
+            if (warnings.length > 0) {
+                document.getElementById('warningText').textContent = warnings.join('；');
+                warningBox.classList.add('show');
+            } else {
+                warningBox.classList.remove('show');
+            }
+            
+            generateOutput();
+        }
+        
+        function generateOutput() {
+            const config = getConfig();
+            const outputDiv = document.getElementById('outputContent');
+            let output = '';
+            
+            const origin = config.allowAllOrigins ? '*' : (config.origins.length > 0 ? config.origins[0] : 'https://example.com');
+            const methods = config.methods.join(', ');
+            const headers = config.allowAllHeaders ? '*' : config.headers.join(', ');
+            const exposeHeaders = config.exposeHeaders.join(', ');
+            
+            switch(state.currentTab) {
+                case 'headers':
+                    output = 'Access-Control-Allow-Origin: ' + origin + '\n';
+                    output += 'Access-Control-Allow-Methods: ' + methods + '\n';
+                    output += 'Access-Control-Allow-Headers: ' + headers + '\n';
+                    if (exposeHeaders) {
+                        output += 'Access-Control-Expose-Headers: ' + exposeHeaders + '\n';
+                    }
+                    if (config.allowCredentials) {
+                        output += 'Access-Control-Allow-Credentials: true\n';
+                    }
+                    output += 'Access-Control-Max-Age: ' + config.maxAge;
+                    break;
+                    
+                case 'nginx':
+                    output = '# CORS Configuration for Nginx\n';
+                    output += 'location / {\n';
+                    if (config.allowAllOrigins) {
+                        output += "    add_header 'Access-Control-Allow-Origin' '*' always;\n";
+                    } else {
+                        output += '    # Dynamic origin handling\n';
+                        output += '    set $cors_origin "";\n';
+                        config.origins.forEach(o => {
+                            output += '    if ($http_origin = "' + o + '") { set $cors_origin $http_origin; }\n';
+                        });
+                        output += "    add_header 'Access-Control-Allow-Origin' $cors_origin always;\n";
+                    }
+                    output += "    add_header 'Access-Control-Allow-Methods' '" + methods + "' always;\n";
+                    output += "    add_header 'Access-Control-Allow-Headers' '" + headers + "' always;\n";
+                    if (exposeHeaders) {
+                        output += "    add_header 'Access-Control-Expose-Headers' '" + exposeHeaders + "' always;\n";
+                    }
+                    if (config.allowCredentials) {
+                        output += "    add_header 'Access-Control-Allow-Credentials' 'true' always;\n";
+                    }
+                    output += "    add_header 'Access-Control-Max-Age' '" + config.maxAge + "' always;\n\n";
+                    output += '    # Handle preflight requests\n';
+                    output += "    if ($request_method = 'OPTIONS') {\n";
+                    output += '        return 204;\n';
+                    output += '    }\n';
+                    output += '}';
+                    break;
+                    
+                case 'apache':
+                    output = '# CORS Configuration for Apache\n';
+                    output += '<IfModule mod_headers.c>\n';
+                    output += '    Header set Access-Control-Allow-Origin "' + origin + '"\n';
+                    output += '    Header set Access-Control-Allow-Methods "' + methods + '"\n';
+                    output += '    Header set Access-Control-Allow-Headers "' + headers + '"\n';
+                    if (exposeHeaders) {
+                        output += '    Header set Access-Control-Expose-Headers "' + exposeHeaders + '"\n';
+                    }
+                    if (config.allowCredentials) {
+                        output += '    Header set Access-Control-Allow-Credentials "true"\n';
+                    }
+                    output += '    Header set Access-Control-Max-Age "' + config.maxAge + '"\n';
+                    output += '</IfModule>\n\n';
+                    output += '# Handle preflight requests\n';
+                    output += '<IfModule mod_rewrite.c>\n';
+                    output += '    RewriteEngine On\n';
+                    output += '    RewriteCond %{REQUEST_METHOD} OPTIONS\n';
+                    output += '    RewriteRule ^(.*)$ $1 [R=204,L]\n';
+                    output += '</IfModule>';
+                    break;
+                    
+                case 'express':
+                    output = '// CORS Configuration for Express.js\n';
+                    output += "const cors = require('cors');\n\n";
+                    output += 'const corsOptions = {\n';
+                    if (config.allowAllOrigins) {
+                        output += "    origin: '*',\n";
+                    } else if (config.origins.length === 1) {
+                        output += "    origin: '" + config.origins[0] + "',\n";
+                    } else if (config.origins.length > 1) {
+                        output += '    origin: [\n';
+                        config.origins.forEach((o, i) => {
+                            output += "        '" + o + "'" + (i < config.origins.length - 1 ? ',' : '') + '\n';
+                        });
+                        output += '    ],\n';
+                    }
+                    output += '    methods: [' + config.methods.map(m => "'" + m + "'").join(', ') + '],\n';
+                    output += '    allowedHeaders: [' + (config.allowAllHeaders ? "'*'" : config.headers.map(h => "'" + h + "'").join(', ')) + '],\n';
+                    if (exposeHeaders) {
+                        output += '    exposedHeaders: [' + config.exposeHeaders.map(h => "'" + h + "'").join(', ') + '],\n';
+                    }
+                    output += '    credentials: ' + config.allowCredentials + ',\n';
+                    output += '    maxAge: ' + config.maxAge + '\n';
+                    output += '};\n\n';
+                    output += 'app.use(cors(corsOptions));';
+                    break;
+                    
+                case 'spring':
+                    output = '// CORS Configuration for Spring Boot\n';
+                    output += '@Configuration\n';
+                    output += 'public class CorsConfig implements WebMvcConfigurer {\n\n';
+                    output += '    @Override\n';
+                    output += '    public void addCorsMappings(CorsRegistry registry) {\n';
+                    output += '        registry.addMapping("/**")\n';
+                    if (config.allowAllOrigins) {
+                        output += '            .allowedOrigins("*")\n';
+                    } else {
+                        output += '            .allowedOrigins(' + (config.origins.length > 0 ? config.origins.map(o => '"' + o + '"').join(', ') : '"https://example.com"') + ')\n';
+                    }
+                    output += '            .allowedMethods(' + config.methods.map(m => '"' + m + '"').join(', ') + ')\n';
+                    output += '            .allowedHeaders(' + (config.allowAllHeaders ? '"*"' : config.headers.map(h => '"' + h + '"').join(', ')) + ')\n';
+                    if (exposeHeaders) {
+                        output += '            .exposedHeaders(' + config.exposeHeaders.map(h => '"' + h + '"').join(', ') + ')\n';
+                    }
+                    output += '            .allowCredentials(' + config.allowCredentials + ')\n';
+                    output += '            .maxAge(' + config.maxAge + ');\n';
+                    output += '    }\n';
+                    output += '}';
+                    break;
+            }
+            
+            outputDiv.textContent = output;
+        }
+        
+        function switchTab(tab) {
+            state.currentTab = tab;
+            document.querySelectorAll('.output-tab').forEach((t, i) => {
+                const tabs = ['headers', 'nginx', 'apache', 'express', 'spring'];
+                t.classList.toggle('active', tabs[i] === tab);
+            });
+            generateOutput();
+        }
+        
+        function copyOutput() {
+            const output = document.getElementById('outputContent').textContent;
+            navigator.clipboard.writeText(output).then(function() {
+                showToast('已复制到剪贴板');
+            });
+        }
+        
+        function downloadConfig() {
+            const output = document.getElementById('outputContent').textContent;
+            const extensions = {
+                headers: 'txt',
+                nginx: 'conf',
+                apache: 'conf',
+                express: 'js',
+                spring: 'java'
+            };
+            
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cors-config.' + extensions[state.currentTab];
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:0.75rem 1.5rem;border-radius:8px;z-index:1000;';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 2000);
+        }
+        
+        // 初始化输出
+        updateConfig();
+    </script>
+</body>
+</html>

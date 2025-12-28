@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片马赛克工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .tool-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .tool-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-background-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tool-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background: #f0f0f0;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        [data-theme="dark"] .canvas-wrapper {
+            background: #2a2a2a;
+        }
+        
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        #imageCanvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #drawCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        
+        .empty-state {
+            color: var(--pico-muted-color);
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .brush-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .brush-circle {
+            border: 2px solid var(--pico-color);
+            border-radius: 50%;
+        }
+        
+        .info-text {
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>图片马赛克工具</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
+        </header>
+        
+        <main>
+            <div class="upload-zone" id="uploadZone">
+                <p>点击或拖拽图片到此处上传</p>
+                <p><small>支持 JPG、PNG、WebP 等格式</small></p>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>工具选择</label>
+                    <div class="tool-buttons">
+                        <button class="tool-btn active" data-tool="mosaic">马赛克</button>
+                        <button class="tool-btn" data-tool="blur">模糊</button>
+                        <button class="tool-btn" data-tool="eraser">橡皮擦</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="brushSize">画笔大小: <span id="brushSizeValue">30</span>px</label>
+                    <input type="range" id="brushSize" min="10" max="100" value="30">
+                    <div class="brush-preview">
+                        <span>预览:</span>
+                        <div class="brush-circle" id="brushPreview" style="width: 30px; height: 30px;"></div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="mosaicSize">马赛克块大小: <span id="mosaicSizeValue">10</span>px</label>
+                    <input type="range" id="mosaicSize" min="5" max="50" value="10">
+                </div>
+                
+                <div class="control-group">
+                    <label for="blurStrength">模糊强度: <span id="blurStrengthValue">10</span></label>
+                    <input type="range" id="blurStrength" min="1" max="30" value="10">
+                </div>
+            </div>
+            
+            <p class="info-text">提示：在图片上拖动鼠标添加马赛克/模糊效果，使用橡皮擦可以还原。按住 Shift 键可画直线。</p>
+            
+            <div class="canvas-wrapper">
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="imageCanvas"></canvas>
+                    <canvas id="drawCanvas"></canvas>
+                </div>
+                <div class="empty-state" id="emptyState">
+                    <p>请先上传图片</p>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="undoBtn" disabled>撤销</button>
+                <button id="redoBtn" class="secondary" disabled>重做</button>
+                <button id="resetBtn" class="outline secondary" disabled>重置</button>
+                <button id="downloadBtn" class="contrast" disabled>下载图片</button>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const imageCanvas = document.getElementById('imageCanvas');
+        const drawCanvas = document.getElementById('drawCanvas');
+        const imageCtx = imageCanvas.getContext('2d');
+        const drawCtx = drawCanvas.getContext('2d');
+        const emptyState = document.getElementById('emptyState');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+        const brushPreview = document.getElementById('brushPreview');
+        const mosaicSizeInput = document.getElementById('mosaicSize');
+        const mosaicSizeValue = document.getElementById('mosaicSizeValue');
+        const blurStrengthInput = document.getElementById('blurStrength');
+        const blurStrengthValue = document.getElementById('blurStrengthValue');
+        
+        // State
+        let originalImage = null;
+        let currentTool = 'mosaic';
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let history = [];
+        let historyIndex = -1;
+        let originalImageData = null;
+        
+        // Event Listeners
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // Tool buttons
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+            });
+        });
+        
+        // Slider updates
+        brushSizeInput.addEventListener('input', () => {
+            const size = brushSizeInput.value;
+            brushSizeValue.textContent = size;
+            brushPreview.style.width = size + 'px';
+            brushPreview.style.height = size + 'px';
+        });
+        
+        mosaicSizeInput.addEventListener('input', () => {
+            mosaicSizeValue.textContent = mosaicSizeInput.value;
+        });
+        
+        blurStrengthInput.addEventListener('input', () => {
+            blurStrengthValue.textContent = blurStrengthInput.value;
+        });
+        
+        // Drawing events
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('mouseup', stopDrawing);
+        drawCanvas.addEventListener('mouseleave', stopDrawing);
+        
+        // Touch support
+        drawCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = drawCanvas.getBoundingClientRect();
+            startDrawing({
+                offsetX: touch.clientX - rect.left,
+                offsetY: touch.clientY - rect.top
+            });
+        });
+        drawCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = drawCanvas.getBoundingClientRect();
+            draw({
+                offsetX: touch.clientX - rect.left,
+                offsetY: touch.clientY - rect.top
+            });
+        });
+        drawCanvas.addEventListener('touchend', stopDrawing);
+        
+        // Buttons
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        resetBtn.addEventListener('click', reset);
+        downloadBtn.addEventListener('click', downloadImage);
+        
+        // Handle file upload
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    initCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Initialize canvas
+        function initCanvas() {
+            const maxWidth = Math.min(originalImage.width, 1200);
+            const scale = maxWidth / originalImage.width;
+            const width = Math.round(originalImage.width * scale);
+            const height = Math.round(originalImage.height * scale);
+            
+            imageCanvas.width = width;
+            imageCanvas.height = height;
+            drawCanvas.width = width;
+            drawCanvas.height = height;
+            
+            imageCtx.drawImage(originalImage, 0, 0, width, height);
+            originalImageData = imageCtx.getImageData(0, 0, width, height);
+            
+            // Clear draw canvas
+            drawCtx.clearRect(0, 0, width, height);
+            
+            // Reset history
+            history = [];
+            historyIndex = -1;
+            saveState();
+            
+            emptyState.style.display = 'none';
+            canvasContainer.style.display = 'inline-block';
+            updateButtons();
+        }
+        
+        // Drawing functions
+        function startDrawing(e) {
+            if (!originalImage) return;
+            isDrawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+            applyEffect(e.offsetX, e.offsetY);
+        }
+        
+        function draw(e) {
+            if (!isDrawing || !originalImage) return;
+            
+            const x = e.offsetX;
+            const y = e.offsetY;
+            
+            // Interpolate between points for smooth drawing
+            const dist = Math.sqrt((x - lastX) ** 2 + (y - lastY) ** 2);
+            const steps = Math.max(1, Math.floor(dist / 5));
+            
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const px = lastX + (x - lastX) * t;
+                const py = lastY + (y - lastY) * t;
+                applyEffect(px, py);
+            }
+            
+            lastX = x;
+            lastY = y;
+        }
+        
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveState();
+            }
+        }
+        
+        // Apply effect
+        function applyEffect(x, y) {
+            const brushSize = parseInt(brushSizeInput.value);
+            const mosaicSize = parseInt(mosaicSizeInput.value);
+            const blurStrength = parseInt(blurStrengthInput.value);
+            
+            const startX = Math.max(0, Math.floor(x - brushSize / 2));
+            const startY = Math.max(0, Math.floor(y - brushSize / 2));
+            const endX = Math.min(imageCanvas.width, Math.ceil(x + brushSize / 2));
+            const endY = Math.min(imageCanvas.height, Math.ceil(y + brushSize / 2));
+            
+            if (currentTool === 'eraser') {
+                // Restore original pixels
+                const origData = originalImageData.data;
+                const currentData = imageCtx.getImageData(startX, startY, endX - startX, endY - startY);
+                
+                for (let py = startY; py < endY; py++) {
+                    for (let px = startX; px < endX; px++) {
+                        const dist = Math.sqrt((px - x) ** 2 + (py - y) ** 2);
+                        if (dist <= brushSize / 2) {
+                            const srcIdx = (py * imageCanvas.width + px) * 4;
+                            const dstIdx = ((py - startY) * (endX - startX) + (px - startX)) * 4;
+                            currentData.data[dstIdx] = origData[srcIdx];
+                            currentData.data[dstIdx + 1] = origData[srcIdx + 1];
+                            currentData.data[dstIdx + 2] = origData[srcIdx + 2];
+                            currentData.data[dstIdx + 3] = origData[srcIdx + 3];
+                        }
+                    }
+                }
+                imageCtx.putImageData(currentData, startX, startY);
+                
+            } else if (currentTool === 'mosaic') {
+                // Mosaic effect
+                const imageData = imageCtx.getImageData(startX, startY, endX - startX, endY - startY);
+                const data = imageData.data;
+                const w = endX - startX;
+                const h = endY - startY;
+                
+                for (let by = 0; by < h; by += mosaicSize) {
+                    for (let bx = 0; bx < w; bx += mosaicSize) {
+                        // Check if block center is within brush
+                        const cx = startX + bx + mosaicSize / 2;
+                        const cy = startY + by + mosaicSize / 2;
+                        const dist = Math.sqrt((cx - x) ** 2 + (cy - y) ** 2);
+                        
+                        if (dist <= brushSize / 2) {
+                            // Calculate average color
+                            let r = 0, g = 0, b = 0, count = 0;
+                            for (let py = by; py < Math.min(by + mosaicSize, h); py++) {
+                                for (let px = bx; px < Math.min(bx + mosaicSize, w); px++) {
+                                    const idx = (py * w + px) * 4;
+                                    r += data[idx];
+                                    g += data[idx + 1];
+                                    b += data[idx + 2];
+                                    count++;
+                                }
+                            }
+                            r = Math.round(r / count);
+                            g = Math.round(g / count);
+                            b = Math.round(b / count);
+                            
+                            // Apply average color
+                            for (let py = by; py < Math.min(by + mosaicSize, h); py++) {
+                                for (let px = bx; px < Math.min(bx + mosaicSize, w); px++) {
+                                    const idx = (py * w + px) * 4;
+                                    data[idx] = r;
+                                    data[idx + 1] = g;
+                                    data[idx + 2] = b;
+                                }
+                            }
+                        }
+                    }
+                }
+                imageCtx.putImageData(imageData, startX, startY);
+                
+            } else if (currentTool === 'blur') {
+                // Blur effect using box blur
+                const imageData = imageCtx.getImageData(startX, startY, endX - startX, endY - startY);
+                const data = imageData.data;
+                const w = endX - startX;
+                const h = endY - startY;
+                const tempData = new Uint8ClampedArray(data);
+                
+                const radius = blurStrength;
+                
+                for (let py = 0; py < h; py++) {
+                    for (let px = 0; px < w; px++) {
+                        const dist = Math.sqrt((startX + px - x) ** 2 + (startY + py - y) ** 2);
+                        if (dist <= brushSize / 2) {
+                            let r = 0, g = 0, b = 0, count = 0;
+                            
+                            for (let ky = -radius; ky <= radius; ky++) {
+                                for (let kx = -radius; kx <= radius; kx++) {
+                                    const nx = px + kx;
+                                    const ny = py + ky;
+                                    if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                                        const idx = (ny * w + nx) * 4;
+                                        r += tempData[idx];
+                                        g += tempData[idx + 1];
+                                        b += tempData[idx + 2];
+                                        count++;
+                                    }
+                                }
+                            }
+                            
+                            const idx = (py * w + px) * 4;
+                            data[idx] = Math.round(r / count);
+                            data[idx + 1] = Math.round(g / count);
+                            data[idx + 2] = Math.round(b / count);
+                        }
+                    }
+                }
+                imageCtx.putImageData(imageData, startX, startY);
+            }
+        }
+        
+        // History management
+        function saveState() {
+            // Remove future states if we're not at the end
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // Limit history size
+            if (history.length >= 20) {
+                history.shift();
+            }
+            
+            history.push(imageCtx.getImageData(0, 0, imageCanvas.width, imageCanvas.height));
+            historyIndex = history.length - 1;
+            updateButtons();
+        }
+        
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                imageCtx.putImageData(history[historyIndex], 0, 0);
+                updateButtons();
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                imageCtx.putImageData(history[historyIndex], 0, 0);
+                updateButtons();
+            }
+        }
+        
+        function reset() {
+            if (originalImageData) {
+                imageCtx.putImageData(originalImageData, 0, 0);
+                saveState();
+            }
+        }
+        
+        function updateButtons() {
+            const hasImage = originalImage !== null;
+            undoBtn.disabled = !hasImage || historyIndex <= 0;
+            redoBtn.disabled = !hasImage || historyIndex >= history.length - 1;
+            resetBtn.disabled = !hasImage;
+            downloadBtn.disabled = !hasImage;
+        }
+        
+        // Download image
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'mosaic_' + Date.now() + '.png';
+            link.href = imageCanvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复利计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .input-section, .result-section { background: var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 1.5rem; }
+        .result-highlight { font-size: 2rem; font-weight: bold; color: var(--pico-primary); margin: 1rem 0; }
+        .result-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+        .result-row:last-child { border-bottom: none; }
+        .chart-container { margin-top: 2rem; }
+        .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+        .bar-row { display: flex; align-items: center; gap: 1rem; }
+        .bar-label { width: 60px; font-size: 0.8rem; }
+        .bar-container { flex: 1; height: 24px; background: var(--pico-muted-border-color); border-radius: 4px; overflow: hidden; display: flex; }
+        .bar-principal { background: var(--pico-primary); height: 100%; }
+        .bar-interest { background: var(--pico-secondary); height: 100%; }
+        .bar-value { font-size: 0.8rem; margin-left: 0.5rem; white-space: nowrap; }
+        .legend { display: flex; gap: 1rem; margin-top: 1rem; font-size: 0.9rem; }
+        .legend span { display: flex; align-items: center; gap: 0.25rem; }
+        .legend-box { width: 16px; height: 16px; border-radius: 2px; }
+        table { margin-top: 1rem; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>复利计算器</h1>
+            <button id="themeToggle" class="outline" onclick="toggleTheme()">🌙</button>
+        </header>
+
+        <div class="calc-grid">
+            <div class="input-section">
+                <h3>投资参数</h3>
+                <label>初始本金 (元)</label>
+                <input type="number" id="principal" value="100000" min="0" step="1000">
+                
+                <label>年利率 (%)</label>
+                <input type="number" id="rate" value="5" min="0" step="0.1">
+                
+                <label>投资年限</label>
+                <input type="number" id="years" value="10" min="1" max="50">
+                
+                <label>复利频率</label>
+                <select id="frequency">
+                    <option value="1">每年</option>
+                    <option value="2">每半年</option>
+                    <option value="4">每季度</option>
+                    <option value="12" selected>每月</option>
+                    <option value="365">每日</option>
+                </select>
+                
+                <label>每期追加投资 (元)</label>
+                <input type="number" id="contribution" value="1000" min="0" step="100">
+                
+                <label>追加时点</label>
+                <select id="contributionTiming">
+                    <option value="end">期末</option>
+                    <option value="start">期初</option>
+                </select>
+                
+                <button onclick="calculate()" style="margin-top: 1rem; width: 100%;">计算</button>
+            </div>
+
+            <div class="result-section">
+                <h3>计算结果</h3>
+                <div class="result-highlight" id="finalAmount">¥0</div>
+                <p style="margin-top: 0; color: var(--pico-muted-color);">最终金额</p>
+                
+                <div class="result-row">
+                    <span>总投入本金</span>
+                    <strong id="totalPrincipal">¥0</strong>
+                </div>
+                <div class="result-row">
+                    <span>累计利息</span>
+                    <strong id="totalInterest">¥0</strong>
+                </div>
+                <div class="result-row">
+                    <span>利息占比</span>
+                    <strong id="interestRatio">0%</strong>
+                </div>
+                <div class="result-row">
+                    <span>实际年化收益率</span>
+                    <strong id="effectiveRate">0%</strong>
+                </div>
+                <div class="result-row">
+                    <span>资产翻倍时间</span>
+                    <strong id="doubleTime">-</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>资产增长图表</h3>
+            <div class="bar-chart" id="barChart"></div>
+            <div class="legend">
+                <span><div class="legend-box" style="background: var(--pico-primary);"></div> 本金</span>
+                <span><div class="legend-box" style="background: var(--pico-secondary);"></div> 利息</span>
+            </div>
+        </div>
+
+        <details style="margin-top: 2rem;">
+            <summary>查看逐年明细</summary>
+            <table id="detailTable">
+                <thead>
+                    <tr><th>年份</th><th>期初金额</th><th>本期投入</th><th>本期利息</th><th>期末金额</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </details>
+
+        <article style="margin-top: 2rem;">
+            <h4>复利公式</h4>
+            <p><strong>基本复利公式</strong>：A = P(1 + r/n)^(nt)</p>
+            <p><strong>含定期投资</strong>：A = P(1 + r/n)^(nt) + PMT × [((1 + r/n)^(nt) - 1) / (r/n)]</p>
+            <ul>
+                <li>A = 最终金额</li>
+                <li>P = 初始本金</li>
+                <li>r = 年利率</li>
+                <li>n = 每年复利次数</li>
+                <li>t = 投资年数</li>
+                <li>PMT = 每期投资额</li>
+            </ul>
+        </article>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeToggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function formatMoney(num) {
+            return '¥' + num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function calculate() {
+            const P = parseFloat(document.getElementById('principal').value) || 0;
+            const r = parseFloat(document.getElementById('rate').value) / 100;
+            const t = parseInt(document.getElementById('years').value) || 1;
+            const n = parseInt(document.getElementById('frequency').value);
+            const PMT = parseFloat(document.getElementById('contribution').value) || 0;
+            const timing = document.getElementById('contributionTiming').value;
+
+            const yearlyData = [];
+            let balance = P;
+            let totalContributed = P;
+
+            for (let year = 1; year <= t; year++) {
+                const startBalance = balance;
+                let yearInterest = 0;
+                const yearContribution = PMT * n;
+                
+                for (let period = 0; period < n; period++) {
+                    if (timing === 'start') {
+                        balance += PMT;
+                    }
+                    const interest = balance * (r / n);
+                    yearInterest += interest;
+                    balance += interest;
+                    if (timing === 'end') {
+                        balance += PMT;
+                    }
+                }
+                
+                totalContributed += yearContribution;
+                
+                yearlyData.push({
+                    year,
+                    startBalance,
+                    contribution: yearContribution,
+                    interest: yearInterest,
+                    endBalance: balance,
+                    principal: totalContributed,
+                    totalInterest: balance - totalContributed
+                });
+            }
+
+            const finalAmount = balance;
+            const totalInterest = finalAmount - totalContributed;
+            const interestRatio = (totalInterest / finalAmount) * 100;
+            const effectiveRate = (Math.pow(finalAmount / P, 1/t) - 1) * 100;
+            const doubleTime = Math.log(2) / Math.log(1 + r);
+
+            document.getElementById('finalAmount').textContent = formatMoney(finalAmount);
+            document.getElementById('totalPrincipal').textContent = formatMoney(totalContributed);
+            document.getElementById('totalInterest').textContent = formatMoney(totalInterest);
+            document.getElementById('interestRatio').textContent = interestRatio.toFixed(2) + '%';
+            document.getElementById('effectiveRate').textContent = effectiveRate.toFixed(2) + '%';
+            document.getElementById('doubleTime').textContent = doubleTime.toFixed(1) + ' 年';
+
+            // Draw chart
+            const maxValue = finalAmount;
+            const chart = document.getElementById('barChart');
+            chart.textContent = '';
+            
+            const step = Math.max(1, Math.floor(t / 10));
+            for (let i = 0; i < yearlyData.length; i += step) {
+                const data = yearlyData[i];
+                const row = document.createElement('div');
+                row.className = 'bar-row';
+                
+                const principalWidth = (data.principal / maxValue) * 100;
+                const interestWidth = (data.totalInterest / maxValue) * 100;
+                
+                row.innerHTML = '<div class="bar-label">第' + data.year + '年</div>' +
+                    '<div class="bar-container">' +
+                    '<div class="bar-principal" style="width: ' + principalWidth + '%"></div>' +
+                    '<div class="bar-interest" style="width: ' + interestWidth + '%"></div>' +
+                    '</div>' +
+                    '<div class="bar-value">' + formatMoney(data.endBalance) + '</div>';
+                chart.appendChild(row);
+            }
+
+            // Update table
+            const tbody = document.querySelector('#detailTable tbody');
+            tbody.textContent = '';
+            yearlyData.forEach(data => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + data.year + '</td>' +
+                    '<td>' + formatMoney(data.startBalance) + '</td>' +
+                    '<td>' + formatMoney(data.contribution) + '</td>' +
+                    '<td>' + formatMoney(data.interest) + '</td>' +
+                    '<td>' + formatMoney(data.endBalance) + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        loadTheme();
+        calculate();
+    </script>
+</body>
+</html>

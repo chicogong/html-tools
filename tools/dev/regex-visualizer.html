@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则表达式可视化器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --rail-bg: #f8f9fa;
+            --rail-line: #333;
+            --rail-text: #333;
+            --node-bg: #fff;
+            --node-border: #4a90d9;
+            --node-special: #e74c3c;
+            --node-group: #27ae60;
+            --node-char: #3498db;
+            --node-quantifier: #9b59b6;
+        }
+        [data-theme="dark"] {
+            --rail-bg: #1e1e2e;
+            --rail-line: #cdd6f4;
+            --rail-text: #cdd6f4;
+            --node-bg: #313244;
+            --node-border: #89b4fa;
+            --node-special: #f38ba8;
+            --node-group: #a6e3a1;
+            --node-char: #89dceb;
+            --node-quantifier: #cba6f7;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .input-section {
+            margin-bottom: 2rem;
+        }
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .input-row .input-group {
+            flex: 1;
+        }
+        .flags-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .flags-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .visualization {
+            background: var(--rail-bg);
+            border-radius: 8px;
+            padding: 2rem;
+            overflow-x: auto;
+            min-height: 200px;
+            margin-bottom: 2rem;
+        }
+        .railroad {
+            display: inline-block;
+            min-width: 100%;
+        }
+        .railroad svg {
+            display: block;
+        }
+        .test-section {
+            margin-top: 2rem;
+        }
+        .match-result {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-family: monospace;
+        }
+        .match-result.success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid var(--node-group);
+        }
+        .match-result.fail {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--node-special);
+        }
+        .match-highlight {
+            background: rgba(52, 152, 219, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .explanation {
+            margin-top: 2rem;
+        }
+        .explanation-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .explanation-item:last-child {
+            border-bottom: none;
+        }
+        .explanation-token {
+            font-family: monospace;
+            background: var(--rail-bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            min-width: 80px;
+            text-align: center;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .examples {
+            margin-top: 2rem;
+        }
+        .example-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            background: var(--rail-bg);
+            transition: transform 0.2s;
+        }
+        .example-item:hover {
+            transform: translateX(5px);
+        }
+        .example-item code {
+            font-size: 0.9rem;
+        }
+        #message {
+            min-height: 2rem;
+        }
+        .error {
+            color: var(--pico-del-color);
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 0, 0, 0.1);
+        }
+        .success-msg {
+            color: var(--pico-ins-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>正则表达式可视化器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+
+        <section class="input-section">
+            <div class="input-row">
+                <div class="input-group">
+                    <label for="regexInput">正则表达式</label>
+                    <input type="text" id="regexInput" placeholder="输入正则表达式，例如：^[a-zA-Z0-9]+@[a-z]+\.[a-z]{2,}$">
+                </div>
+            </div>
+            <div class="flags-group">
+                <label><input type="checkbox" id="flagG"> g (全局匹配)</label>
+                <label><input type="checkbox" id="flagI"> i (忽略大小写)</label>
+                <label><input type="checkbox" id="flagM"> m (多行模式)</label>
+                <label><input type="checkbox" id="flagS"> s (点匹配换行)</label>
+                <label><input type="checkbox" id="flagU"> u (Unicode模式)</label>
+            </div>
+            <div class="btn-group">
+                <button onclick="visualize()">可视化</button>
+                <button class="secondary" onclick="clearAll()">清空</button>
+                <button class="secondary" onclick="copyRegex()">复制正则</button>
+            </div>
+        </section>
+
+        <div id="message"></div>
+
+        <section class="visualization">
+            <div class="railroad" id="railroadDiagram">
+                <p style="color: var(--pico-muted-color); text-align: center;">输入正则表达式后点击"可视化"查看铁路图</p>
+            </div>
+        </section>
+
+        <section class="test-section">
+            <h3>测试匹配</h3>
+            <input type="text" id="testInput" placeholder="输入测试字符串">
+            <button onclick="testMatch()">测试</button>
+            <div id="matchResult"></div>
+        </section>
+
+        <section class="explanation">
+            <h3>表达式解释</h3>
+            <div id="explanationList">
+                <p style="color: var(--pico-muted-color);">可视化后将显示正则表达式的详细解释</p>
+            </div>
+        </section>
+
+        <details class="examples">
+            <summary>示例正则表达式（点击使用）</summary>
+            <div class="example-item" onclick="useExample(this)" data-regex="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$">
+                <strong>邮箱验证</strong>
+                <code>^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^1[3-9]\\d{9}$">
+                <strong>中国手机号</strong>
+                <code>^1[3-9]\d{9}$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^https?:\\/\\/[\\w.-]+(?:\\.[a-z]{2,})+(?:[\\/\\w.-]*)*\\/?$">
+                <strong>URL验证</strong>
+                <code>^https?:\/\/[\w.-]+(?:\.[a-z]{2,})+(?:[\/\w.-]*)*\/?$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[a-zA-Z\\d]{8,}$">
+                <strong>强密码（至少8位，包含大小写和数字）</strong>
+                <code>^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^\\d{4}[-/]\\d{2}[-/]\\d{2}$">
+                <strong>日期格式 (YYYY-MM-DD)</strong>
+                <code>^\d{4}[-/]\d{2}[-/]\d{2}$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$">
+                <strong>十六进制颜色</strong>
+                <code>^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="^[\\u4e00-\\u9fa5]+$">
+                <strong>中文字符</strong>
+                <code>^[\u4e00-\u9fa5]+$</code>
+            </div>
+            <div class="example-item" onclick="useExample(this)" data-regex="\\b\\w+\\b">
+                <strong>匹配单词</strong>
+                <code>\b\w+\b</code>
+            </div>
+        </details>
+    </main>
+
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            var html = document.documentElement;
+            var currentTheme = html.getAttribute('data-theme');
+            var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        function showMessage(msg, isError) {
+            var messageDiv = document.getElementById('message');
+            var p = document.createElement('p');
+            p.className = isError ? 'error' : 'success-msg';
+            p.textContent = msg;
+            messageDiv.textContent = '';
+            messageDiv.appendChild(p);
+            setTimeout(function() { messageDiv.textContent = ''; }, 3000);
+        }
+
+        function useExample(element) {
+            var regex = element.getAttribute('data-regex');
+            document.getElementById('regexInput').value = regex;
+            visualize();
+        }
+
+        function clearAll() {
+            document.getElementById('regexInput').value = '';
+            document.getElementById('testInput').value = '';
+            document.getElementById('railroadDiagram').innerHTML = '<p style="color: var(--pico-muted-color); text-align: center;">输入正则表达式后点击"可视化"查看铁路图</p>';
+            document.getElementById('explanationList').innerHTML = '<p style="color: var(--pico-muted-color);">可视化后将显示正则表达式的详细解释</p>';
+            document.getElementById('matchResult').textContent = '';
+        }
+
+        function copyRegex() {
+            var regex = document.getElementById('regexInput').value;
+            if (!regex) {
+                showMessage('没有可复制的内容', true);
+                return;
+            }
+            navigator.clipboard.writeText(regex).then(function() {
+                showMessage('已复制到剪贴板', false);
+            }).catch(function() {
+                showMessage('复制失败', true);
+            });
+        }
+
+        function getFlags() {
+            var flags = '';
+            if (document.getElementById('flagG').checked) flags += 'g';
+            if (document.getElementById('flagI').checked) flags += 'i';
+            if (document.getElementById('flagM').checked) flags += 'm';
+            if (document.getElementById('flagS').checked) flags += 's';
+            if (document.getElementById('flagU').checked) flags += 'u';
+            return flags;
+        }
+
+        // Regex Parser for Railroad Diagram
+        function RegexParser(pattern) {
+            this.pattern = pattern;
+            this.pos = 0;
+            this.tokens = [];
+        }
+
+        RegexParser.prototype.parse = function() {
+            return this.parseAlternation();
+        };
+
+        RegexParser.prototype.parseAlternation = function() {
+            var alternatives = [this.parseSequence()];
+            
+            while (this.pos < this.pattern.length && this.pattern[this.pos] === '|') {
+                this.pos++;
+                alternatives.push(this.parseSequence());
+            }
+            
+            if (alternatives.length === 1) {
+                return alternatives[0];
+            }
+            
+            return { type: 'alternation', alternatives: alternatives };
+        };
+
+        RegexParser.prototype.parseSequence = function() {
+            var items = [];
+            
+            while (this.pos < this.pattern.length) {
+                var char = this.pattern[this.pos];
+                
+                if (char === '|' || char === ')') {
+                    break;
+                }
+                
+                var item = this.parseAtom();
+                if (item) {
+                    item = this.parseQuantifier(item);
+                    items.push(item);
+                }
+            }
+            
+            if (items.length === 0) {
+                return { type: 'empty' };
+            }
+            if (items.length === 1) {
+                return items[0];
+            }
+            
+            return { type: 'sequence', items: items };
+        };
+
+        RegexParser.prototype.parseAtom = function() {
+            var char = this.pattern[this.pos];
+            
+            if (char === '(') {
+                return this.parseGroup();
+            }
+            
+            if (char === '[') {
+                return this.parseCharacterClass();
+            }
+            
+            if (char === '\\') {
+                return this.parseEscape();
+            }
+            
+            if (char === '.') {
+                this.pos++;
+                return { type: 'any', desc: '任意字符' };
+            }
+            
+            if (char === '^') {
+                this.pos++;
+                return { type: 'anchor', value: '^', desc: '行首' };
+            }
+            
+            if (char === '$') {
+                this.pos++;
+                return { type: 'anchor', value: '$', desc: '行尾' };
+            }
+            
+            if (char && char !== '|' && char !== ')' && char !== '*' && char !== '+' && char !== '?' && char !== '{') {
+                this.pos++;
+                return { type: 'literal', value: char, desc: '字符 "' + char + '"' };
+            }
+            
+            return null;
+        };
+
+        RegexParser.prototype.parseGroup = function() {
+            this.pos++; // skip (
+            
+            var groupType = 'capturing';
+            var name = null;
+            
+            if (this.pattern[this.pos] === '?') {
+                this.pos++;
+                var nextChar = this.pattern[this.pos];
+                
+                if (nextChar === ':') {
+                    this.pos++;
+                    groupType = 'non-capturing';
+                } else if (nextChar === '=') {
+                    this.pos++;
+                    groupType = 'lookahead';
+                } else if (nextChar === '!') {
+                    this.pos++;
+                    groupType = 'negative-lookahead';
+                } else if (nextChar === '<') {
+                    this.pos++;
+                    if (this.pattern[this.pos] === '=') {
+                        this.pos++;
+                        groupType = 'lookbehind';
+                    } else if (this.pattern[this.pos] === '!') {
+                        this.pos++;
+                        groupType = 'negative-lookbehind';
+                    } else {
+                        // Named group
+                        groupType = 'named';
+                        name = '';
+                        while (this.pos < this.pattern.length && this.pattern[this.pos] !== '>') {
+                            name += this.pattern[this.pos];
+                            this.pos++;
+                        }
+                        this.pos++; // skip >
+                    }
+                }
+            }
+            
+            var content = this.parseAlternation();
+            
+            if (this.pos < this.pattern.length && this.pattern[this.pos] === ')') {
+                this.pos++;
+            }
+            
+            var desc = '捕获组';
+            if (groupType === 'non-capturing') desc = '非捕获组';
+            else if (groupType === 'lookahead') desc = '正向前瞻';
+            else if (groupType === 'negative-lookahead') desc = '负向前瞻';
+            else if (groupType === 'lookbehind') desc = '正向后顾';
+            else if (groupType === 'negative-lookbehind') desc = '负向后顾';
+            else if (groupType === 'named') desc = '命名组 "' + name + '"';
+            
+            return { type: 'group', groupType: groupType, name: name, content: content, desc: desc };
+        };
+
+        RegexParser.prototype.parseCharacterClass = function() {
+            this.pos++; // skip [
+            
+            var negated = false;
+            if (this.pattern[this.pos] === '^') {
+                negated = true;
+                this.pos++;
+            }
+            
+            var chars = '';
+            var ranges = [];
+            
+            while (this.pos < this.pattern.length && this.pattern[this.pos] !== ']') {
+                var char = this.pattern[this.pos];
+                
+                if (char === '\\' && this.pos + 1 < this.pattern.length) {
+                    this.pos++;
+                    char = this.pattern[this.pos];
+                    chars += '\\' + char;
+                    this.pos++;
+                } else if (this.pattern[this.pos + 1] === '-' && this.pos + 2 < this.pattern.length && this.pattern[this.pos + 2] !== ']') {
+                    var start = char;
+                    this.pos += 2;
+                    var end = this.pattern[this.pos];
+                    ranges.push(start + '-' + end);
+                    this.pos++;
+                } else {
+                    chars += char;
+                    this.pos++;
+                }
+            }
+            
+            if (this.pos < this.pattern.length) {
+                this.pos++; // skip ]
+            }
+            
+            var display = (negated ? '[^' : '[') + chars + ranges.join('') + ']';
+            var desc = negated ? '非以下字符之一' : '以下字符之一';
+            
+            return { type: 'character-class', negated: negated, chars: chars, ranges: ranges, display: display, desc: desc };
+        };
+
+        RegexParser.prototype.parseEscape = function() {
+            this.pos++; // skip \
+            
+            var char = this.pattern[this.pos];
+            this.pos++;
+            
+            var escapeMap = {
+                'd': { type: 'shorthand', value: '\\d', desc: '数字 [0-9]' },
+                'D': { type: 'shorthand', value: '\\D', desc: '非数字 [^0-9]' },
+                'w': { type: 'shorthand', value: '\\w', desc: '单词字符 [a-zA-Z0-9_]' },
+                'W': { type: 'shorthand', value: '\\W', desc: '非单词字符' },
+                's': { type: 'shorthand', value: '\\s', desc: '空白字符' },
+                'S': { type: 'shorthand', value: '\\S', desc: '非空白字符' },
+                'b': { type: 'anchor', value: '\\b', desc: '单词边界' },
+                'B': { type: 'anchor', value: '\\B', desc: '非单词边界' },
+                'n': { type: 'literal', value: '\\n', desc: '换行符' },
+                'r': { type: 'literal', value: '\\r', desc: '回车符' },
+                't': { type: 'literal', value: '\\t', desc: '制表符' },
+                '0': { type: 'literal', value: '\\0', desc: '空字符' }
+            };
+            
+            if (escapeMap[char]) {
+                return escapeMap[char];
+            }
+            
+            return { type: 'literal', value: char, desc: '转义字符 "' + char + '"' };
+        };
+
+        RegexParser.prototype.parseQuantifier = function(atom) {
+            if (this.pos >= this.pattern.length) return atom;
+            
+            var char = this.pattern[this.pos];
+            var quantifier = null;
+            
+            if (char === '*') {
+                this.pos++;
+                quantifier = { min: 0, max: Infinity, desc: '0次或多次' };
+            } else if (char === '+') {
+                this.pos++;
+                quantifier = { min: 1, max: Infinity, desc: '1次或多次' };
+            } else if (char === '?') {
+                this.pos++;
+                quantifier = { min: 0, max: 1, desc: '0次或1次' };
+            } else if (char === '{') {
+                this.pos++;
+                var numStr = '';
+                while (this.pos < this.pattern.length && /\d/.test(this.pattern[this.pos])) {
+                    numStr += this.pattern[this.pos];
+                    this.pos++;
+                }
+                var min = parseInt(numStr, 10);
+                var max = min;
+                
+                if (this.pattern[this.pos] === ',') {
+                    this.pos++;
+                    if (this.pattern[this.pos] === '}') {
+                        max = Infinity;
+                    } else {
+                        numStr = '';
+                        while (this.pos < this.pattern.length && /\d/.test(this.pattern[this.pos])) {
+                            numStr += this.pattern[this.pos];
+                            this.pos++;
+                        }
+                        max = parseInt(numStr, 10);
+                    }
+                }
+                
+                if (this.pattern[this.pos] === '}') {
+                    this.pos++;
+                }
+                
+                var desc = '';
+                if (min === max) {
+                    desc = '恰好' + min + '次';
+                } else if (max === Infinity) {
+                    desc = '至少' + min + '次';
+                } else {
+                    desc = min + '到' + max + '次';
+                }
+                
+                quantifier = { min: min, max: max, desc: desc };
+            }
+            
+            if (quantifier) {
+                // Check for lazy modifier
+                if (this.pos < this.pattern.length && this.pattern[this.pos] === '?') {
+                    this.pos++;
+                    quantifier.lazy = true;
+                    quantifier.desc += '（非贪婪）';
+                }
+                
+                return { type: 'quantified', atom: atom, quantifier: quantifier };
+            }
+            
+            return atom;
+        };
+
+        // Railroad Diagram Generator
+        function RailroadGenerator() {
+            this.nodeWidth = 0;
+            this.nodeHeight = 30;
+            this.padding = 10;
+            this.lineHeight = 50;
+        }
+
+        RailroadGenerator.prototype.generate = function(ast) {
+            var content = this.renderNode(ast);
+            var width = Math.max(content.width + 100, 400);
+            var height = Math.max(content.height + 60, 100);
+            
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
+            svg += '<defs>';
+            svg += '<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">';
+            svg += '<polygon points="0 0, 10 3.5, 0 7" fill="var(--rail-line)"/>';
+            svg += '</marker>';
+            svg += '</defs>';
+            
+            // Start circle
+            var startX = 30;
+            var centerY = height / 2;
+            svg += '<circle cx="' + startX + '" cy="' + centerY + '" r="8" fill="var(--node-group)" stroke="var(--rail-line)" stroke-width="2"/>';
+            
+            // Main content
+            svg += '<g transform="translate(50, ' + (centerY - content.height / 2) + ')">';
+            svg += content.svg;
+            svg += '</g>';
+            
+            // End circle
+            var endX = width - 30;
+            svg += '<line x1="' + (50 + content.width) + '" y1="' + centerY + '" x2="' + (endX - 10) + '" y2="' + centerY + '" stroke="var(--rail-line)" stroke-width="2"/>';
+            svg += '<circle cx="' + endX + '" cy="' + centerY + '" r="8" fill="var(--node-special)" stroke="var(--rail-line)" stroke-width="2"/>';
+            svg += '<circle cx="' + endX + '" cy="' + centerY + '" r="4" fill="var(--node-special)"/>';
+            
+            // Start line
+            svg += '<line x1="' + (startX + 8) + '" y1="' + centerY + '" x2="50" y2="' + centerY + '" stroke="var(--rail-line)" stroke-width="2"/>';
+            
+            svg += '</svg>';
+            
+            return svg;
+        };
+
+        RailroadGenerator.prototype.renderNode = function(node) {
+            if (!node) return { svg: '', width: 0, height: 0 };
+            
+            switch (node.type) {
+                case 'alternation':
+                    return this.renderAlternation(node);
+                case 'sequence':
+                    return this.renderSequence(node);
+                case 'quantified':
+                    return this.renderQuantified(node);
+                case 'group':
+                    return this.renderGroup(node);
+                case 'character-class':
+                    return this.renderBox(node.display, 'var(--node-char)');
+                case 'literal':
+                    return this.renderBox('"' + node.value + '"', 'var(--node-border)');
+                case 'any':
+                    return this.renderBox('.', 'var(--node-special)');
+                case 'anchor':
+                    return this.renderBox(node.value, 'var(--node-quantifier)');
+                case 'shorthand':
+                    return this.renderBox(node.value, 'var(--node-char)');
+                case 'empty':
+                    return { svg: '', width: 0, height: this.nodeHeight };
+                default:
+                    return { svg: '', width: 0, height: this.nodeHeight };
+            }
+        };
+
+        RailroadGenerator.prototype.renderBox = function(text, color) {
+            var textWidth = text.length * 10 + 20;
+            var width = Math.max(textWidth, 40);
+            var height = this.nodeHeight;
+            
+            var svg = '<rect x="0" y="0" width="' + width + '" height="' + height + '" rx="5" ry="5" fill="var(--node-bg)" stroke="' + color + '" stroke-width="2"/>';
+            svg += '<text x="' + (width / 2) + '" y="' + (height / 2 + 5) + '" text-anchor="middle" fill="var(--rail-text)" font-family="monospace" font-size="14">' + this.escapeXml(text) + '</text>';
+            
+            return { svg: svg, width: width, height: height };
+        };
+
+        RailroadGenerator.prototype.renderSequence = function(node) {
+            var self = this;
+            var items = node.items.map(function(item) { return self.renderNode(item); });
+            var totalWidth = 0;
+            var maxHeight = 0;
+            
+            items.forEach(function(item) {
+                totalWidth += item.width;
+                maxHeight = Math.max(maxHeight, item.height);
+            });
+            
+            totalWidth += (items.length - 1) * 20; // spacing between items
+            
+            var svg = '';
+            var x = 0;
+            
+            items.forEach(function(item, i) {
+                var y = (maxHeight - item.height) / 2;
+                svg += '<g transform="translate(' + x + ', ' + y + ')">' + item.svg + '</g>';
+                
+                if (i < items.length - 1) {
+                    var lineX1 = x + item.width;
+                    var lineX2 = x + item.width + 20;
+                    var lineY = maxHeight / 2;
+                    svg += '<line x1="' + lineX1 + '" y1="' + lineY + '" x2="' + lineX2 + '" y2="' + lineY + '" stroke="var(--rail-line)" stroke-width="2"/>';
+                }
+                
+                x += item.width + 20;
+            });
+            
+            return { svg: svg, width: totalWidth, height: maxHeight };
+        };
+
+        RailroadGenerator.prototype.renderAlternation = function(node) {
+            var self = this;
+            var alternatives = node.alternatives.map(function(alt) { return self.renderNode(alt); });
+            var maxWidth = 0;
+            var totalHeight = 0;
+            
+            alternatives.forEach(function(alt) {
+                maxWidth = Math.max(maxWidth, alt.width);
+                totalHeight += alt.height;
+            });
+            
+            totalHeight += (alternatives.length - 1) * 20; // spacing
+            var width = maxWidth + 60; // extra for the curves
+            
+            var svg = '';
+            var y = 0;
+            var centerY = totalHeight / 2;
+            
+            alternatives.forEach(function(alt, i) {
+                var altCenterY = y + alt.height / 2;
+                var x = 30 + (maxWidth - alt.width) / 2;
+                
+                svg += '<g transform="translate(' + x + ', ' + y + ')">' + alt.svg + '</g>';
+                
+                // Draw connecting curves
+                if (i === 0) {
+                    svg += '<line x1="0" y1="' + centerY + '" x2="30" y2="' + altCenterY + '" stroke="var(--rail-line)" stroke-width="2"/>';
+                    svg += '<line x1="' + (30 + maxWidth) + '" y1="' + altCenterY + '" x2="' + width + '" y2="' + centerY + '" stroke="var(--rail-line)" stroke-width="2"/>';
+                } else {
+                    svg += '<path d="M 0 ' + centerY + ' Q 15 ' + centerY + ' 15 ' + (centerY + (altCenterY - centerY) / 2) + ' Q 15 ' + altCenterY + ' 30 ' + altCenterY + '" fill="none" stroke="var(--rail-line)" stroke-width="2"/>';
+                    svg += '<path d="M ' + (30 + maxWidth) + ' ' + altCenterY + ' Q ' + (width - 15) + ' ' + altCenterY + ' ' + (width - 15) + ' ' + (centerY + (altCenterY - centerY) / 2) + ' Q ' + (width - 15) + ' ' + centerY + ' ' + width + ' ' + centerY + '" fill="none" stroke="var(--rail-line)" stroke-width="2"/>';
+                }
+                
+                y += alt.height + 20;
+            });
+            
+            return { svg: svg, width: width, height: totalHeight };
+        };
+
+        RailroadGenerator.prototype.renderQuantified = function(node) {
+            var content = this.renderNode(node.atom);
+            var q = node.quantifier;
+            
+            var width = content.width + 40;
+            var height = content.height + 30;
+            
+            var svg = '<g transform="translate(20, 0)">' + content.svg + '</g>';
+            
+            // Draw loop for repetition
+            if (q.max > 1 || q.max === Infinity) {
+                svg += '<path d="M ' + (20 + content.width) + ' ' + (content.height / 2) + ' Q ' + (width - 5) + ' ' + (content.height / 2) + ' ' + (width - 5) + ' ' + (content.height / 2 + 15) + ' Q ' + (width - 5) + ' ' + (content.height + 5) + ' ' + (width / 2) + ' ' + (content.height + 5) + ' Q 5 ' + (content.height + 5) + ' 5 ' + (content.height / 2 + 15) + ' Q 5 ' + (content.height / 2) + ' 20 ' + (content.height / 2) + '" fill="none" stroke="var(--node-quantifier)" stroke-width="2" stroke-dasharray="5,3"/>';
+            }
+            
+            // Draw optional bypass for min=0
+            if (q.min === 0) {
+                svg += '<path d="M 0 ' + (content.height / 2) + ' Q 0 -10 ' + (width / 2) + ' -10 Q ' + width + ' -10 ' + width + ' ' + (content.height / 2) + '" fill="none" stroke="var(--node-quantifier)" stroke-width="2"/>';
+            }
+            
+            // Connect lines
+            svg += '<line x1="0" y1="' + (content.height / 2) + '" x2="20" y2="' + (content.height / 2) + '" stroke="var(--rail-line)" stroke-width="2"/>';
+            svg += '<line x1="' + (20 + content.width) + '" y1="' + (content.height / 2) + '" x2="' + width + '" y2="' + (content.height / 2) + '" stroke="var(--rail-line)" stroke-width="2"/>';
+            
+            // Quantifier label
+            var label = '';
+            if (q.min === 0 && q.max === 1) label = '?';
+            else if (q.min === 0 && q.max === Infinity) label = '*';
+            else if (q.min === 1 && q.max === Infinity) label = '+';
+            else if (q.min === q.max) label = '{' + q.min + '}';
+            else if (q.max === Infinity) label = '{' + q.min + ',}';
+            else label = '{' + q.min + ',' + q.max + '}';
+            
+            if (q.lazy) label += '?';
+            
+            svg += '<text x="' + (width / 2) + '" y="' + (height - 5) + '" text-anchor="middle" fill="var(--node-quantifier)" font-family="monospace" font-size="12">' + label + '</text>';
+            
+            return { svg: svg, width: width, height: height };
+        };
+
+        RailroadGenerator.prototype.renderGroup = function(node) {
+            var content = this.renderNode(node.content);
+            var width = content.width + 30;
+            var height = content.height + 20;
+            
+            var svg = '<rect x="0" y="0" width="' + width + '" height="' + height + '" rx="10" ry="10" fill="none" stroke="var(--node-group)" stroke-width="2" stroke-dasharray="5,3"/>';
+            svg += '<g transform="translate(15, 10)">' + content.svg + '</g>';
+            
+            // Group type label
+            var label = '';
+            if (node.groupType === 'capturing') label = '()';
+            else if (node.groupType === 'non-capturing') label = '(?:)';
+            else if (node.groupType === 'lookahead') label = '(?=)';
+            else if (node.groupType === 'negative-lookahead') label = '(?!)';
+            else if (node.groupType === 'lookbehind') label = '(?<=)';
+            else if (node.groupType === 'negative-lookbehind') label = '(?<!)';
+            else if (node.groupType === 'named') label = '(?<' + node.name + '>)';
+            
+            svg += '<text x="' + (width / 2) + '" y="-5" text-anchor="middle" fill="var(--node-group)" font-family="monospace" font-size="10">' + this.escapeXml(label) + '</text>';
+            
+            return { svg: svg, width: width, height: height };
+        };
+
+        RailroadGenerator.prototype.escapeXml = function(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        };
+
+        // Generate explanation
+        function generateExplanation(ast) {
+            var explanations = [];
+            collectExplanations(ast, explanations);
+            return explanations;
+        }
+
+        function collectExplanations(node, explanations) {
+            if (!node) return;
+            
+            switch (node.type) {
+                case 'alternation':
+                    explanations.push({ token: '|', desc: '或（匹配左边或右边的模式）' });
+                    node.alternatives.forEach(function(alt) { collectExplanations(alt, explanations); });
+                    break;
+                case 'sequence':
+                    node.items.forEach(function(item) { collectExplanations(item, explanations); });
+                    break;
+                case 'quantified':
+                    collectExplanations(node.atom, explanations);
+                    var q = node.quantifier;
+                    var symbol = '';
+                    if (q.min === 0 && q.max === 1) symbol = '?';
+                    else if (q.min === 0 && q.max === Infinity) symbol = '*';
+                    else if (q.min === 1 && q.max === Infinity) symbol = '+';
+                    else if (q.min === q.max) symbol = '{' + q.min + '}';
+                    else if (q.max === Infinity) symbol = '{' + q.min + ',}';
+                    else symbol = '{' + q.min + ',' + q.max + '}';
+                    if (q.lazy) symbol += '?';
+                    explanations.push({ token: symbol, desc: q.desc });
+                    break;
+                case 'group':
+                    explanations.push({ token: '(...)', desc: node.desc });
+                    collectExplanations(node.content, explanations);
+                    break;
+                case 'character-class':
+                    explanations.push({ token: node.display, desc: node.desc });
+                    break;
+                case 'literal':
+                    explanations.push({ token: node.value, desc: node.desc });
+                    break;
+                case 'any':
+                    explanations.push({ token: '.', desc: node.desc });
+                    break;
+                case 'anchor':
+                    explanations.push({ token: node.value, desc: node.desc });
+                    break;
+                case 'shorthand':
+                    explanations.push({ token: node.value, desc: node.desc });
+                    break;
+            }
+        }
+
+        function visualize() {
+            var regexInput = document.getElementById('regexInput').value.trim();
+            var diagramDiv = document.getElementById('railroadDiagram');
+            var explanationDiv = document.getElementById('explanationList');
+            
+            if (!regexInput) {
+                showMessage('请输入正则表达式', true);
+                return;
+            }
+            
+            try {
+                // Validate regex
+                new RegExp(regexInput);
+                
+                // Parse and generate diagram
+                var parser = new RegexParser(regexInput);
+                var ast = parser.parse();
+                
+                var generator = new RailroadGenerator();
+                var svg = generator.generate(ast);
+                
+                diagramDiv.innerHTML = svg;
+                
+                // Generate explanations
+                var explanations = generateExplanation(ast);
+                explanationDiv.textContent = '';
+                
+                if (explanations.length === 0) {
+                    explanationDiv.innerHTML = '<p style="color: var(--pico-muted-color);">没有可解释的元素</p>';
+                } else {
+                    explanations.forEach(function(exp) {
+                        var item = document.createElement('div');
+                        item.className = 'explanation-item';
+                        
+                        var token = document.createElement('span');
+                        token.className = 'explanation-token';
+                        token.textContent = exp.token;
+                        
+                        var desc = document.createElement('span');
+                        desc.textContent = exp.desc;
+                        
+                        item.appendChild(token);
+                        item.appendChild(desc);
+                        explanationDiv.appendChild(item);
+                    });
+                }
+                
+                showMessage('可视化成功', false);
+            } catch (e) {
+                showMessage('正则表达式错误: ' + e.message, true);
+                diagramDiv.innerHTML = '<p class="error">无法解析正则表达式: ' + e.message + '</p>';
+            }
+        }
+
+        function testMatch() {
+            var regexInput = document.getElementById('regexInput').value.trim();
+            var testInput = document.getElementById('testInput').value;
+            var resultDiv = document.getElementById('matchResult');
+            
+            if (!regexInput) {
+                showMessage('请先输入正则表达式', true);
+                return;
+            }
+            
+            try {
+                var flags = getFlags();
+                var regex = new RegExp(regexInput, flags);
+                
+                if (flags.indexOf('g') >= 0) {
+                    var matches = testInput.match(regex);
+                    if (matches && matches.length > 0) {
+                        resultDiv.className = 'match-result success';
+                        var result = '找到 ' + matches.length + ' 个匹配:\n';
+                        var highlighted = testInput;
+                        matches.forEach(function(m, i) {
+                            result += (i + 1) + '. "' + m + '"\n';
+                        });
+                        
+                        // Highlight matches in original text
+                        highlighted = testInput.replace(regex, function(match) {
+                            return '<span class="match-highlight">' + match + '</span>';
+                        });
+                        
+                        resultDiv.innerHTML = '<p>' + result + '</p><p>原文高亮: ' + highlighted + '</p>';
+                    } else {
+                        resultDiv.className = 'match-result fail';
+                        resultDiv.textContent = '未找到匹配';
+                    }
+                } else {
+                    var match = testInput.match(regex);
+                    if (match) {
+                        resultDiv.className = 'match-result success';
+                        var info = '匹配成功!\n';
+                        info += '完整匹配: "' + match[0] + '"\n';
+                        info += '位置: ' + match.index + '\n';
+                        
+                        if (match.length > 1) {
+                            info += '捕获组:\n';
+                            for (var i = 1; i < match.length; i++) {
+                                info += '  $' + i + ': "' + (match[i] || '') + '"\n';
+                            }
+                        }
+                        
+                        resultDiv.textContent = info;
+                    } else {
+                        resultDiv.className = 'match-result fail';
+                        resultDiv.textContent = '未找到匹配';
+                    }
+                }
+            } catch (e) {
+                resultDiv.className = 'match-result fail';
+                resultDiv.textContent = '错误: ' + e.message;
+            }
+        }
+
+        // Auto-visualize on input (debounced)
+        var timeout;
+        document.getElementById('regexInput').addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(function() {
+                if (document.getElementById('regexInput').value.trim()) {
+                    visualize();
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

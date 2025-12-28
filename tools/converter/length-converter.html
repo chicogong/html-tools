@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长度单位转换器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-card: 1.5rem;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .input-section {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-card);
+            margin-bottom: 1.5rem;
+        }
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .input-row .value-input {
+            flex: 2;
+        }
+        .input-row .unit-select {
+            flex: 1;
+        }
+        .input-row label {
+            margin-bottom: 0;
+        }
+        .results-card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-card);
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .result-item {
+            padding: 1rem;
+            background: var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .result-item:active {
+            transform: translateY(0);
+        }
+        .result-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--pico-primary);
+            word-break: break-all;
+        }
+        .result-unit {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.25rem;
+        }
+        .result-name {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .copy-hint {
+            text-align: center;
+            color: var(--pico-muted-color);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--pico-border-radius);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+            margin: 1.5rem 0 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .section-title:first-child {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>📏 长度单位转换器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+
+        <div class="input-section">
+            <div class="input-row">
+                <div class="value-input">
+                    <label for="inputValue">输入数值</label>
+                    <input type="number" id="inputValue" placeholder="请输入数值" step="any" oninput="convert()">
+                </div>
+                <div class="unit-select">
+                    <label for="inputUnit">单位</label>
+                    <select id="inputUnit" onchange="convert()">
+                        <optgroup label="公制">
+                            <option value="km">千米 (km)</option>
+                            <option value="m" selected>米 (m)</option>
+                            <option value="dm">分米 (dm)</option>
+                            <option value="cm">厘米 (cm)</option>
+                            <option value="mm">毫米 (mm)</option>
+                            <option value="um">微米 (μm)</option>
+                            <option value="nm">纳米 (nm)</option>
+                        </optgroup>
+                        <optgroup label="英制">
+                            <option value="mi">英里 (mile)</option>
+                            <option value="yd">码 (yard)</option>
+                            <option value="ft">英尺 (foot)</option>
+                            <option value="in">英寸 (inch)</option>
+                        </optgroup>
+                        <optgroup label="中国市制">
+                            <option value="li">里</option>
+                            <option value="zhang">丈</option>
+                            <option value="chi">尺</option>
+                            <option value="cun">寸</option>
+                            <option value="fen">分</option>
+                        </optgroup>
+                        <optgroup label="航海/天文">
+                            <option value="nmi">海里 (nmi)</option>
+                            <option value="ly">光年 (ly)</option>
+                            <option value="au">天文单位 (AU)</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-card">
+            <h3>转换结果</h3>
+            <p class="copy-hint">点击任意结果可复制数值</p>
+            
+            <div class="section-title">📐 公制单位</div>
+            <div class="results-grid" id="metricResults"></div>
+            
+            <div class="section-title">🇬🇧 英制单位</div>
+            <div class="results-grid" id="imperialResults"></div>
+            
+            <div class="section-title">🇨🇳 中国市制</div>
+            <div class="results-grid" id="chineseResults"></div>
+            
+            <div class="section-title">🚢 航海/天文</div>
+            <div class="results-grid" id="otherResults"></div>
+        </div>
+
+        <div class="toast" id="toast">已复制到剪贴板</div>
+    </main>
+
+    <script>
+        // 单位定义（以米为基准）
+        const units = {
+            // 公制
+            km: { name: '千米', symbol: 'km', toMeter: 1000, category: 'metric' },
+            m: { name: '米', symbol: 'm', toMeter: 1, category: 'metric' },
+            dm: { name: '分米', symbol: 'dm', toMeter: 0.1, category: 'metric' },
+            cm: { name: '厘米', symbol: 'cm', toMeter: 0.01, category: 'metric' },
+            mm: { name: '毫米', symbol: 'mm', toMeter: 0.001, category: 'metric' },
+            um: { name: '微米', symbol: 'μm', toMeter: 0.000001, category: 'metric' },
+            nm: { name: '纳米', symbol: 'nm', toMeter: 0.000000001, category: 'metric' },
+            
+            // 英制
+            mi: { name: '英里', symbol: 'mile', toMeter: 1609.344, category: 'imperial' },
+            yd: { name: '码', symbol: 'yard', toMeter: 0.9144, category: 'imperial' },
+            ft: { name: '英尺', symbol: 'foot', toMeter: 0.3048, category: 'imperial' },
+            in: { name: '英寸', symbol: 'inch', toMeter: 0.0254, category: 'imperial' },
+            
+            // 中国市制
+            li: { name: '里', symbol: '里', toMeter: 500, category: 'chinese' },
+            zhang: { name: '丈', symbol: '丈', toMeter: 10/3, category: 'chinese' },
+            chi: { name: '尺', symbol: '尺', toMeter: 1/3, category: 'chinese' },
+            cun: { name: '寸', symbol: '寸', toMeter: 1/30, category: 'chinese' },
+            fen: { name: '分', symbol: '分', toMeter: 1/300, category: 'chinese' },
+            
+            // 航海/天文
+            nmi: { name: '海里', symbol: 'nmi', toMeter: 1852, category: 'other' },
+            ly: { name: '光年', symbol: 'ly', toMeter: 9.461e15, category: 'other' },
+            au: { name: '天文单位', symbol: 'AU', toMeter: 1.496e11, category: 'other' }
+        };
+
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        // 格式化数字
+        function formatNumber(num) {
+            if (num === 0) return '0';
+            if (Math.abs(num) >= 1e10 || Math.abs(num) < 1e-6) {
+                return num.toExponential(6);
+            }
+            // 去除末尾的0
+            return parseFloat(num.toPrecision(10)).toString();
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(value) {
+            navigator.clipboard.writeText(value).then(function() {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(function() { toast.classList.remove('show'); }, 2000);
+            });
+        }
+
+        // 创建结果项元素
+        function createResultItem(formattedValue, symbol, name) {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.title = '点击复制';
+            item.onclick = function() { copyToClipboard(formattedValue); };
+            
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'result-value';
+            valueDiv.textContent = formattedValue;
+            
+            const unitDiv = document.createElement('div');
+            unitDiv.className = 'result-unit';
+            unitDiv.textContent = symbol;
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'result-name';
+            nameDiv.textContent = name;
+            
+            item.appendChild(valueDiv);
+            item.appendChild(unitDiv);
+            item.appendChild(nameDiv);
+            
+            return item;
+        }
+
+        // 创建占位项
+        function createPlaceholderItem() {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'result-value';
+            valueDiv.textContent = '--';
+            
+            item.appendChild(valueDiv);
+            return item;
+        }
+
+        // 转换
+        function convert() {
+            const inputValue = parseFloat(document.getElementById('inputValue').value);
+            const inputUnit = document.getElementById('inputUnit').value;
+            
+            const containers = {
+                metric: document.getElementById('metricResults'),
+                imperial: document.getElementById('imperialResults'),
+                chinese: document.getElementById('chineseResults'),
+                other: document.getElementById('otherResults')
+            };
+            
+            // 清空所有结果
+            Object.values(containers).forEach(function(container) {
+                while (container.firstChild) {
+                    container.removeChild(container.firstChild);
+                }
+            });
+            
+            if (isNaN(inputValue)) {
+                Object.values(containers).forEach(function(container) {
+                    container.appendChild(createPlaceholderItem());
+                });
+                return;
+            }
+            
+            // 先转换为米
+            const meters = inputValue * units[inputUnit].toMeter;
+            
+            // 转换为所有单位并按类别显示
+            Object.keys(units).forEach(function(key) {
+                const unit = units[key];
+                const convertedValue = meters / unit.toMeter;
+                const formattedValue = formatNumber(convertedValue);
+                
+                const resultItem = createResultItem(formattedValue, unit.symbol, unit.name);
+                containers[unit.category].appendChild(resultItem);
+            });
+        }
+
+        // 初始化
+        document.getElementById('inputValue').value = 1;
+        convert();
+    </script>
+</body>
+</html>

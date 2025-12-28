@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本翻转工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-compact: 0.5rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        
+        .editor-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .editor-section label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            resize: vertical;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        
+        .controls button {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+        }
+        
+        .info-box {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            font-size: 1rem;
+        }
+        
+        .info-box ul {
+            margin-bottom: 0;
+            padding-left: 1.25rem;
+        }
+        
+        .info-box li {
+            margin-bottom: 0.25rem;
+        }
+        
+        .preview-item {
+            background: var(--pico-code-background-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            display: inline-block;
+            margin-left: 0.5rem;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--pico-border-radius);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>文本翻转工具</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+        
+        <div class="editor-section">
+            <label for="input">输入文本</label>
+            <textarea id="input" placeholder="在此输入要翻转的文本..."></textarea>
+        </div>
+        
+        <div class="controls">
+            <button onclick="reverseText()">倒序翻转</button>
+            <button onclick="mirrorText()">镜像翻转</button>
+            <button onclick="upsideDown()">上下颠倒</button>
+            <button onclick="reverseLines()">逐行倒序</button>
+            <button onclick="reverseWords()">单词倒序</button>
+        </div>
+        
+        <div class="editor-section">
+            <label for="output">输出结果</label>
+            <textarea id="output" readonly placeholder="翻转结果将显示在这里..."></textarea>
+            <div class="action-buttons">
+                <button class="secondary" onclick="copyOutput()">复制结果</button>
+                <button class="secondary" onclick="clearAll()">清空</button>
+                <button class="secondary" onclick="swapContent()">交换输入输出</button>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>功能说明</h3>
+            <ul>
+                <li><strong>倒序翻转</strong>：将整个文本从后往前反转 <span class="preview-item">ABC → CBA</span></li>
+                <li><strong>镜像翻转</strong>：使用镜像字符替换 <span class="preview-item">Hello → oʅʅǝH</span></li>
+                <li><strong>上下颠倒</strong>：使用上下颠倒字符 <span class="preview-item">Hello → oןןǝɥ</span></li>
+                <li><strong>逐行倒序</strong>：每行文本分别倒序</li>
+                <li><strong>单词倒序</strong>：保持单词完整，只改变单词顺序</li>
+            </ul>
+        </div>
+    </main>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // 镜像字符映射
+        const mirrorMap = {
+            'a': 'ɒ', 'b': 'd', 'c': 'ɔ', 'd': 'b', 'e': 'ǝ', 'f': 'ʇ', 'g': 'ǫ',
+            'h': 'ʜ', 'i': 'i', 'j': 'ꞁ', 'k': 'ʞ', 'l': 'ʅ', 'm': 'ɯ', 'n': 'u',
+            'o': 'o', 'p': 'q', 'q': 'p', 'r': 'ɿ', 's': 'ꙅ', 't': 'ƚ', 'u': 'n',
+            'v': 'v', 'w': 'w', 'x': 'x', 'y': 'ʎ', 'z': 'z',
+            'A': 'A', 'B': 'ᙠ', 'C': 'Ɔ', 'D': 'ᗡ', 'E': 'Ǝ', 'F': 'ꟻ', 'G': 'Ꭾ',
+            'H': 'H', 'I': 'I', 'J': 'Ⴑ', 'K': 'ꓘ', 'L': '⅃', 'M': 'M', 'N': 'И',
+            'O': 'O', 'P': 'ꟼ', 'Q': 'Ọ', 'R': 'Я', 'S': 'Ꙅ', 'T': 'T', 'U': 'U',
+            'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
+            '1': '1', '2': 'S', '3': 'Ɛ', '4': 'ᔭ', '5': '5', '6': '6', '7': '⌐',
+            '8': '8', '9': '9', '0': '0',
+            '?': '⸮', '!': '¡', '(': ')', ')': '(', '[': ']', ']': '[',
+            '{': '}', '}': '{', '<': '>', '>': '<', '/': '\\', '\\': '/'
+        };
+        
+        // 上下颠倒字符映射
+        const upsideDownMap = {
+            'a': 'ɐ', 'b': 'q', 'c': 'ɔ', 'd': 'p', 'e': 'ǝ', 'f': 'ɟ', 'g': 'ƃ',
+            'h': 'ɥ', 'i': 'ᴉ', 'j': 'ɾ', 'k': 'ʞ', 'l': 'l', 'm': 'ɯ', 'n': 'u',
+            'o': 'o', 'p': 'd', 'q': 'b', 'r': 'ɹ', 's': 's', 't': 'ʇ', 'u': 'n',
+            'v': 'ʌ', 'w': 'ʍ', 'x': 'x', 'y': 'ʎ', 'z': 'z',
+            'A': '∀', 'B': 'ᗺ', 'C': 'Ɔ', 'D': 'ᗡ', 'E': 'Ǝ', 'F': 'Ⅎ', 'G': '⅁',
+            'H': 'H', 'I': 'I', 'J': 'ſ', 'K': 'ꓘ', 'L': '˥', 'M': 'W', 'N': 'N',
+            'O': 'O', 'P': 'Ԁ', 'Q': 'Ό', 'R': 'ᴚ', 'S': 'S', 'T': '⊥', 'U': '∩',
+            'V': 'Λ', 'W': 'M', 'X': 'X', 'Y': '⅄', 'Z': 'Z',
+            '1': 'Ɩ', '2': 'ᄅ', '3': 'Ɛ', '4': 'ㄣ', '5': 'ϛ', '6': '9', '7': 'ㄥ',
+            '8': '8', '9': '6', '0': '0',
+            '.': '˙', ',': '\'', '\'': ',', '"': '„', '`': ',', '?': '¿', '!': '¡',
+            '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{',
+            '<': '>', '>': '<', '&': '⅋', '_': '‾'
+        };
+        
+        // 倒序翻转
+        function reverseText() {
+            const input = document.getElementById('input').value;
+            const output = [...input].reverse().join('');
+            document.getElementById('output').value = output;
+        }
+        
+        // 镜像翻转
+        function mirrorText() {
+            const input = document.getElementById('input').value;
+            let output = '';
+            for (const char of input) {
+                output += mirrorMap[char] || char;
+            }
+            document.getElementById('output').value = [...output].reverse().join('');
+        }
+        
+        // 上下颠倒
+        function upsideDown() {
+            const input = document.getElementById('input').value;
+            let output = '';
+            for (const char of input) {
+                output += upsideDownMap[char] || char;
+            }
+            document.getElementById('output').value = [...output].reverse().join('');
+        }
+        
+        // 逐行倒序
+        function reverseLines() {
+            const input = document.getElementById('input').value;
+            const lines = input.split('\n');
+            const reversedLines = lines.map(line => [...line].reverse().join(''));
+            document.getElementById('output').value = reversedLines.join('\n');
+        }
+        
+        // 单词倒序
+        function reverseWords() {
+            const input = document.getElementById('input').value;
+            const lines = input.split('\n');
+            const reversedLines = lines.map(line => {
+                const words = line.split(/(\s+)/);
+                return words.reverse().join('');
+            });
+            document.getElementById('output').value = reversedLines.join('\n');
+        }
+        
+        // 复制输出
+        function copyOutput() {
+            const output = document.getElementById('output');
+            if (output.value) {
+                navigator.clipboard.writeText(output.value).then(() => {
+                    showToast('已复制到剪贴板');
+                });
+            }
+        }
+        
+        // 清空
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('output').value = '';
+        }
+        
+        // 交换输入输出
+        function swapContent() {
+            const input = document.getElementById('input');
+            const output = document.getElementById('output');
+            const temp = input.value;
+            input.value = output.value;
+            output.value = temp;
+        }
+        
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // 初始化主题
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+    </script>
+</body>
+</html>

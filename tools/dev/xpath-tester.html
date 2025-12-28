@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XPath 测试器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --highlight-bg: #bbf7d0;
+            --highlight-border: #22c55e;
+        }
+        [data-theme="dark"] {
+            --highlight-bg: #166534;
+            --highlight-border: #4ade80;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-panel label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .editor-panel textarea {
+            font-family: monospace;
+            font-size: 0.875rem;
+            min-height: 250px;
+            resize: vertical;
+        }
+        .xpath-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .xpath-input input {
+            flex: 1;
+            font-family: monospace;
+        }
+        .result-panel {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .match-count {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--pico-primary);
+            color: white;
+            border-radius: 1rem;
+        }
+        .result-type {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--pico-secondary-background);
+            border-radius: 0.25rem;
+        }
+        .result-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result-item {
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 0.75rem;
+            background: var(--pico-code-background-color);
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border-left: 3px solid var(--highlight-border);
+        }
+        .result-item-index {
+            font-weight: bold;
+            color: var(--pico-primary);
+            margin-right: 0.5rem;
+        }
+        .result-value {
+            background: var(--highlight-bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            display: inline-block;
+            margin-top: 0.25rem;
+        }
+        .error-message {
+            color: var(--pico-del-color);
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        .examples {
+            margin-top: 1rem;
+        }
+        .example-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .format-btns {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .format-btns button {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .help-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 0.5rem;
+        }
+        .help-section h3 {
+            margin-bottom: 1rem;
+        }
+        .help-table {
+            font-size: 0.875rem;
+        }
+        .help-table code {
+            font-size: 0.75rem;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1rem;
+        }
+        .tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: var(--pico-primary);
+            color: var(--pico-primary);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">切换主题</button>
+    
+    <main class="container">
+        <h1>XPath 测试器</h1>
+        <p>输入 XML/HTML 文档和 XPath 表达式，查看匹配结果</p>
+        
+        <div class="editor-container">
+            <div class="editor-panel">
+                <label for="xmlInput">XML/HTML 文档</label>
+                <div class="format-btns">
+                    <button class="secondary outline" onclick="formatXml()">格式化</button>
+                    <button class="secondary outline" onclick="loadSampleXml()">加载 XML 示例</button>
+                    <button class="secondary outline" onclick="loadSampleHtml()">加载 HTML 示例</button>
+                </div>
+                <textarea id="xmlInput" placeholder="在此输入 XML 或 HTML 代码..."></textarea>
+            </div>
+            <div class="editor-panel">
+                <label>匹配结果</label>
+                <div class="result-panel">
+                    <div class="result-header">
+                        <span>结果</span>
+                        <div>
+                            <span class="result-type" id="resultType">-</span>
+                            <span class="match-count" id="matchCount">0 个</span>
+                        </div>
+                    </div>
+                    <div class="result-list" id="resultList"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="xpath-input">
+            <input type="text" id="xpathInput" placeholder="输入 XPath 表达式（如：//book, //@id, //title/text()）" autofocus>
+            <button onclick="evaluateXPath()">执行</button>
+        </div>
+        
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <div class="examples">
+            <small>示例表达式：</small>
+            <button class="example-btn secondary outline" onclick="setXPath('//*')">//*</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//book')">// book</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//@*')">//@*</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//title/text()')">text()</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//book[@category]')">[@attr]</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//book[price>30]')">[price>30]</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//book[1]')">[1]</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//book[last()]')">[last()]</button>
+            <button class="example-btn secondary outline" onclick="setXPath('count(//book)')">count()</button>
+            <button class="example-btn secondary outline" onclick="setXPath('//author | //title')">A | B</button>
+        </div>
+        
+        <div class="help-section">
+            <h3>XPath 语法参考</h3>
+            <div class="tabs">
+                <button class="tab active" onclick="showHelp('basic')">基础语法</button>
+                <button class="tab" onclick="showHelp('predicates')">谓词</button>
+                <button class="tab" onclick="showHelp('functions')">函数</button>
+                <button class="tab" onclick="showHelp('axes')">轴</button>
+            </div>
+            <div id="help-basic">
+                <table class="help-table">
+                    <tr><td><code>/</code></td><td>从根节点选取</td></tr>
+                    <tr><td><code>//</code></td><td>从任意位置选取</td></tr>
+                    <tr><td><code>.</code></td><td>当前节点</td></tr>
+                    <tr><td><code>..</code></td><td>父节点</td></tr>
+                    <tr><td><code>@</code></td><td>选取属性</td></tr>
+                    <tr><td><code>*</code></td><td>任意元素</td></tr>
+                    <tr><td><code>@*</code></td><td>任意属性</td></tr>
+                    <tr><td><code>node()</code></td><td>任意节点</td></tr>
+                    <tr><td><code>text()</code></td><td>文本节点</td></tr>
+                    <tr><td><code>A | B</code></td><td>并集运算</td></tr>
+                </table>
+            </div>
+            <div id="help-predicates" style="display: none;">
+                <table class="help-table">
+                    <tr><td><code>[1]</code></td><td>第一个元素</td></tr>
+                    <tr><td><code>[last()]</code></td><td>最后一个元素</td></tr>
+                    <tr><td><code>[position()&lt;3]</code></td><td>前两个元素</td></tr>
+                    <tr><td><code>[@attr]</code></td><td>有指定属性</td></tr>
+                    <tr><td><code>[@attr='val']</code></td><td>属性等于值</td></tr>
+                    <tr><td><code>[price&gt;30]</code></td><td>数值比较</td></tr>
+                    <tr><td><code>[contains(@class,'x')]</code></td><td>属性包含</td></tr>
+                    <tr><td><code>[starts-with(name,'A')]</code></td><td>开头匹配</td></tr>
+                </table>
+            </div>
+            <div id="help-functions" style="display: none;">
+                <table class="help-table">
+                    <tr><td><code>count()</code></td><td>计数</td></tr>
+                    <tr><td><code>sum()</code></td><td>求和</td></tr>
+                    <tr><td><code>concat()</code></td><td>字符串连接</td></tr>
+                    <tr><td><code>string-length()</code></td><td>字符串长度</td></tr>
+                    <tr><td><code>contains()</code></td><td>包含判断</td></tr>
+                    <tr><td><code>starts-with()</code></td><td>开头判断</td></tr>
+                    <tr><td><code>normalize-space()</code></td><td>规范化空白</td></tr>
+                    <tr><td><code>translate()</code></td><td>字符替换</td></tr>
+                </table>
+            </div>
+            <div id="help-axes" style="display: none;">
+                <table class="help-table">
+                    <tr><td><code>ancestor::</code></td><td>祖先节点</td></tr>
+                    <tr><td><code>parent::</code></td><td>父节点</td></tr>
+                    <tr><td><code>child::</code></td><td>子节点</td></tr>
+                    <tr><td><code>descendant::</code></td><td>后代节点</td></tr>
+                    <tr><td><code>following::</code></td><td>后续所有</td></tr>
+                    <tr><td><code>following-sibling::</code></td><td>后续兄弟</td></tr>
+                    <tr><td><code>preceding::</code></td><td>之前所有</td></tr>
+                    <tr><td><code>preceding-sibling::</code></td><td>之前兄弟</td></tr>
+                    <tr><td><code>self::</code></td><td>自身</td></tr>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
+<bookstore>
+    <book category="cooking">
+        <title lang="en">Everyday Italian</title>
+        <author>Giada De Laurentiis</author>
+        <year>2005</year>
+        <price>30.00</price>
+    </book>
+    <book category="children">
+        <title lang="en">Harry Potter</title>
+        <author>J K. Rowling</author>
+        <year>2005</year>
+        <price>29.99</price>
+    </book>
+    <book category="web">
+        <title lang="en">XQuery Kick Start</title>
+        <author>James McGovern</author>
+        <author>Per Bothner</author>
+        <year>2003</year>
+        <price>49.99</price>
+    </book>
+    <book category="web">
+        <title lang="cn">Learning XML</title>
+        <author>Erik T. Ray</author>
+        <year>2003</year>
+        <price>39.95</price>
+    </book>
+</bookstore>`;
+
+        const sampleHtml = `<html>
+<head>
+    <title>示例网页</title>
+</head>
+<body>
+    <div id="header" class="container">
+        <h1>网站标题</h1>
+        <nav>
+            <ul class="menu">
+                <li><a href="/" class="active">首页</a></li>
+                <li><a href="/about">关于</a></li>
+                <li><a href="/contact">联系</a></li>
+            </ul>
+        </nav>
+    </div>
+    <div id="content" class="container">
+        <article class="post">
+            <h2>文章标题</h2>
+            <p class="intro">这是介绍段落。</p>
+            <p>这是正文内容。</p>
+        </article>
+        <aside>
+            <h3>侧边栏</h3>
+            <ul>
+                <li>项目1</li>
+                <li>项目2</li>
+                <li>项目3</li>
+            </ul>
+        </aside>
+    </div>
+    <div id="footer">
+        <p>版权所有 &copy; 2024</p>
+    </div>
+</body>
+</html>`;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+            
+            document.getElementById('xmlInput').value = sampleXml;
+            
+            // 实时执行
+            document.getElementById('xpathInput').addEventListener('input', evaluateXPath);
+            document.getElementById('xmlInput').addEventListener('input', evaluateXPath);
+            
+            // 回车执行
+            document.getElementById('xpathInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') evaluateXPath();
+            });
+        });
+
+        // 执行 XPath
+        function evaluateXPath() {
+            const xmlStr = document.getElementById('xmlInput').value.trim();
+            const xpath = document.getElementById('xpathInput').value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+            const resultList = document.getElementById('resultList');
+            const matchCount = document.getElementById('matchCount');
+            const resultType = document.getElementById('resultType');
+            
+            errorMsg.style.display = 'none';
+            resultList.textContent = '';
+            
+            if (!xmlStr || !xpath) {
+                matchCount.textContent = '0 个';
+                resultType.textContent = '-';
+                return;
+            }
+            
+            try {
+                // 解析 XML/HTML
+                const parser = new DOMParser();
+                let doc;
+                
+                if (xmlStr.trim().startsWith('<?xml') || xmlStr.trim().startsWith('<')) {
+                    // 尝试作为 XML 解析
+                    doc = parser.parseFromString(xmlStr, 'text/xml');
+                    const parseError = doc.querySelector('parsererror');
+                    if (parseError) {
+                        // 尝试作为 HTML 解析
+                        doc = parser.parseFromString(xmlStr, 'text/html');
+                    }
+                } else {
+                    doc = parser.parseFromString(xmlStr, 'text/html');
+                }
+                
+                // 执行 XPath
+                const result = doc.evaluate(
+                    xpath,
+                    doc,
+                    null,
+                    XPathResult.ANY_TYPE,
+                    null
+                );
+                
+                const results = [];
+                let typeStr = '';
+                
+                switch (result.resultType) {
+                    case XPathResult.NUMBER_TYPE:
+                        typeStr = '数值';
+                        results.push({ type: 'number', value: result.numberValue });
+                        break;
+                    case XPathResult.STRING_TYPE:
+                        typeStr = '字符串';
+                        results.push({ type: 'string', value: result.stringValue });
+                        break;
+                    case XPathResult.BOOLEAN_TYPE:
+                        typeStr = '布尔';
+                        results.push({ type: 'boolean', value: result.booleanValue });
+                        break;
+                    default:
+                        typeStr = '节点集';
+                        let node;
+                        while ((node = result.iterateNext())) {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                results.push({ type: 'element', value: node.outerHTML || serializeNode(node) });
+                            } else if (node.nodeType === Node.ATTRIBUTE_NODE) {
+                                results.push({ type: 'attribute', value: node.name + '="' + node.value + '"' });
+                            } else if (node.nodeType === Node.TEXT_NODE) {
+                                results.push({ type: 'text', value: node.textContent });
+                            } else {
+                                results.push({ type: 'node', value: node.textContent || node.nodeValue });
+                            }
+                        }
+                }
+                
+                resultType.textContent = typeStr;
+                matchCount.textContent = results.length + ' 个';
+                
+                results.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    
+                    const indexSpan = document.createElement('span');
+                    indexSpan.className = 'result-item-index';
+                    indexSpan.textContent = '[' + (index + 1) + ']';
+                    
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'result-type';
+                    typeSpan.textContent = item.type;
+                    typeSpan.style.marginLeft = '0.5rem';
+                    
+                    div.appendChild(indexSpan);
+                    div.appendChild(typeSpan);
+                    
+                    const valueDiv = document.createElement('div');
+                    valueDiv.className = 'result-value';
+                    valueDiv.textContent = String(item.value);
+                    div.appendChild(valueDiv);
+                    
+                    resultList.appendChild(div);
+                });
+                
+            } catch (e) {
+                errorMsg.textContent = '错误: ' + e.message;
+                errorMsg.style.display = 'block';
+                matchCount.textContent = '错误';
+                resultType.textContent = '-';
+            }
+        }
+
+        // 序列化节点（用于XML）
+        function serializeNode(node) {
+            const serializer = new XMLSerializer();
+            return serializer.serializeToString(node);
+        }
+
+        // 设置 XPath
+        function setXPath(xpath) {
+            document.getElementById('xpathInput').value = xpath;
+            evaluateXPath();
+        }
+
+        // 加载示例
+        function loadSampleXml() {
+            document.getElementById('xmlInput').value = sampleXml;
+            evaluateXPath();
+        }
+
+        function loadSampleHtml() {
+            document.getElementById('xmlInput').value = sampleHtml;
+            evaluateXPath();
+        }
+
+        // 格式化 XML
+        function formatXml() {
+            const input = document.getElementById('xmlInput');
+            const xml = input.value;
+            
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml, 'text/xml');
+                const error = doc.querySelector('parsererror');
+                
+                if (error) {
+                    throw new Error('XML 解析错误');
+                }
+                
+                const serializer = new XMLSerializer();
+                let formatted = serializer.serializeToString(doc);
+                
+                // 简单格式化
+                formatted = formatted
+                    .replace(/></g, '>\n<')
+                    .replace(/^\s+/gm, (match) => match)
+                    .split('\n')
+                    .map((line, i, arr) => {
+                        let indent = 0;
+                        const prevLine = arr[i - 1] || '';
+                        if (prevLine.match(/<[^/!?][^>]*[^/]>$/)) indent++;
+                        if (line.match(/^<\//)) indent--;
+                        return '  '.repeat(Math.max(0, indent)) + line.trim();
+                    })
+                    .join('\n');
+                
+                input.value = formatted;
+            } catch (e) {
+                const errorMsg = document.getElementById('errorMessage');
+                errorMsg.textContent = '格式化失败: ' + e.message;
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        // 显示帮助
+        function showHelp(type) {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const sections = ['basic', 'predicates', 'functions', 'axes'];
+            sections.forEach(s => {
+                const el = document.getElementById('help-' + s);
+                if (el) el.style.display = s === type ? 'block' : 'none';
+            });
+        }
+
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+            localStorage.setItem('theme', html.getAttribute('data-theme'));
+        }
+    </script>
+</body>
+</html>

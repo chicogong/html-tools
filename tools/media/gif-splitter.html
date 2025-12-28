@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF分解器 - 提取GIF帧</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .info-panel {
+            background: var(--pico-card-background-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .info-panel.visible {
+            display: block;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-item .label {
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .info-item .value {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        
+        .preview-section {
+            display: none;
+            margin-bottom: 1rem;
+        }
+        
+        .preview-section.visible {
+            display: block;
+        }
+        
+        .preview-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .preview-canvas-wrapper {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        
+        [data-theme="dark"] .preview-canvas-wrapper {
+            background: #2a2a2a;
+        }
+        
+        #previewCanvas {
+            display: block;
+            max-width: 400px;
+            max-height: 400px;
+        }
+        
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .playback-controls button {
+            padding: 0.5rem 1rem;
+            margin: 0;
+        }
+        
+        .frame-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        #frameSlider {
+            flex: 1;
+        }
+        
+        .frame-counter {
+            min-width: 100px;
+            text-align: center;
+        }
+        
+        .frames-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .frame-item {
+            position: relative;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+        
+        .frame-item:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .frame-item.selected {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+        
+        .frame-item canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .frame-item .frame-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .frame-item .checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .frame-item.selected .checkbox::after {
+            content: '\2713';
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .selection-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .progress-bar.visible {
+            display: block;
+        }
+        
+        .progress-bar .progress {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.1s;
+        }
+        
+        .status-text {
+            text-align: center;
+            color: var(--pico-muted-color);
+            margin-bottom: 1rem;
+        }
+        
+        .empty-state {
+            color: var(--pico-muted-color);
+            text-align: center;
+            padding: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GIF分解器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
+        </header>
+        
+        <main>
+            <div class="upload-zone" id="uploadZone">
+                <p>点击或拖拽GIF文件到此处上传</p>
+                <p><small>支持 GIF 动图格式</small></p>
+                <input type="file" id="fileInput" accept="image/gif">
+            </div>
+            
+            <div class="progress-bar" id="progressBar">
+                <div class="progress" id="progress"></div>
+            </div>
+            
+            <p class="status-text" id="statusText"></p>
+            
+            <div class="info-panel" id="infoPanel">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">尺寸</div>
+                        <div class="value" id="infoSize">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">总帧数</div>
+                        <div class="value" id="infoFrames">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">总时长</div>
+                        <div class="value" id="infoDuration">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">文件大小</div>
+                        <div class="value" id="infoFileSize">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-section" id="previewSection">
+                <h3>预览</h3>
+                <div class="preview-container">
+                    <div class="preview-canvas-wrapper">
+                        <canvas id="previewCanvas"></canvas>
+                    </div>
+                </div>
+                
+                <div class="playback-controls">
+                    <button id="prevFrameBtn" class="outline">上一帧</button>
+                    <button id="playPauseBtn">播放</button>
+                    <button id="nextFrameBtn" class="outline">下一帧</button>
+                </div>
+                
+                <div class="frame-slider-container">
+                    <input type="range" id="frameSlider" min="0" max="0" value="0">
+                    <span class="frame-counter" id="frameCounter">0 / 0</span>
+                </div>
+            </div>
+            
+            <div class="selection-actions" id="selectionActions" style="display: none;">
+                <button id="selectAllBtn" class="outline">全选</button>
+                <button id="deselectAllBtn" class="outline">取消全选</button>
+                <button id="invertSelectionBtn" class="outline">反选</button>
+                <span id="selectedCount">已选择 0 帧</span>
+            </div>
+            
+            <div class="frames-grid" id="framesGrid"></div>
+            
+            <div class="actions" id="downloadActions" style="display: none;">
+                <button id="downloadSelectedBtn">下载选中帧 (PNG)</button>
+                <button id="downloadAllBtn" class="secondary">下载全部帧 (PNG)</button>
+                <button id="downloadZipBtn" class="contrast">打包下载 (ZIP)</button>
+            </div>
+        </main>
+    </div>
+    
+    <!-- GIF Parser Library (inline) -->
+    <script>
+        // Simple GIF parser
+        class GIFParser {
+            constructor(arrayBuffer) {
+                this.data = new Uint8Array(arrayBuffer);
+                this.pos = 0;
+                this.frames = [];
+                this.width = 0;
+                this.height = 0;
+                this.globalColorTable = null;
+            }
+            
+            parse() {
+                // Header
+                const signature = this.readString(6);
+                if (signature !== 'GIF87a' && signature !== 'GIF89a') {
+                    throw new Error('Invalid GIF file');
+                }
+                
+                // Logical Screen Descriptor
+                this.width = this.readUint16();
+                this.height = this.readUint16();
+                const packed = this.readByte();
+                this.readByte(); // background color index
+                this.readByte(); // pixel aspect ratio
+                
+                const hasGlobalColorTable = (packed & 0x80) !== 0;
+                const globalColorTableSize = 2 << (packed & 0x07);
+                
+                if (hasGlobalColorTable) {
+                    this.globalColorTable = this.readColorTable(globalColorTableSize);
+                }
+                
+                // Parse blocks
+                while (this.pos < this.data.length) {
+                    const blockType = this.readByte();
+                    
+                    if (blockType === 0x21) {
+                        // Extension
+                        this.parseExtension();
+                    } else if (blockType === 0x2C) {
+                        // Image
+                        this.parseImage();
+                    } else if (blockType === 0x3B) {
+                        // Trailer
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+                
+                return {
+                    width: this.width,
+                    height: this.height,
+                    frames: this.frames
+                };
+            }
+            
+            parseExtension() {
+                const label = this.readByte();
+                
+                if (label === 0xF9) {
+                    // Graphics Control Extension
+                    this.readByte(); // block size (always 4)
+                    const packed = this.readByte();
+                    const delay = this.readUint16();
+                    const transparentIndex = this.readByte();
+                    this.readByte(); // block terminator
+                    
+                    this.currentFrame = {
+                        delay: delay * 10, // Convert to milliseconds
+                        disposalMethod: (packed >> 2) & 0x07,
+                        transparentIndex: (packed & 0x01) ? transparentIndex : -1
+                    };
+                } else {
+                    // Skip other extensions
+                    this.skipSubBlocks();
+                }
+            }
+            
+            parseImage() {
+                const left = this.readUint16();
+                const top = this.readUint16();
+                const width = this.readUint16();
+                const height = this.readUint16();
+                const packed = this.readByte();
+                
+                const hasLocalColorTable = (packed & 0x80) !== 0;
+                const interlaced = (packed & 0x40) !== 0;
+                const localColorTableSize = 2 << (packed & 0x07);
+                
+                let colorTable = this.globalColorTable;
+                if (hasLocalColorTable) {
+                    colorTable = this.readColorTable(localColorTableSize);
+                }
+                
+                // LZW decode
+                const minCodeSize = this.readByte();
+                const compressedData = this.readSubBlocks();
+                const pixels = this.lzwDecode(compressedData, minCodeSize);
+                
+                const frame = {
+                    left,
+                    top,
+                    width,
+                    height,
+                    pixels,
+                    colorTable,
+                    interlaced,
+                    delay: this.currentFrame?.delay || 100,
+                    disposalMethod: this.currentFrame?.disposalMethod || 0,
+                    transparentIndex: this.currentFrame?.transparentIndex ?? -1
+                };
+                
+                this.frames.push(frame);
+                this.currentFrame = null;
+            }
+            
+            readByte() {
+                return this.data[this.pos++];
+            }
+            
+            readUint16() {
+                const val = this.data[this.pos] | (this.data[this.pos + 1] << 8);
+                this.pos += 2;
+                return val;
+            }
+            
+            readString(len) {
+                let str = '';
+                for (let i = 0; i < len; i++) {
+                    str += String.fromCharCode(this.data[this.pos++]);
+                }
+                return str;
+            }
+            
+            readColorTable(size) {
+                const table = [];
+                for (let i = 0; i < size; i++) {
+                    table.push([
+                        this.data[this.pos++],
+                        this.data[this.pos++],
+                        this.data[this.pos++]
+                    ]);
+                }
+                return table;
+            }
+            
+            readSubBlocks() {
+                const data = [];
+                let size;
+                while ((size = this.readByte()) !== 0) {
+                    for (let i = 0; i < size; i++) {
+                        data.push(this.data[this.pos++]);
+                    }
+                }
+                return data;
+            }
+            
+            skipSubBlocks() {
+                let size;
+                while ((size = this.readByte()) !== 0) {
+                    this.pos += size;
+                }
+            }
+            
+            lzwDecode(data, minCodeSize) {
+                const clearCode = 1 << minCodeSize;
+                const eoiCode = clearCode + 1;
+                
+                let codeSize = minCodeSize + 1;
+                let codeMask = (1 << codeSize) - 1;
+                let nextCode = eoiCode + 1;
+                
+                const codeTable = [];
+                for (let i = 0; i < clearCode; i++) {
+                    codeTable[i] = [i];
+                }
+                codeTable[clearCode] = [];
+                codeTable[eoiCode] = null;
+                
+                const output = [];
+                let bitPos = 0;
+                let prevCode = -1;
+                
+                const readCode = () => {
+                    const bytePos = Math.floor(bitPos / 8);
+                    const bitOffset = bitPos % 8;
+                    let code = data[bytePos] >> bitOffset;
+                    if (bytePos + 1 < data.length) {
+                        code |= data[bytePos + 1] << (8 - bitOffset);
+                    }
+                    if (bytePos + 2 < data.length) {
+                        code |= data[bytePos + 2] << (16 - bitOffset);
+                    }
+                    code &= codeMask;
+                    bitPos += codeSize;
+                    return code;
+                };
+                
+                while (bitPos < data.length * 8) {
+                    const code = readCode();
+                    
+                    if (code === clearCode) {
+                        codeSize = minCodeSize + 1;
+                        codeMask = (1 << codeSize) - 1;
+                        nextCode = eoiCode + 1;
+                        codeTable.length = eoiCode + 1;
+                        prevCode = -1;
+                        continue;
+                    }
+                    
+                    if (code === eoiCode) {
+                        break;
+                    }
+                    
+                    let entry;
+                    if (code < codeTable.length && codeTable[code]) {
+                        entry = codeTable[code];
+                    } else if (code === nextCode && prevCode !== -1) {
+                        entry = [...codeTable[prevCode], codeTable[prevCode][0]];
+                    } else {
+                        break;
+                    }
+                    
+                    output.push(...entry);
+                    
+                    if (prevCode !== -1 && nextCode < 4096) {
+                        codeTable[nextCode] = [...codeTable[prevCode], entry[0]];
+                        nextCode++;
+                        
+                        if (nextCode > codeMask && codeSize < 12) {
+                            codeSize++;
+                            codeMask = (1 << codeSize) - 1;
+                        }
+                    }
+                    
+                    prevCode = code;
+                }
+                
+                return output;
+            }
+        }
+    </script>
+    
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
+        const statusText = document.getElementById('statusText');
+        const infoPanel = document.getElementById('infoPanel');
+        const previewSection = document.getElementById('previewSection');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const frameSlider = document.getElementById('frameSlider');
+        const frameCounter = document.getElementById('frameCounter');
+        const framesGrid = document.getElementById('framesGrid');
+        const selectionActions = document.getElementById('selectionActions');
+        const downloadActions = document.getElementById('downloadActions');
+        
+        // State
+        let gifData = null;
+        let frames = [];
+        let selectedFrames = new Set();
+        let currentFrameIndex = 0;
+        let isPlaying = false;
+        let playTimer = null;
+        let compositeCanvas = null;
+        let compositeCtx = null;
+        
+        // Event Listeners
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // Playback controls
+        document.getElementById('playPauseBtn').addEventListener('click', togglePlay);
+        document.getElementById('prevFrameBtn').addEventListener('click', () => goToFrame(currentFrameIndex - 1));
+        document.getElementById('nextFrameBtn').addEventListener('click', () => goToFrame(currentFrameIndex + 1));
+        frameSlider.addEventListener('input', () => goToFrame(parseInt(frameSlider.value)));
+        
+        // Selection controls
+        document.getElementById('selectAllBtn').addEventListener('click', selectAll);
+        document.getElementById('deselectAllBtn').addEventListener('click', deselectAll);
+        document.getElementById('invertSelectionBtn').addEventListener('click', invertSelection);
+        
+        // Download controls
+        document.getElementById('downloadSelectedBtn').addEventListener('click', downloadSelected);
+        document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
+        document.getElementById('downloadZipBtn').addEventListener('click', downloadZip);
+        
+        // Handle file upload
+        async function handleFile(file) {
+            if (!file.type.includes('gif')) {
+                alert('请上传GIF格式的文件');
+                return;
+            }
+            
+            progressBar.classList.add('visible');
+            progress.style.width = '0%';
+            statusText.textContent = '正在读取文件...';
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                progress.style.width = '30%';
+                statusText.textContent = '正在解析GIF...';
+                
+                const parser = new GIFParser(arrayBuffer);
+                gifData = parser.parse();
+                
+                progress.style.width = '60%';
+                statusText.textContent = '正在渲染帧...';
+                
+                await renderFrames();
+                
+                progress.style.width = '100%';
+                statusText.textContent = '解析完成!';
+                
+                // Update info
+                document.getElementById('infoSize').textContent = gifData.width + ' x ' + gifData.height;
+                document.getElementById('infoFrames').textContent = frames.length;
+                const totalDuration = frames.reduce((sum, f) => sum + f.delay, 0);
+                document.getElementById('infoDuration').textContent = (totalDuration / 1000).toFixed(2) + 's';
+                document.getElementById('infoFileSize').textContent = formatFileSize(file.size);
+                
+                // Show UI
+                infoPanel.classList.add('visible');
+                previewSection.classList.add('visible');
+                selectionActions.style.display = 'flex';
+                downloadActions.style.display = 'flex';
+                
+                // Setup slider
+                frameSlider.max = frames.length - 1;
+                frameSlider.value = 0;
+                
+                // Display frames
+                displayFrames();
+                goToFrame(0);
+                
+                setTimeout(() => {
+                    progressBar.classList.remove('visible');
+                    statusText.textContent = '';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error parsing GIF:', error);
+                statusText.textContent = '解析失败: ' + error.message;
+                progressBar.classList.remove('visible');
+            }
+        }
+        
+        // Render frames to canvases
+        async function renderFrames() {
+            frames = [];
+            
+            // Create composite canvas for frame accumulation
+            compositeCanvas = document.createElement('canvas');
+            compositeCanvas.width = gifData.width;
+            compositeCanvas.height = gifData.height;
+            compositeCtx = compositeCanvas.getContext('2d');
+            
+            // Previous frame backup for disposal
+            let previousCanvas = document.createElement('canvas');
+            previousCanvas.width = gifData.width;
+            previousCanvas.height = gifData.height;
+            let previousCtx = previousCanvas.getContext('2d');
+            
+            for (let i = 0; i < gifData.frames.length; i++) {
+                const frame = gifData.frames[i];
+                
+                // Backup before drawing
+                previousCtx.clearRect(0, 0, gifData.width, gifData.height);
+                previousCtx.drawImage(compositeCanvas, 0, 0);
+                
+                // Draw frame
+                drawFrame(frame);
+                
+                // Create frame canvas
+                const frameCanvas = document.createElement('canvas');
+                frameCanvas.width = gifData.width;
+                frameCanvas.height = gifData.height;
+                const frameCtx = frameCanvas.getContext('2d');
+                frameCtx.drawImage(compositeCanvas, 0, 0);
+                
+                frames.push({
+                    canvas: frameCanvas,
+                    delay: frame.delay,
+                    index: i
+                });
+                
+                // Handle disposal
+                if (frame.disposalMethod === 2) {
+                    // Restore to background
+                    compositeCtx.clearRect(frame.left, frame.top, frame.width, frame.height);
+                } else if (frame.disposalMethod === 3) {
+                    // Restore to previous
+                    compositeCtx.clearRect(0, 0, gifData.width, gifData.height);
+                    compositeCtx.drawImage(previousCanvas, 0, 0);
+                }
+                
+                progress.style.width = (30 + 30 * (i + 1) / gifData.frames.length) + '%';
+            }
+        }
+        
+        // Draw a single frame
+        function drawFrame(frame) {
+            const imageData = compositeCtx.createImageData(frame.width, frame.height);
+            const data = imageData.data;
+            
+            let pixelIndex = 0;
+            for (let y = 0; y < frame.height; y++) {
+                let row = y;
+                if (frame.interlaced) {
+                    // Deinterlace
+                    const h = frame.height;
+                    if (y < Math.ceil(h / 8)) {
+                        row = y * 8;
+                    } else if (y < Math.ceil(h / 8) + Math.ceil((h - 4) / 8)) {
+                        row = (y - Math.ceil(h / 8)) * 8 + 4;
+                    } else if (y < Math.ceil(h / 8) + Math.ceil((h - 4) / 8) + Math.ceil((h - 2) / 4)) {
+                        row = (y - Math.ceil(h / 8) - Math.ceil((h - 4) / 8)) * 4 + 2;
+                    } else {
+                        row = (y - Math.ceil(h / 8) - Math.ceil((h - 4) / 8) - Math.ceil((h - 2) / 4)) * 2 + 1;
+                    }
+                }
+                
+                for (let x = 0; x < frame.width; x++) {
+                    const colorIndex = frame.pixels[pixelIndex++];
+                    const i = (row * frame.width + x) * 4;
+                    
+                    if (colorIndex === frame.transparentIndex) {
+                        data[i + 3] = 0;
+                    } else if (frame.colorTable && frame.colorTable[colorIndex]) {
+                        const color = frame.colorTable[colorIndex];
+                        data[i] = color[0];
+                        data[i + 1] = color[1];
+                        data[i + 2] = color[2];
+                        data[i + 3] = 255;
+                    }
+                }
+            }
+            
+            compositeCtx.putImageData(imageData, frame.left, frame.top);
+        }
+        
+        // Display frames in grid
+        function displayFrames() {
+            framesGrid.replaceChildren();
+            
+            frames.forEach((frame, index) => {
+                const div = document.createElement('div');
+                div.className = 'frame-item';
+                div.dataset.index = index;
+                
+                const thumbCanvas = document.createElement('canvas');
+                thumbCanvas.width = frame.canvas.width;
+                thumbCanvas.height = frame.canvas.height;
+                const thumbCtx = thumbCanvas.getContext('2d');
+                thumbCtx.drawImage(frame.canvas, 0, 0);
+                
+                const checkbox = document.createElement('div');
+                checkbox.className = 'checkbox';
+                
+                const info = document.createElement('div');
+                info.className = 'frame-info';
+                
+                const indexSpan = document.createElement('span');
+                indexSpan.textContent = '#' + (index + 1);
+                
+                const delaySpan = document.createElement('span');
+                delaySpan.textContent = frame.delay + 'ms';
+                
+                info.appendChild(indexSpan);
+                info.appendChild(delaySpan);
+                
+                div.appendChild(thumbCanvas);
+                div.appendChild(checkbox);
+                div.appendChild(info);
+                
+                div.addEventListener('click', () => toggleFrameSelection(index));
+                
+                framesGrid.appendChild(div);
+            });
+        }
+        
+        // Frame selection
+        function toggleFrameSelection(index) {
+            if (selectedFrames.has(index)) {
+                selectedFrames.delete(index);
+            } else {
+                selectedFrames.add(index);
+            }
+            updateSelectionUI();
+        }
+        
+        function selectAll() {
+            frames.forEach((_, i) => selectedFrames.add(i));
+            updateSelectionUI();
+        }
+        
+        function deselectAll() {
+            selectedFrames.clear();
+            updateSelectionUI();
+        }
+        
+        function invertSelection() {
+            frames.forEach((_, i) => {
+                if (selectedFrames.has(i)) {
+                    selectedFrames.delete(i);
+                } else {
+                    selectedFrames.add(i);
+                }
+            });
+            updateSelectionUI();
+        }
+        
+        function updateSelectionUI() {
+            document.querySelectorAll('.frame-item').forEach((item, index) => {
+                item.classList.toggle('selected', selectedFrames.has(index));
+            });
+            document.getElementById('selectedCount').textContent = '已选择 ' + selectedFrames.size + ' 帧';
+        }
+        
+        // Playback
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('playPauseBtn').textContent = isPlaying ? '暂停' : '播放';
+            
+            if (isPlaying) {
+                playNextFrame();
+            } else {
+                clearTimeout(playTimer);
+            }
+        }
+        
+        function playNextFrame() {
+            if (!isPlaying) return;
+            
+            goToFrame((currentFrameIndex + 1) % frames.length);
+            playTimer = setTimeout(playNextFrame, frames[currentFrameIndex].delay || 100);
+        }
+        
+        function goToFrame(index) {
+            if (index < 0) index = frames.length - 1;
+            if (index >= frames.length) index = 0;
+            
+            currentFrameIndex = index;
+            frameSlider.value = index;
+            frameCounter.textContent = (index + 1) + ' / ' + frames.length;
+            
+            // Draw to preview canvas
+            previewCanvas.width = gifData.width;
+            previewCanvas.height = gifData.height;
+            previewCtx.drawImage(frames[index].canvas, 0, 0);
+        }
+        
+        // Download functions
+        function downloadSelected() {
+            if (selectedFrames.size === 0) {
+                alert('请先选择要下载的帧');
+                return;
+            }
+            
+            selectedFrames.forEach(index => {
+                downloadFrame(index);
+            });
+        }
+        
+        function downloadAll() {
+            frames.forEach((_, index) => {
+                downloadFrame(index);
+            });
+        }
+        
+        function downloadFrame(index) {
+            const link = document.createElement('a');
+            link.download = 'frame_' + String(index + 1).padStart(4, '0') + '.png';
+            link.href = frames[index].canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        async function downloadZip() {
+            statusText.textContent = '正在打包...';
+            progressBar.classList.add('visible');
+            progress.style.width = '0%';
+            
+            // Simple ZIP implementation
+            const files = [];
+            const framesToDownload = selectedFrames.size > 0 ? Array.from(selectedFrames) : frames.map((_, i) => i);
+            
+            for (let i = 0; i < framesToDownload.length; i++) {
+                const index = framesToDownload[i];
+                const dataUrl = frames[index].canvas.toDataURL('image/png');
+                const base64 = dataUrl.split(',')[1];
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let j = 0; j < binary.length; j++) {
+                    bytes[j] = binary.charCodeAt(j);
+                }
+                files.push({
+                    name: 'frame_' + String(index + 1).padStart(4, '0') + '.png',
+                    data: bytes
+                });
+                progress.style.width = (100 * (i + 1) / framesToDownload.length) + '%';
+            }
+            
+            // Create ZIP using simple format
+            const zipBlob = createZip(files);
+            const link = document.createElement('a');
+            link.download = 'gif_frames.zip';
+            link.href = URL.createObjectURL(zipBlob);
+            link.click();
+            
+            progressBar.classList.remove('visible');
+            statusText.textContent = '';
+        }
+        
+        // Simple ZIP creator
+        function createZip(files) {
+            const localFiles = [];
+            const centralDirectory = [];
+            let offset = 0;
+            
+            files.forEach(file => {
+                const nameBytes = new TextEncoder().encode(file.name);
+                const dataBytes = file.data;
+                
+                // Local file header
+                const localHeader = new Uint8Array(30 + nameBytes.length);
+                const view = new DataView(localHeader.buffer);
+                view.setUint32(0, 0x04034b50, true); // signature
+                view.setUint16(4, 20, true); // version
+                view.setUint16(6, 0, true); // flags
+                view.setUint16(8, 0, true); // compression
+                view.setUint16(10, 0, true); // mod time
+                view.setUint16(12, 0, true); // mod date
+                view.setUint32(14, crc32(dataBytes), true); // crc32
+                view.setUint32(18, dataBytes.length, true); // compressed size
+                view.setUint32(22, dataBytes.length, true); // uncompressed size
+                view.setUint16(26, nameBytes.length, true); // name length
+                view.setUint16(28, 0, true); // extra length
+                localHeader.set(nameBytes, 30);
+                
+                localFiles.push(localHeader, dataBytes);
+                
+                // Central directory header
+                const centralHeader = new Uint8Array(46 + nameBytes.length);
+                const cView = new DataView(centralHeader.buffer);
+                cView.setUint32(0, 0x02014b50, true); // signature
+                cView.setUint16(4, 20, true); // version made by
+                cView.setUint16(6, 20, true); // version needed
+                cView.setUint16(8, 0, true); // flags
+                cView.setUint16(10, 0, true); // compression
+                cView.setUint16(12, 0, true); // mod time
+                cView.setUint16(14, 0, true); // mod date
+                cView.setUint32(16, crc32(dataBytes), true); // crc32
+                cView.setUint32(20, dataBytes.length, true); // compressed size
+                cView.setUint32(24, dataBytes.length, true); // uncompressed size
+                cView.setUint16(28, nameBytes.length, true); // name length
+                cView.setUint16(30, 0, true); // extra length
+                cView.setUint16(32, 0, true); // comment length
+                cView.setUint16(34, 0, true); // disk start
+                cView.setUint16(36, 0, true); // internal attributes
+                cView.setUint32(38, 0, true); // external attributes
+                cView.setUint32(42, offset, true); // offset
+                centralHeader.set(nameBytes, 46);
+                
+                centralDirectory.push(centralHeader);
+                
+                offset += localHeader.length + dataBytes.length;
+            });
+            
+            // End of central directory
+            const centralDirSize = centralDirectory.reduce((sum, h) => sum + h.length, 0);
+            const endRecord = new Uint8Array(22);
+            const endView = new DataView(endRecord.buffer);
+            endView.setUint32(0, 0x06054b50, true); // signature
+            endView.setUint16(4, 0, true); // disk number
+            endView.setUint16(6, 0, true); // central dir disk
+            endView.setUint16(8, files.length, true); // entries on disk
+            endView.setUint16(10, files.length, true); // total entries
+            endView.setUint32(12, centralDirSize, true); // central dir size
+            endView.setUint32(16, offset, true); // central dir offset
+            endView.setUint16(20, 0, true); // comment length
+            
+            return new Blob([...localFiles, ...centralDirectory, endRecord], { type: 'application/zip' });
+        }
+        
+        // CRC32 calculation
+        function crc32(data) {
+            let crc = -1;
+            const table = new Int32Array(256);
+            for (let i = 0; i < 256; i++) {
+                let c = i;
+                for (let j = 0; j < 8; j++) {
+                    c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                }
+                table[i] = c;
+            }
+            for (let i = 0; i < data.length; i++) {
+                crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+            }
+            return ~crc >>> 0;
+        }
+        
+        // Utility
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>

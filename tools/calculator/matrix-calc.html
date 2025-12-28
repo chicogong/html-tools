@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>矩阵计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .matrix-container { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; margin-bottom: 2rem; }
+        .matrix-box { flex: 1; min-width: 280px; max-width: 400px; }
+        .matrix-grid { display: grid; gap: 0.25rem; margin-top: 0.5rem; }
+        .matrix-grid input { width: 100%; text-align: center; padding: 0.5rem; font-family: monospace; }
+        .matrix-controls { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .matrix-controls select { width: auto; padding: 0.25rem 0.5rem; margin: 0; }
+        .operations { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; justify-content: center; }
+        .operations button { width: auto; padding: 0.5rem 1rem; }
+        .result-box { background: var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 1rem; margin-top: 1rem; }
+        .result-matrix { display: grid; gap: 0.25rem; margin-top: 0.5rem; }
+        .result-cell { background: var(--pico-background-color); padding: 0.5rem; text-align: center; font-family: monospace; border-radius: var(--pico-border-radius); }
+        .scalar-input { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; justify-content: center; }
+        .scalar-input input { width: 100px; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>矩阵计算器</h1>
+            <button id="themeToggle" class="outline" onclick="toggleTheme()">🌙</button>
+        </header>
+
+        <div class="scalar-input">
+            <label>标量值：</label>
+            <input type="number" id="scalar" value="2" step="any">
+        </div>
+
+        <div class="matrix-container">
+            <div class="matrix-box">
+                <h4>矩阵 A</h4>
+                <div class="matrix-controls">
+                    <label>行:</label>
+                    <select id="rowsA" onchange="resizeMatrix('A')"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+                    <label>列:</label>
+                    <select id="colsA" onchange="resizeMatrix('A')"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+                    <button class="outline" onclick="clearMatrix('A')">清空</button>
+                    <button class="outline" onclick="setIdentity('A')">单位阵</button>
+                </div>
+                <div class="matrix-grid" id="matrixA"></div>
+            </div>
+            <div class="matrix-box">
+                <h4>矩阵 B</h4>
+                <div class="matrix-controls">
+                    <label>行:</label>
+                    <select id="rowsB" onchange="resizeMatrix('B')"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+                    <label>列:</label>
+                    <select id="colsB" onchange="resizeMatrix('B')"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+                    <button class="outline" onclick="clearMatrix('B')">清空</button>
+                    <button class="outline" onclick="setIdentity('B')">单位阵</button>
+                </div>
+                <div class="matrix-grid" id="matrixB"></div>
+            </div>
+        </div>
+
+        <div class="operations">
+            <button onclick="calculate('add')">A + B</button>
+            <button onclick="calculate('subtract')">A - B</button>
+            <button onclick="calculate('multiply')">A × B</button>
+            <button onclick="calculate('scalarA')">k × A</button>
+            <button onclick="calculate('transposeA')">Aᵀ</button>
+            <button onclick="calculate('detA')">det(A)</button>
+            <button onclick="calculate('inverseA')">A⁻¹</button>
+            <button onclick="calculate('traceA')">tr(A)</button>
+            <button onclick="calculate('powerA')">A²</button>
+            <button onclick="calculate('hadamard')">A ⊙ B</button>
+        </div>
+
+        <div class="result-box">
+            <h4>结果</h4>
+            <div id="resultText"></div>
+            <div class="result-matrix" id="resultMatrix"></div>
+        </div>
+
+        <article style="margin-top: 2rem;">
+            <h4>使用说明</h4>
+            <ul>
+                <li><strong>基本运算</strong>：加法、减法、乘法（需要维度匹配）</li>
+                <li><strong>转置</strong>：行列互换</li>
+                <li><strong>行列式</strong>：仅方阵有效</li>
+                <li><strong>逆矩阵</strong>：仅方阵且行列式不为0时有效</li>
+            </ul>
+        </article>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeToggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function resizeMatrix(name) {
+            const rows = parseInt(document.getElementById('rows' + name).value);
+            const cols = parseInt(document.getElementById('cols' + name).value);
+            const container = document.getElementById('matrix' + name);
+            const oldValues = getMatrix(name);
+            container.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+            container.textContent = '';
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.step = 'any';
+                    input.id = name + '_' + i + '_' + j;
+                    input.value = (oldValues[i] && oldValues[i][j] !== undefined) ? oldValues[i][j] : 0;
+                    container.appendChild(input);
+                }
+            }
+        }
+
+        function getMatrix(name) {
+            const rows = parseInt(document.getElementById('rows' + name).value);
+            const cols = parseInt(document.getElementById('cols' + name).value);
+            const matrix = [];
+            for (let i = 0; i < rows; i++) {
+                matrix[i] = [];
+                for (let j = 0; j < cols; j++) {
+                    const input = document.getElementById(name + '_' + i + '_' + j);
+                    matrix[i][j] = input ? parseFloat(input.value) || 0 : 0;
+                }
+            }
+            return matrix;
+        }
+
+        function clearMatrix(name) {
+            const rows = parseInt(document.getElementById('rows' + name).value);
+            const cols = parseInt(document.getElementById('cols' + name).value);
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    document.getElementById(name + '_' + i + '_' + j).value = 0;
+                }
+            }
+        }
+
+        function setIdentity(name) {
+            const rows = parseInt(document.getElementById('rows' + name).value);
+            const cols = parseInt(document.getElementById('cols' + name).value);
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    document.getElementById(name + '_' + i + '_' + j).value = (i === j) ? 1 : 0;
+                }
+            }
+        }
+
+        function displayResult(result, text) {
+            const textEl = document.getElementById('resultText');
+            const matrixEl = document.getElementById('resultMatrix');
+            if (typeof result === 'number' || typeof result === 'string') {
+                textEl.textContent = text + ' ' + result;
+                matrixEl.textContent = '';
+            } else if (Array.isArray(result)) {
+                textEl.textContent = text || '';
+                const rows = result.length;
+                const cols = result[0].length;
+                matrixEl.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+                matrixEl.textContent = '';
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'result-cell';
+                        const val = result[i][j];
+                        cell.textContent = Number.isInteger(val) ? val : val.toFixed(4);
+                        matrixEl.appendChild(cell);
+                    }
+                }
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('resultText').textContent = '错误: ' + message;
+            document.getElementById('resultMatrix').textContent = '';
+        }
+
+        function add(A, B) {
+            if (A.length !== B.length || A[0].length !== B[0].length) throw new Error('矩阵维度不匹配');
+            return A.map((row, i) => row.map((val, j) => val + B[i][j]));
+        }
+
+        function subtract(A, B) {
+            if (A.length !== B.length || A[0].length !== B[0].length) throw new Error('矩阵维度不匹配');
+            return A.map((row, i) => row.map((val, j) => val - B[i][j]));
+        }
+
+        function multiply(A, B) {
+            if (A[0].length !== B.length) throw new Error('矩阵维度不匹配');
+            const result = [];
+            for (let i = 0; i < A.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < B[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < A[0].length; k++) sum += A[i][k] * B[k][j];
+                    result[i][j] = sum;
+                }
+            }
+            return result;
+        }
+
+        function scalarMultiply(A, k) { return A.map(row => row.map(val => val * k)); }
+        function transpose(A) { return A[0].map((_, j) => A.map(row => row[j])); }
+
+        function determinant(A) {
+            if (A.length !== A[0].length) throw new Error('只有方阵才能计算行列式');
+            const n = A.length;
+            if (n === 1) return A[0][0];
+            if (n === 2) return A[0][0] * A[1][1] - A[0][1] * A[1][0];
+            let det = 0;
+            for (let j = 0; j < n; j++) det += Math.pow(-1, j) * A[0][j] * determinant(minor(A, 0, j));
+            return det;
+        }
+
+        function minor(A, row, col) { return A.filter((_, i) => i !== row).map(r => r.filter((_, j) => j !== col)); }
+
+        function inverse(A) {
+            if (A.length !== A[0].length) throw new Error('只有方阵才能求逆');
+            const det = determinant(A);
+            if (Math.abs(det) < 1e-10) throw new Error('矩阵不可逆');
+            const n = A.length;
+            const adj = [];
+            for (let i = 0; i < n; i++) {
+                adj[i] = [];
+                for (let j = 0; j < n; j++) adj[i][j] = Math.pow(-1, i + j) * determinant(minor(A, j, i));
+            }
+            return scalarMultiply(adj, 1 / det);
+        }
+
+        function trace(A) {
+            if (A.length !== A[0].length) throw new Error('只有方阵才能计算迹');
+            return A.reduce((sum, row, i) => sum + row[i], 0);
+        }
+
+        function hadamard(A, B) {
+            if (A.length !== B.length || A[0].length !== B[0].length) throw new Error('矩阵维度不匹配');
+            return A.map((row, i) => row.map((val, j) => val * B[i][j]));
+        }
+
+        function power(A, n) {
+            if (A.length !== A[0].length) throw new Error('只有方阵才能求幂');
+            let result = A;
+            for (let i = 1; i < n; i++) result = multiply(result, A);
+            return result;
+        }
+
+        function calculate(op) {
+            try {
+                const A = getMatrix('A');
+                const B = getMatrix('B');
+                const k = parseFloat(document.getElementById('scalar').value) || 1;
+                let result, text = '';
+                switch (op) {
+                    case 'add': result = add(A, B); text = 'A + B ='; break;
+                    case 'subtract': result = subtract(A, B); text = 'A - B ='; break;
+                    case 'multiply': result = multiply(A, B); text = 'A × B ='; break;
+                    case 'scalarA': result = scalarMultiply(A, k); text = k + ' × A ='; break;
+                    case 'transposeA': result = transpose(A); text = 'Aᵀ ='; break;
+                    case 'detA': result = determinant(A); text = 'det(A) ='; break;
+                    case 'inverseA': result = inverse(A); text = 'A⁻¹ ='; break;
+                    case 'traceA': result = trace(A); text = 'tr(A) ='; break;
+                    case 'powerA': result = power(A, 2); text = 'A² ='; break;
+                    case 'hadamard': result = hadamard(A, B); text = 'A ⊙ B ='; break;
+                }
+                displayResult(result, text);
+            } catch (e) { showError(e.message); }
+        }
+
+        loadTheme();
+        resizeMatrix('A');
+        resizeMatrix('B');
+    </script>
+</body>
+</html>

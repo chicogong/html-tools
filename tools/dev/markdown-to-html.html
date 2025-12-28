@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 转 HTML 转换器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <style>
+        :root {
+            --editor-height: 400px;
+        }
+        .container {
+            max-width: 1400px;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-panel label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        textarea {
+            height: var(--editor-height);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        .preview-box {
+            height: var(--editor-height);
+            overflow: auto;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            background: var(--pico-background-color);
+        }
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .button-group button {
+            margin: 0;
+        }
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+        .tabs button {
+            border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
+            margin: 0;
+            border-bottom: none;
+        }
+        .tabs button.secondary {
+            background: var(--pico-muted-background);
+        }
+        .output-container {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 0 var(--pico-border-radius) var(--pico-border-radius) var(--pico-border-radius);
+        }
+        .output-content {
+            display: none;
+            height: var(--editor-height);
+            overflow: auto;
+        }
+        .output-content.active {
+            display: block;
+        }
+        .output-content textarea {
+            border: none;
+            border-radius: 0;
+            height: 100%;
+        }
+        .stats {
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.5rem;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>Markdown 转 HTML 转换器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <label for="markdown-input">Markdown 输入</label>
+                <textarea id="markdown-input" placeholder="在此输入 Markdown 内容..."># 欢迎使用 Markdown 转换器
+
+这是一个**强大**的 Markdown 转 HTML 工具。
+
+## 功能特性
+
+- 实时预览
+- 支持代码高亮
+- 支持表格
+- 支持任务列表
+
+### 代码示例
+
+```javascript
+function hello() {
+    console.log('Hello, World!');
+}
+```
+
+### 表格示例
+
+| 名称 | 描述 |
+|------|------|
+| 工具1 | 很棒 |
+| 工具2 | 更棒 |
+
+### 任务列表
+
+- [x] 完成设计
+- [ ] 开发中
+- [ ] 测试
+
+> 引用文字示例
+
+[访问链接](https://example.com)</textarea>
+                <div class="stats" id="input-stats">字符: 0 | 行数: 0</div>
+            </div>
+
+            <div class="editor-panel">
+                <label>输出结果</label>
+                <div class="tabs">
+                    <button id="tab-preview" onclick="switchTab('preview')">预览</button>
+                    <button id="tab-html" class="secondary" onclick="switchTab('html')">HTML 代码</button>
+                </div>
+                <div class="output-container">
+                    <div id="preview-output" class="output-content active preview-box"></div>
+                    <div id="html-output" class="output-content">
+                        <textarea id="html-code" readonly placeholder="HTML 代码将显示在这里..."></textarea>
+                    </div>
+                </div>
+                <div class="stats" id="output-stats">HTML 字符: 0</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="convertMarkdown()">转换</button>
+            <button class="secondary" onclick="copyHTML()">复制 HTML</button>
+            <button class="secondary" onclick="downloadHTML()">下载 HTML</button>
+            <button class="secondary" onclick="clearAll()">清空</button>
+            <button class="secondary" onclick="loadSample()">加载示例</button>
+        </div>
+
+        <details>
+            <summary>使用说明</summary>
+            <ul>
+                <li>在左侧输入框中输入 Markdown 内容</li>
+                <li>点击"转换"按钮或内容会自动实时转换</li>
+                <li>切换"预览"和"HTML 代码"标签查看不同输出</li>
+                <li>使用"复制 HTML"按钮复制生成的代码</li>
+                <li>使用"下载 HTML"按钮下载完整的 HTML 文件</li>
+            </ul>
+        </details>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 标签切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.add('secondary'));
+            document.querySelectorAll('.output-content').forEach(content => content.classList.remove('active'));
+            
+            document.getElementById(`tab-${tab}`).classList.remove('secondary');
+            document.getElementById(`${tab}-output`).classList.add('active');
+        }
+
+        // 转换 Markdown
+        function convertMarkdown() {
+            const input = document.getElementById('markdown-input').value;
+            
+            // 配置 marked
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+            
+            const html = marked.parse(input);
+            const sanitizedHtml = DOMPurify.sanitize(html);
+            
+            document.getElementById('preview-output').innerHTML = sanitizedHtml;
+            document.getElementById('html-code').value = html;
+            
+            updateStats();
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            const input = document.getElementById('markdown-input').value;
+            const html = document.getElementById('html-code').value;
+            
+            const lines = input.split('\n').length;
+            const chars = input.length;
+            
+            document.getElementById('input-stats').textContent = `字符: ${chars} | 行数: ${lines}`;
+            document.getElementById('output-stats').textContent = `HTML 字符: ${html.length}`;
+        }
+
+        // 复制 HTML
+        function copyHTML() {
+            const html = document.getElementById('html-code').value;
+            navigator.clipboard.writeText(html).then(() => {
+                alert('HTML 代码已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                const textarea = document.getElementById('html-code');
+                textarea.select();
+                document.execCommand('copy');
+                alert('HTML 代码已复制到剪贴板！');
+            });
+        }
+
+        // 下载 HTML
+        function downloadHTML() {
+            const html = document.getElementById('html-code').value;
+            const fullHTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 转换结果</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; border-radius: 4px; }
+        code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 3px; }
+        pre code { background: none; padding: 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; }
+        blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #666; }
+        img { max-width: 100%; }
+    </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+            
+            const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'markdown-output.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('markdown-input').value = '';
+            document.getElementById('preview-output').innerHTML = '';
+            document.getElementById('html-code').value = '';
+            updateStats();
+        }
+
+        // 加载示例
+        function loadSample() {
+            const sample = `# Markdown 示例文档
+
+## 文本格式
+
+这是**粗体**文本，这是*斜体*文本，这是~~删除线~~文本。
+
+## 列表
+
+### 无序列表
+- 项目一
+- 项目二
+  - 子项目
+  - 另一个子项目
+- 项目三
+
+### 有序列表
+1. 第一步
+2. 第二步
+3. 第三步
+
+## 代码
+
+行内代码：\`console.log('hello')\`
+
+代码块：
+\`\`\`python
+def hello():
+    print("Hello, World!")
+\`\`\`
+
+## 表格
+
+| 标题1 | 标题2 | 标题3 |
+|-------|-------|-------|
+| 内容1 | 内容2 | 内容3 |
+| 内容4 | 内容5 | 内容6 |
+
+## 引用
+
+> 这是一段引用文字
+> 可以有多行
+
+## 链接和图片
+
+[这是一个链接](https://example.com)
+
+![图片描述](https://via.placeholder.com/150)
+
+## 分隔线
+
+---
+
+## 任务列表
+
+- [x] 已完成任务
+- [ ] 未完成任务
+- [ ] 另一个任务
+`;
+            document.getElementById('markdown-input').value = sample;
+            convertMarkdown();
+        }
+
+        // 实时转换
+        document.getElementById('markdown-input').addEventListener('input', function() {
+            convertMarkdown();
+        });
+
+        // 初始化
+        loadTheme();
+        convertMarkdown();
+    </script>
+</body>
+</html>

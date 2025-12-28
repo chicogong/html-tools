@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表情包生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] {
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        header h1 {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--primary-gradient);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .controls {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .upload-area {
+            border: 3px dashed var(--pico-muted-border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--pico-card-background-color);
+        }
+        
+        .upload-area:hover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.05);
+        }
+        
+        .upload-area.dragover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .template-btn {
+            aspect-ratio: 1;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.5rem;
+            background: var(--pico-card-background-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .template-btn:hover, .template-btn.active {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .color-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+        
+        .color-row input[type="color"] {
+            width: 50px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .preview-area {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            min-height: 500px;
+        }
+        
+        [data-theme="dark"] .canvas-container {
+            background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 50% / 20px 20px;
+        }
+        
+        #canvas {
+            max-width: 100%;
+            max-height: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-group button {
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+        }
+        
+        .text-position {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .position-btn {
+            padding: 0.5rem;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .position-btn:hover, .position-btn.active {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .font-effects {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .effect-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .effect-btn:hover, .effect-btn.active {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .slider-group input[type="range"] {
+            flex: 1;
+        }
+        
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    
+    <div class="container">
+        <header>
+            <h1>😂 表情包生成器</h1>
+            <p>上传图片，添加搞笑文字，创建你的专属表情包</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="controls">
+                <div class="control-group">
+                    <label>📷 上传图片</label>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <p>点击或拖拽图片到这里</p>
+                        <small>支持 JPG、PNG、GIF 格式</small>
+                        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>🎭 快速模板</label>
+                    <div class="template-grid">
+                        <button class="template-btn" data-template="top-bottom">⬆️⬇️</button>
+                        <button class="template-btn" data-template="top-only">⬆️</button>
+                        <button class="template-btn" data-template="bottom-only">⬇️</button>
+                        <button class="template-btn" data-template="center">⭕</button>
+                        <button class="template-btn" data-template="impact">💥</button>
+                        <button class="template-btn" data-template="speech">💬</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>✏️ 顶部文字</label>
+                    <input type="text" id="topText" placeholder="输入顶部文字">
+                </div>
+                
+                <div class="control-group">
+                    <label>✏️ 底部文字</label>
+                    <input type="text" id="bottomText" placeholder="输入底部文字" value="当我看到代码能运行时">
+                </div>
+                
+                <div class="control-group">
+                    <label>🎨 文字样式</label>
+                    <div class="color-row">
+                        <span>填充</span>
+                        <input type="color" id="textColor" value="#ffffff">
+                        <span>描边</span>
+                        <input type="color" id="strokeColor" value="#000000">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>📏 文字大小</label>
+                    <div class="slider-group">
+                        <input type="range" id="fontSize" min="20" max="120" value="48">
+                        <span class="slider-value" id="fontSizeValue">48px</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>📐 描边粗细</label>
+                    <div class="slider-group">
+                        <input type="range" id="strokeWidth" min="0" max="20" value="4">
+                        <span class="slider-value" id="strokeWidthValue">4px</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>🔤 字体效果</label>
+                    <div class="font-effects">
+                        <button class="effect-btn active" data-effect="impact">Impact</button>
+                        <button class="effect-btn" data-effect="comic">漫画</button>
+                        <button class="effect-btn" data-effect="bold">粗体</button>
+                        <button class="effect-btn" data-effect="handwriting">手写</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>🌈 添加滤镜</label>
+                    <select id="imageFilter">
+                        <option value="none">无滤镜</option>
+                        <option value="grayscale">黑白</option>
+                        <option value="sepia">复古</option>
+                        <option value="saturate">高饱和</option>
+                        <option value="contrast">高对比</option>
+                        <option value="brightness">高亮度</option>
+                        <option value="blur">模糊</option>
+                    </select>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="downloadMeme()">📥 下载表情包</button>
+                    <button onclick="resetMeme()">🔄 重置</button>
+                </div>
+            </div>
+            
+            <div class="preview-area">
+                <h3>预览</h3>
+                <div class="canvas-container">
+                    <canvas id="canvas" width="600" height="600"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Theme management
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let state = {
+            image: null,
+            topText: '',
+            bottomText: '当我看到代码能运行时',
+            textColor: '#ffffff',
+            strokeColor: '#000000',
+            fontSize: 48,
+            strokeWidth: 4,
+            font: 'Impact',
+            filter: 'none',
+            template: 'bottom-only'
+        };
+        
+        const fonts = {
+            impact: 'Impact, Haettenschweiler, sans-serif',
+            comic: 'Comic Sans MS, cursive',
+            bold: 'Arial Black, sans-serif',
+            handwriting: 'Brush Script MT, cursive'
+        };
+        
+        // Upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const imageUpload = document.getElementById('imageUpload');
+        
+        uploadArea.addEventListener('click', () => imageUpload.click());
+        
+        uploadArea.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        });
+        
+        imageUpload.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) loadImage(file);
+        });
+        
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    // Resize canvas to fit image
+                    const maxSize = 800;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxSize || h > maxSize) {
+                        if (w > h) {
+                            h = (h / w) * maxSize;
+                            w = maxSize;
+                        } else {
+                            w = (w / h) * maxSize;
+                            h = maxSize;
+                        }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    render();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Event listeners
+        document.getElementById('topText').addEventListener('input', e => {
+            state.topText = e.target.value;
+            render();
+        });
+        
+        document.getElementById('bottomText').addEventListener('input', e => {
+            state.bottomText = e.target.value;
+            render();
+        });
+        
+        document.getElementById('textColor').addEventListener('input', e => {
+            state.textColor = e.target.value;
+            render();
+        });
+        
+        document.getElementById('strokeColor').addEventListener('input', e => {
+            state.strokeColor = e.target.value;
+            render();
+        });
+        
+        document.getElementById('fontSize').addEventListener('input', e => {
+            state.fontSize = parseInt(e.target.value);
+            document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+            render();
+        });
+        
+        document.getElementById('strokeWidth').addEventListener('input', e => {
+            state.strokeWidth = parseInt(e.target.value);
+            document.getElementById('strokeWidthValue').textContent = e.target.value + 'px';
+            render();
+        });
+        
+        document.getElementById('imageFilter').addEventListener('change', e => {
+            state.filter = e.target.value;
+            render();
+        });
+        
+        document.querySelectorAll('.template-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.template = btn.dataset.template;
+                
+                // Set default texts based on template
+                if (state.template === 'top-only') {
+                    document.getElementById('bottomText').value = '';
+                    state.bottomText = '';
+                } else if (state.template === 'bottom-only') {
+                    document.getElementById('topText').value = '';
+                    state.topText = '';
+                }
+                render();
+            });
+        });
+        
+        document.querySelectorAll('.effect-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.font = fonts[btn.dataset.effect];
+                render();
+            });
+        });
+        
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background if no image
+            if (!state.image) {
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Placeholder text
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('上传图片开始制作', canvas.width / 2, canvas.height / 2);
+            } else {
+                // Apply filter
+                switch (state.filter) {
+                    case 'grayscale':
+                        ctx.filter = 'grayscale(100%)';
+                        break;
+                    case 'sepia':
+                        ctx.filter = 'sepia(100%)';
+                        break;
+                    case 'saturate':
+                        ctx.filter = 'saturate(200%)';
+                        break;
+                    case 'contrast':
+                        ctx.filter = 'contrast(150%)';
+                        break;
+                    case 'brightness':
+                        ctx.filter = 'brightness(130%)';
+                        break;
+                    case 'blur':
+                        ctx.filter = 'blur(2px)';
+                        break;
+                    default:
+                        ctx.filter = 'none';
+                }
+                
+                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+                ctx.filter = 'none';
+            }
+            
+            // Draw text
+            ctx.font = `bold ${state.fontSize}px ${state.font}`;
+            ctx.fillStyle = state.textColor;
+            ctx.strokeStyle = state.strokeColor;
+            ctx.lineWidth = state.strokeWidth;
+            ctx.textAlign = 'center';
+            ctx.lineJoin = 'round';
+            ctx.miterLimit = 2;
+            
+            // Helper function for wrapped text
+            function drawText(text, y, isTop) {
+                if (!text) return;
+                
+                const maxWidth = canvas.width * 0.9;
+                const words = text.split('');
+                let line = '';
+                const lines = [];
+                
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n];
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && n > 0) {
+                        lines.push(line);
+                        line = words[n];
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line);
+                
+                const lineHeight = state.fontSize * 1.2;
+                let startY = y;
+                
+                if (!isTop) {
+                    startY = y - (lines.length - 1) * lineHeight;
+                }
+                
+                lines.forEach((l, i) => {
+                    const currentY = startY + i * lineHeight;
+                    if (state.strokeWidth > 0) {
+                        ctx.strokeText(l, canvas.width / 2, currentY);
+                    }
+                    ctx.fillText(l, canvas.width / 2, currentY);
+                });
+            }
+            
+            // Draw based on template
+            ctx.textBaseline = 'top';
+            if (state.template !== 'bottom-only' && state.template !== 'center') {
+                drawText(state.topText, state.fontSize * 0.5, true);
+            }
+            
+            ctx.textBaseline = 'bottom';
+            if (state.template !== 'top-only' && state.template !== 'center') {
+                drawText(state.bottomText, canvas.height - state.fontSize * 0.3, false);
+            }
+            
+            if (state.template === 'center') {
+                ctx.textBaseline = 'middle';
+                drawText(state.topText || state.bottomText, canvas.height / 2, true);
+            }
+            
+            // Speech bubble for speech template
+            if (state.template === 'speech' && (state.topText || state.bottomText)) {
+                ctx.save();
+                const text = state.topText || state.bottomText;
+                const metrics = ctx.measureText(text);
+                const bubbleWidth = Math.min(metrics.width + 40, canvas.width * 0.8);
+                const bubbleHeight = state.fontSize * 2;
+                const bubbleX = (canvas.width - bubbleWidth) / 2;
+                const bubbleY = 20;
+                
+                // Draw bubble
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 10);
+                ctx.fill();
+                
+                // Draw tail
+                ctx.beginPath();
+                ctx.moveTo(bubbleX + bubbleWidth * 0.3, bubbleY + bubbleHeight);
+                ctx.lineTo(bubbleX + bubbleWidth * 0.2, bubbleY + bubbleHeight + 20);
+                ctx.lineTo(bubbleX + bubbleWidth * 0.5, bubbleY + bubbleHeight);
+                ctx.fill();
+                
+                // Draw text in bubble
+                ctx.fillStyle = '#333';
+                ctx.strokeStyle = 'transparent';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, canvas.width / 2, bubbleY + bubbleHeight / 2);
+                ctx.restore();
+            }
+        }
+        
+        function downloadMeme() {
+            const link = document.createElement('a');
+            link.download = 'meme.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function resetMeme() {
+            state.image = null;
+            state.topText = '';
+            state.bottomText = '';
+            document.getElementById('topText').value = '';
+            document.getElementById('bottomText').value = '';
+            canvas.width = 600;
+            canvas.height = 600;
+            render();
+        }
+        
+        // Initial render
+        render();
+    </script>
+</body>
+</html>

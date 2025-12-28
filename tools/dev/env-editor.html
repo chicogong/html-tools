@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.env 文件编辑器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { padding: 1rem; }
+        .container { max-width: 1400px; }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 992px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+        .env-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: flex-start;
+        }
+        .env-row input, .env-row textarea {
+            margin-bottom: 0;
+        }
+        .env-key {
+            flex: 0 0 200px;
+            font-family: monospace;
+        }
+        .env-value {
+            flex: 1;
+            font-family: monospace;
+        }
+        .env-comment {
+            flex: 0 0 150px;
+            font-size: 0.85rem;
+        }
+        .env-actions {
+            flex: 0 0 auto;
+            display: flex;
+            gap: 0.25rem;
+        }
+        pre {
+            background: var(--pico-code-background-color);
+            padding: 1rem;
+            border-radius: var(--pico-border-radius);
+            overflow-x: auto;
+            max-height: 60vh;
+            font-size: 0.85rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        .output-section { position: sticky; top: 1rem; }
+        .template-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .section-divider {
+            background: var(--pico-card-background-color);
+            padding: 0.5rem 1rem;
+            border-radius: var(--pico-border-radius);
+            margin: 1rem 0 0.5rem 0;
+            font-weight: bold;
+            border-left: 4px solid var(--pico-primary);
+        }
+        .secret-toggle {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+        }
+        .file-drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: background-color 0.2s;
+        }
+        .file-drop-zone.dragover {
+            background-color: var(--pico-primary-focus);
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+            background: var(--pico-secondary-background);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle outline" onclick="toggleTheme()">🌓 主题</button>
+    
+    <main class="container">
+        <h1>📝 .env 文件编辑器</h1>
+        <p>可视化编辑环境变量配置文件</p>
+
+        <div class="grid-layout">
+            <section>
+                <article>
+                    <header>
+                        <h3>导入现有文件</h3>
+                    </header>
+                    <div class="file-drop-zone" id="dropZone">
+                        <p>拖放 .env 文件到此处，或</p>
+                        <input type="file" id="fileInput" accept=".env,.env.local,.env.example" style="display:none">
+                        <button class="outline" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                    </div>
+                    <label>
+                        或直接粘贴内容
+                        <textarea id="pasteArea" rows="3" placeholder="KEY=value&#10;ANOTHER_KEY=another_value"></textarea>
+                    </label>
+                    <button onclick="parseEnvContent(document.getElementById('pasteArea').value)">解析内容</button>
+                </article>
+
+                <article>
+                    <header>
+                        <h3>快速模板</h3>
+                    </header>
+                    <div class="btn-group">
+                        <button class="template-btn outline" onclick="addTemplate('node')">Node.js</button>
+                        <button class="template-btn outline" onclick="addTemplate('database')">数据库</button>
+                        <button class="template-btn outline" onclick="addTemplate('auth')">认证</button>
+                        <button class="template-btn outline" onclick="addTemplate('aws')">AWS</button>
+                        <button class="template-btn outline" onclick="addTemplate('smtp')">SMTP</button>
+                        <button class="template-btn outline" onclick="addTemplate('redis')">Redis</button>
+                    </div>
+                </article>
+
+                <article>
+                    <header>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>环境变量</h3>
+                            <div class="btn-group">
+                                <button class="outline" onclick="addSection()">+ 分组</button>
+                                <button class="outline" onclick="addEnvVar()">+ 变量</button>
+                            </div>
+                        </div>
+                    </header>
+                    <div id="envContainer"></div>
+                </article>
+            </section>
+
+            <section class="output-section">
+                <article>
+                    <header>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>生成结果</h3>
+                            <div class="btn-group">
+                                <button class="outline" onclick="copyOutput()">📋 复制</button>
+                                <button class="outline" onclick="downloadFile('.env')">💾 .env</button>
+                                <button class="outline" onclick="downloadFile('.env.example')">📄 .env.example</button>
+                            </div>
+                        </div>
+                    </header>
+                    <label>
+                        <input type="checkbox" id="showValues" checked onchange="generateOutput()">
+                        显示敏感值（取消勾选生成 .env.example）
+                    </label>
+                    <pre><code id="output"></code></pre>
+                </article>
+
+                <article>
+                    <header>
+                        <h3>统计信息</h3>
+                    </header>
+                    <div id="stats"></div>
+                </article>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let envItems = [];
+        let itemId = 0;
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+
+        // Templates
+        const templates = {
+            node: [
+                { type: 'section', title: 'Node.js 配置' },
+                { key: 'NODE_ENV', value: 'development', comment: '环境', secret: false },
+                { key: 'PORT', value: '3000', comment: '端口', secret: false },
+                { key: 'HOST', value: 'localhost', comment: '主机', secret: false }
+            ],
+            database: [
+                { type: 'section', title: '数据库配置' },
+                { key: 'DB_HOST', value: 'localhost', comment: '数据库主机', secret: false },
+                { key: 'DB_PORT', value: '5432', comment: '数据库端口', secret: false },
+                { key: 'DB_NAME', value: 'mydb', comment: '数据库名', secret: false },
+                { key: 'DB_USER', value: 'postgres', comment: '用户名', secret: false },
+                { key: 'DB_PASSWORD', value: '', comment: '密码', secret: true },
+                { key: 'DATABASE_URL', value: 'postgresql://user:pass@localhost:5432/mydb', comment: '连接字符串', secret: true }
+            ],
+            auth: [
+                { type: 'section', title: '认证配置' },
+                { key: 'JWT_SECRET', value: '', comment: 'JWT密钥', secret: true },
+                { key: 'JWT_EXPIRES_IN', value: '7d', comment: 'JWT过期时间', secret: false },
+                { key: 'SESSION_SECRET', value: '', comment: '会话密钥', secret: true },
+                { key: 'BCRYPT_ROUNDS', value: '10', comment: '加密轮数', secret: false }
+            ],
+            aws: [
+                { type: 'section', title: 'AWS 配置' },
+                { key: 'AWS_ACCESS_KEY_ID', value: '', comment: 'AWS访问密钥', secret: true },
+                { key: 'AWS_SECRET_ACCESS_KEY', value: '', comment: 'AWS密钥', secret: true },
+                { key: 'AWS_REGION', value: 'us-east-1', comment: 'AWS区域', secret: false },
+                { key: 'AWS_S3_BUCKET', value: '', comment: 'S3存储桶', secret: false }
+            ],
+            smtp: [
+                { type: 'section', title: 'SMTP 邮件配置' },
+                { key: 'SMTP_HOST', value: 'smtp.example.com', comment: 'SMTP主机', secret: false },
+                { key: 'SMTP_PORT', value: '587', comment: 'SMTP端口', secret: false },
+                { key: 'SMTP_USER', value: '', comment: 'SMTP用户', secret: false },
+                { key: 'SMTP_PASS', value: '', comment: 'SMTP密码', secret: true },
+                { key: 'SMTP_FROM', value: 'noreply@example.com', comment: '发件人', secret: false }
+            ],
+            redis: [
+                { type: 'section', title: 'Redis 配置' },
+                { key: 'REDIS_HOST', value: 'localhost', comment: 'Redis主机', secret: false },
+                { key: 'REDIS_PORT', value: '6379', comment: 'Redis端口', secret: false },
+                { key: 'REDIS_PASSWORD', value: '', comment: 'Redis密码', secret: true },
+                { key: 'REDIS_URL', value: 'redis://localhost:6379', comment: '连接URL', secret: true }
+            ]
+        };
+
+        function addTemplate(type) {
+            const items = templates[type];
+            if (items) {
+                items.forEach(item => {
+                    if (item.type === 'section') {
+                        addSection(item.title);
+                    } else {
+                        addEnvVar(item);
+                    }
+                });
+            }
+        }
+
+        function addSection(title = '') {
+            const id = itemId++;
+            envItems.push({
+                id,
+                type: 'section',
+                title: title || '新分组'
+            });
+            renderEnvItems();
+            generateOutput();
+        }
+
+        function addEnvVar(template = null) {
+            const id = itemId++;
+            envItems.push({
+                id,
+                type: 'var',
+                key: template?.key || '',
+                value: template?.value || '',
+                comment: template?.comment || '',
+                secret: template?.secret || false,
+                showValue: true
+            });
+            renderEnvItems();
+            generateOutput();
+        }
+
+        function removeItem(id) {
+            envItems = envItems.filter(item => item.id !== id);
+            renderEnvItems();
+            generateOutput();
+        }
+
+        function moveItem(id, direction) {
+            const index = envItems.findIndex(item => item.id === id);
+            if (index === -1) return;
+            
+            const newIndex = direction === 'up' ? index - 1 : index + 1;
+            if (newIndex < 0 || newIndex >= envItems.length) return;
+            
+            const temp = envItems[index];
+            envItems[index] = envItems[newIndex];
+            envItems[newIndex] = temp;
+            
+            renderEnvItems();
+            generateOutput();
+        }
+
+        function renderEnvItems() {
+            const container = document.getElementById('envContainer');
+            container.replaceChildren();
+
+            envItems.forEach(item => {
+                if (item.type === 'section') {
+                    const div = document.createElement('div');
+                    div.className = 'section-divider';
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = item.title;
+                    input.style.cssText = 'border:none;background:transparent;font-weight:bold;flex:1;margin:0;padding:0;';
+                    input.onchange = (e) => { item.title = e.target.value; generateOutput(); };
+
+                    const actions = document.createElement('div');
+                    actions.className = 'env-actions';
+
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'outline secondary';
+                    upBtn.style.padding = '0.2rem 0.4rem';
+                    upBtn.textContent = '↑';
+                    upBtn.onclick = () => moveItem(item.id, 'up');
+
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'outline secondary';
+                    downBtn.style.padding = '0.2rem 0.4rem';
+                    downBtn.textContent = '↓';
+                    downBtn.onclick = () => moveItem(item.id, 'down');
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'outline secondary';
+                    delBtn.style.padding = '0.2rem 0.4rem';
+                    delBtn.textContent = '×';
+                    delBtn.onclick = () => removeItem(item.id);
+
+                    actions.appendChild(upBtn);
+                    actions.appendChild(downBtn);
+                    actions.appendChild(delBtn);
+
+                    div.appendChild(input);
+                    div.appendChild(actions);
+                    container.appendChild(div);
+                } else {
+                    const row = document.createElement('div');
+                    row.className = 'env-row';
+
+                    const keyInput = document.createElement('input');
+                    keyInput.type = 'text';
+                    keyInput.className = 'env-key';
+                    keyInput.value = item.key;
+                    keyInput.placeholder = 'KEY_NAME';
+                    keyInput.onchange = (e) => { item.key = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'); keyInput.value = item.key; generateOutput(); };
+
+                    const valueInput = document.createElement('input');
+                    valueInput.type = item.showValue ? 'text' : 'password';
+                    valueInput.className = 'env-value';
+                    valueInput.value = item.value;
+                    valueInput.placeholder = '值';
+                    valueInput.onchange = (e) => { item.value = e.target.value; generateOutput(); };
+
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'outline secondary secret-toggle';
+                    toggleBtn.textContent = item.showValue ? '👁️' : '🔒';
+                    toggleBtn.title = item.showValue ? '隐藏值' : '显示值';
+                    toggleBtn.onclick = () => {
+                        item.showValue = !item.showValue;
+                        renderEnvItems();
+                    };
+
+                    const secretLabel = document.createElement('label');
+                    secretLabel.style.cssText = 'margin:0;display:flex;align-items:center;gap:0.25rem;white-space:nowrap;';
+                    const secretCheck = document.createElement('input');
+                    secretCheck.type = 'checkbox';
+                    secretCheck.checked = item.secret;
+                    secretCheck.onchange = (e) => { item.secret = e.target.checked; generateOutput(); };
+                    secretLabel.appendChild(secretCheck);
+                    secretLabel.appendChild(document.createTextNode('敏感'));
+
+                    const commentInput = document.createElement('input');
+                    commentInput.type = 'text';
+                    commentInput.className = 'env-comment';
+                    commentInput.value = item.comment;
+                    commentInput.placeholder = '注释';
+                    commentInput.onchange = (e) => { item.comment = e.target.value; generateOutput(); };
+
+                    const actions = document.createElement('div');
+                    actions.className = 'env-actions';
+
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'outline secondary';
+                    upBtn.style.padding = '0.2rem 0.4rem';
+                    upBtn.textContent = '↑';
+                    upBtn.onclick = () => moveItem(item.id, 'up');
+
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'outline secondary';
+                    downBtn.style.padding = '0.2rem 0.4rem';
+                    downBtn.textContent = '↓';
+                    downBtn.onclick = () => moveItem(item.id, 'down');
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'outline secondary';
+                    delBtn.style.padding = '0.2rem 0.4rem';
+                    delBtn.textContent = '×';
+                    delBtn.onclick = () => removeItem(item.id);
+
+                    actions.appendChild(upBtn);
+                    actions.appendChild(downBtn);
+                    actions.appendChild(delBtn);
+
+                    row.appendChild(keyInput);
+                    row.appendChild(valueInput);
+                    row.appendChild(toggleBtn);
+                    row.appendChild(secretLabel);
+                    row.appendChild(commentInput);
+                    row.appendChild(actions);
+                    container.appendChild(row);
+                }
+            });
+        }
+
+        function parseEnvContent(content) {
+            if (!content.trim()) return;
+
+            const lines = content.split('\n');
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                if (line.startsWith('#')) {
+                    // Could be a section comment
+                    const text = line.substring(1).trim();
+                    if (text.startsWith('---') || text.startsWith('===') || text.toUpperCase() === text) {
+                        addSection(text.replace(/[-=]/g, '').trim() || '分组');
+                    }
+                    return;
+                }
+
+                const match = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/i);
+                if (match) {
+                    let value = match[2];
+                    // Remove quotes if present
+                    if ((value.startsWith('"') && value.endsWith('"')) || 
+                        (value.startsWith("'") && value.endsWith("'"))) {
+                        value = value.slice(1, -1);
+                    }
+
+                    const isSecret = /password|secret|key|token|credential/i.test(match[1]);
+                    addEnvVar({
+                        key: match[1].toUpperCase(),
+                        value: value,
+                        comment: '',
+                        secret: isSecret
+                    });
+                }
+            });
+        }
+
+        function generateOutput() {
+            const showValues = document.getElementById('showValues').checked;
+            let output = '';
+            let varCount = 0;
+            let secretCount = 0;
+
+            envItems.forEach(item => {
+                if (item.type === 'section') {
+                    output += '\n# ' + '='.repeat(40) + '\n';
+                    output += '# ' + item.title + '\n';
+                    output += '# ' + '='.repeat(40) + '\n';
+                } else {
+                    if (item.key) {
+                        varCount++;
+                        if (item.secret) secretCount++;
+
+                        let line = item.key + '=';
+                        
+                        if (showValues || !item.secret) {
+                            const value = item.value;
+                            if (value.includes(' ') || value.includes('#') || value.includes('"')) {
+                                line += '"' + value.replace(/"/g, '\\"') + '"';
+                            } else {
+                                line += value;
+                            }
+                        } else {
+                            line += '""';
+                        }
+
+                        if (item.comment) {
+                            line += '  # ' + item.comment;
+                        }
+
+                        output += line + '\n';
+                    }
+                }
+            });
+
+            document.getElementById('output').textContent = output.trim();
+            
+            // Update stats
+            const stats = document.getElementById('stats');
+            stats.textContent = '变量总数: ' + varCount + ' | 敏感变量: ' + secretCount;
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        function downloadFile(filename) {
+            const output = document.getElementById('output').textContent;
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // File drop handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                readFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                readFile(file);
+            }
+        });
+
+        function readFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                envItems = [];
+                itemId = 0;
+                parseEnvContent(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        // Initialize
+        generateOutput();
+    </script>
+</body>
+</html>

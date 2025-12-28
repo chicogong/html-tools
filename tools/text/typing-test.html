@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字速度测试</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #e67e22;
+            --correct-color: #27ae60;
+            --error-color: #e74c3c;
+            --current-color: #3498db;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            margin-bottom: 0;
+            color: var(--primary-color);
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .settings-bar {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        
+        .settings-bar label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .typing-area {
+            background: var(--pico-card-background-color);
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .sample-text {
+            font-size: 1.2rem;
+            line-height: 2;
+            margin-bottom: 1rem;
+            user-select: none;
+            word-break: break-all;
+        }
+        
+        .sample-text .char {
+            transition: all 0.1s;
+        }
+        
+        .sample-text .char.correct {
+            color: var(--correct-color);
+        }
+        
+        .sample-text .char.error {
+            color: var(--error-color);
+            text-decoration: underline;
+        }
+        
+        .sample-text .char.current {
+            background: var(--current-color);
+            color: white;
+            border-radius: 2px;
+        }
+        
+        .sample-text .char.pending {
+            color: var(--pico-muted-color);
+        }
+        
+        .input-area {
+            position: relative;
+        }
+        
+        #typing-input {
+            width: 100%;
+            font-size: 1.1rem;
+            padding: 1rem;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .progress-bar-inner {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+        
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .timer.warning {
+            color: var(--error-color);
+        }
+        
+        .result-panel {
+            background: var(--pico-card-background-color);
+            border: 2px solid var(--correct-color);
+            border-radius: var(--pico-border-radius);
+            padding: 2rem;
+            text-align: center;
+            display: none;
+        }
+        
+        .result-panel.show {
+            display: block;
+        }
+        
+        .result-panel h2 {
+            color: var(--correct-color);
+            margin-bottom: 1rem;
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .result-stat {
+            padding: 1rem;
+            background: var(--pico-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        
+        .result-stat .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .result-stat .label {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .history-panel {
+            margin-top: 2rem;
+        }
+        
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            display: grid;
+            grid-template-columns: 1fr repeat(4, auto);
+            gap: 1rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            font-size: 0.9rem;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--pico-muted-border-color);
+            color: var(--pico-muted-color);
+        }
+        
+        .keyboard-hint {
+            text-align: center;
+            color: var(--pico-muted-color);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>打字速度测试</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <article>
+            <div class="settings-bar">
+                <label>
+                    文本类型:
+                    <select id="text-type" onchange="loadSampleText()">
+                        <option value="chinese">中文</option>
+                        <option value="english">英文</option>
+                        <option value="mixed">中英混合</option>
+                        <option value="code">代码</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </label>
+                <label>
+                    测试时长:
+                    <select id="test-duration">
+                        <option value="30">30秒</option>
+                        <option value="60" selected>60秒</option>
+                        <option value="120">120秒</option>
+                        <option value="300">5分钟</option>
+                    </select>
+                </label>
+                <label>
+                    <input type="checkbox" id="show-keyboard">
+                    键盘提示
+                </label>
+            </div>
+            
+            <!-- 实时统计 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value" id="live-wpm">0</div>
+                    <div class="label">WPM (每分钟词数)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="live-cpm">0</div>
+                    <div class="label">CPM (每分钟字符)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="live-accuracy">100%</div>
+                    <div class="label">准确率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="live-errors">0</div>
+                    <div class="label">错误数</div>
+                </div>
+            </div>
+            
+            <!-- 倒计时 -->
+            <div class="timer" id="timer">60</div>
+            
+            <!-- 进度条 -->
+            <div class="progress-bar">
+                <div class="progress-bar-inner" id="progress-bar" style="width: 0%"></div>
+            </div>
+            
+            <!-- 打字区域 -->
+            <div class="typing-area" id="typing-area">
+                <div class="sample-text" id="sample-text"></div>
+                <div class="input-area">
+                    <input type="text" id="typing-input" placeholder="点击此处开始打字..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                </div>
+                <p class="keyboard-hint" id="keyboard-hint"></p>
+            </div>
+            
+            <div class="btn-group">
+                <button onclick="startTest()" id="start-btn">开始测试</button>
+                <button onclick="resetTest()" class="secondary">重新开始</button>
+                <button onclick="loadSampleText()" class="outline">换一段文本</button>
+            </div>
+            
+            <!-- 结果面板 -->
+            <div class="result-panel" id="result-panel">
+                <h2>测试完成!</h2>
+                <div class="result-stats">
+                    <div class="result-stat">
+                        <div class="value" id="result-wpm">0</div>
+                        <div class="label">WPM</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="value" id="result-cpm">0</div>
+                        <div class="label">CPM</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="value" id="result-accuracy">0%</div>
+                        <div class="label">准确率</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="value" id="result-chars">0</div>
+                        <div class="label">总字符</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="value" id="result-correct">0</div>
+                        <div class="label">正确字符</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="value" id="result-errors">0</div>
+                        <div class="label">错误字符</div>
+                    </div>
+                </div>
+                <button onclick="resetTest()">再来一次</button>
+            </div>
+            
+            <!-- 历史记录 -->
+            <details class="history-panel">
+                <summary>历史记录</summary>
+                <div class="history-list" id="history-list">
+                    <p style="color: var(--pico-muted-color); text-align: center;">暂无历史记录</p>
+                </div>
+            </details>
+        </article>
+        
+        <footer>
+            <p>打字速度测试 - 纯客户端运行，数据保存在本地</p>
+        </footer>
+    </main>
+    
+    <script>
+        // 示例文本库
+        const sampleTexts = {
+            chinese: [
+                '生活不止眼前的苟且，还有诗和远方的田野。你赤手空拳来到人世间，为了找到那片海不顾一切。',
+                '时间就像海绵里的水，只要愿意挤，总还是有的。鲁迅先生的这句话激励了无数人珍惜时间。',
+                '人生若只如初见，何事秋风悲画扇。等闲变却故人心，却道故人心易变。骊山语罢清宵半。',
+                '落霞与孤鹜齐飞，秋水共长天一色。渔舟唱晚，响穷彭蠡之滨；雁阵惊寒，声断衡阳之浦。',
+                '天行健，君子以自强不息。地势坤，君子以厚德载物。这是中华民族的精神核心所在。'
+            ],
+            english: [
+                'The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump!',
+                'To be or not to be, that is the question. Whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune.',
+                'In the beginning God created the heaven and the earth. And the earth was without form, and void; and darkness was upon the face.',
+                'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.',
+                'All human beings are born free and equal in dignity and rights. They are endowed with reason and conscience.'
+            ],
+            mixed: [
+                '今天的weather很好，适合出去walking。Let us go to the park，享受这美好的sunshine吧！',
+                'Programming编程是一门art艺术，需要不断practice练习才能master掌握。Keep coding每天进步！',
+                '在这个digital数字时代，学习new skills新技能变得越来越important重要。Never stop learning！',
+                'Good morning早上好！今天是wonderful美好的一天。Let us start开始我们的journey旅程吧！',
+                'The Internet互联网改变了我们的life生活方式。We can learn学习anything任何东西online在线上。'
+            ],
+            code: [
+                'function hello() { console.log("Hello, World!"); return true; }',
+                'const arr = [1, 2, 3, 4, 5]; const sum = arr.reduce((a, b) => a + b, 0);',
+                'for (let i = 0; i < 10; i++) { if (i % 2 === 0) { console.log(i); } }',
+                'class Person { constructor(name) { this.name = name; } sayHello() { return `Hi, ${this.name}`; } }',
+                'const fetchData = async (url) => { const response = await fetch(url); return response.json(); };'
+            ]
+        };
+        
+        // 状态变量
+        let currentText = '';
+        let currentPosition = 0;
+        let startTime = null;
+        let endTime = null;
+        let timerInterval = null;
+        let isRunning = false;
+        let correctChars = 0;
+        let errorChars = 0;
+        let history = JSON.parse(localStorage.getItem('typingHistory') || '[]');
+        
+        // 加载示例文本
+        function loadSampleText() {
+            const type = document.getElementById('text-type').value;
+            
+            if (type === 'custom') {
+                currentText = prompt('请输入自定义文本:', '') || '';
+                if (!currentText) {
+                    document.getElementById('text-type').value = 'chinese';
+                    loadSampleText();
+                    return;
+                }
+            } else {
+                const texts = sampleTexts[type];
+                currentText = texts[Math.floor(Math.random() * texts.length)];
+            }
+            
+            renderSampleText();
+            resetTest();
+        }
+        
+        // 渲染示例文本
+        function renderSampleText() {
+            const container = document.getElementById('sample-text');
+            container.textContent = '';
+            
+            currentText.split('').forEach((char, index) => {
+                const span = document.createElement('span');
+                span.className = 'char' + (index === 0 ? ' current' : ' pending');
+                span.textContent = char;
+                span.dataset.index = index;
+                container.appendChild(span);
+            });
+        }
+        
+        // 开始测试
+        function startTest() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            startTime = Date.now();
+            currentPosition = 0;
+            correctChars = 0;
+            errorChars = 0;
+            
+            const duration = parseInt(document.getElementById('test-duration').value);
+            let timeLeft = duration;
+            
+            document.getElementById('timer').textContent = timeLeft;
+            document.getElementById('timer').classList.remove('warning');
+            document.getElementById('typing-input').focus();
+            document.getElementById('typing-input').value = '';
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('result-panel').classList.remove('show');
+            
+            renderSampleText();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 10) {
+                    document.getElementById('timer').classList.add('warning');
+                }
+                
+                // 更新进度
+                const progress = ((duration - timeLeft) / duration) * 100;
+                document.getElementById('progress-bar').style.width = progress + '%';
+                
+                if (timeLeft <= 0) {
+                    endTest();
+                }
+            }, 1000);
+        }
+        
+        // 结束测试
+        function endTest() {
+            if (!isRunning) return;
+            
+            isRunning = false;
+            endTime = Date.now();
+            clearInterval(timerInterval);
+            
+            // 计算结果
+            const duration = (endTime - startTime) / 1000 / 60; // 分钟
+            const totalChars = correctChars + errorChars;
+            const wpm = Math.round(correctChars / 5 / duration); // 标准: 5字符=1词
+            const cpm = Math.round(correctChars / duration);
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 0;
+            
+            // 显示结果
+            document.getElementById('result-wpm').textContent = wpm;
+            document.getElementById('result-cpm').textContent = cpm;
+            document.getElementById('result-accuracy').textContent = accuracy + '%';
+            document.getElementById('result-chars').textContent = totalChars;
+            document.getElementById('result-correct').textContent = correctChars;
+            document.getElementById('result-errors').textContent = errorChars;
+            document.getElementById('result-panel').classList.add('show');
+            
+            // 保存历史
+            saveHistory({
+                date: new Date().toLocaleString(),
+                wpm: wpm,
+                cpm: cpm,
+                accuracy: accuracy,
+                type: document.getElementById('text-type').value
+            });
+            
+            document.getElementById('start-btn').disabled = false;
+        }
+        
+        // 重置测试
+        function resetTest() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            startTime = null;
+            endTime = null;
+            currentPosition = 0;
+            correctChars = 0;
+            errorChars = 0;
+            
+            const duration = document.getElementById('test-duration').value;
+            document.getElementById('timer').textContent = duration;
+            document.getElementById('timer').classList.remove('warning');
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('typing-input').value = '';
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('result-panel').classList.remove('show');
+            
+            // 重置统计
+            document.getElementById('live-wpm').textContent = '0';
+            document.getElementById('live-cpm').textContent = '0';
+            document.getElementById('live-accuracy').textContent = '100%';
+            document.getElementById('live-errors').textContent = '0';
+            
+            renderSampleText();
+        }
+        
+        // 处理输入
+        document.getElementById('typing-input').addEventListener('input', function(e) {
+            if (!isRunning) {
+                startTest();
+            }
+            
+            const inputValue = this.value;
+            const chars = document.querySelectorAll('.sample-text .char');
+            
+            // 检查输入的每个字符
+            for (let i = 0; i < inputValue.length && i < currentText.length; i++) {
+                const char = chars[i];
+                char.classList.remove('current', 'pending');
+                
+                if (inputValue[i] === currentText[i]) {
+                    char.classList.add('correct');
+                    if (i >= currentPosition) {
+                        correctChars++;
+                    }
+                } else {
+                    char.classList.add('error');
+                    if (i >= currentPosition) {
+                        errorChars++;
+                    }
+                }
+            }
+            
+            currentPosition = inputValue.length;
+            
+            // 标记当前位置
+            if (currentPosition < chars.length) {
+                chars[currentPosition].classList.add('current');
+                chars[currentPosition].classList.remove('pending');
+                
+                // 键盘提示
+                if (document.getElementById('show-keyboard').checked) {
+                    document.getElementById('keyboard-hint').textContent = '下一个字符: ' + currentText[currentPosition];
+                }
+            }
+            
+            // 重置后续字符状态
+            for (let i = currentPosition + 1; i < chars.length; i++) {
+                chars[i].classList.remove('correct', 'error', 'current');
+                chars[i].classList.add('pending');
+            }
+            
+            // 更新实时统计
+            updateLiveStats();
+            
+            // 检查是否完成
+            if (currentPosition >= currentText.length) {
+                endTest();
+            }
+        });
+        
+        // 更新实时统计
+        function updateLiveStats() {
+            if (!startTime) return;
+            
+            const duration = (Date.now() - startTime) / 1000 / 60; // 分钟
+            const totalChars = correctChars + errorChars;
+            
+            const wpm = duration > 0 ? Math.round(correctChars / 5 / duration) : 0;
+            const cpm = duration > 0 ? Math.round(correctChars / duration) : 0;
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            
+            document.getElementById('live-wpm').textContent = wpm;
+            document.getElementById('live-cpm').textContent = cpm;
+            document.getElementById('live-accuracy').textContent = accuracy + '%';
+            document.getElementById('live-errors').textContent = errorChars;
+        }
+        
+        // 保存历史
+        function saveHistory(record) {
+            history.unshift(record);
+            if (history.length > 50) history.pop();
+            localStorage.setItem('typingHistory', JSON.stringify(history));
+            updateHistoryList();
+        }
+        
+        // 更新历史列表
+        function updateHistoryList() {
+            const container = document.getElementById('history-list');
+            container.textContent = '';
+            
+            if (history.length === 0) {
+                const p = document.createElement('p');
+                p.style.color = 'var(--pico-muted-color)';
+                p.style.textAlign = 'center';
+                p.textContent = '暂无历史记录';
+                container.appendChild(p);
+                return;
+            }
+            
+            history.slice(0, 20).forEach(record => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = record.date;
+                
+                const typeSpan = document.createElement('span');
+                typeSpan.textContent = record.type;
+                
+                const wpmSpan = document.createElement('span');
+                wpmSpan.textContent = record.wpm + ' WPM';
+                
+                const cpmSpan = document.createElement('span');
+                cpmSpan.textContent = record.cpm + ' CPM';
+                
+                const accSpan = document.createElement('span');
+                accSpan.textContent = record.accuracy + '%';
+                
+                item.appendChild(dateSpan);
+                item.appendChild(typeSpan);
+                item.appendChild(wpmSpan);
+                item.appendChild(cpmSpan);
+                item.appendChild(accSpan);
+                
+                container.appendChild(item);
+            });
+        }
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化主题
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+            
+            // 加载示例文本
+            loadSampleText();
+            
+            // 更新历史
+            updateHistoryList();
+        });
+        
+        // 防止粘贴
+        document.getElementById('typing-input').addEventListener('paste', function(e) {
+            e.preventDefault();
+        });
+        
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                resetTest();
+            }
+        });
+    </script>
+</body>
+</html>

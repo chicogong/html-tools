@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -182,8 +182,8 @@ function updateGitHubDescription(toolCount) {
     const newDesc = currentDesc.replace(/\d+\+\s*纯前端/, `${toolCount}+ 纯前端`);
     
     if (newDesc !== currentDesc) {
-      // 更新仓库描述 - 使用数组参数避免 shell 注入
-      execSync('gh repo edit --description ' + JSON.stringify(newDesc), {
+      // 更新仓库描述 - 使用 execFileSync 配合数组参数避免 shell 注入
+      execFileSync('gh', ['repo', 'edit', '--description', newDesc], {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe']
       });

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则可视化解释器 | HTML Tools</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { padding: 1rem; }
+        .container { max-width: 1000px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        .input-section { margin-bottom: 1.5rem; }
+        .input-section input { font-family: 'Monaco', 'Menlo', monospace; font-size: 1rem; }
+        .flags-group { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        .flags-group label { display: flex; align-items: center; gap: 0.25rem; margin: 0; font-size: 0.85rem; }
+        .explanation-panel { background: var(--pico-card-background-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .explanation-panel h3 { margin: 0 0 0.75rem 0; font-size: 1rem; }
+        .token-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .token-item { display: flex; gap: 1rem; padding: 0.5rem; border-radius: 4px; background: var(--pico-background-color); border-left: 3px solid var(--pico-primary); }
+        .token-pattern { font-family: monospace; font-weight: bold; min-width: 100px; color: var(--pico-primary); }
+        .token-desc { flex: 1; }
+        .token-type { font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 10px; background: var(--pico-primary-background); color: var(--pico-primary); }
+        .visual-regex { font-family: monospace; font-size: 1.25rem; padding: 1rem; background: var(--pico-card-background-color); border-radius: 8px; margin-bottom: 1rem; line-height: 2; word-break: break-all; }
+        .visual-regex .char { padding: 0.125rem 0.25rem; border-radius: 2px; margin: 0 1px; }
+        .visual-regex .literal { background: #e8f5e9; color: #2e7d32; }
+        .visual-regex .meta { background: #e3f2fd; color: #1565c0; }
+        .visual-regex .quantifier { background: #fff3e0; color: #ef6c00; }
+        .visual-regex .group { background: #f3e5f5; color: #7b1fa2; }
+        .visual-regex .anchor { background: #fce4ec; color: #c2185b; }
+        .visual-regex .charset { background: #e0f7fa; color: #00838f; }
+        .visual-regex .escape { background: #fff8e1; color: #f9a825; }
+        [data-theme="dark"] .visual-regex .literal { background: #1b5e20; color: #a5d6a7; }
+        [data-theme="dark"] .visual-regex .meta { background: #0d47a1; color: #90caf9; }
+        [data-theme="dark"] .visual-regex .quantifier { background: #e65100; color: #ffcc80; }
+        [data-theme="dark"] .visual-regex .group { background: #4a148c; color: #ce93d8; }
+        [data-theme="dark"] .visual-regex .anchor { background: #880e4f; color: #f48fb1; }
+        [data-theme="dark"] .visual-regex .charset { background: #006064; color: #80deea; }
+        [data-theme="dark"] .visual-regex .escape { background: #f57f17; color: #fff59d; }
+        .test-section { margin-top: 1.5rem; }
+        .test-section textarea { font-family: inherit; min-height: 100px; }
+        .match-result { margin-top: 1rem; padding: 1rem; background: var(--pico-card-background-color); border-radius: 8px; }
+        .match-highlight { background: #ffeb3b; color: #000; padding: 0 2px; border-radius: 2px; }
+        .match-info { font-size: 0.85rem; color: var(--pico-muted-color); margin-top: 0.5rem; }
+        .examples { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .examples button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        .legend { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.8rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.25rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>🔍 正则可视化解释器</h1>
+            <button id="themeToggle" class="outline" style="padding: 0.5rem;">🌓</button>
+        </header>
+
+        <div class="examples">
+            <span style="line-height: 2;">示例：</span>
+            <button class="outline" onclick="loadExample('email')">邮箱</button>
+            <button class="outline" onclick="loadExample('phone')">手机号</button>
+            <button class="outline" onclick="loadExample('url')">URL</button>
+            <button class="outline" onclick="loadExample('ip')">IP地址</button>
+            <button class="outline" onclick="loadExample('date')">日期</button>
+            <button class="outline" onclick="loadExample('password')">密码强度</button>
+        </div>
+
+        <div class="input-section">
+            <input type="text" id="regexInput" placeholder="输入正则表达式..." value="^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$">
+            <div class="flags-group">
+                <label><input type="checkbox" id="flagG"> g (全局)</label>
+                <label><input type="checkbox" id="flagI"> i (忽略大小写)</label>
+                <label><input type="checkbox" id="flagM"> m (多行)</label>
+                <label><input type="checkbox" id="flagS"> s (单行)</label>
+                <label><input type="checkbox" id="flagU"> u (Unicode)</label>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: #e8f5e9;"></div> 字面量</div>
+            <div class="legend-item"><div class="legend-color" style="background: #e3f2fd;"></div> 元字符</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fff3e0;"></div> 量词</div>
+            <div class="legend-item"><div class="legend-color" style="background: #f3e5f5;"></div> 分组</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fce4ec;"></div> 锚点</div>
+            <div class="legend-item"><div class="legend-color" style="background: #e0f7fa;"></div> 字符集</div>
+            <div class="legend-item"><div class="legend-color" style="background: #fff8e1;"></div> 转义</div>
+        </div>
+
+        <div class="visual-regex" id="visualRegex"></div>
+
+        <div class="explanation-panel">
+            <h3>逐步解析</h3>
+            <div class="token-list" id="tokenList"></div>
+        </div>
+
+        <div class="test-section">
+            <h3 style="margin-bottom: 0.5rem;">测试匹配</h3>
+            <textarea id="testInput" placeholder="输入测试文本...">test@example.com
+invalid-email
+user.name@domain.co.uk
+another@test.org</textarea>
+            <div class="match-result" id="matchResult"></div>
+        </div>
+    </main>
+
+    <script>
+        const examples = {
+            email: { regex: '^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$', flags: 'gm', test: 'test@example.com\ninvalid-email\nuser@domain.co.uk' },
+            phone: { regex: '^1[3-9]\\d{9}$', flags: 'gm', test: '13812345678\n12345678901\n18899998888' },
+            url: { regex: 'https?://[\\w.-]+(?:/[\\w./-]*)?', flags: 'gi', test: 'Visit https://example.com/path\nOr http://test.org' },
+            ip: { regex: '\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b', flags: 'g', test: '192.168.1.1\n10.0.0.255\n999.999.999.999' },
+            date: { regex: '\\d{4}[-/]\\d{2}[-/]\\d{2}', flags: 'g', test: '2024-01-15\n2023/12/25\ninvalid-date' },
+            password: { regex: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$', flags: 'm', test: 'Weak123\nStrong@Pass1\nNoSpecial1A' }
+        };
+
+        const tokenPatterns = [
+            { pattern: /^\^/, type: 'anchor', desc: '匹配字符串开始位置' },
+            { pattern: /^\$/, type: 'anchor', desc: '匹配字符串结束位置' },
+            { pattern: /^\\b/, type: 'anchor', desc: '匹配单词边界' },
+            { pattern: /^\\B/, type: 'anchor', desc: '匹配非单词边界' },
+            { pattern: /^\\d/, type: 'meta', desc: '匹配任意数字 [0-9]' },
+            { pattern: /^\\D/, type: 'meta', desc: '匹配任意非数字' },
+            { pattern: /^\\w/, type: 'meta', desc: '匹配单词字符 [a-zA-Z0-9_]' },
+            { pattern: /^\\W/, type: 'meta', desc: '匹配非单词字符' },
+            { pattern: /^\\s/, type: 'meta', desc: '匹配空白字符' },
+            { pattern: /^\\S/, type: 'meta', desc: '匹配非空白字符' },
+            { pattern: /^\\n/, type: 'escape', desc: '匹配换行符' },
+            { pattern: /^\\t/, type: 'escape', desc: '匹配制表符' },
+            { pattern: /^\\r/, type: 'escape', desc: '匹配回车符' },
+            { pattern: /^\\./, type: 'meta', desc: '匹配任意字符（除换行）' },
+            { pattern: /^\\\\./, type: 'escape', desc: function(m) { return '匹配字面量 "' + m[0].slice(1) + '"'; } },
+            { pattern: /^\(\?:/, type: 'group', desc: '非捕获分组开始' },
+            { pattern: /^\(\?=/, type: 'group', desc: '正向先行断言' },
+            { pattern: /^\(\?!/, type: 'group', desc: '负向先行断言' },
+            { pattern: /^\(\?<=/, type: 'group', desc: '正向后行断言' },
+            { pattern: /^\(\?<!/, type: 'group', desc: '负向后行断言' },
+            { pattern: /^\(/, type: 'group', desc: '捕获分组开始' },
+            { pattern: /^\)/, type: 'group', desc: '分组结束' },
+            { pattern: /^\[([^\]\\]|\\.)*\]/, type: 'charset', desc: function(m) { return '字符集: ' + m[0]; } },
+            { pattern: /^\{(\d+)(,)?(\d*)?\}/, type: 'quantifier', desc: function(m) {
+                if (m[2] && m[3]) return '重复 ' + m[1] + ' 到 ' + m[3] + ' 次';
+                if (m[2]) return '重复至少 ' + m[1] + ' 次';
+                return '重复恰好 ' + m[1] + ' 次';
+            }},
+            { pattern: /^\*\?/, type: 'quantifier', desc: '匹配 0 次或多次（非贪婪）' },
+            { pattern: /^\+\?/, type: 'quantifier', desc: '匹配 1 次或多次（非贪婪）' },
+            { pattern: /^\?\?/, type: 'quantifier', desc: '匹配 0 次或 1 次（非贪婪）' },
+            { pattern: /^\*/, type: 'quantifier', desc: '匹配 0 次或多次' },
+            { pattern: /^\+/, type: 'quantifier', desc: '匹配 1 次或多次' },
+            { pattern: /^\?/, type: 'quantifier', desc: '匹配 0 次或 1 次' },
+            { pattern: /^\|/, type: 'meta', desc: '或（匹配左侧或右侧）' },
+        ];
+
+        function parseRegex(regex) {
+            const tokens = [];
+            let pos = 0;
+            
+            while (pos < regex.length) {
+                let matched = false;
+                
+                for (const tp of tokenPatterns) {
+                    const match = regex.slice(pos).match(tp.pattern);
+                    if (match) {
+                        const desc = typeof tp.desc === 'function' ? tp.desc(match) : tp.desc;
+                        tokens.push({ text: match[0], type: tp.type, desc });
+                        pos += match[0].length;
+                        matched = true;
+                        break;
+                    }
+                }
+                
+                if (!matched) {
+                    // 字面量字符
+                    tokens.push({ text: regex[pos], type: 'literal', desc: '匹配字面量 "' + regex[pos] + '"' });
+                    pos++;
+                }
+            }
+            
+            return tokens;
+        }
+
+        function renderVisual(tokens) {
+            const container = document.getElementById('visualRegex');
+            container.textContent = '';
+            
+            tokens.forEach(token => {
+                const span = document.createElement('span');
+                span.className = 'char ' + token.type;
+                span.textContent = token.text;
+                span.title = token.desc;
+                container.appendChild(span);
+            });
+        }
+
+        function renderTokenList(tokens) {
+            const container = document.getElementById('tokenList');
+            container.textContent = '';
+            
+            tokens.forEach((token, i) => {
+                const item = document.createElement('div');
+                item.className = 'token-item';
+                
+                const pattern = document.createElement('span');
+                pattern.className = 'token-pattern';
+                pattern.textContent = token.text;
+                
+                const desc = document.createElement('span');
+                desc.className = 'token-desc';
+                desc.textContent = token.desc;
+                
+                const type = document.createElement('span');
+                type.className = 'token-type';
+                type.textContent = token.type;
+                
+                item.appendChild(pattern);
+                item.appendChild(desc);
+                item.appendChild(type);
+                container.appendChild(item);
+            });
+        }
+
+        function getFlags() {
+            let flags = '';
+            if (document.getElementById('flagG').checked) flags += 'g';
+            if (document.getElementById('flagI').checked) flags += 'i';
+            if (document.getElementById('flagM').checked) flags += 'm';
+            if (document.getElementById('flagS').checked) flags += 's';
+            if (document.getElementById('flagU').checked) flags += 'u';
+            return flags;
+        }
+
+        function testMatch() {
+            const regexStr = document.getElementById('regexInput').value;
+            const testText = document.getElementById('testInput').value;
+            const resultDiv = document.getElementById('matchResult');
+            
+            if (!regexStr) {
+                resultDiv.textContent = '请输入正则表达式';
+                return;
+            }
+            
+            try {
+                const flags = getFlags();
+                const regex = new RegExp(regexStr, flags);
+                const matches = [];
+                let match;
+                
+                if (flags.includes('g')) {
+                    while ((match = regex.exec(testText)) !== null) {
+                        matches.push({ index: match.index, text: match[0], groups: match.slice(1) });
+                    }
+                } else {
+                    match = regex.exec(testText);
+                    if (match) {
+                        matches.push({ index: match.index, text: match[0], groups: match.slice(1) });
+                    }
+                }
+                
+                if (matches.length === 0) {
+                    resultDiv.textContent = '无匹配结果';
+                    return;
+                }
+                
+                // 高亮显示匹配
+                let highlighted = '';
+                let lastIndex = 0;
+                
+                matches.forEach(m => {
+                    highlighted += escapeHtml(testText.slice(lastIndex, m.index));
+                    highlighted += '<span class="match-highlight">' + escapeHtml(m.text) + '</span>';
+                    lastIndex = m.index + m.text.length;
+                });
+                highlighted += escapeHtml(testText.slice(lastIndex));
+                
+                resultDiv.innerHTML = '';
+                const pre = document.createElement('pre');
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.margin = '0';
+                pre.innerHTML = highlighted;
+                resultDiv.appendChild(pre);
+                
+                const info = document.createElement('div');
+                info.className = 'match-info';
+                info.textContent = '找到 ' + matches.length + ' 个匹配';
+                if (matches[0].groups && matches[0].groups.length > 0) {
+                    info.textContent += '，捕获组: ' + matches[0].groups.map(function(g, i) { return '(' + (i+1) + ') ' + (g || '空'); }).join(', ');
+                }
+                resultDiv.appendChild(info);
+                
+            } catch (e) {
+                resultDiv.textContent = '正则表达式错误: ' + e.message;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function analyze() {
+            const regex = document.getElementById('regexInput').value;
+            const tokens = parseRegex(regex);
+            renderVisual(tokens);
+            renderTokenList(tokens);
+            testMatch();
+        }
+
+        function loadExample(name) {
+            const ex = examples[name];
+            if (ex) {
+                document.getElementById('regexInput').value = ex.regex;
+                document.getElementById('testInput').value = ex.test;
+                document.getElementById('flagG').checked = ex.flags.includes('g');
+                document.getElementById('flagI').checked = ex.flags.includes('i');
+                document.getElementById('flagM').checked = ex.flags.includes('m');
+                document.getElementById('flagS').checked = ex.flags.includes('s');
+                document.getElementById('flagU').checked = ex.flags.includes('u');
+                analyze();
+            }
+        }
+
+        // 事件监听
+        document.getElementById('regexInput').addEventListener('input', analyze);
+        document.getElementById('testInput').addEventListener('input', testMatch);
+        document.querySelectorAll('.flags-group input').forEach(function(el) {
+            el.addEventListener('change', testMatch);
+        });
+
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        
+        themeToggle.addEventListener('click', function() {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+
+        // 初始化
+        analyze();
+    </script>
+</body>
+</html>

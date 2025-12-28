@@ -1,485 +1,300 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cron 表达式解析器 - HTML Tools</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
-        :root {
-            --tool-primary: #8b5cf6;
-            --tool-secondary: #a78bfa;
-            --success-color: #10b981;
-            --error-color: #ef4444;
-        }
-        body { padding: 1rem; min-height: 100vh; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
-        }
-        h1 { margin: 0; font-size: 1.75rem; color: var(--tool-primary); }
-        .theme-toggle {
-            background: none; border: 2px solid var(--tool-primary);
-            color: var(--tool-primary); cursor: pointer; padding: 0.5rem;
-            border-radius: 50%; width: 40px; height: 40px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .back-link {
-            color: var(--tool-primary); text-decoration: none;
-            display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;
-        }
-        .input-section {
-            background: var(--pico-card-background-color); padding: 1.5rem;
-            border-radius: 12px; margin-bottom: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .cron-input-wrapper {
-            display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;
-        }
-        .cron-input-wrapper input {
-            flex: 1; min-width: 200px; font-family: monospace;
-            font-size: 1.25rem; letter-spacing: 2px;
-        }
-        .cron-input-wrapper button {
-            background: var(--tool-primary); border-color: var(--tool-primary);
-        }
-        .presets { margin-top: 1rem; }
-        .presets label { font-size: 0.85rem; margin-bottom: 0.5rem; display: block; }
-        .preset-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .preset-btn {
-            padding: 0.25rem 0.75rem; font-size: 0.8rem;
-            background: var(--pico-secondary-background);
-            border: 1px solid var(--pico-muted-border-color);
-            border-radius: 20px; cursor: pointer; transition: all 0.2s;
-        }
-        .preset-btn:hover {
-            background: var(--tool-primary); color: white;
-            border-color: var(--tool-primary);
-        }
-        .result-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        @media (max-width: 768px) { .result-section { grid-template-columns: 1fr; } }
-        .result-card {
-            background: var(--pico-card-background-color); padding: 1.5rem;
-            border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .result-card h3 {
-            margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem;
-            color: var(--tool-primary); display: flex; align-items: center; gap: 0.5rem;
-        }
-        .human-readable {
-            font-size: 1.1rem; line-height: 1.6; padding: 1rem;
-            background: var(--pico-code-background-color);
-            border-radius: 8px; margin-bottom: 1rem;
-        }
-        .field-breakdown {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;
-        }
-        .field-item {
-            text-align: center; padding: 0.75rem;
-            background: var(--pico-code-background-color); border-radius: 8px;
-        }
-        .field-item .value {
-            font-family: monospace; font-size: 1.25rem; font-weight: bold;
-            color: var(--tool-primary); display: block; margin-bottom: 0.25rem;
-        }
-        .field-item .label {
-            font-size: 0.75rem; color: var(--pico-muted-color); text-transform: uppercase;
-        }
-        .field-item .meaning { font-size: 0.8rem; margin-top: 0.25rem; }
-        .next-runs { list-style: none; padding: 0; margin: 0; }
-        .next-runs li {
-            padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color);
-            font-family: monospace; font-size: 0.9rem;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .next-runs li:last-child { border-bottom: none; }
-        .next-runs .relative { font-size: 0.8rem; color: var(--pico-muted-color); font-family: inherit; }
-        .error-message {
-            color: var(--error-color); padding: 1rem;
-            background: rgba(239, 68, 68, 0.1); border-radius: 8px; display: none;
-        }
-        .error-message.show { display: block; }
-        .validation-status {
-            display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem;
-        }
-        .validation-status.valid { background: rgba(16, 185, 129, 0.1); color: var(--success-color); }
-        .validation-status.invalid { background: rgba(239, 68, 68, 0.1); color: var(--error-color); }
-        .tabs {
-            display: flex; gap: 0.5rem; margin-bottom: 1rem;
-            border-bottom: 2px solid var(--pico-muted-border-color); padding-bottom: 0.5rem;
-        }
-        .tab-btn {
-            padding: 0.5rem 1rem; background: none; border: none; cursor: pointer;
-            font-size: 0.9rem; color: var(--pico-muted-color);
-            border-radius: 8px 8px 0 0; transition: all 0.2s;
-        }
-        .tab-btn.active { background: var(--tool-primary); color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .builder-section {
-            background: var(--pico-card-background-color); padding: 1.5rem;
-            border-radius: 12px; margin-bottom: 1.5rem;
-        }
-        .builder-section h3 { margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; color: var(--tool-primary); }
-        .builder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
-        .builder-field label { display: block; font-size: 0.8rem; margin-bottom: 0.25rem; color: var(--pico-muted-color); }
-        .builder-field input { width: 100%; font-size: 0.9rem; padding: 0.5rem; }
-        .special-chars { margin-top: 1.5rem; padding: 1rem; background: var(--pico-code-background-color); border-radius: 8px; }
-        .special-chars h4 { margin: 0 0 0.75rem; font-size: 0.9rem; }
-        .char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.85rem; }
-        .char-item { display: flex; gap: 0.5rem; }
-        .char-item code { background: var(--tool-primary); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
-        .copy-btn { background: none; border: none; cursor: pointer; padding: 0.25rem; color: var(--pico-muted-color); }
-        .copy-btn:hover { color: var(--tool-primary); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #0ea5e9, #3b82f6); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .cron-input { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .cron-field { flex: 1; text-align: center; }
+        .cron-field label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .cron-field input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 1.1rem; text-align: center; font-family: monospace; }
+        .cron-field input:focus { outline: none; border-color: var(--accent); }
+        .description { padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem; text-align: center; font-size: 1.1rem; margin-bottom: 1rem; }
+        .description.error { color: #ef4444; }
+        .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .preset-btn { padding: 0.5rem 1rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text-primary); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .preset-btn:hover { border-color: var(--accent); background: var(--accent); color: white; }
+        .next-runs { margin-top: 1rem; }
+        .next-runs h3 { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+        .run-item { display: flex; justify-content: space-between; padding: 0.5rem 0.75rem; background: var(--bg-tertiary); border-radius: 0.25rem; margin-bottom: 0.5rem; font-family: monospace; font-size: 0.9rem; }
+        .run-item .relative { color: var(--text-secondary); }
+        .reference { margin-top: 1.5rem; }
+        .reference h3 { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+        .ref-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .ref-table th, .ref-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+        .ref-table th { color: var(--text-secondary); font-weight: 500; }
+        .ref-table code { background: var(--bg-tertiary); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: monospace; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div>
-                <a href="../../index.html" class="back-link">← 返回工具列表</a>
-                <h1>Cron 表达式解析器</h1>
-            </div>
-            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
-                <span class="theme-icon">🌙</span>
-            </button>
-        </header>
-        
-        <main>
-            <div class="input-section">
-                <div class="cron-input-wrapper">
-                    <input type="text" id="cronInput" placeholder="* * * * *" value="0 9 * * 1-5">
-                    <button onclick="parseCron()">解析</button>
-                </div>
-                <div class="presets">
-                    <label>常用预设：</label>
-                    <div class="preset-buttons">
-                        <button class="preset-btn" data-cron="* * * * *">每分钟</button>
-                        <button class="preset-btn" data-cron="0 * * * *">每小时</button>
-                        <button class="preset-btn" data-cron="0 0 * * *">每天午夜</button>
-                        <button class="preset-btn" data-cron="0 9 * * 1-5">工作日上午9点</button>
-                        <button class="preset-btn" data-cron="0 0 * * 0">每周日午夜</button>
-                        <button class="preset-btn" data-cron="0 0 1 * *">每月1号</button>
-                        <button class="preset-btn" data-cron="0 0 1 1 *">每年1月1号</button>
-                        <button class="preset-btn" data-cron="*/5 * * * *">每5分钟</button>
-                        <button class="preset-btn" data-cron="0 */2 * * *">每2小时</button>
-                        <button class="preset-btn" data-cron="30 4 * * *">每天凌晨4:30</button>
-                        <button class="preset-btn" data-cron="0 22 * * 1-5">工作日晚上10点</button>
-                        <button class="preset-btn" data-cron="0 0 15 * *">每月15号</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="parse">解析结果</button>
-                <button class="tab-btn" data-tab="builder">可视化构建器</button>
-                <button class="tab-btn" data-tab="reference">语法参考</button>
-            </div>
-            
-            <div id="parseTab" class="tab-content active">
-                <div id="validationStatus" class="validation-status valid">
-                    <span class="status-icon">✓</span>
-                    <span class="status-text">有效的 Cron 表达式</span>
-                </div>
-                <div id="errorMessage" class="error-message"></div>
-                <div class="result-section">
-                    <div class="result-card">
-                        <h3>📖 可读描述</h3>
-                        <div id="humanReadable" class="human-readable">在工作日（周一至周五）的上午 9:00 执行</div>
-                        <h3>🔍 字段分解</h3>
-                        <div id="fieldBreakdown" class="field-breakdown"></div>
-                    </div>
-                    <div class="result-card">
-                        <h3>⏰ 接下来的执行时间 <button class="copy-btn" onclick="copyNextRuns()" title="复制">📋</button></h3>
-                        <ul id="nextRuns" class="next-runs"></ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="builderTab" class="tab-content">
-                <div class="builder-section">
-                    <h3>可视化构建器</h3>
-                    <div class="builder-grid">
-                        <div class="builder-field"><label>分钟 (0-59)</label><input type="text" id="buildMinute" value="0"></div>
-                        <div class="builder-field"><label>小时 (0-23)</label><input type="text" id="buildHour" value="9"></div>
-                        <div class="builder-field"><label>日 (1-31)</label><input type="text" id="buildDay" value="*"></div>
-                        <div class="builder-field"><label>月 (1-12)</label><input type="text" id="buildMonth" value="*"></div>
-                        <div class="builder-field"><label>星期 (0-6, 0=周日)</label><input type="text" id="buildWeekday" value="1-5"></div>
-                    </div>
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button onclick="applyBuilder()" style="background: var(--tool-primary); border-color: var(--tool-primary);">应用到解析器</button>
-                    </div>
-                </div>
-                <div class="special-chars">
-                    <h4>特殊字符说明</h4>
-                    <div class="char-grid">
-                        <div class="char-item"><code>*</code> <span>任意值</span></div>
-                        <div class="char-item"><code>,</code> <span>值列表 (1,3,5)</span></div>
-                        <div class="char-item"><code>-</code> <span>范围 (1-5)</span></div>
-                        <div class="char-item"><code>/</code> <span>步长 (*/5 = 每5单位)</span></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="referenceTab" class="tab-content">
-                <div class="result-card">
-                    <h3>Cron 表达式格式</h3>
-                    <pre style="background: var(--pico-code-background-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; overflow-x: auto;">┌───────────── 分钟 (0 - 59)
-│ ┌───────────── 小时 (0 - 23)
-│ │ ┌───────────── 日 (1 - 31)
-│ │ │ ┌───────────── 月 (1 - 12)
-│ │ │ │ ┌───────────── 星期 (0 - 6, 周日=0)
-│ │ │ │ │
-* * * * *</pre>
-                    <h3>字段取值范围</h3>
-                    <table>
-                        <thead><tr><th>字段</th><th>取值范围</th><th>特殊字符</th></tr></thead>
-                        <tbody>
-                            <tr><td>分钟</td><td>0-59</td><td>* , - /</td></tr>
-                            <tr><td>小时</td><td>0-23</td><td>* , - /</td></tr>
-                            <tr><td>日</td><td>1-31</td><td>* , - /</td></tr>
-                            <tr><td>月</td><td>1-12</td><td>* , - /</td></tr>
-                            <tr><td>星期</td><td>0-6</td><td>* , - /</td></tr>
-                        </tbody>
-                    </table>
-                    <h3 style="margin-top: 1.5rem;">常用示例</h3>
-                    <table>
-                        <thead><tr><th>表达式</th><th>描述</th></tr></thead>
-                        <tbody>
-                            <tr><td><code>* * * * *</code></td><td>每分钟</td></tr>
-                            <tr><td><code>0 * * * *</code></td><td>每小时整点</td></tr>
-                            <tr><td><code>0 0 * * *</code></td><td>每天午夜</td></tr>
-                            <tr><td><code>0 9 * * 1-5</code></td><td>工作日上午9点</td></tr>
-                            <tr><td><code>*/15 * * * *</code></td><td>每15分钟</td></tr>
-                            <tr><td><code>0 0 1 * *</code></td><td>每月1号午夜</td></tr>
-                            <tr><td><code>0 0 * * 0</code></td><td>每周日午夜</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>⏰ Cron 表达式解析器</h1>
+        <p>解析和生成 Cron 定时表达式</p>
     </div>
-    
+    <div class="container">
+        <div class="card">
+            <div class="cron-input">
+                <div class="cron-field">
+                    <label>分钟</label>
+                    <input type="text" id="minute" value="0" oninput="parseCron()">
+                </div>
+                <div class="cron-field">
+                    <label>小时</label>
+                    <input type="text" id="hour" value="*" oninput="parseCron()">
+                </div>
+                <div class="cron-field">
+                    <label>日</label>
+                    <input type="text" id="day" value="*" oninput="parseCron()">
+                </div>
+                <div class="cron-field">
+                    <label>月</label>
+                    <input type="text" id="month" value="*" oninput="parseCron()">
+                </div>
+                <div class="cron-field">
+                    <label>星期</label>
+                    <input type="text" id="weekday" value="*" oninput="parseCron()">
+                </div>
+            </div>
+            
+            <div class="description" id="description">每小时的第 0 分钟执行</div>
+            
+            <div class="presets">
+                <button class="preset-btn" onclick="setPreset('0 * * * *')">每小时</button>
+                <button class="preset-btn" onclick="setPreset('0 0 * * *')">每天午夜</button>
+                <button class="preset-btn" onclick="setPreset('0 9 * * *')">每天9点</button>
+                <button class="preset-btn" onclick="setPreset('0 0 * * 1')">每周一</button>
+                <button class="preset-btn" onclick="setPreset('0 0 1 * *')">每月1号</button>
+                <button class="preset-btn" onclick="setPreset('*/5 * * * *')">每5分钟</button>
+                <button class="preset-btn" onclick="setPreset('*/15 * * * *')">每15分钟</button>
+                <button class="preset-btn" onclick="setPreset('0 */2 * * *')">每2小时</button>
+                <button class="preset-btn" onclick="setPreset('0 9-18 * * 1-5')">工作时间</button>
+            </div>
+            
+            <div class="next-runs">
+                <h3>接下来5次执行时间</h3>
+                <div id="nextRuns"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="reference">
+                <h3>Cron 语法参考</h3>
+                <table class="ref-table">
+                    <tr><th>字段</th><th>范围</th><th>特殊字符</th></tr>
+                    <tr><td>分钟</td><td>0-59</td><td><code>*</code> <code>,</code> <code>-</code> <code>/</code></td></tr>
+                    <tr><td>小时</td><td>0-23</td><td><code>*</code> <code>,</code> <code>-</code> <code>/</code></td></tr>
+                    <tr><td>日</td><td>1-31</td><td><code>*</code> <code>,</code> <code>-</code> <code>/</code></td></tr>
+                    <tr><td>月</td><td>1-12</td><td><code>*</code> <code>,</code> <code>-</code> <code>/</code></td></tr>
+                    <tr><td>星期</td><td>0-6 (0=周日)</td><td><code>*</code> <code>,</code> <code>-</code> <code>/</code></td></tr>
+                </table>
+                <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <code>*</code> 任意值 | <code>,</code> 列表 | <code>-</code> 范围 | <code>/</code> 步长
+                </p>
+            </div>
+        </div>
+    </div>
     <script>
-        function toggleTheme() {
-            var html = document.documentElement;
-            var newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.querySelector('.theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
-        }
-        (function() {
-            var savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            document.querySelector('.theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
-        })();
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const months = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
         
-        document.querySelectorAll('.tab-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-                document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-                btn.classList.add('active');
-                document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
-            });
-        });
-        
-        document.querySelectorAll('.preset-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.getElementById('cronInput').value = btn.dataset.cron;
-                parseCron();
-            });
-        });
-        
-        var fieldNames = ['分钟', '小时', '日', '月', '星期'];
-        var fieldRanges = [{min:0,max:59},{min:0,max:23},{min:1,max:31},{min:1,max:12},{min:0,max:6}];
-        var weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-        
-        function validateField(value, idx) {
-            var range = fieldRanges[idx];
-            if (value === '*') return true;
-            if (value.indexOf('*/') === 0) return !isNaN(parseInt(value.substring(2)));
-            var parts = value.split(',');
-            for (var i = 0; i < parts.length; i++) {
-                var part = parts[i];
-                if (part.indexOf('-') !== -1) {
-                    var nums = part.split('-').map(Number);
-                    if (isNaN(nums[0]) || isNaN(nums[1]) || nums[0] < range.min || nums[1] > range.max) return false;
-                } else if (part.indexOf('/') !== -1) {
-                    continue;
-                } else {
-                    var num = parseInt(part);
-                    if (isNaN(num) || num < range.min || num > range.max) return false;
-                }
-            }
-            return true;
-        }
-        
-        function parseFieldMeaning(value, idx) {
-            if (value === '*') return '每' + fieldNames[idx].replace('星期', '天');
-            if (value.indexOf('*/') === 0) return '每 ' + value.substring(2) + ' ' + fieldNames[idx];
-            if (idx === 4) {
-                if (value.indexOf('-') !== -1) {
-                    var nums = value.split('-').map(Number);
-                    return weekdayNames[nums[0]] + ' 至 ' + weekdayNames[nums[1]];
-                }
-                return weekdayNames[parseInt(value)] || value;
-            }
-            if (value.indexOf('-') !== -1) {
-                var nums = value.split('-');
-                return nums[0] + ' 至 ' + nums[1];
-            }
-            return value;
-        }
-        
-        function generateHumanReadable(parts) {
-            var minute = parts[0], hour = parts[1], day = parts[2], month = parts[3], weekday = parts[4];
-            if (parts.every(function(p) { return p === '*'; })) return '每分钟执行';
-            if (hour === '*' && day === '*' && month === '*' && weekday === '*') {
-                if (minute === '0') return '每小时整点执行';
-                if (minute.indexOf('*/') === 0) return '每 ' + minute.substring(2) + ' 分钟执行';
-                return '每小时的第 ' + minute + ' 分钟执行';
-            }
-            if (day === '*' && month === '*' && weekday === '*') {
-                return '每天 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
-            }
-            if (weekday === '1-5' && day === '*' && month === '*') {
-                return '在工作日（周一至周五）的 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
-            }
-            if (weekday !== '*' && day === '*' && month === '*') {
-                return '在' + parseFieldMeaning(weekday, 4) + '的 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
-            }
-            if (day !== '*' && month === '*' && weekday === '*') {
-                return '每月 ' + day + ' 号 ' + hour + ':' + minute.padStart(2, '0') + ' 执行';
-            }
-            return '在指定时间执行';
-        }
-        
-        function matchesField(value, field) {
-            if (field === '*') return true;
-            if (field.indexOf('*/') === 0) return value % parseInt(field.substring(2)) === 0;
-            var parts = field.split(',');
-            for (var i = 0; i < parts.length; i++) {
-                var part = parts[i];
-                if (part.indexOf('-') !== -1) {
-                    var nums = part.split('-').map(Number);
-                    if (value >= nums[0] && value <= nums[1]) return true;
-                } else if (parseInt(part) === value) return true;
-            }
-            return false;
-        }
-        
-        function getNextRuns(parts, count) {
-            count = count || 10;
-            var runs = [], current = new Date(), iterations = 0;
-            current.setSeconds(0); current.setMilliseconds(0);
-            while (runs.length < count && iterations < 10000) {
-                iterations++;
-                current = new Date(current.getTime() + 60000);
-                if (!matchesField(current.getMonth() + 1, parts[3])) continue;
-                if (!matchesField(current.getDate(), parts[2])) continue;
-                if (!matchesField(current.getDay(), parts[4])) continue;
-                if (!matchesField(current.getHours(), parts[1])) continue;
-                if (!matchesField(current.getMinutes(), parts[0])) continue;
-                runs.push(new Date(current));
-            }
-            return runs;
-        }
-        
-        function formatDate(date) {
-            return date.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit'});
-        }
-        
-        function getRelativeTime(date) {
-            var diffMins = Math.floor((date - new Date()) / 60000);
-            var diffHours = Math.floor(diffMins / 60);
-            var diffDays = Math.floor(diffHours / 24);
-            if (diffMins < 60) return diffMins + ' 分钟后';
-            if (diffHours < 24) return diffHours + ' 小时后';
-            return diffDays + ' 天后';
-        }
-        
-        function parseCron() {
-            var input = document.getElementById('cronInput').value.trim();
-            var parts = input.split(/\s+/);
-            var validationStatus = document.getElementById('validationStatus');
-            var errorMessage = document.getElementById('errorMessage');
-            
-            if (parts.length !== 5) {
-                validationStatus.className = 'validation-status invalid';
-                validationStatus.querySelector('.status-icon').textContent = '✗';
-                validationStatus.querySelector('.status-text').textContent = '无效：需要 5 个字段';
-                errorMessage.textContent = '期望 5 个字段，得到 ' + parts.length + ' 个';
-                errorMessage.classList.add('show');
-                return;
-            }
-            
-            for (var i = 0; i < 5; i++) {
-                if (!validateField(parts[i], i)) {
-                    validationStatus.className = 'validation-status invalid';
-                    validationStatus.querySelector('.status-icon').textContent = '✗';
-                    validationStatus.querySelector('.status-text').textContent = '无效的 ' + fieldNames[i] + ' 字段';
-                    errorMessage.textContent = '"' + parts[i] + '" 不是有效值';
-                    errorMessage.classList.add('show');
-                    return;
-                }
-            }
-            
-            validationStatus.className = 'validation-status valid';
-            validationStatus.querySelector('.status-icon').textContent = '✓';
-            validationStatus.querySelector('.status-text').textContent = '有效的 Cron 表达式';
-            errorMessage.classList.remove('show');
-            
-            document.getElementById('humanReadable').textContent = generateHumanReadable(parts);
-            
-            var fieldBreakdown = document.getElementById('fieldBreakdown');
-            fieldBreakdown.textContent = '';
-            parts.forEach(function(part, i) {
-                var div = document.createElement('div');
-                div.className = 'field-item';
-                div.innerHTML = '<span class="value">' + part + '</span><span class="label">' + fieldNames[i] + '</span><span class="meaning">' + parseFieldMeaning(part, i) + '</span>';
-                fieldBreakdown.appendChild(div);
-            });
-            
-            var nextRuns = document.getElementById('nextRuns');
-            nextRuns.textContent = '';
-            getNextRuns(parts).forEach(function(date) {
-                var li = document.createElement('li');
-                li.innerHTML = '<span>' + formatDate(date) + '</span><span class="relative">' + getRelativeTime(date) + '</span>';
-                nextRuns.appendChild(li);
-            });
-            
-            document.getElementById('buildMinute').value = parts[0];
-            document.getElementById('buildHour').value = parts[1];
-            document.getElementById('buildDay').value = parts[2];
-            document.getElementById('buildMonth').value = parts[3];
-            document.getElementById('buildWeekday').value = parts[4];
-        }
-        
-        function applyBuilder() {
-            var cron = [
-                document.getElementById('buildMinute').value || '*',
-                document.getElementById('buildHour').value || '*',
-                document.getElementById('buildDay').value || '*',
-                document.getElementById('buildMonth').value || '*',
-                document.getElementById('buildWeekday').value || '*'
-            ].join(' ');
-            document.getElementById('cronInput').value = cron;
-            document.querySelector('.tab-btn[data-tab="parse"]').click();
+        function setPreset(cron) {
+            const parts = cron.split(' ');
+            document.getElementById('minute').value = parts[0];
+            document.getElementById('hour').value = parts[1];
+            document.getElementById('day').value = parts[2];
+            document.getElementById('month').value = parts[3];
+            document.getElementById('weekday').value = parts[4];
             parseCron();
         }
         
-        function copyNextRuns() {
-            var items = document.querySelectorAll('#nextRuns li span:first-child');
-            var text = Array.from(items).map(function(s) { return s.textContent; }).join('\n');
-            navigator.clipboard.writeText(text);
+        function parseField(value, min, max) {
+            if (value === '*') return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+            
+            const values = new Set();
+            const parts = value.split(',');
+            
+            for (const part of parts) {
+                if (part.includes('/')) {
+                    const [range, step] = part.split('/');
+                    const stepNum = parseInt(step);
+                    let start = min, end = max;
+                    if (range !== '*') {
+                        if (range.includes('-')) {
+                            [start, end] = range.split('-').map(Number);
+                        } else {
+                            start = parseInt(range);
+                        }
+                    }
+                    for (let i = start; i <= end; i += stepNum) {
+                        if (i >= min && i <= max) values.add(i);
+                    }
+                } else if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    for (let i = start; i <= end; i++) {
+                        if (i >= min && i <= max) values.add(i);
+                    }
+                } else {
+                    const num = parseInt(part);
+                    if (num >= min && num <= max) values.add(num);
+                }
+            }
+            
+            return Array.from(values).sort((a, b) => a - b);
         }
         
-        document.getElementById('cronInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') parseCron();
-        });
+        function describeCron() {
+            const minute = document.getElementById('minute').value;
+            const hour = document.getElementById('hour').value;
+            const day = document.getElementById('day').value;
+            const month = document.getElementById('month').value;
+            const weekday = document.getElementById('weekday').value;
+            
+            let parts = [];
+            
+            // Time description
+            if (minute === '*' && hour === '*') {
+                parts.push('每分钟');
+            } else if (minute.startsWith('*/')) {
+                parts.push(`每 ${minute.slice(2)} 分钟`);
+            } else if (hour === '*') {
+                parts.push(`每小时的第 ${minute} 分钟`);
+            } else if (hour.startsWith('*/')) {
+                parts.push(`每 ${hour.slice(2)} 小时的第 ${minute} 分钟`);
+            } else if (hour.includes('-')) {
+                parts.push(`${hour} 点之间的第 ${minute} 分钟`);
+            } else {
+                parts.push(`${hour}:${minute.padStart(2, '0')}`);
+            }
+            
+            // Day description
+            if (day !== '*') {
+                if (day.includes('-')) {
+                    parts.push(`每月 ${day} 日`);
+                } else {
+                    parts.push(`每月 ${day} 日`);
+                }
+            }
+            
+            // Month description
+            if (month !== '*') {
+                const monthVals = parseField(month, 1, 12);
+                parts.push(monthVals.map(m => months[m]).join('、'));
+            }
+            
+            // Weekday description
+            if (weekday !== '*') {
+                const weekdayVals = parseField(weekday, 0, 6);
+                parts.push(weekdayVals.map(w => weekdays[w]).join('、'));
+            }
+            
+            return parts.join(' ') + ' 执行';
+        }
         
+        function getNextRuns(count = 5) {
+            const minute = parseField(document.getElementById('minute').value, 0, 59);
+            const hour = parseField(document.getElementById('hour').value, 0, 23);
+            const day = parseField(document.getElementById('day').value, 1, 31);
+            const month = parseField(document.getElementById('month').value, 1, 12);
+            const weekday = parseField(document.getElementById('weekday').value, 0, 6);
+            
+            const runs = [];
+            const now = new Date();
+            let current = new Date(now);
+            
+            while (runs.length < count && current.getFullYear() < now.getFullYear() + 2) {
+                current.setSeconds(0, 0);
+                
+                if (!month.includes(current.getMonth() + 1)) {
+                    current.setMonth(current.getMonth() + 1, 1);
+                    current.setHours(0, 0);
+                    continue;
+                }
+                
+                if (!day.includes(current.getDate())) {
+                    current.setDate(current.getDate() + 1);
+                    current.setHours(0, 0);
+                    continue;
+                }
+                
+                if (!weekday.includes(current.getDay())) {
+                    current.setDate(current.getDate() + 1);
+                    current.setHours(0, 0);
+                    continue;
+                }
+                
+                if (!hour.includes(current.getHours())) {
+                    current.setHours(current.getHours() + 1, 0);
+                    continue;
+                }
+                
+                if (!minute.includes(current.getMinutes())) {
+                    current.setMinutes(current.getMinutes() + 1);
+                    continue;
+                }
+                
+                if (current > now) {
+                    runs.push(new Date(current));
+                }
+                current.setMinutes(current.getMinutes() + 1);
+            }
+            
+            return runs;
+        }
+        
+        function formatRelative(date) {
+            const diff = date - new Date();
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days} 天后`;
+            if (hours > 0) return `${hours} 小时后`;
+            return `${minutes} 分钟后`;
+        }
+        
+        function parseCron() {
+            try {
+                const description = describeCron();
+                document.getElementById('description').textContent = description;
+                document.getElementById('description').classList.remove('error');
+                
+                const runs = getNextRuns(5);
+                document.getElementById('nextRuns').innerHTML = runs.map(run => `
+                    <div class="run-item">
+                        <span>${run.toLocaleString('zh-CN')}</span>
+                        <span class="relative">${formatRelative(run)}</span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('description').textContent = '无效的 Cron 表达式';
+                document.getElementById('description').classList.add('error');
+                document.getElementById('nextRuns').innerHTML = '';
+            }
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
         parseCron();
     </script>
 </body>

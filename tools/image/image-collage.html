@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; --danger: #ef4444; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #06b6d4, #0891b2); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .drop-zone { border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .drop-zone input { display: none; }
+        .image-list { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+        .image-item { position: relative; width: 120px; height: 120px; border-radius: 0.5rem; overflow: hidden; border: 2px solid var(--border); }
+        .image-item img { width: 100%; height: 100%; object-fit: cover; }
+        .image-item .remove { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: var(--danger); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 1; }
+        .image-item .order { position: absolute; bottom: 4px; left: 4px; background: var(--accent); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .control-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+        select, input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); }
+        .preview-container { display: flex; justify-content: center; margin: 1.5rem 0; background: var(--bg-tertiary); border-radius: 0.5rem; padding: 1rem; min-height: 300px; }
+        .preview-container canvas { max-width: 100%; max-height: 600px; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hidden { display: none; }
+        .direction-btns { display: flex; gap: 0.5rem; }
+        .direction-btn { flex: 1; padding: 0.75rem; border: 2px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer; }
+        .direction-btn.active { border-color: var(--accent); background: rgba(99, 102, 241, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🖼️ 图片拼接</h1>
+        <p>将多张图片拼接成一张长图</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+                <div style="font-size: 3rem;">📷</div>
+                <p>点击选择多张图片或拖放图片到此处</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">支持多选，可拖拽排序</p>
+            </div>
+            <div class="image-list" id="imageList"></div>
+        </div>
+        
+        <div class="card hidden" id="editSection">
+            <div class="controls">
+                <div class="control-group">
+                    <label>拼接方向</label>
+                    <div class="direction-btns">
+                        <button class="direction-btn active" data-dir="vertical" onclick="setDirection('vertical')">📐 竖向</button>
+                        <button class="direction-btn" data-dir="horizontal" onclick="setDirection('horizontal')">📏 横向</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>图片间距 (px)</label>
+                    <input type="number" id="gap" value="0" min="0" max="100" onchange="generatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>背景颜色</label>
+                    <input type="color" id="bgColor" value="#ffffff" onchange="generatePreview()">
+                </div>
+                <div class="control-group">
+                    <label>输出宽度 (px, 0=自动)</label>
+                    <input type="number" id="outputWidth" value="0" min="0" max="4000" onchange="generatePreview()">
+                </div>
+            </div>
+            
+            <div class="preview-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="generatePreview()">🔄 重新生成</button>
+                <button class="btn btn-success" onclick="download()">💾 下载图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let images = [];
+        let direction = 'vertical';
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        images.push({ img, name: file.name });
+                        updateImageList();
+                        if (images.length >= 2) {
+                            document.getElementById('editSection').classList.remove('hidden');
+                            generatePreview();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function updateImageList() {
+            const list = document.getElementById('imageList');
+            list.innerHTML = images.map((item, i) => `
+                <div class="image-item" draggable="true" data-index="${i}">
+                    <img src="${item.img.src}" alt="">
+                    <button class="remove" onclick="removeImage(${i})">×</button>
+                    <span class="order">${i + 1}</span>
+                </div>
+            `).join('');
+            
+            // Add drag and drop reordering
+            list.querySelectorAll('.image-item').forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+            });
+        }
+        
+        let dragIndex = null;
+        function handleDragStart(e) { dragIndex = parseInt(e.target.closest('.image-item').dataset.index); }
+        function handleDragOver(e) { e.preventDefault(); }
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropIndex = parseInt(e.target.closest('.image-item').dataset.index);
+            if (dragIndex !== null && dragIndex !== dropIndex) {
+                const [item] = images.splice(dragIndex, 1);
+                images.splice(dropIndex, 0, item);
+                updateImageList();
+                generatePreview();
+            }
+        }
+        
+        function removeImage(index) {
+            images.splice(index, 1);
+            updateImageList();
+            if (images.length < 2) {
+                document.getElementById('editSection').classList.add('hidden');
+            } else {
+                generatePreview();
+            }
+        }
+        
+        function setDirection(dir) {
+            direction = dir;
+            document.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.dir === dir);
+            });
+            generatePreview();
+        }
+        
+        function generatePreview() {
+            if (images.length < 2) return;
+            
+            const gap = parseInt(document.getElementById('gap').value) || 0;
+            const bgColor = document.getElementById('bgColor').value;
+            const outputWidth = parseInt(document.getElementById('outputWidth').value) || 0;
+            
+            let totalWidth, totalHeight;
+            
+            if (direction === 'vertical') {
+                const maxWidth = outputWidth || Math.max(...images.map(i => i.img.width));
+                totalWidth = maxWidth;
+                totalHeight = images.reduce((sum, item) => {
+                    const scale = maxWidth / item.img.width;
+                    return sum + item.img.height * scale;
+                }, 0) + gap * (images.length - 1);
+            } else {
+                const maxHeight = Math.max(...images.map(i => i.img.height));
+                totalHeight = maxHeight;
+                totalWidth = images.reduce((sum, item) => {
+                    const scale = maxHeight / item.img.height;
+                    return sum + item.img.width * scale;
+                }, 0) + gap * (images.length - 1);
+            }
+            
+            canvas.width = totalWidth;
+            canvas.height = totalHeight;
+            
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, totalWidth, totalHeight);
+            
+            let offset = 0;
+            images.forEach(item => {
+                if (direction === 'vertical') {
+                    const scale = totalWidth / item.img.width;
+                    const h = item.img.height * scale;
+                    ctx.drawImage(item.img, 0, offset, totalWidth, h);
+                    offset += h + gap;
+                } else {
+                    const maxHeight = totalHeight;
+                    const scale = maxHeight / item.img.height;
+                    const w = item.img.width * scale;
+                    ctx.drawImage(item.img, offset, 0, w, maxHeight);
+                    offset += w + gap;
+                }
+            });
+        }
+        
+        function download() {
+            const link = document.createElement('a');
+            link.download = 'collage.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function toggleTheme() {
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

@@ -1,411 +1,156 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API 响应模拟器</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <title>API Mock服务 - HTML Tools</title>
     <style>
-        .theme-toggle {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1000;
-        }
-        .layout {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 1.5rem;
-            min-height: calc(100vh - 200px);
-        }
-        @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-        }
-        .sidebar {
-            background: var(--pico-card-background-color);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            border: 1px solid var(--pico-muted-border-color);
-            height: fit-content;
-            position: sticky;
-            top: 1rem;
-        }
-        .endpoint-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .endpoint-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            margin-bottom: 0.5rem;
-            border: 1px solid var(--pico-muted-border-color);
-            transition: all 0.2s;
-        }
-        .endpoint-item:hover {
-            background: var(--pico-secondary-background);
-        }
-        .endpoint-item.active {
-            background: var(--pico-primary-background);
-            border-color: var(--pico-primary);
-        }
-        .method-badge {
-            font-size: 0.65rem;
-            font-weight: bold;
-            padding: 0.2rem 0.4rem;
-            border-radius: 0.25rem;
-            text-transform: uppercase;
-            min-width: 45px;
-            text-align: center;
-        }
-        .method-get { background: #22c55e; color: white; }
-        .method-post { background: #3b82f6; color: white; }
-        .method-put { background: #eab308; color: white; }
-        .method-delete { background: #ef4444; color: white; }
-        .method-patch { background: #a855f7; color: white; }
-        .endpoint-path {
-            font-family: monospace;
-            font-size: 0.8rem;
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .endpoint-actions {
-            display: flex;
-            gap: 0.25rem;
-        }
-        .endpoint-actions button {
-            padding: 0.2rem 0.4rem;
-            font-size: 0.7rem;
-        }
-        .main-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .config-section {
-            background: var(--pico-card-background-color);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            border: 1px solid var(--pico-muted-border-color);
-        }
-        .config-section h3 {
-            margin: 0 0 1rem 0;
-            font-size: 1rem;
-        }
-        .form-row {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .form-row input, .form-row select {
-            margin-bottom: 0;
-        }
-        .form-row .method-select {
-            width: 120px;
-        }
-        .form-row .path-input {
-            flex: 1;
-        }
-        .response-editor {
-            font-family: monospace;
-            font-size: 0.875rem;
-            min-height: 250px;
-            resize: vertical;
-            tab-size: 2;
-        }
-        .status-row {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .status-row label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0;
-        }
-        .status-row input[type="number"] {
-            width: 100px;
-            margin-bottom: 0;
-        }
-        .status-row select {
-            width: 150px;
-            margin-bottom: 0;
-        }
-        .header-list {
-            margin-top: 0.5rem;
-        }
-        .header-item {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            align-items: center;
-        }
-        .header-item input {
-            margin-bottom: 0;
-        }
-        .header-item button {
-            padding: 0.25rem 0.5rem;
-        }
-        .test-section {
-            background: var(--pico-code-background-color);
-            border-radius: 0.5rem;
-            padding: 1rem;
-        }
-        .test-url {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .test-url input {
-            flex: 1;
-            font-family: monospace;
-            margin-bottom: 0;
-        }
-        .test-result {
-            font-family: monospace;
-            font-size: 0.8rem;
-            background: var(--pico-background-color);
-            border-radius: 0.25rem;
-            padding: 1rem;
-            max-height: 300px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .test-result-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-        }
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-weight: bold;
-        }
-        .status-2xx { background: #22c55e; color: white; }
-        .status-3xx { background: #3b82f6; color: white; }
-        .status-4xx { background: #eab308; color: white; }
-        .status-5xx { background: #ef4444; color: white; }
-        .templates {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-        .templates button {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-        .server-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--pico-card-background-color);
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #ef4444;
-        }
-        .status-dot.active {
-            background: #22c55e;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .import-export {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        .import-export button {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: var(--pico-muted-color);
-        }
-        .json-valid {
-            color: #22c55e;
-            font-size: 0.75rem;
-        }
-        .json-invalid {
-            color: #ef4444;
-            font-size: 0.75rem;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #f59e0b, #d97706); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .form-row { display: grid; grid-template-columns: 120px 1fr 100px; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+        @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+        select, input, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-family: inherit; }
+        textarea { min-height: 200px; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.9rem; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .method-select { width: 120px; }
+        .method-GET { background: #22c55e20; color: #22c55e; }
+        .method-POST { background: #3b82f620; color: #3b82f6; }
+        .method-PUT { background: #f59e0b20; color: #f59e0b; }
+        .method-DELETE { background: #ef444420; color: #ef4444; }
+        .status-input { width: 100px; }
+        .mock-list { margin-top: 1rem; }
+        .mock-item { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem; margin-bottom: 0.5rem; }
+        .mock-item .method { padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.85rem; font-weight: 600; }
+        .mock-item .path { flex: 1; font-family: monospace; }
+        .mock-item .status { color: var(--text-secondary); font-size: 0.85rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .tab { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; }
+        .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .response-preview { background: var(--bg-tertiary); border-radius: 0.5rem; padding: 1rem; font-family: monospace; font-size: 0.9rem; max-height: 300px; overflow: auto; }
+        .template-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .template-btn { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0.25rem; background: var(--bg-tertiary); color: var(--text-primary); cursor: pointer; font-size: 0.85rem; }
+        .template-btn:hover { border-color: var(--accent); }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .help-text { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; }
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">切换主题</button>
-    
-    <main class="container">
-        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
-        <h1>API 响应模拟器</h1>
-        <p>配置模拟 API 端点，测试前端应用</p>
-        
-        <div class="server-status">
-            <div class="status-dot" id="serverStatus"></div>
-            <span id="serverStatusText">模拟服务器未运行</span>
-            <div style="flex: 1;"></div>
-            <button id="serverToggle" onclick="toggleServer()">启动服务器</button>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
         </div>
-        
-        <div class="layout">
-            <div class="sidebar">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin: 0;">端点列表</h3>
-                    <button onclick="addEndpoint()" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">+ 新增</button>
-                </div>
-                
-                <div class="endpoint-list" id="endpointList">
-                    <div class="empty-state">暂无端点，点击"新增"添加</div>
-                </div>
-                
-                <div class="import-export">
-                    <button class="secondary outline" onclick="exportConfig()">导出配置</button>
-                    <button class="secondary outline" onclick="importConfig()">导入配置</button>
-                    <input type="file" id="importInput" accept=".json" style="display: none;">
-                </div>
+        <h1>🎭 API Mock服务</h1>
+        <p>快速生成模拟API响应数据</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">创建Mock接口</h3>
+            
+            <div class="form-row">
+                <select id="method" class="method-select">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+                <input type="text" id="path" placeholder="/api/users">
+                <input type="number" id="status" class="status-input" value="200" placeholder="状态码">
             </div>
             
-            <div class="main-panel">
-                <div class="config-section" id="configPanel" style="display: none;">
-                    <h3>端点配置</h3>
-                    
-                    <div class="form-row">
-                        <select id="methodSelect" class="method-select">
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                            <option value="DELETE">DELETE</option>
-                            <option value="PATCH">PATCH</option>
-                        </select>
-                        <input type="text" id="pathInput" class="path-input" placeholder="/api/users">
-                    </div>
-                    
-                    <div class="status-row">
-                        <label>
-                            状态码
-                            <input type="number" id="statusCode" value="200" min="100" max="599">
-                        </label>
-                        <label>
-                            延迟(ms)
-                            <input type="number" id="delay" value="0" min="0" max="10000">
-                        </label>
-                        <label>
-                            Content-Type
-                            <select id="contentType">
-                                <option value="application/json">JSON</option>
-                                <option value="text/plain">Text</option>
-                                <option value="text/html">HTML</option>
-                                <option value="application/xml">XML</option>
-                            </select>
-                        </label>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <label>响应头</label>
-                        <div class="header-list" id="headerList"></div>
-                        <button class="secondary outline" onclick="addHeader()" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">+ 添加响应头</button>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label>响应体</label>
-                            <span id="jsonStatus"></span>
-                        </div>
-                        <div class="templates">
-                            <button class="secondary outline" onclick="loadTemplate('user')">用户对象</button>
-                            <button class="secondary outline" onclick="loadTemplate('list')">用户列表</button>
-                            <button class="secondary outline" onclick="loadTemplate('paginated')">分页数据</button>
-                            <button class="secondary outline" onclick="loadTemplate('error')">错误响应</button>
-                            <button class="secondary outline" onclick="loadTemplate('empty')">空数组</button>
-                            <button class="secondary outline" onclick="formatJson()">格式化 JSON</button>
-                        </div>
-                        <textarea id="responseBody" class="response-editor" placeholder='{"message": "Hello World"}'></textarea>
-                    </div>
-                    
-                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                        <button onclick="saveEndpoint()">保存端点</button>
-                        <button class="secondary" onclick="cancelEdit()">取消</button>
-                    </div>
+            <div class="tabs">
+                <button class="tab active" data-tab="body" onclick="switchTab('body')">响应体</button>
+                <button class="tab" data-tab="headers" onclick="switchTab('headers')">响应头</button>
+            </div>
+            
+            <div id="bodyTab">
+                <div class="template-btns">
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">模板:</span>
+                    <button class="template-btn" onclick="useTemplate('user')">用户数据</button>
+                    <button class="template-btn" onclick="useTemplate('list')">列表数据</button>
+                    <button class="template-btn" onclick="useTemplate('pagination')">分页数据</button>
+                    <button class="template-btn" onclick="useTemplate('error')">错误响应</button>
+                    <button class="template-btn" onclick="useTemplate('success')">成功响应</button>
                 </div>
-                
-                <div class="config-section">
-                    <h3>测试请求</h3>
-                    <div class="test-url">
-                        <select id="testMethod" style="width: 100px;">
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                            <option value="DELETE">DELETE</option>
-                            <option value="PATCH">PATCH</option>
-                        </select>
-                        <input type="text" id="testUrl" placeholder="/api/users">
-                        <button onclick="sendTestRequest()">发送</button>
-                    </div>
-                    
-                    <div class="test-section">
-                        <div class="test-result-header">
-                            <span>响应结果</span>
-                            <span id="responseStatus"></span>
-                        </div>
-                        <div class="test-result" id="testResult">点击"发送"测试端点</div>
-                    </div>
-                </div>
+                <textarea id="responseBody" placeholder="输入JSON响应体...">{
+  "id": 1,
+  "name": "张三",
+  "email": "zhangsan@example.com",
+  "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=1",
+  "createdAt": "2024-01-01T00:00:00Z"
+}</textarea>
+            </div>
+            
+            <div id="headersTab" style="display: none;">
+                <textarea id="responseHeaders" placeholder="输入响应头 (每行一个，格式: Header-Name: value)">Content-Type: application/json
+X-Request-Id: {{uuid}}
+X-Response-Time: {{random:10-100}}ms</textarea>
+                <p class="help-text">支持变量: {{uuid}}, {{timestamp}}, {{random:min-max}}, {{date}}</p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="addMock()">➕ 添加Mock</button>
+                <button class="btn btn-secondary" onclick="formatJson()">格式化JSON</button>
             </div>
         </div>
-    </main>
-
+        
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Mock接口列表</h3>
+            <div class="mock-list" id="mockList">
+                <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">暂无Mock接口，请添加</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">导出配置</h3>
+            <div class="template-btns">
+                <button class="btn btn-secondary" onclick="exportConfig('json')">导出JSON</button>
+                <button class="btn btn-secondary" onclick="exportConfig('postman')">导出Postman集合</button>
+                <button class="btn btn-secondary" onclick="importConfig()">导入配置</button>
+            </div>
+            <input type="file" id="importFile" style="display: none;" accept=".json" onchange="handleImport(this.files[0])">
+        </div>
+    </div>
+    
+    <div class="toast" id="toast">操作成功</div>
+    
     <script>
-        // 存储端点配置
-        let endpoints = [];
-        let currentEditIndex = -1;
-        let serverRunning = false;
-        let customHeaders = [];
-
-        // 响应模板
+        let mocks = [];
+        
         const templates = {
             user: {
                 id: 1,
                 name: "张三",
                 email: "zhangsan@example.com",
                 avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=1",
-                role: "admin",
-                createdAt: "2024-01-15T08:30:00Z"
+                role: "user",
+                createdAt: "{{date}}"
             },
             list: {
-                success: true,
                 data: [
-                    { id: 1, name: "张三", email: "zhangsan@example.com" },
-                    { id: 2, name: "李四", email: "lisi@example.com" },
-                    { id: 3, name: "王五", email: "wangwu@example.com" }
-                ]
-            },
-            paginated: {
-                success: true,
-                data: [
-                    { id: 1, name: "张三" },
-                    { id: 2, name: "李四" }
+                    { id: 1, name: "项目A", status: "active" },
+                    { id: 2, name: "项目B", status: "pending" },
+                    { id: 3, name: "项目C", status: "completed" }
                 ],
+                total: 3
+            },
+            pagination: {
+                data: [],
                 pagination: {
                     page: 1,
                     pageSize: 10,
@@ -417,422 +162,181 @@
                 success: false,
                 error: {
                     code: "VALIDATION_ERROR",
-                    message: "请求参数验证失败",
-                    details: [
-                        { field: "email", message: "邮箱格式不正确" }
-                    ]
+                    message: "请求参数错误",
+                    details: []
                 }
             },
-            empty: []
+            success: {
+                success: true,
+                message: "操作成功",
+                data: null
+            }
         };
-
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                document.documentElement.setAttribute('data-theme', savedTheme);
-            }
-            
-            // 加载保存的配置
-            const saved = localStorage.getItem('mockEndpoints');
-            if (saved) {
-                try {
-                    endpoints = JSON.parse(saved);
-                    renderEndpointList();
-                } catch (e) {
-                    console.error('Failed to load saved endpoints');
-                }
-            }
-            
-            // JSON 验证
-            document.getElementById('responseBody').addEventListener('input', validateJson);
-            
-            // 导入文件处理
-            document.getElementById('importInput').addEventListener('change', handleImport);
-        });
-
-        // 渲染端点列表
-        function renderEndpointList() {
-            const container = document.getElementById('endpointList');
-            
-            if (endpoints.length === 0) {
-                container.innerHTML = '<div class="empty-state">暂无端点，点击"新增"添加</div>';
-                return;
-            }
-            
-            container.textContent = '';
-            endpoints.forEach((ep, index) => {
-                const item = document.createElement('div');
-                item.className = 'endpoint-item' + (currentEditIndex === index ? ' active' : '');
-                item.onclick = () => editEndpoint(index);
-                
-                const badge = document.createElement('span');
-                badge.className = 'method-badge method-' + ep.method.toLowerCase();
-                badge.textContent = ep.method;
-                
-                const path = document.createElement('span');
-                path.className = 'endpoint-path';
-                path.textContent = ep.path;
-                
-                const actions = document.createElement('div');
-                actions.className = 'endpoint-actions';
-                
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'secondary outline';
-                copyBtn.textContent = '复制';
-                copyBtn.onclick = (e) => { e.stopPropagation(); duplicateEndpoint(index); };
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'secondary outline';
-                deleteBtn.textContent = '删除';
-                deleteBtn.onclick = (e) => { e.stopPropagation(); deleteEndpoint(index); };
-                
-                actions.appendChild(copyBtn);
-                actions.appendChild(deleteBtn);
-                
-                item.appendChild(badge);
-                item.appendChild(path);
-                item.appendChild(actions);
-                container.appendChild(item);
-            });
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('bodyTab').style.display = tab === 'body' ? 'block' : 'none';
+            document.getElementById('headersTab').style.display = tab === 'headers' ? 'block' : 'none';
         }
-
-        // 添加端点
-        function addEndpoint() {
-            currentEditIndex = -1;
-            customHeaders = [];
-            document.getElementById('methodSelect').value = 'GET';
-            document.getElementById('pathInput').value = '';
-            document.getElementById('statusCode').value = '200';
-            document.getElementById('delay').value = '0';
-            document.getElementById('contentType').value = 'application/json';
-            document.getElementById('responseBody').value = '';
-            document.getElementById('jsonStatus').textContent = '';
-            renderHeaders();
-            document.getElementById('configPanel').style.display = 'block';
-            renderEndpointList();
-        }
-
-        // 编辑端点
-        function editEndpoint(index) {
-            currentEditIndex = index;
-            const ep = endpoints[index];
-            
-            document.getElementById('methodSelect').value = ep.method;
-            document.getElementById('pathInput').value = ep.path;
-            document.getElementById('statusCode').value = ep.statusCode;
-            document.getElementById('delay').value = ep.delay || 0;
-            document.getElementById('contentType').value = ep.contentType || 'application/json';
-            document.getElementById('responseBody').value = ep.responseBody;
-            customHeaders = ep.headers ? [...ep.headers] : [];
-            
-            renderHeaders();
-            validateJson();
-            document.getElementById('configPanel').style.display = 'block';
-            renderEndpointList();
-        }
-
-        // 保存端点
-        function saveEndpoint() {
-            const method = document.getElementById('methodSelect').value;
-            const path = document.getElementById('pathInput').value.trim();
-            const statusCode = parseInt(document.getElementById('statusCode').value);
-            const delay = parseInt(document.getElementById('delay').value) || 0;
-            const contentType = document.getElementById('contentType').value;
-            const responseBody = document.getElementById('responseBody').value;
-            
-            if (!path) {
-                alert('请输入路径');
-                return;
-            }
-            
-            const endpoint = {
-                method,
-                path,
-                statusCode,
-                delay,
-                contentType,
-                responseBody,
-                headers: customHeaders
-            };
-            
-            if (currentEditIndex >= 0) {
-                endpoints[currentEditIndex] = endpoint;
-            } else {
-                endpoints.push(endpoint);
-            }
-            
-            saveToStorage();
-            renderEndpointList();
-            document.getElementById('configPanel').style.display = 'none';
-            currentEditIndex = -1;
-        }
-
-        // 取消编辑
-        function cancelEdit() {
-            document.getElementById('configPanel').style.display = 'none';
-            currentEditIndex = -1;
-            renderEndpointList();
-        }
-
-        // 复制端点
-        function duplicateEndpoint(index) {
-            const ep = { ...endpoints[index] };
-            ep.path = ep.path + '-copy';
-            endpoints.push(ep);
-            saveToStorage();
-            renderEndpointList();
-        }
-
-        // 删除端点
-        function deleteEndpoint(index) {
-            if (confirm('确定要删除这个端点吗？')) {
-                endpoints.splice(index, 1);
-                saveToStorage();
-                if (currentEditIndex === index) {
-                    document.getElementById('configPanel').style.display = 'none';
-                    currentEditIndex = -1;
-                }
-                renderEndpointList();
-            }
-        }
-
-        // 响应头管理
-        function renderHeaders() {
-            const container = document.getElementById('headerList');
-            container.textContent = '';
-            
-            customHeaders.forEach((header, index) => {
-                const item = document.createElement('div');
-                item.className = 'header-item';
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.placeholder = 'Header Name';
-                nameInput.value = header.name;
-                nameInput.onchange = (e) => { customHeaders[index].name = e.target.value; };
-                
-                const valueInput = document.createElement('input');
-                valueInput.type = 'text';
-                valueInput.placeholder = 'Header Value';
-                valueInput.value = header.value;
-                valueInput.onchange = (e) => { customHeaders[index].value = e.target.value; };
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'secondary outline';
-                deleteBtn.textContent = '删除';
-                deleteBtn.onclick = () => {
-                    customHeaders.splice(index, 1);
-                    renderHeaders();
-                };
-                
-                item.appendChild(nameInput);
-                item.appendChild(valueInput);
-                item.appendChild(deleteBtn);
-                container.appendChild(item);
-            });
-        }
-
-        function addHeader() {
-            customHeaders.push({ name: '', value: '' });
-            renderHeaders();
-        }
-
-        // 加载模板
-        function loadTemplate(name) {
+        
+        function useTemplate(name) {
             const template = templates[name];
             document.getElementById('responseBody').value = JSON.stringify(template, null, 2);
-            validateJson();
         }
-
-        // 格式化 JSON
+        
         function formatJson() {
-            const textarea = document.getElementById('responseBody');
             try {
-                const parsed = JSON.parse(textarea.value);
-                textarea.value = JSON.stringify(parsed, null, 2);
-                validateJson();
+                const body = document.getElementById('responseBody').value;
+                const parsed = JSON.parse(body);
+                document.getElementById('responseBody').value = JSON.stringify(parsed, null, 2);
             } catch (e) {
-                // 不是有效 JSON，不格式化
+                alert('JSON格式错误: ' + e.message);
             }
         }
-
-        // 验证 JSON
-        function validateJson() {
-            const status = document.getElementById('jsonStatus');
-            const value = document.getElementById('responseBody').value.trim();
-            
-            if (!value) {
-                status.textContent = '';
-                return;
-            }
-            
-            try {
-                JSON.parse(value);
-                status.className = 'json-valid';
-                status.textContent = '有效 JSON';
-            } catch (e) {
-                status.className = 'json-invalid';
-                status.textContent = '无效 JSON';
-            }
-        }
-
-        // 服务器切换
-        function toggleServer() {
-            serverRunning = !serverRunning;
-            const dot = document.getElementById('serverStatus');
-            const text = document.getElementById('serverStatusText');
-            const btn = document.getElementById('serverToggle');
-            
-            if (serverRunning) {
-                dot.classList.add('active');
-                text.textContent = '模拟服务器运行中';
-                btn.textContent = '停止服务器';
-            } else {
-                dot.classList.remove('active');
-                text.textContent = '模拟服务器未运行';
-                btn.textContent = '启动服务器';
-            }
-        }
-
-        // 发送测试请求
-        function sendTestRequest() {
-            const method = document.getElementById('testMethod').value;
-            const path = document.getElementById('testUrl').value.trim();
-            const resultDiv = document.getElementById('testResult');
-            const statusSpan = document.getElementById('responseStatus');
+        
+        function addMock() {
+            const method = document.getElementById('method').value;
+            const path = document.getElementById('path').value.trim();
+            const status = parseInt(document.getElementById('status').value) || 200;
+            const body = document.getElementById('responseBody').value;
+            const headers = document.getElementById('responseHeaders').value;
             
             if (!path) {
-                resultDiv.textContent = '请输入测试路径';
+                alert('请输入接口路径');
                 return;
             }
             
-            // 查找匹配的端点
-            const endpoint = endpoints.find(ep => 
-                ep.method === method && matchPath(ep.path, path)
-            );
-            
-            if (!endpoint) {
-                statusSpan.innerHTML = '<span class="status-badge status-4xx">404</span>';
-                resultDiv.textContent = JSON.stringify({
-                    error: "Not Found",
-                    message: "没有找到匹配的端点"
-                }, null, 2);
+            try {
+                JSON.parse(body);
+            } catch (e) {
+                alert('响应体不是有效的JSON: ' + e.message);
                 return;
             }
             
-            // 模拟延迟
-            const delay = endpoint.delay || 0;
-            resultDiv.textContent = '请求中...';
-            
-            setTimeout(() => {
-                const statusCode = endpoint.statusCode;
-                let statusClass = 'status-2xx';
-                if (statusCode >= 300 && statusCode < 400) statusClass = 'status-3xx';
-                else if (statusCode >= 400 && statusCode < 500) statusClass = 'status-4xx';
-                else if (statusCode >= 500) statusClass = 'status-5xx';
-                
-                statusSpan.innerHTML = '<span class="status-badge ' + statusClass + '">' + statusCode + '</span>';
-                
-                // 显示响应头
-                let headersStr = 'HTTP/1.1 ' + statusCode + '\n';
-                headersStr += 'Content-Type: ' + (endpoint.contentType || 'application/json') + '\n';
-                if (endpoint.headers) {
-                    endpoint.headers.forEach(h => {
-                        if (h.name && h.value) {
-                            headersStr += h.name + ': ' + h.value + '\n';
-                        }
-                    });
-                }
-                headersStr += '\n';
-                
-                // 格式化响应体
-                let body = endpoint.responseBody;
-                try {
-                    body = JSON.stringify(JSON.parse(body), null, 2);
-                } catch (e) {
-                    // 不是 JSON，保持原样
-                }
-                
-                resultDiv.textContent = headersStr + body;
-            }, delay);
+            mocks.push({ method, path, status, body, headers, id: Date.now() });
+            renderMockList();
+            showToast('Mock接口已添加');
         }
-
-        // 路径匹配（支持简单的参数匹配）
-        function matchPath(pattern, path) {
-            // 简单匹配，支持 :param 格式
-            const patternParts = pattern.split('/');
-            const pathParts = path.split('/');
+        
+        function renderMockList() {
+            const list = document.getElementById('mockList');
             
-            if (patternParts.length !== pathParts.length) {
-                return pattern === path; // 精确匹配
+            if (mocks.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">暂无Mock接口，请添加</p>';
+                return;
             }
             
-            for (let i = 0; i < patternParts.length; i++) {
-                if (patternParts[i].startsWith(':')) {
-                    continue; // 参数匹配任意值
-                }
-                if (patternParts[i] !== pathParts[i]) {
-                    return false;
-                }
+            list.innerHTML = mocks.map(mock => `
+                <div class="mock-item">
+                    <span class="method method-${mock.method}">${mock.method}</span>
+                    <span class="path">${mock.path}</span>
+                    <span class="status">${mock.status}</span>
+                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem;" onclick="editMock(${mock.id})">编辑</button>
+                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem;" onclick="deleteMock(${mock.id})">删除</button>
+                </div>
+            `).join('');
+        }
+        
+        function editMock(id) {
+            const mock = mocks.find(m => m.id === id);
+            if (!mock) return;
+            
+            document.getElementById('method').value = mock.method;
+            document.getElementById('path').value = mock.path;
+            document.getElementById('status').value = mock.status;
+            document.getElementById('responseBody').value = mock.body;
+            document.getElementById('responseHeaders').value = mock.headers;
+            
+            deleteMock(id);
+        }
+        
+        function deleteMock(id) {
+            mocks = mocks.filter(m => m.id !== id);
+            renderMockList();
+        }
+        
+        function exportConfig(format) {
+            if (mocks.length === 0) {
+                alert('没有可导出的Mock接口');
+                return;
             }
             
-            return true;
+            let content, filename;
+            
+            if (format === 'json') {
+                content = JSON.stringify(mocks, null, 2);
+                filename = 'mock-config.json';
+            } else if (format === 'postman') {
+                const collection = {
+                    info: {
+                        name: "Mock API Collection",
+                        schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+                    },
+                    item: mocks.map(mock => ({
+                        name: `${mock.method} ${mock.path}`,
+                        request: {
+                            method: mock.method,
+                            url: { raw: "{{baseUrl}}" + mock.path },
+                            header: []
+                        },
+                        response: [{
+                            name: "Mock Response",
+                            status: mock.status === 200 ? "OK" : "Error",
+                            code: mock.status,
+                            body: mock.body
+                        }]
+                    }))
+                };
+                content = JSON.stringify(collection, null, 2);
+                filename = 'postman-collection.json';
+            }
+            
+            const blob = new Blob([content], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
         }
-
-        // 保存到本地存储
-        function saveToStorage() {
-            localStorage.setItem('mockEndpoints', JSON.stringify(endpoints));
-        }
-
-        // 导出配置
-        function exportConfig() {
-            const config = JSON.stringify(endpoints, null, 2);
-            const blob = new Blob([config], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'api-mock-config.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        // 导入配置
+        
         function importConfig() {
-            document.getElementById('importInput').click();
+            document.getElementById('importFile').click();
         }
-
-        function handleImport(e) {
-            const file = e.target.files[0];
+        
+        function handleImport(file) {
             if (!file) return;
             
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = (e) => {
                 try {
-                    const imported = JSON.parse(event.target.result);
+                    const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
-                        endpoints = imported;
-                        saveToStorage();
-                        renderEndpointList();
-                        alert('导入成功！共导入 ' + endpoints.length + ' 个端点');
+                        mocks = [...mocks, ...imported.map(m => ({ ...m, id: Date.now() + Math.random() }))];
+                        renderMockList();
+                        showToast('导入成功');
                     } else {
                         alert('无效的配置文件格式');
                     }
-                } catch (err) {
-                    alert('解析配置文件失败: ' + err.message);
+                } catch (e) {
+                    alert('解析文件失败: ' + e.message);
                 }
             };
             reader.readAsText(file);
-            e.target.value = '';
         }
-
-        // 主题切换
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        
         function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
-            localStorage.setItem('theme', html.getAttribute('data-theme'));
+            const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
         }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
     </script>
 </body>
 </html>

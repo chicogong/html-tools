@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体积容量转换器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-tertiary: #1a1a25; --text-primary: #ffffff; --text-secondary: #8888aa; --accent: #6366f1; --border: #2a2a3a; --success: #22c55e; }
+        [data-theme="light"] { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-primary: #1e293b; --text-secondary: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #8b5cf6, #ec4899); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .nav { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 1rem; }
+        .back-link { color: rgba(255,255,255,0.9); text-decoration: none; }
+        .theme-toggle { background: rgba(255,255,255,0.2); border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; color: white; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; }
+        .input-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .input-row input { flex: 1; }
+        .input-row select { width: 160px; }
+        input, select { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-tertiary); color: var(--text-primary); font-size: 1rem; }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+        .result-item { background: var(--bg-tertiary); padding: 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; }
+        .result-item:hover { transform: translateY(-2px); }
+        .result-item .unit { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        .result-item .value { font-size: 1.1rem; font-weight: 600; word-break: break-all; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav">
+            <a href="../../index.html" class="back-link">← 返回首页</a>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 主题</button>
+        </div>
+        <h1>🧪 体积容量转换器</h1>
+        <p>升、毫升、加仑、立方米等单位互转</p>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="input-row">
+                <input type="number" id="inputValue" value="1" oninput="convert()">
+                <select id="inputUnit" onchange="convert()">
+                    <option value="l">升 (L)</option>
+                    <option value="ml">毫升 (mL)</option>
+                    <option value="m3">立方米 (m³)</option>
+                    <option value="cm3">立方厘米 (cm³)</option>
+                    <option value="mm3">立方毫米 (mm³)</option>
+                    <option value="gal">加仑(美)</option>
+                    <option value="galuk">加仑(英)</option>
+                    <option value="qt">夸脱(美)</option>
+                    <option value="pt">品脱(美)</option>
+                    <option value="cup">杯(美)</option>
+                    <option value="floz">液体盎司(美)</option>
+                    <option value="tbsp">汤匙</option>
+                    <option value="tsp">茶匙</option>
+                    <option value="cuft">立方英尺</option>
+                    <option value="cuin">立方英寸</option>
+                </select>
+            </div>
+            <div class="results-grid" id="results"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast">已复制到剪贴板</div>
+    <script>
+        const units = {
+            l: { name: '升 (L)', factor: 1 },
+            ml: { name: '毫升 (mL)', factor: 0.001 },
+            m3: { name: '立方米 (m³)', factor: 1000 },
+            cm3: { name: '立方厘米 (cm³)', factor: 0.001 },
+            mm3: { name: '立方毫米 (mm³)', factor: 0.000001 },
+            gal: { name: '加仑(美)', factor: 3.785411784 },
+            galuk: { name: '加仑(英)', factor: 4.54609 },
+            qt: { name: '夸脱(美)', factor: 0.946352946 },
+            pt: { name: '品脱(美)', factor: 0.473176473 },
+            cup: { name: '杯(美)', factor: 0.2365882365 },
+            floz: { name: '液体盎司(美)', factor: 0.0295735296 },
+            tbsp: { name: '汤匙', factor: 0.0147867648 },
+            tsp: { name: '茶匙', factor: 0.0049289216 },
+            cuft: { name: '立方英尺', factor: 28.316846592 },
+            cuin: { name: '立方英寸', factor: 0.016387064 }
+        };
+
+        function convert() {
+            const value = parseFloat(document.getElementById('inputValue').value) || 0;
+            const unit = document.getElementById('inputUnit').value;
+            const liters = value * units[unit].factor;
+            
+            let html = '';
+            for (const [key, data] of Object.entries(units)) {
+                const result = liters / data.factor;
+                const formatted = result < 0.0001 || result > 1e10 ? result.toExponential(6) : result.toFixed(result < 1 ? 8 : 4).replace(/\.?0+$/, '');
+                html += `<div class="result-item" onclick="copyValue('${formatted}')"><div class="unit">${data.name}</div><div class="value">${formatted}</div></div>`;
+            }
+            document.getElementById('results').innerHTML = html;
+        }
+
+        function copyValue(v) { navigator.clipboard.writeText(v); document.getElementById('toast').classList.add('show'); setTimeout(() => document.getElementById('toast').classList.remove('show'), 2000); }
+        function toggleTheme() { const t = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light'; document.body.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        convert();
+    </script>
+</body>
+</html>

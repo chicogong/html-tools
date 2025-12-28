@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拼音排序工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+        .panel h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        .panel textarea {
+            min-height: 300px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        .options-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .options-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .action-row {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .stats-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-text {
+            flex: 1;
+        }
+        .result-pinyin {
+            color: var(--pico-muted-color);
+            font-size: 0.85rem;
+            margin-left: 1rem;
+        }
+        .group-section {
+            margin-top: 1.5rem;
+        }
+        .group-header {
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .group-items {
+            padding-left: 1rem;
+        }
+        .sample-section {
+            margin-top: 2rem;
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+        .sample-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .delimiter-input {
+            width: 100px;
+        }
+        .output-format {
+            margin-top: 1rem;
+        }
+        .format-options {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .preview-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>拼音排序工具</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>输入内容</h2>
+                <div class="options-row">
+                    <label>
+                        分隔符:
+                        <select id="delimiter">
+                            <option value="newline">换行符</option>
+                            <option value="comma">逗号</option>
+                            <option value="space">空格</option>
+                            <option value="semicolon">分号</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </label>
+                    <label id="customDelimiterLabel" style="display: none;">
+                        自定义:
+                        <input type="text" id="customDelimiter" class="delimiter-input" placeholder="输入分隔符">
+                    </label>
+                </div>
+                <textarea id="inputText" placeholder="请输入要排序的内容，每行一个或使用分隔符分隔..."></textarea>
+                <div class="action-row">
+                    <button id="sortBtn">按拼音排序</button>
+                    <button id="reverseBtn" class="secondary">降序排列</button>
+                    <button id="clearBtn" class="outline">清空</button>
+                </div>
+                <div class="stats-row">
+                    <span>条目数: <strong id="itemCount">0</strong></span>
+                    <span>字符数: <strong id="charCount">0</strong></span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>排序结果</h2>
+                <div class="options-row">
+                    <label>
+                        <input type="checkbox" id="showPinyin" checked> 显示拼音
+                    </label>
+                    <label>
+                        <input type="checkbox" id="groupByInitial"> 按首字母分组
+                    </label>
+                    <label>
+                        <input type="checkbox" id="removeDuplicates"> 去除重复
+                    </label>
+                </div>
+                <div class="output-format">
+                    <label>输出格式:</label>
+                    <div class="format-options">
+                        <label>
+                            <input type="radio" name="outputFormat" value="newline" checked> 换行
+                        </label>
+                        <label>
+                            <input type="radio" name="outputFormat" value="comma"> 逗号
+                        </label>
+                        <label>
+                            <input type="radio" name="outputFormat" value="numbered"> 编号列表
+                        </label>
+                    </div>
+                </div>
+                <div class="preview-list" id="previewList" style="margin-top: 1rem;"></div>
+                <div class="action-row">
+                    <button id="copyBtn" class="secondary">复制结果</button>
+                    <button id="downloadBtn" class="outline">下载文件</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sample-section">
+            <h3>示例数据</h3>
+            <div class="sample-buttons">
+                <button class="outline" data-sample="names">姓名列表</button>
+                <button class="outline" data-sample="cities">城市名称</button>
+                <button class="outline" data-sample="words">常用词语</button>
+                <button class="outline" data-sample="food">食物名称</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 示例数据
+        const sampleData = {
+            names: '张三\n李四\n王五\n赵六\n钱七\n孙八\n周九\n吴十\n郑十一\n陈十二\n林小明\n黄大伟\n刘建国\n杨丽华\n朱志强',
+            cities: '北京\n上海\n广州\n深圳\n杭州\n南京\n武汉\n成都\n重庆\n西安\n天津\n苏州\n厦门\n青岛\n大连\n哈尔滨\n长沙\n郑州\n沈阳\n济南',
+            words: '学习\n工作\n生活\n健康\n幸福\n快乐\n成功\n努力\n坚持\n梦想\n希望\n未来\n朋友\n家人\n爱情\n友谊\n责任\n担当\n勇气\n智慧',
+            food: '米饭\n面条\n饺子\n包子\n馒头\n油条\n豆浆\n粥\n火锅\n烧烤\n炒菜\n凉菜\n汤\n粉丝\n豆腐\n鸡蛋\n牛肉\n猪肉\n鱼\n虾'
+        };
+
+        // 状态
+        let sortedItems = [];
+        let isDescending = false;
+
+        // 获取拼音（使用 localeCompare 的拼音排序）
+        function getPinyinForSort(str) {
+            // 提取第一个汉字用于排序
+            const firstChar = str.match(/[\u4e00-\u9fa5]/)?.[0] || str[0] || '';
+            return firstChar;
+        }
+
+        // 获取首字母（A-Z）
+        function getInitial(str) {
+            const firstChar = str.match(/[\u4e00-\u9fa5]/)?.[0];
+            if (!firstChar) {
+                const first = str[0]?.toUpperCase();
+                return /[A-Z]/.test(first) ? first : '#';
+            }
+            
+            // 使用 localeCompare 来判断首字母
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (let i = 0; i < letters.length; i++) {
+                const letter = letters[i];
+                const nextLetter = letters[i + 1] || 'Z' + 'Z';
+                if (firstChar.localeCompare(letter, 'zh-CN') >= 0 && 
+                    firstChar.localeCompare(nextLetter, 'zh-CN') < 0) {
+                    return letter;
+                }
+            }
+            return '#';
+        }
+
+        // 简易拼音映射（用于显示）
+        const simplePinyinMap = {
+            '张': 'zhāng', '李': 'lǐ', '王': 'wáng', '赵': 'zhào', '钱': 'qián',
+            '孙': 'sūn', '周': 'zhōu', '吴': 'wú', '郑': 'zhèng', '陈': 'chén',
+            '林': 'lín', '黄': 'huáng', '刘': 'liú', '杨': 'yáng', '朱': 'zhū',
+            '北': 'běi', '上': 'shàng', '广': 'guǎng', '深': 'shēn', '杭': 'háng',
+            '南': 'nán', '武': 'wǔ', '成': 'chéng', '重': 'chóng', '西': 'xī',
+            '天': 'tiān', '苏': 'sū', '厦': 'xià', '青': 'qīng', '大': 'dà',
+            '哈': 'hā', '长': 'cháng', '沈': 'shěn', '济': 'jǐ',
+            '学': 'xué', '工': 'gōng', '生': 'shēng', '健': 'jiàn', '幸': 'xìng',
+            '快': 'kuài', '努': 'nǔ', '坚': 'jiān', '梦': 'mèng', '希': 'xī',
+            '未': 'wèi', '朋': 'péng', '家': 'jiā', '爱': 'ài', '友': 'yǒu',
+            '责': 'zé', '担': 'dān', '勇': 'yǒng', '智': 'zhì',
+            '米': 'mǐ', '面': 'miàn', '饺': 'jiǎo', '包': 'bāo', '馒': 'mán',
+            '油': 'yóu', '豆': 'dòu', '粥': 'zhōu', '火': 'huǒ', '烧': 'shāo',
+            '炒': 'chǎo', '凉': 'liáng', '汤': 'tāng', '粉': 'fěn', '腐': 'fǔ',
+            '鸡': 'jī', '牛': 'niú', '猪': 'zhū', '鱼': 'yú', '虾': 'xiā'
+        };
+
+        function getDisplayPinyin(str) {
+            let result = '';
+            for (const char of str) {
+                if (simplePinyinMap[char]) {
+                    result += simplePinyinMap[char] + ' ';
+                } else if (/[\u4e00-\u9fa5]/.test(char)) {
+                    result += '? ';
+                }
+            }
+            return result.trim() || '-';
+        }
+
+        // 解析输入
+        function parseInput() {
+            const text = document.getElementById('inputText').value;
+            const delimiterType = document.getElementById('delimiter').value;
+            
+            let delimiter;
+            switch (delimiterType) {
+                case 'newline': delimiter = /\n/; break;
+                case 'comma': delimiter = /[,，]/; break;
+                case 'space': delimiter = /\s+/; break;
+                case 'semicolon': delimiter = /[;；]/; break;
+                case 'custom': 
+                    const custom = document.getElementById('customDelimiter').value;
+                    delimiter = custom ? new RegExp(custom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) : /\n/;
+                    break;
+                default: delimiter = /\n/;
+            }
+            
+            const items = text.split(delimiter)
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+            
+            return items;
+        }
+
+        // 排序
+        function sortItems() {
+            let items = parseInput();
+            
+            if (items.length === 0) {
+                alert('请输入要排序的内容');
+                return;
+            }
+            
+            // 去重
+            if (document.getElementById('removeDuplicates').checked) {
+                items = [...new Set(items)];
+            }
+            
+            // 使用中文拼音排序
+            items.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+            
+            if (isDescending) {
+                items.reverse();
+            }
+            
+            sortedItems = items;
+            renderResults();
+        }
+
+        // 渲染结果
+        function renderResults() {
+            const container = document.getElementById('previewList');
+            container.replaceChildren();
+            
+            const showPinyin = document.getElementById('showPinyin').checked;
+            const groupByInitial = document.getElementById('groupByInitial').checked;
+            
+            if (sortedItems.length === 0) {
+                const p = document.createElement('p');
+                p.style.color = 'var(--pico-muted-color)';
+                p.style.textAlign = 'center';
+                p.textContent = '暂无排序结果';
+                container.appendChild(p);
+                return;
+            }
+            
+            if (groupByInitial) {
+                // 按首字母分组
+                const groups = {};
+                sortedItems.forEach(item => {
+                    const initial = getInitial(item);
+                    if (!groups[initial]) {
+                        groups[initial] = [];
+                    }
+                    groups[initial].push(item);
+                });
+                
+                const sortedKeys = Object.keys(groups).sort();
+                
+                sortedKeys.forEach(key => {
+                    const section = document.createElement('div');
+                    section.className = 'group-section';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'group-header';
+                    header.textContent = key + ' (' + groups[key].length + ')';
+                    section.appendChild(header);
+                    
+                    const itemsDiv = document.createElement('div');
+                    itemsDiv.className = 'group-items';
+                    
+                    groups[key].forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'result-item';
+                        
+                        const textSpan = document.createElement('span');
+                        textSpan.className = 'result-text';
+                        textSpan.textContent = item;
+                        itemDiv.appendChild(textSpan);
+                        
+                        if (showPinyin) {
+                            const pinyinSpan = document.createElement('span');
+                            pinyinSpan.className = 'result-pinyin';
+                            pinyinSpan.textContent = getDisplayPinyin(item);
+                            itemDiv.appendChild(pinyinSpan);
+                        }
+                        
+                        itemsDiv.appendChild(itemDiv);
+                    });
+                    
+                    section.appendChild(itemsDiv);
+                    container.appendChild(section);
+                });
+            } else {
+                // 普通列表
+                sortedItems.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'result-item';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'result-text';
+                    textSpan.textContent = item;
+                    itemDiv.appendChild(textSpan);
+                    
+                    if (showPinyin) {
+                        const pinyinSpan = document.createElement('span');
+                        pinyinSpan.className = 'result-pinyin';
+                        pinyinSpan.textContent = getDisplayPinyin(item);
+                        itemDiv.appendChild(pinyinSpan);
+                    }
+                    
+                    container.appendChild(itemDiv);
+                });
+            }
+        }
+
+        // 获取输出文本
+        function getOutputText() {
+            const format = document.querySelector('input[name="outputFormat"]:checked').value;
+            
+            switch (format) {
+                case 'comma':
+                    return sortedItems.join(', ');
+                case 'numbered':
+                    return sortedItems.map((item, i) => (i + 1) + '. ' + item).join('\n');
+                default:
+                    return sortedItems.join('\n');
+            }
+        }
+
+        // 更新统计
+        function updateStats() {
+            const items = parseInput();
+            document.getElementById('itemCount').textContent = items.length;
+            document.getElementById('charCount').textContent = items.join('').length;
+        }
+
+        // 主题切换
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        // 事件绑定
+        document.getElementById('sortBtn').addEventListener('click', function() {
+            isDescending = false;
+            sortItems();
+        });
+
+        document.getElementById('reverseBtn').addEventListener('click', function() {
+            isDescending = true;
+            sortItems();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            document.getElementById('inputText').value = '';
+            sortedItems = [];
+            renderResults();
+            updateStats();
+        });
+
+        document.getElementById('inputText').addEventListener('input', updateStats);
+
+        document.getElementById('delimiter').addEventListener('change', function() {
+            const customLabel = document.getElementById('customDelimiterLabel');
+            customLabel.style.display = this.value === 'custom' ? 'flex' : 'none';
+            updateStats();
+        });
+
+        document.getElementById('showPinyin').addEventListener('change', renderResults);
+        document.getElementById('groupByInitial').addEventListener('change', renderResults);
+        document.getElementById('removeDuplicates').addEventListener('change', sortItems);
+
+        document.querySelectorAll('input[name="outputFormat"]').forEach(function(radio) {
+            radio.addEventListener('change', renderResults);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            if (sortedItems.length === 0) {
+                alert('没有可复制的内容');
+                return;
+            }
+            navigator.clipboard.writeText(getOutputText()).then(function() {
+                alert('已复制到剪贴板');
+            });
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (sortedItems.length === 0) {
+                alert('没有可下载的内容');
+                return;
+            }
+            const blob = new Blob([getOutputText()], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sorted-list.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 示例按钮
+        document.querySelectorAll('[data-sample]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const sample = this.dataset.sample;
+                if (sampleData[sample]) {
+                    document.getElementById('inputText').value = sampleData[sample];
+                    document.getElementById('delimiter').value = 'newline';
+                    document.getElementById('customDelimiterLabel').style.display = 'none';
+                    updateStats();
+                    sortItems();
+                }
+            });
+        });
+
+        // 初始化
+        updateStats();
+    </script>
+</body>
+</html>

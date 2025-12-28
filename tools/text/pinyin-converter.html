@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉字转拼音</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #9b59b6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            margin-bottom: 0;
+            color: var(--primary-color);
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .options-bar {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .options-bar label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .text-area-wrapper {
+            margin-bottom: 1rem;
+        }
+        
+        .text-area-wrapper label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-size: 1rem;
+        }
+        
+        .output-area {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            min-height: 100px;
+            line-height: 2;
+            word-break: break-all;
+        }
+        
+        .pinyin-char {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0.25rem;
+            text-align: center;
+        }
+        
+        .pinyin-char .pinyin {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+        }
+        
+        .pinyin-char .hanzi {
+            font-size: 1.1rem;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        
+        .char-count {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.25rem;
+        }
+        
+        .result-text {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--pico-muted-border-color);
+            color: var(--pico-muted-color);
+        }
+        
+        .tone-select {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>汉字转拼音</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+        
+        <article>
+            <div class="options-bar">
+                <label>
+                    <input type="checkbox" id="showTone" checked>
+                    显示声调
+                </label>
+                <label>
+                    <input type="checkbox" id="showHanzi" checked>
+                    显示汉字
+                </label>
+                <label>
+                    <input type="checkbox" id="polyphone">
+                    多音字提示
+                </label>
+                <div class="tone-select">
+                    <span>声调格式:</span>
+                    <select id="toneFormat">
+                        <option value="mark">符号 (pīn yīn)</option>
+                        <option value="number">数字 (pin1 yin1)</option>
+                        <option value="none">无声调 (pin yin)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="text-area-wrapper">
+                <label for="input-text">输入汉字</label>
+                <textarea id="input-text" placeholder="请输入要转换的汉字文本..."></textarea>
+                <div class="char-count">
+                    <span>字符数: <span id="input-count">0</span></span>
+                    <button class="outline secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="clearInput()">清空</button>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button onclick="convert()">转换为拼音</button>
+                <button onclick="copyResult()" class="secondary">复制结果</button>
+            </div>
+            
+            <div class="text-area-wrapper">
+                <label>转换结果</label>
+                <div id="output-area" class="output-area">
+                    <span class="result-text" id="result-text">转换结果将显示在这里...</span>
+                </div>
+            </div>
+        </article>
+        
+        <footer>
+            <p>汉字转拼音工具 - 纯客户端运行，数据不会上传</p>
+        </footer>
+    </main>
+    
+    <script>
+        // 简化的拼音字典（常用字）
+        const pinyinDict = {
+            '的':'de','一':'yī','是':'shì','了':'le','我':'wǒ','不':'bù','人':'rén','在':'zài','他':'tā','有':'yǒu',
+            '这':'zhè','个':'gè','上':'shàng','们':'men','来':'lái','到':'dào','时':'shí','大':'dà','地':'dì','为':'wèi',
+            '子':'zǐ','中':'zhōng','你':'nǐ','说':'shuō','生':'shēng','国':'guó','年':'nián','着':'zhe','就':'jiù','那':'nà',
+            '和':'hé','要':'yào','她':'tā','出':'chū','也':'yě','得':'de','里':'lǐ','后':'hòu','自':'zì','以':'yǐ',
+            '会':'huì','家':'jiā','可':'kě','下':'xià','而':'ér','过':'guò','天':'tiān','去':'qù','能':'néng','对':'duì',
+            '小':'xiǎo','多':'duō','然':'rán','于':'yú','心':'xīn','学':'xué','么':'me','之':'zhī','都':'dōu','好':'hǎo',
+            '看':'kàn','起':'qǐ','发':'fā','当':'dāng','没':'méi','成':'chéng','只':'zhǐ','如':'rú','事':'shì','把':'bǎ',
+            '还':'hái','用':'yòng','第':'dì','样':'yàng','道':'dào','想':'xiǎng','作':'zuò','种':'zhǒng','开':'kāi','美':'měi',
+            '总':'zǒng','从':'cóng','无':'wú','情':'qíng','己':'jǐ','面':'miàn','最':'zuì','女':'nǚ','但':'dàn','现':'xiàn',
+            '前':'qián','些':'xiē','所':'suǒ','同':'tóng','日':'rì','手':'shǒu','又':'yòu','行':'xíng','意':'yì','动':'dòng',
+            '方':'fāng','期':'qī','它':'tā','头':'tóu','经':'jīng','长':'cháng','儿':'ér','回':'huí','位':'wèi','分':'fēn',
+            '爱':'ài','老':'lǎo','因':'yīn','很':'hěn','给':'gěi','名':'míng','法':'fǎ','间':'jiān','斯':'sī','知':'zhī',
+            '世':'shì','什':'shén','两':'liǎng','次':'cì','使':'shǐ','身':'shēn','者':'zhě','被':'bèi','高':'gāo','已':'yǐ',
+            '亲':'qīn','其':'qí','进':'jìn','此':'cǐ','话':'huà','常':'cháng','与':'yǔ','活':'huó','正':'zhèng','感':'gǎn',
+            '见':'jiàn','明':'míng','问':'wèn','力':'lì','理':'lǐ','尔':'ěr','点':'diǎn','文':'wén','几':'jǐ','定':'dìng',
+            '本':'běn','公':'gōng','特':'tè','做':'zuò','外':'wài','孩':'hái','相':'xiāng','西':'xī','果':'guǒ','走':'zǒu',
+            '将':'jiāng','月':'yuè','十':'shí','实':'shí','向':'xiàng','声':'shēng','车':'chē','全':'quán','信':'xìn','重':'zhòng',
+            '三':'sān','机':'jī','工':'gōng','物':'wù','气':'qì','每':'měi','并':'bìng','别':'bié','真':'zhēn','打':'dǎ',
+            '太':'tài','新':'xīn','比':'bǐ','才':'cái','便':'biàn','夫':'fū','再':'zài','书':'shū','部':'bù','水':'shuǐ',
+            '像':'xiàng','眼':'yǎn','少':'shǎo','界':'jiè','妈':'mā','听':'tīng','远':'yuǎn','师':'shī','电':'diàn','社':'shè',
+            '程':'chéng','变':'biàn','海':'hǎi','万':'wàn','精':'jīng','化':'huà','山':'shān','神':'shén','参':'cān','百':'bǎi',
+            '表':'biǎo','让':'ràng','叫':'jiào','系':'xì','五':'wǔ','数':'shù','史':'shǐ','性':'xìng','通':'tōng','半':'bàn',
+            '却':'què','父':'fù','东':'dōng','政':'zhèng','死':'sǐ','民':'mín','四':'sì','合':'hé','市':'shì','完':'wán',
+            '入':'rù','认':'rèn','始':'shǐ','记':'jì','直':'zhí','题':'tí','党':'dǎng','主':'zhǔ','题':'tí','程':'chéng',
+            '明':'míng','路':'lù','接':'jiē','更':'gèng','号':'hào','军':'jūn','等':'děng','平':'píng','花':'huā','关':'guān',
+            '管':'guǎn','非':'fēi','连':'lián','言':'yán','视':'shì','白':'bái','先':'xiān','战':'zhàn','业':'yè','风':'fēng',
+            '台':'tái','北':'běi','员':'yuán','服':'fú','写':'xiě','边':'biān','求':'qiú','品':'pǐn','象':'xiàng','红':'hóng',
+            '早':'zǎo','晚':'wǎn','难':'nán','午':'wǔ','香':'xiāng','坐':'zuò','住':'zhù','夜':'yè','黑':'hēi','读':'dú',
+            '站':'zhàn','室':'shì','友':'yǒu','飞':'fēi','处':'chù','钱':'qián','病':'bìng','忙':'máng','找':'zhǎo','蓝':'lán',
+            '冷':'lěng','错':'cuò','送':'sòng','绿':'lǜ','紧':'jǐn','喝':'hē','吃':'chī','睡':'shuì','买':'mǎi','卖':'mài',
+            '玩':'wán','穿':'chuān','笑':'xiào','哭':'kū','跑':'pǎo','快':'kuài','慢':'màn','累':'lèi','饿':'è','渴':'kě',
+            '热':'rè','怕':'pà','忘':'wàng','懂':'dǒng','帮':'bāng','换':'huàn','拿':'ná','放':'fàng','带':'dài','猫':'māo',
+            '狗':'gǒu','鸟':'niǎo','鱼':'yú','牛':'niú','羊':'yáng','马':'mǎ','鸡':'jī','鸭':'yā','猪':'zhū','虎':'hǔ',
+            '龙':'lóng','兔':'tù','蛇':'shé','米':'mǐ','饭':'fàn','菜':'cài','肉':'ròu','蛋':'dàn','面':'miàn','茶':'chá',
+            '酒':'jiǔ','糖':'táng','盐':'yán','油':'yóu','果':'guǒ','瓜':'guā','桃':'táo','梨':'lí','苹':'píng','草':'cǎo',
+            '树':'shù','竹':'zhú','林':'lín','河':'hé','湖':'hú','江':'jiāng','雨':'yǔ','雪':'xuě','云':'yún','星':'xīng',
+            '春':'chūn','夏':'xià','秋':'qiū','冬':'dōng','东':'dōng','南':'nán','北':'běi','右':'yòu','左':'zuǒ','里':'lǐ',
+            '门':'mén','窗':'chuāng','桌':'zhuō','椅':'yǐ','床':'chuáng','房':'fáng','楼':'lóu','城':'chéng','店':'diàn','校':'xiào',
+            '医':'yī','院':'yuàn','厅':'tīng','厨':'chú','卫':'wèi','浴':'yù','园':'yuán','场':'chǎng','街':'jiē','站':'zhàn',
+            '桥':'qiáo','塔':'tǎ','墙':'qiáng','路':'lù','门':'mén','票':'piào','钟':'zhōng','表':'biǎo','伞':'sǎn','包':'bāo',
+            '箱':'xiāng','袋':'dài','瓶':'píng','碗':'wǎn','杯':'bēi','盘':'pán','筷':'kuài','刀':'dāo','叉':'chā','勺':'sháo',
+            '灯':'dēng','火':'huǒ','电':'diàn','脑':'nǎo','话':'huà','视':'shì','网':'wǎng','琴':'qín','画':'huà','歌':'gē',
+            '舞':'wǔ','棋':'qí','球':'qiú','泳':'yǒng','跳':'tiào','唱':'chàng','玩':'wán','游':'yóu','戏':'xì','影':'yǐng',
+            '音':'yīn','乐':'yuè','爸':'bà','妈':'mā','哥':'gē','姐':'jiě','弟':'dì','妹':'mèi','叔':'shū','姑':'gū',
+            '舅':'jiù','奶':'nǎi','爷':'yé','孙':'sūn','侄':'zhí','甥':'shēng','婆':'pó','媳':'xí','夫':'fū','妻':'qī',
+            '男':'nán','女':'nǚ','先':'xiān','后':'hòu','朋':'péng','友':'yǒu','同':'tóng','伴':'bàn','客':'kè','宾':'bīn',
+            '零':'líng','二':'èr','六':'liù','七':'qī','八':'bā','九':'jiǔ','千':'qiān','亿':'yì','元':'yuán','角':'jiǎo',
+            '块':'kuài','毛':'máo','克':'kè','斤':'jīn','吨':'dūn','米':'mǐ','厘':'lí','寸':'cùn','尺':'chǐ','丈':'zhàng',
+            '亩':'mǔ','顷':'qǐng','秒':'miǎo','钟':'zhōng','刻':'kè','岁':'suì','周':'zhōu','季':'jì','甲':'jiǎ','乙':'yǐ',
+            '丙':'bǐng','丁':'dīng','戊':'wù','己':'jǐ','庚':'gēng','辛':'xīn','壬':'rén','癸':'guǐ','鼠':'shǔ','牛':'niú',
+            '谢':'xiè','请':'qǐng','您':'nín','嗨':'hāi','哦':'ó','呢':'ne','吗':'ma','啊':'ā','哇':'wā','嘿':'hēi',
+            '呀':'ya','喂':'wèi','嗯':'ǹg','唉':'āi','哈':'hā','嘻':'xī','呵':'hē','噢':'ō','哎':'āi','哟':'yō',
+            '字':'zì','词':'cí','句':'jù','段':'duàn','篇':'piān','章':'zhāng','册':'cè','卷':'juàn','页':'yè','笔':'bǐ',
+            '纸':'zhǐ','墨':'mò','砚':'yàn','印':'yìn','版':'bǎn','报':'bào','刊':'kān','志':'zhì','目':'mù','录':'lù'
+        };
+        
+        // 声调转换映射
+        const toneMarks = {
+            'a': ['ā', 'á', 'ǎ', 'à', 'a'],
+            'e': ['ē', 'é', 'ě', 'è', 'e'],
+            'i': ['ī', 'í', 'ǐ', 'ì', 'i'],
+            'o': ['ō', 'ó', 'ǒ', 'ò', 'o'],
+            'u': ['ū', 'ú', 'ǔ', 'ù', 'u'],
+            'ü': ['ǖ', 'ǖ', 'ǚ', 'ǜ', 'ü'],
+            'v': ['ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü']
+        };
+        
+        // 声调符号到数字的映射
+        const toneToNumber = {
+            'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+            'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+            'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+            'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+            'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+            'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4'
+        };
+        
+        // 将带声调的拼音转换为数字形式
+        function convertToNumberTone(pinyin) {
+            let result = pinyin;
+            let tone = '';
+            for (const [mark, replacement] of Object.entries(toneToNumber)) {
+                if (pinyin.includes(mark)) {
+                    result = pinyin.replace(mark, replacement[0]);
+                    tone = replacement[1];
+                    break;
+                }
+            }
+            return tone ? result + tone : result;
+        }
+        
+        // 去除声调
+        function removeTone(pinyin) {
+            let result = pinyin;
+            for (const [mark, replacement] of Object.entries(toneToNumber)) {
+                result = result.replace(mark, replacement[0]);
+            }
+            return result.replace(/[1-4]/g, '');
+        }
+        
+        // 输入框事件监听
+        document.getElementById('input-text').addEventListener('input', function() {
+            document.getElementById('input-count').textContent = this.value.length;
+        });
+        
+        // 安全地创建元素
+        function createPinyinElement(pinyin, hanzi) {
+            const span = document.createElement('span');
+            span.className = 'pinyin-char';
+            
+            const pinyinSpan = document.createElement('span');
+            pinyinSpan.className = 'pinyin';
+            pinyinSpan.textContent = pinyin;
+            
+            const hanziSpan = document.createElement('span');
+            hanziSpan.className = 'hanzi';
+            hanziSpan.textContent = hanzi;
+            
+            span.appendChild(pinyinSpan);
+            span.appendChild(hanziSpan);
+            return span;
+        }
+        
+        // 转换函数
+        function convert() {
+            const input = document.getElementById('input-text').value;
+            const showHanzi = document.getElementById('showHanzi').checked;
+            const toneFormat = document.getElementById('toneFormat').value;
+            const outputArea = document.getElementById('output-area');
+            
+            // 清空输出区域
+            outputArea.textContent = '';
+            
+            if (!input.trim()) {
+                outputArea.textContent = '请输入要转换的汉字...';
+                return;
+            }
+            
+            let pinyinOnly = [];
+            const fragment = document.createDocumentFragment();
+            
+            for (const char of input) {
+                let pinyin = pinyinDict[char];
+                
+                if (pinyin) {
+                    // 根据格式调整拼音
+                    if (toneFormat === 'number') {
+                        pinyin = convertToNumberTone(pinyin);
+                    } else if (toneFormat === 'none') {
+                        pinyin = removeTone(pinyin);
+                    }
+                    
+                    if (showHanzi) {
+                        fragment.appendChild(createPinyinElement(pinyin, char));
+                    } else {
+                        pinyinOnly.push(pinyin);
+                    }
+                } else if (/[\u4e00-\u9fff]/.test(char)) {
+                    // 未收录的汉字
+                    if (showHanzi) {
+                        fragment.appendChild(createPinyinElement('?', char));
+                    } else {
+                        pinyinOnly.push('?');
+                    }
+                } else if (char === '\n') {
+                    if (showHanzi) {
+                        fragment.appendChild(document.createElement('br'));
+                    } else {
+                        pinyinOnly.push('\n');
+                    }
+                } else {
+                    // 非汉字字符保持原样
+                    if (showHanzi) {
+                        fragment.appendChild(createPinyinElement('\u00A0', char));
+                    } else {
+                        pinyinOnly.push(char);
+                    }
+                }
+            }
+            
+            if (showHanzi) {
+                outputArea.appendChild(fragment);
+            } else {
+                outputArea.textContent = pinyinOnly.join(' ').replace(/ +/g, ' ').trim();
+            }
+        }
+        
+        // 清空输入
+        function clearInput() {
+            document.getElementById('input-text').value = '';
+            document.getElementById('input-count').textContent = '0';
+            document.getElementById('output-area').textContent = '转换结果将显示在这里...';
+        }
+        
+        // 复制结果
+        function copyResult() {
+            const resultEl = document.getElementById('output-area');
+            const text = resultEl.innerText;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '已复制';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 1500);
+            });
+        }
+        
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // 初始化主题
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+        
+        // 选项变化时自动重新转换
+        document.querySelectorAll('#showTone, #showHanzi, #toneFormat').forEach(el => {
+            el.addEventListener('change', () => {
+                if (document.getElementById('input-text').value.trim()) {
+                    convert();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

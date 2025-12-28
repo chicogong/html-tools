@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>几何图案生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --preview-bg: #f0f0f0;
+        }
+        [data-theme="dark"] {
+            --preview-bg: #2a2a2a;
+        }
+        body {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .preview-area {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #patternCanvas {
+            border: 1px solid var(--pico-muted-border-color);
+            max-width: 100%;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .color-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-inputs input[type="color"] {
+            width: 60px;
+            height: 40px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .range-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .pattern-types {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        .pattern-type {
+            padding: 0.5rem;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pattern-type:hover {
+            border-color: var(--pico-primary);
+        }
+        .pattern-type.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>几何图案生成器</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="preview-area">
+            <canvas id="patternCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>图案类型</label>
+                <div class="pattern-types">
+                    <div class="pattern-type active" data-type="dots">圆点</div>
+                    <div class="pattern-type" data-type="lines">线条</div>
+                    <div class="pattern-type" data-type="grid">网格</div>
+                    <div class="pattern-type" data-type="triangles">三角</div>
+                    <div class="pattern-type" data-type="hexagons">六边形</div>
+                    <div class="pattern-type" data-type="crosses">十字</div>
+                    <div class="pattern-type" data-type="diamonds">菱形</div>
+                    <div class="pattern-type" data-type="zigzag">折线</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>前景颜色</label>
+                <div class="color-inputs">
+                    <input type="color" id="fgColor" value="#4F46E5">
+                    <input type="text" id="fgColorText" value="#4F46E5" maxlength="7">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>背景颜色</label>
+                <div class="color-inputs">
+                    <input type="color" id="bgColor" value="#ffffff">
+                    <input type="text" id="bgColorText" value="#ffffff" maxlength="7">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>图案大小: <span class="range-value" id="sizeValue">20</span></label>
+                <input type="range" id="patternSize" min="5" max="80" value="20">
+            </div>
+
+            <div class="control-group">
+                <label>间距: <span class="range-value" id="spacingValue">30</span></label>
+                <input type="range" id="spacing" min="10" max="100" value="30">
+            </div>
+
+            <div class="control-group">
+                <label>线条粗细: <span class="range-value" id="strokeValue">2</span></label>
+                <input type="range" id="strokeWidth" min="1" max="10" value="2">
+            </div>
+
+            <div class="control-group">
+                <label>旋转角度: <span class="range-value" id="rotationValue">0</span>°</label>
+                <input type="range" id="rotation" min="0" max="360" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>透明度: <span class="range-value" id="opacityValue">100</span>%</label>
+                <input type="range" id="opacity" min="10" max="100" value="100">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="generateBtn">生成图案</button>
+            <button id="randomBtn" class="secondary">随机生成</button>
+            <button id="downloadPng" class="outline">下载 PNG</button>
+            <button id="downloadSvg" class="outline">下载 SVG</button>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Elements
+        const canvas = document.getElementById('patternCanvas');
+        const ctx = canvas.getContext('2d');
+        const fgColor = document.getElementById('fgColor');
+        const fgColorText = document.getElementById('fgColorText');
+        const bgColor = document.getElementById('bgColor');
+        const bgColorText = document.getElementById('bgColorText');
+        const patternSize = document.getElementById('patternSize');
+        const spacing = document.getElementById('spacing');
+        const strokeWidth = document.getElementById('strokeWidth');
+        const rotation = document.getElementById('rotation');
+        const opacity = document.getElementById('opacity');
+
+        let currentPattern = 'dots';
+
+        // Pattern type selection
+        document.querySelectorAll('.pattern-type').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.pattern-type').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPattern = btn.dataset.type;
+                generatePattern();
+            });
+        });
+
+        // Sync color inputs
+        function syncColorInputs(colorInput, textInput) {
+            colorInput.addEventListener('input', () => {
+                textInput.value = colorInput.value;
+                generatePattern();
+            });
+            textInput.addEventListener('input', () => {
+                if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+                    colorInput.value = textInput.value;
+                    generatePattern();
+                }
+            });
+        }
+
+        syncColorInputs(fgColor, fgColorText);
+        syncColorInputs(bgColor, bgColorText);
+
+        // Update range values
+        const rangeInputs = [
+            { input: patternSize, display: 'sizeValue' },
+            { input: spacing, display: 'spacingValue' },
+            { input: strokeWidth, display: 'strokeValue' },
+            { input: rotation, display: 'rotationValue' },
+            { input: opacity, display: 'opacityValue' }
+        ];
+
+        rangeInputs.forEach(({ input, display }) => {
+            input.addEventListener('input', () => {
+                document.getElementById(display).textContent = input.value;
+                generatePattern();
+            });
+        });
+
+        // Pattern drawing functions
+        function drawDots(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawLines(x, y, size, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate((angle * Math.PI) / 180);
+            ctx.beginPath();
+            ctx.moveTo(-size / 2, 0);
+            ctx.lineTo(size / 2, 0);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawGrid(x, y, size) {
+            ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+        }
+
+        function drawTriangle(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size / 2);
+            ctx.lineTo(x - size / 2, y + size / 2);
+            ctx.lineTo(x + size / 2, y + size / 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawHexagon(x, y, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i - Math.PI / 2;
+                const px = x + (size / 2) * Math.cos(angle);
+                const py = y + (size / 2) * Math.sin(angle);
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function drawCross(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x - size / 2, y);
+            ctx.lineTo(x + size / 2, y);
+            ctx.moveTo(x, y - size / 2);
+            ctx.lineTo(x, y + size / 2);
+            ctx.stroke();
+        }
+
+        function drawDiamond(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size / 2);
+            ctx.lineTo(x + size / 2, y);
+            ctx.lineTo(x, y + size / 2);
+            ctx.lineTo(x - size / 2, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawZigzag(x, y, size, rowIndex) {
+            const offset = rowIndex % 2 === 0 ? 0 : size / 2;
+            ctx.beginPath();
+            ctx.moveTo(x - size / 2 + offset, y + size / 4);
+            ctx.lineTo(x + offset, y - size / 4);
+            ctx.lineTo(x + size / 2 + offset, y + size / 4);
+            ctx.stroke();
+        }
+
+        // Generate pattern
+        function generatePattern() {
+            const size = parseInt(patternSize.value);
+            const space = parseInt(spacing.value);
+            const stroke = parseInt(strokeWidth.value);
+            const rot = parseInt(rotation.value);
+            const alpha = parseInt(opacity.value) / 100;
+
+            // Clear canvas
+            ctx.fillStyle = bgColor.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Save state and apply rotation
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((rot * Math.PI) / 180);
+            ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+            // Set styles
+            ctx.fillStyle = fgColor.value;
+            ctx.strokeStyle = fgColor.value;
+            ctx.lineWidth = stroke;
+            ctx.globalAlpha = alpha;
+
+            // Calculate extended bounds for rotation
+            const diagonal = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
+            const startX = (canvas.width - diagonal) / 2;
+            const startY = (canvas.height - diagonal) / 2;
+            const endX = canvas.width + (diagonal - canvas.width) / 2;
+            const endY = canvas.height + (diagonal - canvas.height) / 2;
+
+            let rowIndex = 0;
+            for (let y = startY; y < endY; y += space) {
+                for (let x = startX; x < endX; x += space) {
+                    switch (currentPattern) {
+                        case 'dots':
+                            drawDots(x, y, size);
+                            break;
+                        case 'lines':
+                            drawLines(x, y, size, 45);
+                            break;
+                        case 'grid':
+                            drawGrid(x, y, size);
+                            break;
+                        case 'triangles':
+                            drawTriangle(x, y, size);
+                            break;
+                        case 'hexagons':
+                            drawHexagon(x, y, size);
+                            break;
+                        case 'crosses':
+                            drawCross(x, y, size);
+                            break;
+                        case 'diamonds':
+                            drawDiamond(x, y, size);
+                            break;
+                        case 'zigzag':
+                            drawZigzag(x, y, size, rowIndex);
+                            break;
+                    }
+                }
+                rowIndex++;
+            }
+
+            ctx.restore();
+            ctx.globalAlpha = 1;
+        }
+
+        // Random generation
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            const randomColor = () => '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            const patterns = ['dots', 'lines', 'grid', 'triangles', 'hexagons', 'crosses', 'diamonds', 'zigzag'];
+
+            fgColor.value = randomColor();
+            fgColorText.value = fgColor.value;
+            bgColor.value = randomColor();
+            bgColorText.value = bgColor.value;
+
+            patternSize.value = Math.floor(Math.random() * 40) + 10;
+            document.getElementById('sizeValue').textContent = patternSize.value;
+
+            spacing.value = Math.floor(Math.random() * 50) + 20;
+            document.getElementById('spacingValue').textContent = spacing.value;
+
+            rotation.value = Math.floor(Math.random() * 360);
+            document.getElementById('rotationValue').textContent = rotation.value;
+
+            currentPattern = patterns[Math.floor(Math.random() * patterns.length)];
+            document.querySelectorAll('.pattern-type').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === currentPattern);
+            });
+
+            generatePattern();
+        });
+
+        // Generate button
+        document.getElementById('generateBtn').addEventListener('click', generatePattern);
+
+        // Download PNG
+        document.getElementById('downloadPng').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'geometric-pattern.png';
+            a.click();
+        });
+
+        // Download SVG (simplified export)
+        document.getElementById('downloadSvg').addEventListener('click', () => {
+            const size = parseInt(patternSize.value);
+            const space = parseInt(spacing.value);
+            const stroke = parseInt(strokeWidth.value);
+            const rot = parseInt(rotation.value);
+            const alpha = parseInt(opacity.value) / 100;
+
+            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="100%" height="100%" fill="${bgColor.value}"/>
+  <g transform="rotate(${rot} 300 300)" fill="${fgColor.value}" stroke="${fgColor.value}" stroke-width="${stroke}" opacity="${alpha}">`;
+
+            for (let y = 0; y < 600; y += space) {
+                for (let x = 0; x < 600; x += space) {
+                    switch (currentPattern) {
+                        case 'dots':
+                            svgContent += `\n    <circle cx="${x}" cy="${y}" r="${size/2}"/>`;
+                            break;
+                        case 'grid':
+                            svgContent += `\n    <rect x="${x - size/2}" y="${y - size/2}" width="${size}" height="${size}" fill="none"/>`;
+                            break;
+                        case 'crosses':
+                            svgContent += `\n    <line x1="${x - size/2}" y1="${y}" x2="${x + size/2}" y2="${y}"/>`;
+                            svgContent += `\n    <line x1="${x}" y1="${y - size/2}" x2="${x}" y2="${y + size/2}"/>`;
+                            break;
+                        case 'diamonds':
+                            svgContent += `\n    <polygon points="${x},${y - size/2} ${x + size/2},${y} ${x},${y + size/2} ${x - size/2},${y}"/>`;
+                            break;
+                    }
+                }
+            }
+
+            svgContent += '\n  </g>\n</svg>';
+
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'geometric-pattern.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Initial generation
+        generatePattern();
+    </script>
+</body>
+</html>

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README.md 实时预览器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <style>
+        :root {
+            --editor-height: 500px;
+        }
+        .container {
+            max-width: 1400px;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            overflow: hidden;
+        }
+        .panel-header {
+            background: var(--pico-card-background-color);
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .editor {
+            width: 100%;
+            height: var(--editor-height);
+            border: none;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            resize: none;
+            background: var(--pico-background-color);
+            color: var(--pico-color);
+        }
+        .preview {
+            height: var(--editor-height);
+            padding: 1rem;
+            overflow-y: auto;
+            background: var(--pico-background-color);
+        }
+        .preview h1, .preview h2, .preview h3, 
+        .preview h4, .preview h5, .preview h6 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .preview h1 { border-bottom: 2px solid var(--pico-muted-border-color); padding-bottom: 0.3rem; }
+        .preview h2 { border-bottom: 1px solid var(--pico-muted-border-color); padding-bottom: 0.3rem; }
+        .preview pre {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: var(--pico-border-radius);
+            overflow-x: auto;
+        }
+        .preview code {
+            background: var(--pico-card-background-color);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .preview pre code {
+            background: none;
+            padding: 0;
+        }
+        .preview blockquote {
+            border-left: 4px solid var(--pico-primary);
+            margin: 1rem 0;
+            padding-left: 1rem;
+            color: var(--pico-muted-color);
+        }
+        .preview table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .preview th, .preview td {
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .preview th {
+            background: var(--pico-card-background-color);
+        }
+        .preview img {
+            max-width: 100%;
+            height: auto;
+        }
+        .preview ul, .preview ol {
+            padding-left: 2rem;
+        }
+        .preview a {
+            color: var(--pico-primary);
+        }
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        .file-input {
+            display: none;
+        }
+        .stats {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        .template-select {
+            width: auto;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="header">
+            <h1>README.md 实时预览器</h1>
+            <button id="themeToggle" class="outline">深色模式</button>
+        </div>
+
+        <div class="toolbar" style="margin-bottom: 1rem;">
+            <input type="file" id="fileInput" class="file-input" accept=".md,.markdown,.txt">
+            <button class="secondary" onclick="document.getElementById('fileInput').click()">打开文件</button>
+            <button class="secondary" onclick="downloadMarkdown()">保存文件</button>
+            <button class="secondary" onclick="copyToClipboard()">复制内容</button>
+            <button class="secondary" onclick="clearEditor()">清空</button>
+            <select id="templateSelect" class="template-select" onchange="loadTemplate()">
+                <option value="">选择模板...</option>
+                <option value="basic">基础项目</option>
+                <option value="npm">NPM 包</option>
+                <option value="api">API 文档</option>
+            </select>
+        </div>
+
+        <div class="editor-container">
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Markdown 编辑器</span>
+                    <span class="stats" id="stats">0 字符 | 0 行</span>
+                </div>
+                <textarea id="editor" class="editor" placeholder="在此输入 Markdown 内容..."></textarea>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span>实时预览</span>
+                    <button class="outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="copyHtml()">复制 HTML</button>
+                </div>
+                <div id="preview" class="preview"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const stats = document.getElementById('stats');
+        const themeToggle = document.getElementById('themeToggle');
+        const fileInput = document.getElementById('fileInput');
+        const templateSelect = document.getElementById('templateSelect');
+
+        const templates = {
+            basic: `# 项目名称
+
+简短的项目描述。
+
+## 功能特性
+
+- 功能 1
+- 功能 2
+- 功能 3
+
+## 安装
+
+\`\`\`bash
+npm install your-package
+\`\`\`
+
+## 使用方法
+
+\`\`\`javascript
+const pkg = require('your-package');
+pkg.doSomething();
+\`\`\`
+
+## 贡献
+
+欢迎提交 Pull Request。
+
+## 许可证
+
+MIT
+`,
+            npm: `# package-name
+
+[![npm version](https://img.shields.io/npm/v/package-name.svg)](https://www.npmjs.com/package/package-name)
+[![license](https://img.shields.io/npm/l/package-name.svg)](https://github.com/user/repo/blob/main/LICENSE)
+
+> 一句话描述你的包
+
+## 安装
+
+\`\`\`bash
+npm install package-name
+# 或者
+yarn add package-name
+# 或者
+pnpm add package-name
+\`\`\`
+
+## 快速开始
+
+\`\`\`javascript
+import { something } from 'package-name';
+
+const result = something();
+console.log(result);
+\`\`\`
+
+## API
+
+### \`functionName(options)\`
+
+函数描述。
+
+#### 参数
+
+| 参数 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| option1 | \`string\` | \`''\` | 选项1描述 |
+| option2 | \`number\` | \`0\` | 选项2描述 |
+
+#### 返回值
+
+返回 \`ResultType\` 类型的结果。
+
+## 示例
+
+更多示例请查看 [examples](./examples) 目录。
+
+## 更新日志
+
+查看 [CHANGELOG.md](./CHANGELOG.md)
+
+## 贡献指南
+
+查看 [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## 许可证
+
+[MIT](./LICENSE) © Your Name
+`,
+            api: `# API 文档
+
+## 概述
+
+API 的简要描述。
+
+**基础 URL:** \`https://api.example.com/v1\`
+
+## 认证
+
+所有请求需要在 Header 中包含 API Key：
+
+\`\`\`
+Authorization: Bearer YOUR_API_KEY
+\`\`\`
+
+## 端点
+
+### 获取列表
+
+\`\`\`
+GET /items
+\`\`\`
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| page | integer | 否 | 页码，默认 1 |
+| limit | integer | 否 | 每页数量，默认 20 |
+
+#### 响应示例
+
+\`\`\`json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Item 1"
+    }
+  ],
+  "total": 100,
+  "page": 1
+}
+\`\`\`
+
+### 创建项目
+
+\`\`\`
+POST /items
+\`\`\`
+
+#### 请求体
+
+\`\`\`json
+{
+  "name": "New Item",
+  "description": "Description"
+}
+\`\`\`
+
+#### 响应
+
+- \`201 Created\` - 创建成功
+- \`400 Bad Request\` - 参数错误
+- \`401 Unauthorized\` - 未授权
+
+## 错误码
+
+| 状态码 | 描述 |
+|--------|------|
+| 200 | 成功 |
+| 400 | 请求参数错误 |
+| 401 | 未授权 |
+| 404 | 资源不存在 |
+| 500 | 服务器错误 |
+`
+        };
+
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('readme-preview-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        }
+
+        function updateThemeButton(theme) {
+            themeToggle.textContent = theme === 'dark' ? '浅色模式' : '深色模式';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('readme-preview-theme', newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updatePreview() {
+            const markdown = editor.value;
+            const rawHtml = marked.parse(markdown);
+            preview.innerHTML = DOMPurify.sanitize(rawHtml);
+            updateStats();
+            localStorage.setItem('readme-preview-content', markdown);
+        }
+
+        function updateStats() {
+            const content = editor.value;
+            const chars = content.length;
+            const lines = content ? content.split('\n').length : 0;
+            const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+            stats.textContent = `${chars} 字符 | ${lines} 行 | ${words} 词`;
+        }
+
+        editor.addEventListener('input', updatePreview);
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    editor.value = event.target.result;
+                    updatePreview();
+                };
+                reader.readAsText(file);
+            }
+            fileInput.value = '';
+        });
+
+        function downloadMarkdown() {
+            const content = editor.value;
+            if (!content.trim()) {
+                alert('编辑器内容为空！');
+                return;
+            }
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'README.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyToClipboard() {
+            navigator.clipboard.writeText(editor.value).then(() => {
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        function copyHtml() {
+            navigator.clipboard.writeText(preview.innerHTML).then(() => {
+                alert('HTML 已复制到剪贴板！');
+            });
+        }
+
+        function clearEditor() {
+            if (confirm('确定要清空编辑器内容吗？')) {
+                editor.value = '';
+                updatePreview();
+            }
+        }
+
+        function loadTemplate() {
+            const template = templateSelect.value;
+            if (template && templates[template]) {
+                if (editor.value.trim() && !confirm('当前内容将被替换，确定继续吗？')) {
+                    templateSelect.value = '';
+                    return;
+                }
+                editor.value = templates[template];
+                updatePreview();
+            }
+            templateSelect.value = '';
+        }
+
+        function restoreContent() {
+            const saved = localStorage.getItem('readme-preview-content');
+            if (saved) {
+                editor.value = saved;
+                updatePreview();
+            } else {
+                editor.value = `# 欢迎使用 README 预览器
+
+这是一个 **Markdown** 实时预览工具。
+
+## 功能
+
+- 实时预览
+- 多种模板
+- 导出文件
+- 深色模式
+
+## 代码示例
+
+\`\`\`javascript
+console.log('Hello, World!');
+\`\`\`
+
+> 引用文本示例
+
+| 表头1 | 表头2 |
+|-------|-------|
+| 单元格1 | 单元格2 |
+`;
+                updatePreview();
+            }
+        }
+
+        editor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's') {
+                    e.preventDefault();
+                    downloadMarkdown();
+                }
+            }
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+                updatePreview();
+            }
+        });
+
+        initTheme();
+        restoreContent();
+    </script>
+</body>
+</html>

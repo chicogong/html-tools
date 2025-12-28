@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标题结构分析器 - SEO工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-primary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--pico-card-background-color);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .stat-card h3 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .stat-card p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        .stat-card.h1 h3 { color: #ef4444; }
+        .stat-card.h2 h3 { color: #f97316; }
+        .stat-card.h3 h3 { color: #eab308; }
+        .stat-card.h4 h3 { color: #22c55e; }
+        .stat-card.h5 h3 { color: #3b82f6; }
+        .stat-card.h6 h3 { color: #8b5cf6; }
+        
+        .heading-tree {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .heading-item {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .heading-item:hover {
+            background: var(--pico-muted-border-color);
+        }
+        .heading-tag {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            min-width: 32px;
+            text-align: center;
+        }
+        .h1-tag { background: #fef2f2; color: #ef4444; }
+        .h2-tag { background: #fff7ed; color: #f97316; }
+        .h3-tag { background: #fefce8; color: #eab308; }
+        .h4-tag { background: #f0fdf4; color: #22c55e; }
+        .h5-tag { background: #eff6ff; color: #3b82f6; }
+        .h6-tag { background: #f5f3ff; color: #8b5cf6; }
+        
+        [data-theme="dark"] .h1-tag { background: #450a0a; }
+        [data-theme="dark"] .h2-tag { background: #431407; }
+        [data-theme="dark"] .h3-tag { background: #422006; }
+        [data-theme="dark"] .h4-tag { background: #052e16; }
+        [data-theme="dark"] .h5-tag { background: #172554; }
+        [data-theme="dark"] .h6-tag { background: #2e1065; }
+        
+        .heading-text {
+            flex: 1;
+            word-break: break-word;
+        }
+        .heading-length {
+            font-size: 0.75rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .issues-section {
+            margin-top: 1.5rem;
+        }
+        .issue-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .issue-item.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .issue-item.warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+        .issue-item.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        [data-theme="dark"] .issue-item.error {
+            background: #450a0a;
+            border-color: #7f1d1d;
+        }
+        [data-theme="dark"] .issue-item.warning {
+            background: #422006;
+            border-color: #78350f;
+        }
+        [data-theme="dark"] .issue-item.success {
+            background: #052e16;
+            border-color: #166534;
+        }
+        .issue-icon {
+            font-size: 1.25rem;
+        }
+        .issue-content {
+            flex: 1;
+        }
+        .issue-title {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        .issue-desc {
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .tips {
+            background: var(--pico-card-background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            border-left: 4px solid var(--pico-primary);
+        }
+        .tips h4 {
+            margin-top: 0;
+        }
+        .tips ul {
+            margin-bottom: 0;
+        }
+        
+        .score-display {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .score-value {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+        .score-excellent { color: #22c55e; }
+        .score-good { color: #84cc16; }
+        .score-average { color: #eab308; }
+        .score-poor { color: #f97316; }
+        .score-bad { color: #ef4444; }
+        .score-label {
+            color: var(--pico-muted-color);
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>📑 标题结构分析器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </header>
+
+        <article>
+            <h3>输入HTML代码</h3>
+            <textarea id="htmlInput" placeholder="在此粘贴包含标题标签的HTML代码...
+
+示例：
+<h1>网站主标题</h1>
+<h2>第一章</h2>
+<h3>第一节</h3>
+<h3>第二节</h3>
+<h2>第二章</h2>
+<h3>第一节</h3>"></textarea>
+            <button onclick="analyzeHeadings()">分析标题结构</button>
+        </article>
+
+        <div id="results" style="display: none;">
+            <div class="score-display">
+                <div class="score-value" id="scoreValue">100</div>
+                <div class="score-label">标题结构评分</div>
+            </div>
+
+            <h3>📊 标题统计</h3>
+            <div class="stats-grid">
+                <div class="stat-card h1">
+                    <h3 id="h1Count">0</h3>
+                    <p>H1</p>
+                </div>
+                <div class="stat-card h2">
+                    <h3 id="h2Count">0</h3>
+                    <p>H2</p>
+                </div>
+                <div class="stat-card h3">
+                    <h3 id="h3Count">0</h3>
+                    <p>H3</p>
+                </div>
+                <div class="stat-card h4">
+                    <h3 id="h4Count">0</h3>
+                    <p>H4</p>
+                </div>
+                <div class="stat-card h5">
+                    <h3 id="h5Count">0</h3>
+                    <p>H5</p>
+                </div>
+                <div class="stat-card h6">
+                    <h3 id="h6Count">0</h3>
+                    <p>H6</p>
+                </div>
+            </div>
+
+            <div class="issues-section" id="issuesSection">
+                <h3>🔍 检查结果</h3>
+                <div id="issuesList"></div>
+            </div>
+
+            <h3>🌳 标题层级结构</h3>
+            <div class="heading-tree" id="headingTree"></div>
+
+            <div class="tips">
+                <h4>💡 SEO建议</h4>
+                <ul>
+                    <li><strong>H1标签：</strong>每页应该只有一个H1，作为页面主标题</li>
+                    <li><strong>层级顺序：</strong>应该按H1→H2→H3的顺序递进，不要跳级</li>
+                    <li><strong>关键词：</strong>在标题中自然地包含目标关键词</li>
+                    <li><strong>长度：</strong>标题应简洁明了，通常不超过70个字符</li>
+                    <li><strong>结构清晰：</strong>标题应该能概括下方内容的主要信息</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-icon').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        })();
+
+        function createIssueItem(issue) {
+            const item = document.createElement('div');
+            item.className = 'issue-item ' + issue.type;
+            
+            const icon = document.createElement('span');
+            icon.className = 'issue-icon';
+            if (issue.type === 'error') icon.textContent = '❌';
+            else if (issue.type === 'warning') icon.textContent = '⚠️';
+            else icon.textContent = '✅';
+            
+            const content = document.createElement('div');
+            content.className = 'issue-content';
+            
+            const title = document.createElement('div');
+            title.className = 'issue-title';
+            title.textContent = issue.title;
+            
+            const desc = document.createElement('div');
+            desc.className = 'issue-desc';
+            desc.textContent = issue.desc;
+            
+            content.appendChild(title);
+            content.appendChild(desc);
+            item.appendChild(icon);
+            item.appendChild(content);
+            
+            return item;
+        }
+
+        function createHeadingItem(h) {
+            const item = document.createElement('div');
+            item.className = 'heading-item';
+            item.style.paddingLeft = ((h.level - 1) * 1.5) + 'rem';
+            
+            const tag = document.createElement('span');
+            tag.className = 'heading-tag h' + h.level + '-tag';
+            tag.textContent = 'H' + h.level;
+            
+            const text = document.createElement('span');
+            text.className = 'heading-text';
+            text.textContent = h.text || '(空标题)';
+            
+            const length = document.createElement('span');
+            length.className = 'heading-length';
+            length.textContent = h.text.length + '字';
+            
+            item.appendChild(tag);
+            item.appendChild(text);
+            item.appendChild(length);
+            
+            return item;
+        }
+
+        function analyzeHeadings() {
+            const html = document.getElementById('htmlInput').value;
+            
+            if (!html.trim()) {
+                alert('请输入HTML代码');
+                return;
+            }
+
+            // 解析标题
+            const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+            const headings = [];
+            let match;
+            
+            while ((match = headingRegex.exec(html)) !== null) {
+                const level = parseInt(match[1]);
+                // 移除HTML标签，获取纯文本
+                const text = match[2].replace(/<[^>]+>/g, '').trim();
+                headings.push({ level: level, text: text });
+            }
+
+            // 统计各级标题数量
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+            headings.forEach(function(h) { counts[h.level]++; });
+
+            // 更新统计显示
+            for (var i = 1; i <= 6; i++) {
+                document.getElementById('h' + i + 'Count').textContent = counts[i];
+            }
+
+            // 检查问题
+            const issues = [];
+            let score = 100;
+
+            // 检查H1
+            if (counts[1] === 0) {
+                issues.push({
+                    type: 'error',
+                    title: '缺少H1标签',
+                    desc: '每个页面应该有一个H1标签作为主标题'
+                });
+                score -= 30;
+            } else if (counts[1] > 1) {
+                issues.push({
+                    type: 'warning',
+                    title: '存在多个H1标签',
+                    desc: '发现 ' + counts[1] + ' 个H1标签，建议每页只使用一个H1'
+                });
+                score -= 15;
+            } else {
+                issues.push({
+                    type: 'success',
+                    title: 'H1标签使用正确',
+                    desc: '页面包含一个H1标签'
+                });
+            }
+
+            // 检查标题层级跳跃
+            let prevLevel = 0;
+            let hasSkip = false;
+            headings.forEach(function(h) {
+                if (prevLevel > 0 && h.level > prevLevel + 1) {
+                    hasSkip = true;
+                }
+                prevLevel = h.level;
+            });
+
+            if (hasSkip) {
+                issues.push({
+                    type: 'warning',
+                    title: '标题层级跳跃',
+                    desc: '存在跳级现象（如H2直接跳到H4），建议保持层级连续性'
+                });
+                score -= 10;
+            } else if (headings.length > 1) {
+                issues.push({
+                    type: 'success',
+                    title: '标题层级连续',
+                    desc: '标题层级结构良好，没有跳级现象'
+                });
+            }
+
+            // 检查是否以H1开头
+            if (headings.length > 0 && headings[0].level !== 1) {
+                issues.push({
+                    type: 'warning',
+                    title: '首个标题不是H1',
+                    desc: '页面的第一个标题应该是H1'
+                });
+                score -= 10;
+            }
+
+            // 检查空标题
+            const emptyHeadings = headings.filter(function(h) { return !h.text; });
+            if (emptyHeadings.length > 0) {
+                issues.push({
+                    type: 'error',
+                    title: '存在空标题',
+                    desc: '发现 ' + emptyHeadings.length + ' 个空标题，标题应该包含有意义的文本'
+                });
+                score -= 10 * emptyHeadings.length;
+            }
+
+            // 检查过长标题
+            const longHeadings = headings.filter(function(h) { return h.text.length > 70; });
+            if (longHeadings.length > 0) {
+                issues.push({
+                    type: 'warning',
+                    title: '存在过长标题',
+                    desc: '发现 ' + longHeadings.length + ' 个标题超过70字符，建议精简'
+                });
+                score -= 5;
+            }
+
+            // 检查标题数量
+            if (headings.length === 0) {
+                issues.push({
+                    type: 'error',
+                    title: '未发现标题标签',
+                    desc: '输入的HTML中没有找到任何标题标签'
+                });
+                score = 0;
+            } else if (headings.length < 3) {
+                issues.push({
+                    type: 'warning',
+                    title: '标题数量较少',
+                    desc: '只发现 ' + headings.length + ' 个标题，建议使用更多标题来组织内容'
+                });
+            }
+
+            // 确保分数在0-100之间
+            score = Math.max(0, Math.min(100, score));
+
+            // 更新分数显示
+            const scoreValue = document.getElementById('scoreValue');
+            scoreValue.textContent = score;
+            scoreValue.className = 'score-value';
+            if (score >= 90) scoreValue.classList.add('score-excellent');
+            else if (score >= 70) scoreValue.classList.add('score-good');
+            else if (score >= 50) scoreValue.classList.add('score-average');
+            else if (score >= 30) scoreValue.classList.add('score-poor');
+            else scoreValue.classList.add('score-bad');
+
+            // 渲染问题列表
+            const issuesList = document.getElementById('issuesList');
+            issuesList.textContent = '';
+            issues.forEach(function(issue) {
+                issuesList.appendChild(createIssueItem(issue));
+            });
+
+            // 渲染标题树
+            const tree = document.getElementById('headingTree');
+            tree.textContent = '';
+            
+            if (headings.length === 0) {
+                tree.textContent = '未发现标题标签';
+            } else {
+                headings.forEach(function(h) {
+                    tree.appendChild(createHeadingItem(h));
+                });
+            }
+
+            document.getElementById('results').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

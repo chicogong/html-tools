@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>税后工资计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .card h3 {
+            margin: 0 0 1rem 0;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+        }
+        .input-with-unit input {
+            flex: 1;
+            margin: 0;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .input-with-unit .unit {
+            background: var(--pico-muted-border-color);
+            padding: 0.5rem 1rem;
+            border-top-right-radius: var(--pico-border-radius);
+            border-bottom-right-radius: var(--pico-border-radius);
+            font-size: 0.9rem;
+        }
+        .result-highlight {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+            padding: 1.5rem;
+            border-radius: var(--pico-border-radius);
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .result-highlight .label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .result-highlight .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .breakdown {
+            margin-top: 1rem;
+        }
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+        .breakdown-item .label {
+            color: var(--pico-muted-color);
+        }
+        .breakdown-item .value {
+            font-family: monospace;
+            font-weight: 500;
+        }
+        .breakdown-item.deduction .value {
+            color: #e74c3c;
+        }
+        .breakdown-item.total {
+            font-weight: bold;
+            background: var(--pico-code-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        .tax-bracket {
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        .tax-bracket table {
+            font-size: 0.8rem;
+        }
+        .tax-bracket th, .tax-bracket td {
+            padding: 0.4rem;
+        }
+        .tax-bracket tr.active {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        .insurance-rates {
+            font-size: 0.85rem;
+            background: var(--pico-code-background-color);
+            padding: 1rem;
+            border-radius: var(--pico-border-radius);
+            margin-top: 1rem;
+        }
+        .pie-chart {
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto;
+        }
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            font-size: 0.85rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h2>税后工资计算器</h2>
+            <button class="outline" onclick="toggleTheme()" id="themeBtn">🌙 深色</button>
+        </header>
+
+        <div class="main-grid">
+            <div class="card">
+                <h3>工资信息</h3>
+                
+                <div class="form-group">
+                    <label>税前月工资</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="grossSalary" value="15000" min="0" step="100" oninput="calculate()">
+                        <span class="unit">元/月</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>社保公积金基数 <small>(留空则按工资计算)</small></label>
+                    <div class="input-with-unit">
+                        <input type="number" id="socialBase" placeholder="默认=税前工资" min="0" step="100" oninput="calculate()">
+                        <span class="unit">元</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>所在城市</label>
+                    <select id="city" onchange="calculate()">
+                        <option value="beijing">北京</option>
+                        <option value="shanghai">上海</option>
+                        <option value="guangzhou">广州</option>
+                        <option value="shenzhen" selected>深圳</option>
+                        <option value="hangzhou">杭州</option>
+                        <option value="chengdu">成都</option>
+                        <option value="other">其他城市</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>公积金比例</label>
+                    <select id="housingRate" onchange="calculate()">
+                        <option value="0.05">5%</option>
+                        <option value="0.07">7%</option>
+                        <option value="0.08">8%</option>
+                        <option value="0.10">10%</option>
+                        <option value="0.12" selected>12%</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>专项附加扣除</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="specialDeduction" value="0" min="0" step="100" oninput="calculate()">
+                        <span class="unit">元/月</span>
+                    </div>
+                    <small>子女教育、继续教育、住房贷款/租金、赡养老人等</small>
+                </div>
+                
+                <div class="insurance-rates">
+                    <strong>社保公积金比例 (个人部分):</strong><br>
+                    养老保险: 8% | 医疗保险: 2% | 失业保险: 0.5%<br>
+                    住房公积金: <span id="housingRateDisplay">12%</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>计算结果</h3>
+                
+                <div class="result-highlight">
+                    <div class="label">税后月收入</div>
+                    <div class="value" id="netSalary">-</div>
+                </div>
+                
+                <svg class="pie-chart" viewBox="0 0 200 200" id="pieChart"></svg>
+                
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2ecc71;"></div>
+                        <span>到手工资</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498db;"></div>
+                        <span>五险一金</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #e74c3c;"></div>
+                        <span>个人所得税</span>
+                    </div>
+                </div>
+                
+                <div class="breakdown">
+                    <div class="breakdown-item">
+                        <span class="label">税前工资</span>
+                        <span class="value" id="grossDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item deduction">
+                        <span class="label">养老保险 (8%)</span>
+                        <span class="value" id="pensionDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item deduction">
+                        <span class="label">医疗保险 (2%)</span>
+                        <span class="value" id="medicalDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item deduction">
+                        <span class="label">失业保险 (0.5%)</span>
+                        <span class="value" id="unemploymentDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item deduction">
+                        <span class="label">住房公积金</span>
+                        <span class="value" id="housingDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="label">五险一金合计</span>
+                        <span class="value" id="insuranceTotal">-</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="label">起征点</span>
+                        <span class="value">5,000.00</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="label">专项附加扣除</span>
+                        <span class="value" id="specialDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span class="label">应纳税所得额</span>
+                        <span class="value" id="taxableIncome">-</span>
+                    </div>
+                    <div class="breakdown-item deduction">
+                        <span class="label">个人所得税</span>
+                        <span class="value" id="taxDisplay">-</span>
+                    </div>
+                    <div class="breakdown-item total">
+                        <span class="label">税后到手</span>
+                        <span class="value" id="netDisplay">-</span>
+                    </div>
+                </div>
+                
+                <div class="tax-bracket">
+                    <details>
+                        <summary>个税税率表 (2024年)</summary>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>应纳税所得额</th>
+                                    <th>税率</th>
+                                    <th>速算扣除</th>
+                                </tr>
+                            </thead>
+                            <tbody id="taxBracketTable">
+                                <tr><td>≤3,000</td><td>3%</td><td>0</td></tr>
+                                <tr><td>3,000-12,000</td><td>10%</td><td>210</td></tr>
+                                <tr><td>12,000-25,000</td><td>20%</td><td>1,410</td></tr>
+                                <tr><td>25,000-35,000</td><td>25%</td><td>2,660</td></tr>
+                                <tr><td>35,000-55,000</td><td>30%</td><td>4,410</td></tr>
+                                <tr><td>55,000-80,000</td><td>35%</td><td>7,160</td></tr>
+                                <tr><td>>80,000</td><td>45%</td><td>15,160</td></tr>
+                            </tbody>
+                        </table>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tax brackets (monthly, after deductions)
+        const taxBrackets = [
+            { min: 0, max: 3000, rate: 0.03, deduction: 0 },
+            { min: 3000, max: 12000, rate: 0.10, deduction: 210 },
+            { min: 12000, max: 25000, rate: 0.20, deduction: 1410 },
+            { min: 25000, max: 35000, rate: 0.25, deduction: 2660 },
+            { min: 35000, max: 55000, rate: 0.30, deduction: 4410 },
+            { min: 55000, max: 80000, rate: 0.35, deduction: 7160 },
+            { min: 80000, max: Infinity, rate: 0.45, deduction: 15160 }
+        ];
+        
+        // Social insurance rates (personal portion)
+        const insuranceRates = {
+            pension: 0.08,      // 养老保险
+            medical: 0.02,      // 医疗保险
+            unemployment: 0.005 // 失业保险
+        };
+        
+        // Tax threshold
+        const TAX_THRESHOLD = 5000;
+        
+        function calculate() {
+            const grossSalary = parseFloat(document.getElementById('grossSalary').value) || 0;
+            const socialBase = parseFloat(document.getElementById('socialBase').value) || grossSalary;
+            const housingRate = parseFloat(document.getElementById('housingRate').value);
+            const specialDeduction = parseFloat(document.getElementById('specialDeduction').value) || 0;
+            
+            // Update housing rate display
+            document.getElementById('housingRateDisplay').textContent = (housingRate * 100) + '%';
+            
+            // Calculate social insurance
+            const pension = socialBase * insuranceRates.pension;
+            const medical = socialBase * insuranceRates.medical;
+            const unemployment = socialBase * insuranceRates.unemployment;
+            const housing = socialBase * housingRate;
+            const totalInsurance = pension + medical + unemployment + housing;
+            
+            // Calculate taxable income
+            const taxableIncome = Math.max(0, grossSalary - totalInsurance - TAX_THRESHOLD - specialDeduction);
+            
+            // Calculate tax
+            let tax = 0;
+            let bracketIndex = 0;
+            for (let i = 0; i < taxBrackets.length; i++) {
+                if (taxableIncome > taxBrackets[i].min) {
+                    bracketIndex = i;
+                }
+            }
+            
+            if (taxableIncome > 0) {
+                const bracket = taxBrackets[bracketIndex];
+                tax = taxableIncome * bracket.rate - bracket.deduction;
+            }
+            
+            // Calculate net salary
+            const netSalary = grossSalary - totalInsurance - tax;
+            
+            // Update display
+            document.getElementById('netSalary').textContent = formatMoney(netSalary);
+            document.getElementById('grossDisplay').textContent = formatMoney(grossSalary);
+            document.getElementById('pensionDisplay').textContent = '-' + formatMoney(pension);
+            document.getElementById('medicalDisplay').textContent = '-' + formatMoney(medical);
+            document.getElementById('unemploymentDisplay').textContent = '-' + formatMoney(unemployment);
+            document.getElementById('housingDisplay').textContent = '-' + formatMoney(housing);
+            document.getElementById('insuranceTotal').textContent = formatMoney(totalInsurance);
+            document.getElementById('specialDisplay').textContent = formatMoney(specialDeduction);
+            document.getElementById('taxableIncome').textContent = formatMoney(taxableIncome);
+            document.getElementById('taxDisplay').textContent = '-' + formatMoney(tax);
+            document.getElementById('netDisplay').textContent = formatMoney(netSalary);
+            
+            // Highlight active tax bracket
+            const rows = document.querySelectorAll('#taxBracketTable tr');
+            rows.forEach(function(row, i) {
+                row.classList.toggle('active', i === bracketIndex && taxableIncome > 0);
+            });
+            
+            // Draw pie chart
+            drawPieChart(netSalary, totalInsurance, tax, grossSalary);
+        }
+        
+        function formatMoney(amount) {
+            return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        function drawPieChart(net, insurance, tax, total) {
+            const svg = document.getElementById('pieChart');
+            svg.textContent = '';
+            
+            if (total <= 0) return;
+            
+            const cx = 100, cy = 100, r = 80;
+            const data = [
+                { value: net, color: '#2ecc71' },
+                { value: insurance, color: '#3498db' },
+                { value: tax, color: '#e74c3c' }
+            ];
+            
+            let startAngle = -Math.PI / 2;
+            
+            data.forEach(function(item) {
+                if (item.value <= 0) return;
+                
+                const angle = (item.value / total) * 2 * Math.PI;
+                const endAngle = startAngle + angle;
+                
+                const x1 = cx + r * Math.cos(startAngle);
+                const y1 = cy + r * Math.sin(startAngle);
+                const x2 = cx + r * Math.cos(endAngle);
+                const y2 = cy + r * Math.sin(endAngle);
+                
+                const largeArc = angle > Math.PI ? 1 : 0;
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 
+                    'M ' + cx + ' ' + cy + 
+                    ' L ' + x1 + ' ' + y1 + 
+                    ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + 
+                    ' Z');
+                path.setAttribute('fill', item.color);
+                svg.appendChild(path);
+                
+                // Add percentage label
+                const midAngle = startAngle + angle / 2;
+                const labelR = r * 0.65;
+                const labelX = cx + labelR * Math.cos(midAngle);
+                const labelY = cy + labelR * Math.sin(midAngle);
+                const percent = Math.round(item.value / total * 100);
+                
+                if (percent >= 5) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', labelX);
+                    text.setAttribute('y', labelY);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('font-size', '12');
+                    text.setAttribute('fill', 'white');
+                    text.setAttribute('font-weight', 'bold');
+                    text.textContent = percent + '%';
+                    svg.appendChild(text);
+                }
+                
+                startAngle = endAngle;
+            });
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'light') {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = '☀️ 浅色';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '🌙 深色';
+            }
+        }
+        
+        // Initialize
+        calculate();
+    </script>
+</body>
+</html>

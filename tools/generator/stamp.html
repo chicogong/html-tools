@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>印章生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --preview-bg: #f0f0f0;
+        }
+        [data-theme="dark"] {
+            --preview-bg: #2a2a2a;
+        }
+        body {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .preview-area {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 40px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 350px;
+        }
+        #stampCanvas {
+            max-width: 100%;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .color-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-inputs input[type="color"] {
+            width: 60px;
+            height: 40px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .range-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .stamp-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .stamp-type {
+            padding: 0.5rem;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .stamp-type:hover {
+            border-color: var(--pico-primary);
+        }
+        .stamp-type.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .text-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>印章生成器</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="preview-area">
+            <canvas id="stampCanvas" width="300" height="300"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>印章类型</label>
+                <div class="stamp-types">
+                    <div class="stamp-type active" data-type="round">圆形章</div>
+                    <div class="stamp-type" data-type="square">方形章</div>
+                    <div class="stamp-type" data-type="oval">椭圆章</div>
+                    <div class="stamp-type" data-type="rectangle">长方章</div>
+                    <div class="stamp-type" data-type="personal">私章</div>
+                    <div class="stamp-type" data-type="official">公章</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>印章文字</label>
+                <div class="text-inputs">
+                    <input type="text" id="mainText" value="印章文字" placeholder="主文字 (环形或中央)">
+                    <input type="text" id="centerText" value="" placeholder="中心文字 (可选)">
+                    <input type="text" id="bottomText" value="" placeholder="底部文字 (可选)">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>印章颜色</label>
+                <div class="color-inputs">
+                    <input type="color" id="stampColor" value="#dc2626">
+                    <input type="text" id="stampColorText" value="#dc2626" maxlength="7">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>印章大小: <span class="range-value" id="sizeValue">280</span>px</label>
+                <input type="range" id="stampSize" min="150" max="400" value="280">
+            </div>
+
+            <div class="control-group">
+                <label>边框粗细: <span class="range-value" id="borderWidthValue">6</span>px</label>
+                <input type="range" id="borderWidth" min="2" max="15" value="6">
+            </div>
+
+            <div class="control-group">
+                <label>主文字大小: <span class="range-value" id="mainFontSizeValue">24</span>px</label>
+                <input type="range" id="mainFontSize" min="12" max="60" value="24">
+            </div>
+
+            <div class="control-group">
+                <label>中心文字大小: <span class="range-value" id="centerFontSizeValue">36</span>px</label>
+                <input type="range" id="centerFontSize" min="18" max="80" value="36">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="addStar" checked>
+                    显示五角星
+                </label>
+                <label>
+                    <input type="checkbox" id="addNoise">
+                    添加做旧效果
+                </label>
+                <label>
+                    <input type="checkbox" id="addRotation">
+                    随机旋转
+                </label>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="generateBtn">生成印章</button>
+            <button id="randomBtn" class="secondary">随机样式</button>
+            <button id="downloadPng" class="outline">下载 PNG</button>
+            <button id="downloadSvg" class="outline">下载 SVG</button>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', function() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Canvas setup
+        const canvas = document.getElementById('stampCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let currentType = 'round';
+
+        // Elements
+        const mainText = document.getElementById('mainText');
+        const centerText = document.getElementById('centerText');
+        const bottomText = document.getElementById('bottomText');
+        const stampColor = document.getElementById('stampColor');
+        const stampColorText = document.getElementById('stampColorText');
+        const stampSize = document.getElementById('stampSize');
+        const borderWidth = document.getElementById('borderWidth');
+        const mainFontSize = document.getElementById('mainFontSize');
+        const centerFontSize = document.getElementById('centerFontSize');
+        const addStar = document.getElementById('addStar');
+        const addNoise = document.getElementById('addNoise');
+        const addRotation = document.getElementById('addRotation');
+
+        // Stamp type selection
+        document.querySelectorAll('.stamp-type').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.stamp-type').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                currentType = btn.dataset.type;
+                generateStamp();
+            });
+        });
+
+        // Sync color inputs
+        function syncColorInputs(colorInput, textInput) {
+            colorInput.addEventListener('input', function() {
+                textInput.value = colorInput.value;
+                generateStamp();
+            });
+            textInput.addEventListener('input', function() {
+                if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+                    colorInput.value = textInput.value;
+                    generateStamp();
+                }
+            });
+        }
+
+        syncColorInputs(stampColor, stampColorText);
+
+        // Update range values
+        const rangeInputs = [
+            { input: stampSize, display: 'sizeValue' },
+            { input: borderWidth, display: 'borderWidthValue' },
+            { input: mainFontSize, display: 'mainFontSizeValue' },
+            { input: centerFontSize, display: 'centerFontSizeValue' }
+        ];
+
+        rangeInputs.forEach(function(item) {
+            item.input.addEventListener('input', function() {
+                document.getElementById(item.display).textContent = item.input.value;
+                generateStamp();
+            });
+        });
+
+        // Text inputs
+        [mainText, centerText, bottomText].forEach(function(input) {
+            input.addEventListener('input', generateStamp);
+        });
+
+        // Checkboxes
+        [addStar, addNoise, addRotation].forEach(function(cb) {
+            cb.addEventListener('change', generateStamp);
+        });
+
+        // Draw star
+        function drawStar(ctx, cx, cy, outerRadius, innerRadius, points) {
+            ctx.beginPath();
+            for (let i = 0; i < points * 2; i++) {
+                const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                const angle = (Math.PI / points) * i - Math.PI / 2;
+                const x = cx + Math.cos(angle) * radius;
+                const y = cy + Math.sin(angle) * radius;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Draw circular text
+        function drawCircularText(ctx, text, cx, cy, radius, startAngle, endAngle, isTop) {
+            const chars = text.split('');
+            const angleStep = (endAngle - startAngle) / (chars.length - 1 || 1);
+            
+            ctx.save();
+            chars.forEach(function(char, i) {
+                const angle = isTop ? startAngle + angleStep * i : endAngle - angleStep * i;
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.translate(0, isTop ? -radius : radius);
+                ctx.rotate(isTop ? Math.PI / 2 : -Math.PI / 2);
+                ctx.fillText(char, 0, 0);
+                ctx.restore();
+            });
+            ctx.restore();
+        }
+
+        // Add noise effect
+        function addNoiseEffect(ctx, width, height) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 0) {
+                    if (Math.random() < 0.15) {
+                        data[i + 3] = Math.floor(data[i + 3] * (0.3 + Math.random() * 0.5));
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Generate stamp
+        function generateStamp() {
+            const size = parseInt(stampSize.value);
+            const border = parseInt(borderWidth.value);
+            const mainFont = parseInt(mainFontSize.value);
+            const centerFont = parseInt(centerFontSize.value);
+            const color = stampColor.value;
+
+            canvas.width = size + 20;
+            canvas.height = size + 20;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const radius = size / 2 - 10;
+
+            // Apply rotation if enabled
+            if (addRotation.checked) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate((Math.random() - 0.5) * 0.15);
+                ctx.translate(-cx, -cy);
+            }
+
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = border;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            switch (currentType) {
+                case 'round':
+                case 'official':
+                    // Draw outer circle
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Draw inner circle
+                    if (currentType === 'official') {
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, radius - border * 2, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Draw star
+                    if (addStar.checked) {
+                        const starSize = radius * 0.25;
+                        drawStar(ctx, cx, cy - radius * 0.1, starSize, starSize * 0.4, 5);
+                    }
+                    
+                    // Draw main text (circular)
+                    ctx.font = 'bold ' + mainFont + 'px SimSun, serif';
+                    const mainTextValue = mainText.value || '印章文字';
+                    const textRadius = radius - border - mainFont;
+                    drawCircularText(ctx, mainTextValue, cx, cy, textRadius, -Math.PI * 0.8, Math.PI * 0.8, true);
+                    
+                    // Draw center text
+                    if (centerText.value) {
+                        ctx.font = 'bold ' + centerFont + 'px SimSun, serif';
+                        ctx.fillText(centerText.value, cx, cy + radius * 0.2);
+                    }
+                    
+                    // Draw bottom text
+                    if (bottomText.value) {
+                        ctx.font = 'bold ' + (mainFont * 0.8) + 'px SimSun, serif';
+                        drawCircularText(ctx, bottomText.value, cx, cy, textRadius, Math.PI * 0.2, Math.PI * 0.8, false);
+                    }
+                    break;
+
+                case 'oval':
+                    // Draw oval
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, radius, radius * 0.7, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Draw text
+                    ctx.font = 'bold ' + centerFont + 'px SimSun, serif';
+                    ctx.fillText(mainText.value || '印章', cx, cy);
+                    break;
+
+                case 'square':
+                    // Draw square
+                    const squareSize = radius * 1.6;
+                    ctx.strokeRect(cx - squareSize / 2, cy - squareSize / 2, squareSize, squareSize);
+                    
+                    // Draw text vertically
+                    ctx.font = 'bold ' + centerFont + 'px SimSun, serif';
+                    const text = mainText.value || '印章';
+                    const chars = text.split('');
+                    const charHeight = centerFont * 1.2;
+                    const startY = cy - (chars.length - 1) * charHeight / 2;
+                    chars.forEach(function(char, i) {
+                        ctx.fillText(char, cx, startY + i * charHeight);
+                    });
+                    break;
+
+                case 'rectangle':
+                    // Draw rectangle
+                    const rectWidth = radius * 1.8;
+                    const rectHeight = radius * 0.8;
+                    ctx.strokeRect(cx - rectWidth / 2, cy - rectHeight / 2, rectWidth, rectHeight);
+                    
+                    // Draw text
+                    ctx.font = 'bold ' + mainFont + 'px SimSun, serif';
+                    ctx.fillText(mainText.value || '印章文字', cx, cy);
+                    break;
+
+                case 'personal':
+                    // Draw personal stamp (smaller, simpler)
+                    const personalSize = radius * 0.9;
+                    ctx.strokeRect(cx - personalSize / 2, cy - personalSize / 2, personalSize, personalSize);
+                    
+                    // Draw 2 character name vertically
+                    ctx.font = 'bold ' + (centerFont * 1.2) + 'px SimSun, serif';
+                    const name = (mainText.value || '印章').substring(0, 2);
+                    if (name.length === 2) {
+                        ctx.fillText(name[0], cx, cy - centerFont * 0.6);
+                        ctx.fillText(name[1], cx, cy + centerFont * 0.6);
+                    } else {
+                        ctx.fillText(name, cx, cy);
+                    }
+                    break;
+            }
+
+            // Reset rotation
+            if (addRotation.checked) {
+                ctx.restore();
+            }
+
+            // Add noise effect
+            if (addNoise.checked) {
+                addNoiseEffect(ctx, canvas.width, canvas.height);
+            }
+        }
+
+        // Random style
+        document.getElementById('randomBtn').addEventListener('click', function() {
+            const colors = ['#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#c53030'];
+            stampColor.value = colors[Math.floor(Math.random() * colors.length)];
+            stampColorText.value = stampColor.value;
+            
+            stampSize.value = Math.floor(Math.random() * 150) + 200;
+            document.getElementById('sizeValue').textContent = stampSize.value;
+            
+            borderWidth.value = Math.floor(Math.random() * 8) + 4;
+            document.getElementById('borderWidthValue').textContent = borderWidth.value;
+            
+            addNoise.checked = Math.random() > 0.5;
+            addRotation.checked = Math.random() > 0.5;
+            
+            generateStamp();
+        });
+
+        // Generate button
+        document.getElementById('generateBtn').addEventListener('click', generateStamp);
+
+        // Download PNG
+        document.getElementById('downloadPng').addEventListener('click', function() {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'stamp.png';
+            a.click();
+        });
+
+        // Download SVG
+        document.getElementById('downloadSvg').addEventListener('click', function() {
+            const size = parseInt(stampSize.value);
+            const border = parseInt(borderWidth.value);
+            const mainFont = parseInt(mainFontSize.value);
+            const centerFont = parseInt(centerFontSize.value);
+            const color = stampColor.value;
+            const cx = (size + 20) / 2;
+            const cy = (size + 20) / 2;
+            const radius = size / 2 - 10;
+
+            let svgContent = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            svgContent += '<svg xmlns="http://www.w3.org/2000/svg" width="' + (size + 20) + '" height="' + (size + 20) + '">\n';
+            
+            if (currentType === 'round' || currentType === 'official') {
+                // Circle
+                svgContent += '  <circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" fill="none" stroke="' + color + '" stroke-width="' + border + '"/>\n';
+                
+                // Star
+                if (addStar.checked) {
+                    const starSize = radius * 0.25;
+                    let starPath = '';
+                    for (let i = 0; i < 10; i++) {
+                        const r = i % 2 === 0 ? starSize : starSize * 0.4;
+                        const angle = (Math.PI / 5) * i - Math.PI / 2;
+                        const x = cx + Math.cos(angle) * r;
+                        const y = (cy - radius * 0.1) + Math.sin(angle) * r;
+                        starPath += (i === 0 ? 'M' : 'L') + x + ',' + y;
+                    }
+                    starPath += 'Z';
+                    svgContent += '  <path d="' + starPath + '" fill="' + color + '"/>\n';
+                }
+                
+                // Text would need complex path calculation for circular text
+                // Simplified: just add center text
+                if (centerText.value) {
+                    svgContent += '  <text x="' + cx + '" y="' + (cy + radius * 0.2) + '" text-anchor="middle" dominant-baseline="middle" font-family="SimSun, serif" font-size="' + centerFont + '" font-weight="bold" fill="' + color + '">' + centerText.value + '</text>\n';
+                }
+            } else if (currentType === 'square' || currentType === 'personal') {
+                const squareSize = radius * (currentType === 'personal' ? 0.9 : 1.6);
+                svgContent += '  <rect x="' + (cx - squareSize/2) + '" y="' + (cy - squareSize/2) + '" width="' + squareSize + '" height="' + squareSize + '" fill="none" stroke="' + color + '" stroke-width="' + border + '"/>\n';
+                
+                const text = mainText.value || '印章';
+                svgContent += '  <text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="middle" font-family="SimSun, serif" font-size="' + centerFont + '" font-weight="bold" fill="' + color + '">' + text + '</text>\n';
+            }
+            
+            svgContent += '</svg>';
+
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'stamp.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Initial generation
+        generateStamp();
+    </script>
+</body>
+</html>

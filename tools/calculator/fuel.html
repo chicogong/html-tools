@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>油耗计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .card {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1rem;
+        }
+        .card h3 {
+            margin: 0 0 1rem 0;
+        }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--pico-muted-border-color);
+            padding-bottom: 0.5rem;
+        }
+        .tabs button {
+            margin: 0;
+            border-radius: var(--pico-border-radius) var(--pico-border-radius) 0 0;
+        }
+        .tabs button.active {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+        }
+        .input-with-unit input {
+            flex: 1;
+            margin: 0;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .input-with-unit .unit {
+            background: var(--pico-muted-border-color);
+            padding: 0.5rem 1rem;
+            border-top-right-radius: var(--pico-border-radius);
+            border-bottom-right-radius: var(--pico-border-radius);
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .result-card {
+            padding: 1.5rem;
+            background: var(--pico-code-background-color);
+            border-radius: var(--pico-border-radius);
+            text-align: center;
+        }
+        .result-card.highlight {
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        .result-card .label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        .result-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        .result-card .unit {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .comparison {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--pico-code-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        .comparison h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.9rem;
+        }
+        .comparison-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .comparison-bar .label {
+            width: 80px;
+            font-size: 0.85rem;
+        }
+        .comparison-bar .bar-container {
+            flex: 1;
+            height: 20px;
+            background: var(--pico-muted-border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 0.5rem;
+        }
+        .comparison-bar .bar {
+            height: 100%;
+            background: var(--pico-primary);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .comparison-bar .bar.good {
+            background: #2ecc71;
+        }
+        .comparison-bar .bar.average {
+            background: #f39c12;
+        }
+        .comparison-bar .bar.poor {
+            background: #e74c3c;
+        }
+        .comparison-bar .value {
+            width: 60px;
+            text-align: right;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        .fuel-prices {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .fuel-price-btn {
+            padding: 0.5rem;
+            text-align: center;
+            background: var(--pico-code-background-color);
+            border-radius: var(--pico-border-radius);
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .fuel-price-btn.active {
+            border-color: var(--pico-primary);
+        }
+        .fuel-price-btn .type {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .fuel-price-btn .price {
+            font-family: monospace;
+            color: var(--pico-primary);
+        }
+        .tips {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            padding: 1rem;
+            background: var(--pico-code-background-color);
+            border-radius: var(--pico-border-radius);
+            margin-top: 1rem;
+        }
+        .tips strong {
+            color: var(--pico-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h2>油耗计算器</h2>
+            <button class="outline" onclick="toggleTheme()" id="themeBtn">🌙 深色</button>
+        </header>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="active" onclick="switchTab('consumption')">计算油耗</button>
+                <button onclick="switchTab('distance')">计算续航</button>
+                <button onclick="switchTab('cost')">计算费用</button>
+            </div>
+
+            <!-- Tab 1: Calculate Consumption -->
+            <div class="tab-content active" id="tab-consumption">
+                <div class="form-group">
+                    <label>行驶里程</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="distance1" value="500" min="0" step="1" oninput="calcConsumption()">
+                        <span class="unit">公里</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>消耗燃油</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="fuel1" value="40" min="0" step="0.1" oninput="calcConsumption()">
+                        <span class="unit">升</span>
+                    </div>
+                </div>
+                
+                <div class="results-grid">
+                    <div class="result-card highlight">
+                        <div class="label">百公里油耗</div>
+                        <div class="value" id="lper100km">-</div>
+                        <div class="unit">L/100km</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">每升行驶</div>
+                        <div class="value" id="kmperl">-</div>
+                        <div class="unit">km/L</div>
+                    </div>
+                </div>
+                
+                <div class="comparison">
+                    <h4>油耗水平对比</h4>
+                    <div class="comparison-bar">
+                        <span class="label">省油</span>
+                        <div class="bar-container">
+                            <div class="bar good" style="width: 40%;"></div>
+                        </div>
+                        <span class="value">&lt;6L</span>
+                    </div>
+                    <div class="comparison-bar">
+                        <span class="label">一般</span>
+                        <div class="bar-container">
+                            <div class="bar average" style="width: 60%;"></div>
+                        </div>
+                        <span class="value">6-10L</span>
+                    </div>
+                    <div class="comparison-bar">
+                        <span class="label">费油</span>
+                        <div class="bar-container">
+                            <div class="bar poor" style="width: 80%;"></div>
+                        </div>
+                        <span class="value">&gt;10L</span>
+                    </div>
+                    <div class="comparison-bar">
+                        <span class="label">您的车</span>
+                        <div class="bar-container">
+                            <div class="bar" id="yourBar" style="width: 50%;"></div>
+                        </div>
+                        <span class="value" id="yourValue">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Calculate Distance -->
+            <div class="tab-content" id="tab-distance">
+                <div class="form-group">
+                    <label>油箱剩余</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="tankFuel" value="30" min="0" step="1" oninput="calcDistance()">
+                        <span class="unit">升</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>百公里油耗</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="consumption2" value="8" min="0" step="0.1" oninput="calcDistance()">
+                        <span class="unit">L/100km</span>
+                    </div>
+                </div>
+                
+                <div class="results-grid">
+                    <div class="result-card highlight">
+                        <div class="label">预计续航里程</div>
+                        <div class="value" id="rangeKm">-</div>
+                        <div class="unit">公里</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Calculate Cost -->
+            <div class="tab-content" id="tab-cost">
+                <div class="form-group">
+                    <label>行驶里程</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="distance3" value="100" min="0" step="1" oninput="calcCost()">
+                        <span class="unit">公里</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>百公里油耗</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="consumption3" value="8" min="0" step="0.1" oninput="calcCost()">
+                        <span class="unit">L/100km</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>油价 (选择或自定义)</label>
+                    <div class="fuel-prices">
+                        <div class="fuel-price-btn" onclick="setFuelPrice(7.20, this)">
+                            <div class="type">92#</div>
+                            <div class="price">¥7.20</div>
+                        </div>
+                        <div class="fuel-price-btn active" onclick="setFuelPrice(7.70, this)">
+                            <div class="type">95#</div>
+                            <div class="price">¥7.70</div>
+                        </div>
+                        <div class="fuel-price-btn" onclick="setFuelPrice(8.30, this)">
+                            <div class="type">98#</div>
+                            <div class="price">¥8.30</div>
+                        </div>
+                        <div class="fuel-price-btn" onclick="setFuelPrice(6.80, this)">
+                            <div class="type">0#柴油</div>
+                            <div class="price">¥6.80</div>
+                        </div>
+                    </div>
+                    <div class="input-with-unit" style="margin-top: 0.5rem;">
+                        <input type="number" id="fuelPrice" value="7.70" min="0" step="0.01" oninput="calcCost()">
+                        <span class="unit">元/升</span>
+                    </div>
+                </div>
+                
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="label">消耗燃油</div>
+                        <div class="value" id="fuelUsed">-</div>
+                        <div class="unit">升</div>
+                    </div>
+                    <div class="result-card highlight">
+                        <div class="label">燃油费用</div>
+                        <div class="value" id="fuelCost">-</div>
+                        <div class="unit">元</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">每公里成本</div>
+                        <div class="value" id="costPerKm">-</div>
+                        <div class="unit">元/km</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tips">
+            <strong>节油小贴士:</strong><br>
+            • 保持匀速驾驶，避免急加速急刹车<br>
+            • 定期检查轮胎气压，保持在推荐值<br>
+            • 减少车内不必要的重物<br>
+            • 合理使用空调，避免长时间怠速<br>
+            • 定期保养发动机和更换空气滤清器
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tabName) {
+            // Update buttons
+            document.querySelectorAll('.tabs button').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(function(content) {
+                content.classList.remove('active');
+            });
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+        
+        function calcConsumption() {
+            const distance = parseFloat(document.getElementById('distance1').value) || 0;
+            const fuel = parseFloat(document.getElementById('fuel1').value) || 0;
+            
+            if (distance > 0 && fuel > 0) {
+                const lper100km = (fuel / distance) * 100;
+                const kmperl = distance / fuel;
+                
+                document.getElementById('lper100km').textContent = lper100km.toFixed(2);
+                document.getElementById('kmperl').textContent = kmperl.toFixed(2);
+                
+                // Update comparison bar
+                const barWidth = Math.min(100, (lper100km / 15) * 100);
+                const yourBar = document.getElementById('yourBar');
+                yourBar.style.width = barWidth + '%';
+                
+                if (lper100km < 6) {
+                    yourBar.className = 'bar good';
+                } else if (lper100km < 10) {
+                    yourBar.className = 'bar average';
+                } else {
+                    yourBar.className = 'bar poor';
+                }
+                
+                document.getElementById('yourValue').textContent = lper100km.toFixed(1) + 'L';
+            } else {
+                document.getElementById('lper100km').textContent = '-';
+                document.getElementById('kmperl').textContent = '-';
+            }
+        }
+        
+        function calcDistance() {
+            const tankFuel = parseFloat(document.getElementById('tankFuel').value) || 0;
+            const consumption = parseFloat(document.getElementById('consumption2').value) || 0;
+            
+            if (tankFuel > 0 && consumption > 0) {
+                const range = (tankFuel / consumption) * 100;
+                document.getElementById('rangeKm').textContent = Math.round(range);
+            } else {
+                document.getElementById('rangeKm').textContent = '-';
+            }
+        }
+        
+        function calcCost() {
+            const distance = parseFloat(document.getElementById('distance3').value) || 0;
+            const consumption = parseFloat(document.getElementById('consumption3').value) || 0;
+            const price = parseFloat(document.getElementById('fuelPrice').value) || 0;
+            
+            if (distance > 0 && consumption > 0 && price > 0) {
+                const fuelUsed = (distance / 100) * consumption;
+                const cost = fuelUsed * price;
+                const costPerKm = cost / distance;
+                
+                document.getElementById('fuelUsed').textContent = fuelUsed.toFixed(2);
+                document.getElementById('fuelCost').textContent = cost.toFixed(2);
+                document.getElementById('costPerKm').textContent = costPerKm.toFixed(2);
+            } else {
+                document.getElementById('fuelUsed').textContent = '-';
+                document.getElementById('fuelCost').textContent = '-';
+                document.getElementById('costPerKm').textContent = '-';
+            }
+        }
+        
+        function setFuelPrice(price, element) {
+            document.getElementById('fuelPrice').value = price;
+            document.querySelectorAll('.fuel-price-btn').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            element.classList.add('active');
+            calcCost();
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'light') {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = '☀️ 浅色';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '🌙 深色';
+            }
+        }
+        
+        // Initialize
+        calcConsumption();
+        calcDistance();
+        calcCost();
+    </script>
+</body>
+</html>

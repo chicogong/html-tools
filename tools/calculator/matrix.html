@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>矩阵计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .matrix-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .matrix-controls select, .matrix-controls button {
+            margin: 0;
+        }
+        .matrices {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        @media (max-width: 768px) {
+            .matrices {
+                grid-template-columns: 1fr;
+            }
+        }
+        .matrix-container {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        .matrix-container h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .matrix-grid {
+            display: grid;
+            gap: 0.25rem;
+        }
+        .matrix-grid input {
+            width: 60px;
+            text-align: center;
+            padding: 0.25rem;
+            margin: 0;
+            font-family: monospace;
+        }
+        .operator {
+            font-size: 2rem;
+            text-align: center;
+            color: var(--pico-primary);
+        }
+        .operations {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .operations button {
+            margin: 0;
+        }
+        .result-section {
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1rem;
+        }
+        .result-section h3 {
+            margin: 0 0 1rem 0;
+        }
+        .result-matrix {
+            display: grid;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+        }
+        .result-matrix .cell {
+            width: 80px;
+            text-align: center;
+            padding: 0.5rem;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .steps {
+            background: var(--pico-code-background-color);
+            padding: 1rem;
+            border-radius: var(--pico-border-radius);
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .scalar-input {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .scalar-input input {
+            width: 80px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h2>矩阵计算器</h2>
+            <button class="outline" onclick="toggleTheme()" id="themeBtn">🌙 深色</button>
+        </header>
+
+        <div class="matrix-controls">
+            <label>
+                矩阵A尺寸:
+                <select id="rowsA" onchange="updateMatrixA()">
+                    <option value="2">2行</option>
+                    <option value="3" selected>3行</option>
+                    <option value="4">4行</option>
+                </select>
+            </label>
+            <label>
+                <select id="colsA" onchange="updateMatrixA()">
+                    <option value="2">2列</option>
+                    <option value="3" selected>3列</option>
+                    <option value="4">4列</option>
+                </select>
+            </label>
+            <label>
+                矩阵B尺寸:
+                <select id="rowsB" onchange="updateMatrixB()">
+                    <option value="2">2行</option>
+                    <option value="3" selected>3行</option>
+                    <option value="4">4行</option>
+                </select>
+            </label>
+            <label>
+                <select id="colsB" onchange="updateMatrixB()">
+                    <option value="2">2列</option>
+                    <option value="3" selected>3列</option>
+                    <option value="4">4列</option>
+                </select>
+            </label>
+            <button class="secondary" onclick="fillRandom()">随机填充</button>
+            <button class="secondary" onclick="fillIdentity()">单位矩阵</button>
+            <button class="contrast" onclick="clearMatrices()">清空</button>
+        </div>
+
+        <div class="matrices">
+            <div class="matrix-container">
+                <h4>矩阵 A</h4>
+                <div class="matrix-grid" id="matrixA"></div>
+            </div>
+            <div class="operator" id="operatorDisplay">+</div>
+            <div class="matrix-container">
+                <h4>矩阵 B</h4>
+                <div class="matrix-grid" id="matrixB"></div>
+            </div>
+        </div>
+
+        <div class="operations">
+            <button onclick="performOperation('add')">A + B</button>
+            <button onclick="performOperation('subtract')">A - B</button>
+            <button onclick="performOperation('multiply')">A × B</button>
+            <button class="secondary" onclick="performOperation('transposeA')">A 转置</button>
+            <button class="secondary" onclick="performOperation('transposeB')">B 转置</button>
+            <button class="secondary" onclick="performOperation('detA')">det(A)</button>
+            <button class="secondary" onclick="performOperation('detB')">det(B)</button>
+            <button class="secondary" onclick="performOperation('inverseA')">A⁻¹</button>
+            <button class="secondary" onclick="performOperation('inverseB')">B⁻¹</button>
+            <div class="scalar-input">
+                <input type="number" id="scalar" value="2" step="0.1">
+                <button class="outline" onclick="performOperation('scalarA')">×A</button>
+                <button class="outline" onclick="performOperation('scalarB')">×B</button>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h3>计算结果</h3>
+            <div class="result-matrix" id="resultMatrix"></div>
+            <details>
+                <summary>计算步骤</summary>
+                <div class="steps" id="steps"></div>
+            </details>
+        </div>
+    </main>
+
+    <script>
+        let matrixA = [[1,0,0],[0,1,0],[0,0,1]];
+        let matrixB = [[1,0,0],[0,1,0],[0,0,1]];
+
+        function updateMatrixA() {
+            const rows = parseInt(document.getElementById('rowsA').value);
+            const cols = parseInt(document.getElementById('colsA').value);
+            matrixA = createMatrix(rows, cols);
+            renderMatrix('matrixA', matrixA, 'A');
+        }
+
+        function updateMatrixB() {
+            const rows = parseInt(document.getElementById('rowsB').value);
+            const cols = parseInt(document.getElementById('colsB').value);
+            matrixB = createMatrix(rows, cols);
+            renderMatrix('matrixB', matrixB, 'B');
+        }
+
+        function createMatrix(rows, cols) {
+            const matrix = [];
+            for (let i = 0; i < rows; i++) {
+                matrix[i] = [];
+                for (let j = 0; j < cols; j++) {
+                    matrix[i][j] = 0;
+                }
+            }
+            return matrix;
+        }
+
+        function renderMatrix(containerId, matrix, name) {
+            const container = document.getElementById(containerId);
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            
+            container.style.gridTemplateColumns = 'repeat(' + cols + ', 60px)';
+            container.textContent = '';
+            
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.step = '0.01';
+                    input.value = matrix[i][j];
+                    input.dataset.row = i;
+                    input.dataset.col = j;
+                    input.dataset.matrix = name;
+                    input.onchange = function() { updateValue(this); };
+                    container.appendChild(input);
+                }
+            }
+        }
+
+        function updateValue(input) {
+            const row = parseInt(input.dataset.row);
+            const col = parseInt(input.dataset.col);
+            const value = parseFloat(input.value) || 0;
+            
+            if (input.dataset.matrix === 'A') {
+                matrixA[row][col] = value;
+            } else {
+                matrixB[row][col] = value;
+            }
+        }
+
+        function readMatrixFromDOM(containerId) {
+            const container = document.getElementById(containerId);
+            const inputs = container.querySelectorAll('input');
+            const matrix = containerId === 'matrixA' ? matrixA : matrixB;
+            
+            inputs.forEach(function(input) {
+                const row = parseInt(input.dataset.row);
+                const col = parseInt(input.dataset.col);
+                matrix[row][col] = parseFloat(input.value) || 0;
+            });
+            
+            return matrix;
+        }
+
+        function fillRandom() {
+            matrixA = matrixA.map(function(row) {
+                return row.map(function() { return Math.floor(Math.random() * 10); });
+            });
+            matrixB = matrixB.map(function(row) {
+                return row.map(function() { return Math.floor(Math.random() * 10); });
+            });
+            renderMatrix('matrixA', matrixA, 'A');
+            renderMatrix('matrixB', matrixB, 'B');
+        }
+
+        function fillIdentity() {
+            const sizeA = Math.min(matrixA.length, matrixA[0].length);
+            const sizeB = Math.min(matrixB.length, matrixB[0].length);
+            
+            for (let i = 0; i < matrixA.length; i++) {
+                for (let j = 0; j < matrixA[0].length; j++) {
+                    matrixA[i][j] = (i === j && i < sizeA) ? 1 : 0;
+                }
+            }
+            for (let i = 0; i < matrixB.length; i++) {
+                for (let j = 0; j < matrixB[0].length; j++) {
+                    matrixB[i][j] = (i === j && i < sizeB) ? 1 : 0;
+                }
+            }
+            
+            renderMatrix('matrixA', matrixA, 'A');
+            renderMatrix('matrixB', matrixB, 'B');
+        }
+
+        function clearMatrices() {
+            matrixA = matrixA.map(function(row) { return row.map(function() { return 0; }); });
+            matrixB = matrixB.map(function(row) { return row.map(function() { return 0; }); });
+            renderMatrix('matrixA', matrixA, 'A');
+            renderMatrix('matrixB', matrixB, 'B');
+            document.getElementById('resultSection').style.display = 'none';
+        }
+
+        function performOperation(op) {
+            readMatrixFromDOM('matrixA');
+            readMatrixFromDOM('matrixB');
+            
+            let result, steps = '';
+            const operatorDisplay = document.getElementById('operatorDisplay');
+            
+            try {
+                switch (op) {
+                    case 'add':
+                        operatorDisplay.textContent = '+';
+                        result = addMatrices(matrixA, matrixB);
+                        steps = generateAddSteps(matrixA, matrixB, result, '+');
+                        break;
+                    case 'subtract':
+                        operatorDisplay.textContent = '-';
+                        result = subtractMatrices(matrixA, matrixB);
+                        steps = generateAddSteps(matrixA, matrixB, result, '-');
+                        break;
+                    case 'multiply':
+                        operatorDisplay.textContent = '×';
+                        result = multiplyMatrices(matrixA, matrixB);
+                        steps = generateMultiplySteps(matrixA, matrixB, result);
+                        break;
+                    case 'transposeA':
+                        result = transpose(matrixA);
+                        steps = 'A 的转置:\n将第 i 行第 j 列的元素放到第 j 行第 i 列';
+                        break;
+                    case 'transposeB':
+                        result = transpose(matrixB);
+                        steps = 'B 的转置:\n将第 i 行第 j 列的元素放到第 j 行第 i 列';
+                        break;
+                    case 'detA':
+                        result = [[determinant(matrixA)]];
+                        steps = generateDetSteps(matrixA);
+                        break;
+                    case 'detB':
+                        result = [[determinant(matrixB)]];
+                        steps = generateDetSteps(matrixB);
+                        break;
+                    case 'inverseA':
+                        result = inverse(matrixA);
+                        steps = generateInverseSteps(matrixA);
+                        break;
+                    case 'inverseB':
+                        result = inverse(matrixB);
+                        steps = generateInverseSteps(matrixB);
+                        break;
+                    case 'scalarA':
+                        const scalarA = parseFloat(document.getElementById('scalar').value) || 1;
+                        result = scalarMultiply(matrixA, scalarA);
+                        steps = '标量乘法: ' + scalarA + ' × A\n每个元素乘以 ' + scalarA;
+                        break;
+                    case 'scalarB':
+                        const scalarB = parseFloat(document.getElementById('scalar').value) || 1;
+                        result = scalarMultiply(matrixB, scalarB);
+                        steps = '标量乘法: ' + scalarB + ' × B\n每个元素乘以 ' + scalarB;
+                        break;
+                }
+                
+                displayResult(result, steps);
+            } catch (e) {
+                alert('错误: ' + e.message);
+            }
+        }
+
+        function addMatrices(a, b) {
+            if (a.length !== b.length || a[0].length !== b[0].length) {
+                throw new Error('矩阵尺寸不匹配，无法相加');
+            }
+            return a.map(function(row, i) {
+                return row.map(function(val, j) { return val + b[i][j]; });
+            });
+        }
+
+        function subtractMatrices(a, b) {
+            if (a.length !== b.length || a[0].length !== b[0].length) {
+                throw new Error('矩阵尺寸不匹配，无法相减');
+            }
+            return a.map(function(row, i) {
+                return row.map(function(val, j) { return val - b[i][j]; });
+            });
+        }
+
+        function multiplyMatrices(a, b) {
+            if (a[0].length !== b.length) {
+                throw new Error('A的列数必须等于B的行数');
+            }
+            const result = [];
+            for (let i = 0; i < a.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < b[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < a[0].length; k++) {
+                        sum += a[i][k] * b[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+            return result;
+        }
+
+        function transpose(m) {
+            return m[0].map(function(_, j) {
+                return m.map(function(row) { return row[j]; });
+            });
+        }
+
+        function scalarMultiply(m, scalar) {
+            return m.map(function(row) {
+                return row.map(function(val) { return val * scalar; });
+            });
+        }
+
+        function determinant(m) {
+            if (m.length !== m[0].length) {
+                throw new Error('行列式只能计算方阵');
+            }
+            const n = m.length;
+            if (n === 1) return m[0][0];
+            if (n === 2) return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+            
+            let det = 0;
+            for (let j = 0; j < n; j++) {
+                det += Math.pow(-1, j) * m[0][j] * determinant(minor(m, 0, j));
+            }
+            return det;
+        }
+
+        function minor(m, row, col) {
+            return m.filter(function(_, i) { return i !== row; })
+                    .map(function(r) { return r.filter(function(_, j) { return j !== col; }); });
+        }
+
+        function inverse(m) {
+            if (m.length !== m[0].length) {
+                throw new Error('逆矩阵只能计算方阵');
+            }
+            const det = determinant(m);
+            if (Math.abs(det) < 1e-10) {
+                throw new Error('矩阵不可逆（行列式为0）');
+            }
+            
+            const n = m.length;
+            const adj = [];
+            
+            for (let i = 0; i < n; i++) {
+                adj[i] = [];
+                for (let j = 0; j < n; j++) {
+                    const cofactor = Math.pow(-1, i + j) * determinant(minor(m, i, j));
+                    adj[i][j] = cofactor;
+                }
+            }
+            
+            const adjT = transpose(adj);
+            return adjT.map(function(row) {
+                return row.map(function(val) { return val / det; });
+            });
+        }
+
+        function generateAddSteps(a, b, result, op) {
+            let steps = '矩阵' + (op === '+' ? '加法' : '减法') + ':\n\n';
+            for (let i = 0; i < result.length; i++) {
+                for (let j = 0; j < result[0].length; j++) {
+                    steps += 'C[' + i + '][' + j + '] = ' + a[i][j] + ' ' + op + ' ' + b[i][j] + ' = ' + result[i][j] + '\n';
+                }
+            }
+            return steps;
+        }
+
+        function generateMultiplySteps(a, b, result) {
+            let steps = '矩阵乘法 (A × B):\n\n';
+            for (let i = 0; i < result.length; i++) {
+                for (let j = 0; j < result[0].length; j++) {
+                    let terms = [];
+                    for (let k = 0; k < a[0].length; k++) {
+                        terms.push(a[i][k] + '×' + b[k][j]);
+                    }
+                    steps += 'C[' + i + '][' + j + '] = ' + terms.join(' + ') + ' = ' + result[i][j] + '\n';
+                }
+            }
+            return steps;
+        }
+
+        function generateDetSteps(m) {
+            const n = m.length;
+            let steps = '行列式计算:\n\n';
+            if (n === 2) {
+                steps += 'det = a×d - b×c\n';
+                steps += 'det = ' + m[0][0] + '×' + m[1][1] + ' - ' + m[0][1] + '×' + m[1][0] + '\n';
+                steps += 'det = ' + determinant(m);
+            } else {
+                steps += '使用第一行展开:\n';
+                for (let j = 0; j < n; j++) {
+                    const sign = Math.pow(-1, j) > 0 ? '+' : '-';
+                    const minorDet = determinant(minor(m, 0, j));
+                    steps += sign + ' ' + m[0][j] + ' × M[0][' + j + '] (' + minorDet + ')\n';
+                }
+                steps += '\n结果: ' + determinant(m);
+            }
+            return steps;
+        }
+
+        function generateInverseSteps(m) {
+            const det = determinant(m);
+            let steps = '逆矩阵计算:\n\n';
+            steps += '1. 计算行列式: det = ' + det + '\n';
+            steps += '2. 计算代数余子式矩阵\n';
+            steps += '3. 转置得伴随矩阵\n';
+            steps += '4. 伴随矩阵除以行列式\n';
+            steps += '\nA⁻¹ = adj(A) / det(A)';
+            return steps;
+        }
+
+        function displayResult(result, steps) {
+            const section = document.getElementById('resultSection');
+            const container = document.getElementById('resultMatrix');
+            const stepsDiv = document.getElementById('steps');
+            
+            section.style.display = 'block';
+            
+            container.style.gridTemplateColumns = 'repeat(' + result[0].length + ', 80px)';
+            container.textContent = '';
+            
+            for (let i = 0; i < result.length; i++) {
+                for (let j = 0; j < result[0].length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    const val = result[i][j];
+                    cell.textContent = Number.isInteger(val) ? val : val.toFixed(4);
+                    container.appendChild(cell);
+                }
+            }
+            
+            stepsDiv.textContent = steps;
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (html.getAttribute('data-theme') === 'light') {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = '☀️ 浅色';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '🌙 深色';
+            }
+        }
+
+        // Initialize
+        renderMatrix('matrixA', matrixA, 'A');
+        renderMatrix('matrixB', matrixB, 'B');
+    </script>
+</body>
+</html>

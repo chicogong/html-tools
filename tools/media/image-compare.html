@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片对比滑块 - Before/After对比工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --border-radius: 8px;
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: 1px solid var(--pico-muted-border-color);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1.2rem;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-zone.has-image {
+            padding: 0;
+            border-style: solid;
+        }
+        
+        .upload-zone input {
+            display: none;
+        }
+        
+        .upload-zone .preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            max-height: 200px;
+            border-radius: var(--border-radius);
+        }
+        
+        .upload-zone .label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .upload-zone .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            display: none;
+        }
+        
+        .upload-zone.has-image .remove-btn {
+            display: block;
+        }
+        
+        .compare-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 2rem;
+            overflow: hidden;
+            border-radius: var(--border-radius);
+            background: #f0f0f0;
+            min-height: 400px;
+            display: none;
+        }
+        
+        [data-theme="dark"] .compare-container {
+            background: #2a2a2a;
+        }
+        
+        .compare-container.visible {
+            display: block;
+        }
+        
+        .compare-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        
+        .compare-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        
+        .compare-before {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .compare-before img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .compare-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            cursor: ew-resize;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .compare-slider::before,
+        .compare-slider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        
+        .compare-slider::before {
+            left: -8px;
+            transform: translateY(-50%);
+            border-width: 10px 8px 10px 0;
+            border-color: transparent white transparent transparent;
+        }
+        
+        .compare-slider::after {
+            right: -8px;
+            transform: translateY(-50%);
+            border-width: 10px 0 10px 8px;
+            border-color: transparent transparent transparent white;
+        }
+        
+        .compare-handle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 44px;
+            height: 44px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .compare-label {
+            position: absolute;
+            top: 16px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        
+        .compare-label.before {
+            left: 16px;
+        }
+        
+        .compare-label.after {
+            right: 16px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .mode-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .mode-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-background-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: var(--pico-muted-color);
+            padding: 3rem;
+        }
+        
+        /* Horizontal mode */
+        .compare-container.horizontal .compare-slider {
+            width: 100%;
+            height: 4px;
+            cursor: ns-resize;
+        }
+        
+        .compare-container.horizontal .compare-slider::before,
+        .compare-container.horizontal .compare-slider::after {
+            top: auto;
+            left: 50%;
+        }
+        
+        .compare-container.horizontal .compare-slider::before {
+            top: -8px;
+            transform: translateX(-50%);
+            border-width: 0 10px 8px 10px;
+            border-color: transparent transparent white transparent;
+        }
+        
+        .compare-container.horizontal .compare-slider::after {
+            bottom: -8px;
+            top: auto;
+            transform: translateX(-50%);
+            border-width: 8px 10px 0 10px;
+            border-color: white transparent transparent transparent;
+        }
+        
+        .compare-container.horizontal .compare-label.before {
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .compare-container.horizontal .compare-label.after {
+            bottom: 16px;
+            top: auto;
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+        }
+        
+        /* Blend mode */
+        .compare-container.blend .compare-slider,
+        .compare-container.blend .compare-label {
+            display: none;
+        }
+        
+        /* Side by side mode */
+        .compare-container.side-by-side {
+            display: none;
+        }
+        
+        .compare-container.side-by-side.visible {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+        
+        .side-by-side-image {
+            position: relative;
+        }
+        
+        .side-by-side-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .side-by-side-image .label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .zoom-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        #zoomSlider {
+            flex: 1;
+        }
+        
+        .opacity-slider-container {
+            display: none;
+        }
+        
+        .blend .opacity-slider-container {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>图片对比滑块</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">切换主题</button>
+        </header>
+        
+        <main>
+            <div class="upload-section">
+                <div class="upload-zone" id="beforeZone">
+                    <span class="label">Before</span>
+                    <p>点击或拖拽上传"前"图片</p>
+                    <input type="file" id="beforeInput" accept="image/*">
+                    <button class="remove-btn" onclick="removeImage('before', event)">x</button>
+                </div>
+                
+                <div class="upload-zone" id="afterZone">
+                    <span class="label">After</span>
+                    <p>点击或拖拽上传"后"图片</p>
+                    <input type="file" id="afterInput" accept="image/*">
+                    <button class="remove-btn" onclick="removeImage('after', event)">x</button>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label>对比模式</label>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="vertical">左右滑动</button>
+                        <button class="mode-btn" data-mode="horizontal">上下滑动</button>
+                        <button class="mode-btn" data-mode="blend">透明度混合</button>
+                        <button class="mode-btn" data-mode="side-by-side">并排对比</button>
+                    </div>
+                </div>
+                
+                <div class="control-group opacity-slider-container" id="opacityControl">
+                    <label for="opacitySlider">透明度: <span id="opacityValue">50</span>%</label>
+                    <input type="range" id="opacitySlider" min="0" max="100" value="50">
+                </div>
+                
+                <div class="control-group">
+                    <label>缩放</label>
+                    <div class="zoom-container">
+                        <button class="outline" onclick="adjustZoom(-10)">-</button>
+                        <input type="range" id="zoomSlider" min="50" max="200" value="100">
+                        <button class="outline" onclick="adjustZoom(10)">+</button>
+                        <span id="zoomValue">100%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slider compare container -->
+            <div class="compare-container" id="compareContainer">
+                <div class="compare-wrapper" id="compareWrapper">
+                    <img class="compare-image" id="afterImage" alt="After">
+                    <div class="compare-before" id="compareBefore">
+                        <img id="beforeImage" alt="Before">
+                    </div>
+                    <div class="compare-slider" id="compareSlider">
+                        <div class="compare-handle">&#8596;</div>
+                    </div>
+                    <span class="compare-label before">Before</span>
+                    <span class="compare-label after">After</span>
+                </div>
+            </div>
+            
+            <!-- Side by side container -->
+            <div class="compare-container side-by-side" id="sideBySideContainer">
+                <div class="side-by-side-image">
+                    <img id="sideBySideBefore" alt="Before">
+                    <span class="label">Before</span>
+                </div>
+                <div class="side-by-side-image">
+                    <img id="sideBySideAfter" alt="After">
+                    <span class="label">After</span>
+                </div>
+            </div>
+            
+            <div class="empty-state" id="emptyState">
+                <p>请上传两张图片进行对比</p>
+            </div>
+            
+            <div class="actions">
+                <button id="downloadBtn" disabled>下载对比图</button>
+                <button id="swapBtn" class="secondary" disabled>交换图片</button>
+                <button id="resetBtn" class="outline secondary">重置</button>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // DOM Elements
+        const beforeZone = document.getElementById('beforeZone');
+        const afterZone = document.getElementById('afterZone');
+        const beforeInput = document.getElementById('beforeInput');
+        const afterInput = document.getElementById('afterInput');
+        const compareContainer = document.getElementById('compareContainer');
+        const sideBySideContainer = document.getElementById('sideBySideContainer');
+        const compareWrapper = document.getElementById('compareWrapper');
+        const compareBefore = document.getElementById('compareBefore');
+        const compareSlider = document.getElementById('compareSlider');
+        const beforeImage = document.getElementById('beforeImage');
+        const afterImage = document.getElementById('afterImage');
+        const sideBySideBefore = document.getElementById('sideBySideBefore');
+        const sideBySideAfter = document.getElementById('sideBySideAfter');
+        const emptyState = document.getElementById('emptyState');
+        const opacitySlider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+        const opacityControl = document.getElementById('opacityControl');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = document.getElementById('zoomValue');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const swapBtn = document.getElementById('swapBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        // State
+        let beforeSrc = null;
+        let afterSrc = null;
+        let currentMode = 'vertical';
+        let sliderPosition = 50;
+        let isDragging = false;
+        
+        // Setup upload zones
+        [
+            { zone: beforeZone, input: beforeInput, type: 'before' },
+            { zone: afterZone, input: afterInput, type: 'after' }
+        ].forEach(({ zone, input, type }) => {
+            zone.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('remove-btn')) {
+                    input.click();
+                }
+            });
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0], type);
+                }
+            });
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], type);
+                }
+            });
+        });
+        
+        // Mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                setMode(btn.dataset.mode);
+            });
+        });
+        
+        // Opacity slider
+        opacitySlider.addEventListener('input', () => {
+            opacityValue.textContent = opacitySlider.value;
+            if (currentMode === 'blend') {
+                compareBefore.style.opacity = opacitySlider.value / 100;
+            }
+        });
+        
+        // Zoom slider
+        zoomSlider.addEventListener('input', updateZoom);
+        
+        // Buttons
+        downloadBtn.addEventListener('click', downloadCompare);
+        swapBtn.addEventListener('click', swapImages);
+        resetBtn.addEventListener('click', resetAll);
+        
+        // Slider interaction
+        compareSlider.addEventListener('mousedown', startDrag);
+        compareSlider.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        // Click on compare container to move slider
+        compareWrapper.addEventListener('click', (e) => {
+            if (e.target === compareSlider || compareSlider.contains(e.target)) return;
+            const rect = compareWrapper.getBoundingClientRect();
+            if (currentMode === 'vertical') {
+                sliderPosition = ((e.clientX - rect.left) / rect.width) * 100;
+            } else if (currentMode === 'horizontal') {
+                sliderPosition = ((e.clientY - rect.top) / rect.height) * 100;
+            }
+            updateSlider();
+        });
+        
+        function handleFile(file, type) {
+            if (!file.type.startsWith('image/')) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const src = e.target.result;
+                const zone = type === 'before' ? beforeZone : afterZone;
+                
+                // Update preview
+                let preview = zone.querySelector('.preview');
+                if (!preview) {
+                    preview = document.createElement('img');
+                    preview.className = 'preview';
+                    zone.appendChild(preview);
+                    
+                    // Hide text
+                    const p = zone.querySelector('p');
+                    if (p) p.style.display = 'none';
+                }
+                preview.src = src;
+                zone.classList.add('has-image');
+                
+                if (type === 'before') {
+                    beforeSrc = src;
+                } else {
+                    afterSrc = src;
+                }
+                
+                updateCompare();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function removeImage(type, event) {
+            event.stopPropagation();
+            const zone = type === 'before' ? beforeZone : afterZone;
+            const input = type === 'before' ? beforeInput : afterInput;
+            
+            const preview = zone.querySelector('.preview');
+            if (preview) preview.remove();
+            
+            const p = zone.querySelector('p');
+            if (p) p.style.display = '';
+            
+            zone.classList.remove('has-image');
+            input.value = '';
+            
+            if (type === 'before') {
+                beforeSrc = null;
+            } else {
+                afterSrc = null;
+            }
+            
+            updateCompare();
+        }
+        
+        function updateCompare() {
+            const hasImages = beforeSrc && afterSrc;
+            
+            if (hasImages) {
+                beforeImage.src = beforeSrc;
+                afterImage.src = afterSrc;
+                sideBySideBefore.src = beforeSrc;
+                sideBySideAfter.src = afterSrc;
+                
+                emptyState.style.display = 'none';
+                setMode(currentMode);
+            } else {
+                compareContainer.classList.remove('visible');
+                sideBySideContainer.classList.remove('visible');
+                emptyState.style.display = 'block';
+            }
+            
+            downloadBtn.disabled = !hasImages;
+            swapBtn.disabled = !hasImages;
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            
+            compareContainer.classList.remove('vertical', 'horizontal', 'blend', 'visible');
+            sideBySideContainer.classList.remove('visible');
+            opacityControl.style.display = 'none';
+            
+            if (!beforeSrc || !afterSrc) return;
+            
+            if (mode === 'side-by-side') {
+                sideBySideContainer.classList.add('visible');
+            } else {
+                compareContainer.classList.add(mode, 'visible');
+                
+                if (mode === 'blend') {
+                    compareBefore.style.clipPath = 'none';
+                    compareBefore.style.opacity = opacitySlider.value / 100;
+                    opacityControl.style.display = 'block';
+                } else {
+                    compareBefore.style.opacity = 1;
+                    updateSlider();
+                }
+            }
+        }
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const rect = compareWrapper.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            if (currentMode === 'vertical') {
+                sliderPosition = ((clientX - rect.left) / rect.width) * 100;
+            } else if (currentMode === 'horizontal') {
+                sliderPosition = ((clientY - rect.top) / rect.height) * 100;
+            }
+            
+            sliderPosition = Math.max(0, Math.min(100, sliderPosition));
+            updateSlider();
+        }
+        
+        function stopDrag() {
+            isDragging = false;
+        }
+        
+        function updateSlider() {
+            if (currentMode === 'vertical') {
+                compareSlider.style.left = sliderPosition + '%';
+                compareSlider.style.top = '0';
+                compareSlider.style.width = '4px';
+                compareSlider.style.height = '100%';
+                compareBefore.style.clipPath = 'inset(0 ' + (100 - sliderPosition) + '% 0 0)';
+            } else if (currentMode === 'horizontal') {
+                compareSlider.style.top = sliderPosition + '%';
+                compareSlider.style.left = '0';
+                compareSlider.style.width = '100%';
+                compareSlider.style.height = '4px';
+                compareBefore.style.clipPath = 'inset(0 0 ' + (100 - sliderPosition) + '% 0)';
+            }
+        }
+        
+        function updateZoom() {
+            const zoom = zoomSlider.value;
+            zoomValue.textContent = zoom + '%';
+            compareContainer.style.transform = 'scale(' + (zoom / 100) + ')';
+            compareContainer.style.transformOrigin = 'center top';
+            sideBySideContainer.style.transform = 'scale(' + (zoom / 100) + ')';
+            sideBySideContainer.style.transformOrigin = 'center top';
+        }
+        
+        function adjustZoom(delta) {
+            const newValue = Math.max(50, Math.min(200, parseInt(zoomSlider.value) + delta));
+            zoomSlider.value = newValue;
+            updateZoom();
+        }
+        
+        function swapImages() {
+            const temp = beforeSrc;
+            beforeSrc = afterSrc;
+            afterSrc = temp;
+            
+            // Update previews
+            const beforePreview = beforeZone.querySelector('.preview');
+            const afterPreview = afterZone.querySelector('.preview');
+            if (beforePreview && afterPreview) {
+                beforePreview.src = beforeSrc;
+                afterPreview.src = afterSrc;
+            }
+            
+            updateCompare();
+        }
+        
+        function resetAll() {
+            beforeSrc = null;
+            afterSrc = null;
+            
+            [beforeZone, afterZone].forEach(zone => {
+                const preview = zone.querySelector('.preview');
+                if (preview) preview.remove();
+                const p = zone.querySelector('p');
+                if (p) p.style.display = '';
+                zone.classList.remove('has-image');
+            });
+            
+            beforeInput.value = '';
+            afterInput.value = '';
+            sliderPosition = 50;
+            zoomSlider.value = 100;
+            opacitySlider.value = 50;
+            
+            updateCompare();
+            updateZoom();
+        }
+        
+        function downloadCompare() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const beforeImg = new Image();
+            const afterImg = new Image();
+            
+            beforeImg.onload = () => {
+                afterImg.onload = () => {
+                    const width = Math.max(beforeImg.width, afterImg.width);
+                    const height = Math.max(beforeImg.height, afterImg.height);
+                    
+                    if (currentMode === 'side-by-side') {
+                        canvas.width = width * 2 + 4;
+                        canvas.height = height;
+                        
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                        ctx.drawImage(afterImg, width + 4, 0, width, height);
+                    } else if (currentMode === 'blend') {
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        ctx.drawImage(afterImg, 0, 0, width, height);
+                        ctx.globalAlpha = opacitySlider.value / 100;
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                    } else {
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // Draw after image
+                        ctx.drawImage(afterImg, 0, 0, width, height);
+                        
+                        // Clip and draw before image
+                        ctx.save();
+                        ctx.beginPath();
+                        if (currentMode === 'vertical') {
+                            ctx.rect(0, 0, width * sliderPosition / 100, height);
+                        } else {
+                            ctx.rect(0, 0, width, height * sliderPosition / 100);
+                        }
+                        ctx.clip();
+                        ctx.drawImage(beforeImg, 0, 0, width, height);
+                        ctx.restore();
+                        
+                        // Draw slider line
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        if (currentMode === 'vertical') {
+                            const x = width * sliderPosition / 100;
+                            ctx.moveTo(x, 0);
+                            ctx.lineTo(x, height);
+                        } else {
+                            const y = height * sliderPosition / 100;
+                            ctx.moveTo(0, y);
+                            ctx.lineTo(width, y);
+                        }
+                        ctx.stroke();
+                    }
+                    
+                    // Add labels
+                    ctx.globalAlpha = 1;
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    
+                    if (currentMode === 'side-by-side') {
+                        ctx.fillRect(10, 10, 60, 24);
+                        ctx.fillRect(width + 14, 10, 50, 24);
+                        ctx.fillStyle = 'white';
+                        ctx.fillText('Before', 16, 27);
+                        ctx.fillText('After', width + 20, 27);
+                    } else {
+                        ctx.fillRect(10, 10, 60, 24);
+                        ctx.fillRect(canvas.width - 60, 10, 50, 24);
+                        ctx.fillStyle = 'white';
+                        ctx.fillText('Before', 16, 27);
+                        ctx.fillText('After', canvas.width - 54, 27);
+                    }
+                    
+                    const link = document.createElement('a');
+                    link.download = 'compare_' + Date.now() + '.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+                afterImg.src = afterSrc;
+            };
+            beforeImg.src = beforeSrc;
+        }
+        
+        // Initialize
+        updateSlider();
+    </script>
+</body>
+</html>

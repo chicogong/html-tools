@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间加减计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+        .tabs button { flex: 1; }
+        .tabs button.active { background: var(--pico-primary); color: var(--pico-primary-inverse); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .calc-box { background: var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .result-highlight { font-size: 2rem; font-weight: bold; color: var(--pico-primary); text-align: center; margin: 1rem 0; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .result-card { background: var(--pico-background-color); border-radius: var(--pico-border-radius); padding: 1rem; text-align: center; }
+        .result-card h5 { margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--pico-muted-color); }
+        .result-card .value { font-size: 1.2rem; font-weight: bold; }
+        .input-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; align-items: end; }
+        .time-input { display: flex; gap: 0.5rem; align-items: center; }
+        .time-input input { width: 70px; text-align: center; }
+        .op-select { margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>时间加减计算器</h1>
+            <button id="themeToggle" class="outline" onclick="toggleTheme()">🌙</button>
+        </header>
+
+        <div class="tabs">
+            <button class="active" onclick="showTab('datetime')">日期时间计算</button>
+            <button onclick="showTab('duration')">时长计算</button>
+            <button onclick="showTab('diff')">日期差值</button>
+            <button onclick="showTab('workday')">工作日计算</button>
+        </div>
+
+        <div id="datetime" class="tab-content active">
+            <div class="calc-box">
+                <h3>日期时间加减</h3>
+                <label>起始日期时间</label>
+                <input type="datetime-local" id="startDateTime" value="">
+                <button class="outline" onclick="setNow()" style="margin-left: 0.5rem;">现在</button>
+
+                <div class="op-select">
+                    <label>
+                        <input type="radio" name="dtOp" value="add" checked> 加上
+                    </label>
+                    <label style="margin-left: 1rem;">
+                        <input type="radio" name="dtOp" value="subtract"> 减去
+                    </label>
+                </div>
+
+                <div class="input-row">
+                    <div><label>年</label><input type="number" id="addYears" value="0" min="0"></div>
+                    <div><label>月</label><input type="number" id="addMonths" value="0" min="0"></div>
+                    <div><label>日</label><input type="number" id="addDays" value="0" min="0"></div>
+                    <div><label>时</label><input type="number" id="addHours" value="0" min="0"></div>
+                    <div><label>分</label><input type="number" id="addMinutes" value="0" min="0"></div>
+                    <div><label>秒</label><input type="number" id="addSeconds" value="0" min="0"></div>
+                </div>
+
+                <button onclick="calcDateTime()" style="margin-top: 1rem;">计算</button>
+
+                <div class="result-highlight" id="dtResult">-</div>
+                <div style="text-align: center; color: var(--pico-muted-color);" id="dtResultWeekday"></div>
+            </div>
+        </div>
+
+        <div id="duration" class="tab-content">
+            <div class="calc-box">
+                <h3>时长单位转换</h3>
+                <div class="input-row">
+                    <div>
+                        <label>数值</label>
+                        <input type="number" id="durationValue" value="90" step="any" oninput="convertDuration()">
+                    </div>
+                    <div>
+                        <label>单位</label>
+                        <select id="durationUnit" onchange="convertDuration()">
+                            <option value="seconds">秒</option>
+                            <option value="minutes" selected>分钟</option>
+                            <option value="hours">小时</option>
+                            <option value="days">天</option>
+                            <option value="weeks">周</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="result-grid" style="margin-top: 1.5rem;">
+                    <div class="result-card"><h5>秒</h5><div class="value" id="resSec">0</div></div>
+                    <div class="result-card"><h5>分钟</h5><div class="value" id="resMin">0</div></div>
+                    <div class="result-card"><h5>小时</h5><div class="value" id="resHour">0</div></div>
+                    <div class="result-card"><h5>天</h5><div class="value" id="resDay">0</div></div>
+                    <div class="result-card"><h5>周</h5><div class="value" id="resWeek">0</div></div>
+                    <div class="result-card"><h5>格式化</h5><div class="value" id="resFormatted">0:00:00</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="diff" class="tab-content">
+            <div class="calc-box">
+                <h3>计算日期差值</h3>
+                <div class="input-row">
+                    <div>
+                        <label>开始日期</label>
+                        <input type="date" id="diffStart">
+                    </div>
+                    <div>
+                        <label>结束日期</label>
+                        <input type="date" id="diffEnd">
+                    </div>
+                </div>
+                <button onclick="calcDiff()" style="margin-top: 1rem;">计算差值</button>
+
+                <div class="result-highlight" id="diffResult">0 天</div>
+
+                <div class="result-grid">
+                    <div class="result-card"><h5>总天数</h5><div class="value" id="diffDays">0</div></div>
+                    <div class="result-card"><h5>总周数</h5><div class="value" id="diffWeeks">0</div></div>
+                    <div class="result-card"><h5>总月数</h5><div class="value" id="diffMonths">0</div></div>
+                    <div class="result-card"><h5>总年数</h5><div class="value" id="diffYears">0</div></div>
+                    <div class="result-card"><h5>总小时</h5><div class="value" id="diffHours">0</div></div>
+                    <div class="result-card"><h5>总分钟</h5><div class="value" id="diffMinutes">0</div></div>
+                </div>
+
+                <div style="margin-top: 1rem; text-align: center; color: var(--pico-muted-color);" id="diffDetail"></div>
+            </div>
+        </div>
+
+        <div id="workday" class="tab-content">
+            <div class="calc-box">
+                <h3>工作日计算</h3>
+                <label>起始日期</label>
+                <input type="date" id="workdayStart">
+
+                <div class="op-select">
+                    <label>
+                        <input type="radio" name="workdayOp" value="add" checked> 加上工作日
+                    </label>
+                    <label style="margin-left: 1rem;">
+                        <input type="radio" name="workdayOp" value="count"> 计算工作日数
+                    </label>
+                </div>
+
+                <div id="workdayAddSection">
+                    <label>工作日数量</label>
+                    <input type="number" id="workdayCount" value="10" min="0">
+                </div>
+
+                <div id="workdayCountSection" style="display: none;">
+                    <label>结束日期</label>
+                    <input type="date" id="workdayEnd">
+                </div>
+
+                <button onclick="calcWorkday()" style="margin-top: 1rem;">计算</button>
+
+                <div class="result-highlight" id="workdayResult">-</div>
+
+                <div class="result-grid">
+                    <div class="result-card"><h5>工作日</h5><div class="value" id="workdays">0</div></div>
+                    <div class="result-card"><h5>周末天数</h5><div class="value" id="weekends">0</div></div>
+                    <div class="result-card"><h5>总天数</h5><div class="value" id="totalDays">0</div></div>
+                </div>
+            </div>
+        </div>
+
+        <article style="margin-top: 2rem;">
+            <h4>快捷参考</h4>
+            <table>
+                <thead><tr><th>时间单位</th><th>换算</th></tr></thead>
+                <tbody>
+                    <tr><td>1分钟</td><td>60秒</td></tr>
+                    <tr><td>1小时</td><td>60分钟 = 3,600秒</td></tr>
+                    <tr><td>1天</td><td>24小时 = 1,440分钟 = 86,400秒</td></tr>
+                    <tr><td>1周</td><td>7天 = 168小时</td></tr>
+                    <tr><td>1年</td><td>365天 (闰年366天)</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+
+    <script>
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeToggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function setNow() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+            document.getElementById('startDateTime').value = localISOTime;
+        }
+
+        function calcDateTime() {
+            const startStr = document.getElementById('startDateTime').value;
+            if (!startStr) { alert('请选择起始日期时间'); return; }
+
+            const start = new Date(startStr);
+            const op = document.querySelector('input[name="dtOp"]:checked').value;
+            const mult = op === 'add' ? 1 : -1;
+
+            const years = parseInt(document.getElementById('addYears').value) || 0;
+            const months = parseInt(document.getElementById('addMonths').value) || 0;
+            const days = parseInt(document.getElementById('addDays').value) || 0;
+            const hours = parseInt(document.getElementById('addHours').value) || 0;
+            const minutes = parseInt(document.getElementById('addMinutes').value) || 0;
+            const seconds = parseInt(document.getElementById('addSeconds').value) || 0;
+
+            const result = new Date(start);
+            result.setFullYear(result.getFullYear() + mult * years);
+            result.setMonth(result.getMonth() + mult * months);
+            result.setDate(result.getDate() + mult * days);
+            result.setHours(result.getHours() + mult * hours);
+            result.setMinutes(result.getMinutes() + mult * minutes);
+            result.setSeconds(result.getSeconds() + mult * seconds);
+
+            const formatted = result.getFullYear() + '年' + (result.getMonth() + 1) + '月' + result.getDate() + '日 ' +
+                result.getHours().toString().padStart(2, '0') + ':' +
+                result.getMinutes().toString().padStart(2, '0') + ':' +
+                result.getSeconds().toString().padStart(2, '0');
+
+            document.getElementById('dtResult').textContent = formatted;
+            document.getElementById('dtResultWeekday').textContent = '星期' + weekdays[result.getDay()];
+        }
+
+        function convertDuration() {
+            const value = parseFloat(document.getElementById('durationValue').value) || 0;
+            const unit = document.getElementById('durationUnit').value;
+
+            let seconds;
+            switch (unit) {
+                case 'seconds': seconds = value; break;
+                case 'minutes': seconds = value * 60; break;
+                case 'hours': seconds = value * 3600; break;
+                case 'days': seconds = value * 86400; break;
+                case 'weeks': seconds = value * 604800; break;
+            }
+
+            document.getElementById('resSec').textContent = seconds.toLocaleString();
+            document.getElementById('resMin').textContent = (seconds / 60).toFixed(2);
+            document.getElementById('resHour').textContent = (seconds / 3600).toFixed(4);
+            document.getElementById('resDay').textContent = (seconds / 86400).toFixed(4);
+            document.getElementById('resWeek').textContent = (seconds / 604800).toFixed(4);
+
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            document.getElementById('resFormatted').textContent = h + ':' + m.toString().padStart(2, '0') + ':' + s.toString().padStart(2, '0');
+        }
+
+        function calcDiff() {
+            const startStr = document.getElementById('diffStart').value;
+            const endStr = document.getElementById('diffEnd').value;
+            if (!startStr || !endStr) { alert('请选择开始和结束日期'); return; }
+
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            const diffMs = Math.abs(end - start);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            document.getElementById('diffResult').textContent = diffDays + ' 天';
+            document.getElementById('diffDays').textContent = diffDays;
+            document.getElementById('diffWeeks').textContent = (diffDays / 7).toFixed(2);
+            document.getElementById('diffMonths').textContent = (diffDays / 30.44).toFixed(2);
+            document.getElementById('diffYears').textContent = (diffDays / 365.25).toFixed(4);
+            document.getElementById('diffHours').textContent = Math.floor(diffMs / 3600000);
+            document.getElementById('diffMinutes').textContent = Math.floor(diffMs / 60000);
+
+            // Detailed breakdown
+            let years = 0, months = 0, days = diffDays;
+            years = Math.floor(days / 365);
+            days %= 365;
+            months = Math.floor(days / 30);
+            days %= 30;
+            document.getElementById('diffDetail').textContent = '约 ' + years + ' 年 ' + months + ' 个月 ' + days + ' 天';
+        }
+
+        function calcWorkday() {
+            const startStr = document.getElementById('workdayStart').value;
+            if (!startStr) { alert('请选择起始日期'); return; }
+
+            const start = new Date(startStr);
+            const op = document.querySelector('input[name="workdayOp"]:checked').value;
+
+            if (op === 'add') {
+                const count = parseInt(document.getElementById('workdayCount').value) || 0;
+                let current = new Date(start);
+                let added = 0;
+                let weekendDays = 0;
+
+                while (added < count) {
+                    current.setDate(current.getDate() + 1);
+                    const day = current.getDay();
+                    if (day !== 0 && day !== 6) {
+                        added++;
+                    } else {
+                        weekendDays++;
+                    }
+                }
+
+                const formatted = current.getFullYear() + '年' + (current.getMonth() + 1) + '月' + current.getDate() + '日';
+                document.getElementById('workdayResult').textContent = formatted + ' (星期' + weekdays[current.getDay()] + ')';
+                document.getElementById('workdays').textContent = count;
+                document.getElementById('weekends').textContent = weekendDays;
+                document.getElementById('totalDays').textContent = count + weekendDays;
+            } else {
+                const endStr = document.getElementById('workdayEnd').value;
+                if (!endStr) { alert('请选择结束日期'); return; }
+
+                const end = new Date(endStr);
+                let current = new Date(start);
+                let workdays = 0;
+                let weekendDays = 0;
+
+                while (current <= end) {
+                    const day = current.getDay();
+                    if (day !== 0 && day !== 6) {
+                        workdays++;
+                    } else {
+                        weekendDays++;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+
+                document.getElementById('workdayResult').textContent = workdays + ' 个工作日';
+                document.getElementById('workdays').textContent = workdays;
+                document.getElementById('weekends').textContent = weekendDays;
+                document.getElementById('totalDays').textContent = workdays + weekendDays;
+            }
+        }
+
+        document.querySelectorAll('input[name="workdayOp"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('workdayAddSection').style.display = this.value === 'add' ? 'block' : 'none';
+                document.getElementById('workdayCountSection').style.display = this.value === 'count' ? 'block' : 'none';
+            });
+        });
+
+        loadTheme();
+        setNow();
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('diffStart').value = today;
+        document.getElementById('diffEnd').value = today;
+        document.getElementById('workdayStart').value = today;
+        document.getElementById('workdayEnd').value = today;
+        convertDuration();
+    </script>
+</body>
+</html>

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片隐写术工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 2rem;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            border: 1px solid var(--pico-muted-border-color);
+            background: var(--pico-background-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+        .tab-btn:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+        .tab-btn.active {
+            background: var(--pico-primary);
+            color: white;
+            border-color: var(--pico-primary);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .panel {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .panel h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--pico-primary);
+            background: var(--pico-secondary-background);
+        }
+        .drop-zone input {
+            display: none;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 1rem;
+            border-radius: 8px;
+        }
+        .message-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .stats-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            padding: 0.5rem 1rem;
+            background: var(--pico-background-color);
+            border-radius: 4px;
+        }
+        .stat-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .action-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .result-panel {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+        }
+        .result-panel h4 {
+            margin-top: 0;
+        }
+        .decoded-message {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+        }
+        [data-theme="dark"] .warning-box {
+            background: #78350f;
+        }
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        [data-theme="dark"] .info-box {
+            background: #1e3a5f;
+        }
+        .encryption-options {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--pico-background-color);
+            border-radius: 8px;
+        }
+        .encryption-options label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .password-input {
+            margin-top: 0.5rem;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+            display: none;
+        }
+        .progress-bar.active {
+            display: block;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--pico-primary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>图片隐写术工具</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="info-box">
+            <strong>什么是隐写术？</strong><br>
+            隐写术是一种将秘密信息隐藏在普通载体（如图片）中的技术。本工具使用LSB（最低有效位）算法，将信息编码到图片像素的最低位中，肉眼无法察觉变化。
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="encode">隐藏信息</button>
+            <button class="tab-btn" data-tab="decode">提取信息</button>
+        </div>
+
+        <!-- 隐藏信息标签页 -->
+        <div class="tab-content active" id="encodeTab">
+            <div class="panel">
+                <h3>1. 选择载体图片</h3>
+                <div class="drop-zone" id="encodeDropZone">
+                    <input type="file" id="encodeFileInput" accept="image/png,image/bmp">
+                    <p>点击或拖拽图片到此处</p>
+                    <small>支持 PNG 格式（推荐）</small>
+                </div>
+                <img id="encodePreview" class="image-preview" style="display: none;">
+                <div class="stats-row" id="encodeStats" style="display: none;">
+                    <div class="stat-item">尺寸: <span class="stat-value" id="imgSize">-</span></div>
+                    <div class="stat-item">可隐藏容量: <span class="stat-value" id="maxCapacity">-</span></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>2. 输入要隐藏的信息</h3>
+                <textarea id="secretMessage" class="message-input" placeholder="输入要隐藏的秘密信息..."></textarea>
+                <div class="stats-row">
+                    <div class="stat-item">字符数: <span class="stat-value" id="charCount">0</span></div>
+                    <div class="stat-item">所需容量: <span class="stat-value" id="requiredCapacity">0</span> 位</div>
+                </div>
+
+                <div class="encryption-options">
+                    <label>
+                        <input type="checkbox" id="useEncryption"> 使用密码加密
+                    </label>
+                    <div id="passwordSection" style="display: none;">
+                        <input type="password" id="encryptPassword" class="password-input" placeholder="输入加密密码">
+                        <small>密码将用于加密信息，提取时需要相同密码</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>注意：</strong>生成的图片必须保存为 PNG 格式。JPEG 等有损压缩格式会破坏隐藏的信息。
+            </div>
+
+            <div class="action-row">
+                <button id="encodeBtn" disabled>生成隐写图片</button>
+                <button id="downloadBtn" class="secondary" style="display: none;">下载图片</button>
+            </div>
+
+            <div class="progress-bar" id="encodeProgress">
+                <div class="progress-fill" id="encodeProgressFill"></div>
+            </div>
+
+            <div class="result-panel" id="encodeResult" style="display: none;">
+                <h4>生成成功</h4>
+                <img id="resultPreview" class="image-preview">
+            </div>
+        </div>
+
+        <!-- 提取信息标签页 -->
+        <div class="tab-content" id="decodeTab">
+            <div class="panel">
+                <h3>选择包含隐藏信息的图片</h3>
+                <div class="drop-zone" id="decodeDropZone">
+                    <input type="file" id="decodeFileInput" accept="image/png,image/bmp">
+                    <p>点击或拖拽图片到此处</p>
+                    <small>仅支持 PNG 格式</small>
+                </div>
+                <img id="decodePreview" class="image-preview" style="display: none;">
+
+                <div class="encryption-options" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="needDecryption"> 需要密码解密
+                    </label>
+                    <div id="decryptSection" style="display: none;">
+                        <input type="password" id="decryptPassword" class="password-input" placeholder="输入解密密码">
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button id="decodeBtn" disabled>提取隐藏信息</button>
+            </div>
+
+            <div class="progress-bar" id="decodeProgress">
+                <div class="progress-fill" id="decodeProgressFill"></div>
+            </div>
+
+            <div class="result-panel" id="decodeResult" style="display: none;">
+                <h4>提取的信息</h4>
+                <div class="decoded-message" id="decodedMessage"></div>
+                <div class="action-row">
+                    <button id="copyMessageBtn" class="secondary">复制信息</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // 状态
+        let encodeImage = null;
+        let decodeImage = null;
+        let encodedImageData = null;
+
+        // 标记头（用于识别是否有隐藏数据）
+        const MARKER = 'STEG';
+
+        // 主题切换
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        // Tab切换
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.getElementById(this.dataset.tab + 'Tab').classList.add('active');
+            });
+        });
+
+        // 文件拖放
+        function setupDropZone(dropZone, fileInput, callback) {
+            dropZone.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', function() {
+                this.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) callback(file);
+            });
+
+            fileInput.addEventListener('change', function() {
+                if (this.files[0]) callback(this.files[0]);
+            });
+        }
+
+        // 加载图片
+        function loadImage(file) {
+            return new Promise(function(resolve, reject) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        resolve(img);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 字符串转二进制
+        function stringToBinary(str) {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(str);
+            let binary = '';
+            bytes.forEach(function(byte) {
+                binary += byte.toString(2).padStart(8, '0');
+            });
+            return binary;
+        }
+
+        // 二进制转字符串
+        function binaryToString(binary) {
+            const bytes = [];
+            for (let i = 0; i < binary.length; i += 8) {
+                const byte = binary.substr(i, 8);
+                if (byte.length === 8) {
+                    bytes.push(parseInt(byte, 2));
+                }
+            }
+            const decoder = new TextDecoder();
+            return decoder.decode(new Uint8Array(bytes));
+        }
+
+        // 简单加密（XOR）
+        function xorEncrypt(str, password) {
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i) ^ password.charCodeAt(i % password.length);
+                result += String.fromCharCode(charCode);
+            }
+            return result;
+        }
+
+        // 编码信息到图片
+        function encodeMessage(imageData, message) {
+            const data = imageData.data;
+            const binary = stringToBinary(MARKER + message.length.toString().padStart(8, '0') + message);
+            
+            if (binary.length > (data.length / 4) * 3) {
+                throw new Error('信息太长，无法隐藏在此图片中');
+            }
+
+            let bitIndex = 0;
+            for (let i = 0; i < data.length && bitIndex < binary.length; i += 4) {
+                // 只修改 RGB 通道的最低位，跳过 Alpha 通道
+                for (let j = 0; j < 3 && bitIndex < binary.length; j++) {
+                    const bit = parseInt(binary[bitIndex]);
+                    data[i + j] = (data[i + j] & 0xFE) | bit;
+                    bitIndex++;
+                }
+            }
+
+            return imageData;
+        }
+
+        // 从图片解码信息
+        function decodeMessage(imageData) {
+            const data = imageData.data;
+            let binary = '';
+
+            // 先提取足够的位来检查标记和长度
+            for (let i = 0; i < data.length && binary.length < (MARKER.length + 8) * 8 + 1000000; i += 4) {
+                for (let j = 0; j < 3; j++) {
+                    binary += (data[i + j] & 1).toString();
+                }
+            }
+
+            // 检查标记
+            const markerBinary = binary.substr(0, MARKER.length * 8);
+            const marker = binaryToString(markerBinary);
+            
+            if (marker !== MARKER) {
+                throw new Error('未检测到隐藏信息，或图片已损坏');
+            }
+
+            // 获取消息长度
+            const lengthBinary = binary.substr(MARKER.length * 8, 8 * 8);
+            const messageLength = parseInt(binaryToString(lengthBinary));
+
+            if (isNaN(messageLength) || messageLength <= 0 || messageLength > 10000000) {
+                throw new Error('信息格式错误');
+            }
+
+            // 提取消息
+            const messageBinary = binary.substr((MARKER.length + 8) * 8, messageLength * 8);
+            return binaryToString(messageBinary);
+        }
+
+        // 设置编码拖放区
+        setupDropZone(
+            document.getElementById('encodeDropZone'),
+            document.getElementById('encodeFileInput'),
+            async function(file) {
+                try {
+                    encodeImage = await loadImage(file);
+                    document.getElementById('encodePreview').src = encodeImage.src;
+                    document.getElementById('encodePreview').style.display = 'block';
+                    document.getElementById('encodeStats').style.display = 'flex';
+                    
+                    document.getElementById('imgSize').textContent = encodeImage.width + ' × ' + encodeImage.height;
+                    const maxBits = encodeImage.width * encodeImage.height * 3;
+                    const maxChars = Math.floor(maxBits / 8) - MARKER.length - 8;
+                    document.getElementById('maxCapacity').textContent = maxChars + ' 字符';
+                    
+                    updateEncodeButton();
+                } catch (err) {
+                    alert('无法加载图片: ' + err.message);
+                }
+            }
+        );
+
+        // 设置解码拖放区
+        setupDropZone(
+            document.getElementById('decodeDropZone'),
+            document.getElementById('decodeFileInput'),
+            async function(file) {
+                try {
+                    decodeImage = await loadImage(file);
+                    document.getElementById('decodePreview').src = decodeImage.src;
+                    document.getElementById('decodePreview').style.display = 'block';
+                    document.getElementById('decodeBtn').disabled = false;
+                    document.getElementById('decodeResult').style.display = 'none';
+                } catch (err) {
+                    alert('无法加载图片: ' + err.message);
+                }
+            }
+        );
+
+        // 更新编码按钮状态
+        function updateEncodeButton() {
+            const message = document.getElementById('secretMessage').value;
+            document.getElementById('encodeBtn').disabled = !encodeImage || !message;
+        }
+
+        // 消息输入监听
+        document.getElementById('secretMessage').addEventListener('input', function() {
+            const text = this.value;
+            document.getElementById('charCount').textContent = text.length;
+            document.getElementById('requiredCapacity').textContent = text.length * 8;
+            updateEncodeButton();
+        });
+
+        // 加密选项
+        document.getElementById('useEncryption').addEventListener('change', function() {
+            document.getElementById('passwordSection').style.display = this.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('needDecryption').addEventListener('change', function() {
+            document.getElementById('decryptSection').style.display = this.checked ? 'block' : 'none';
+        });
+
+        // 编码按钮
+        document.getElementById('encodeBtn').addEventListener('click', function() {
+            const message = document.getElementById('secretMessage').value;
+            if (!encodeImage || !message) return;
+
+            const progressBar = document.getElementById('encodeProgress');
+            const progressFill = document.getElementById('encodeProgressFill');
+            progressBar.classList.add('active');
+            progressFill.style.width = '30%';
+
+            setTimeout(function() {
+                try {
+                    let finalMessage = message;
+                    
+                    // 加密
+                    if (document.getElementById('useEncryption').checked) {
+                        const password = document.getElementById('encryptPassword').value;
+                        if (!password) {
+                            throw new Error('请输入加密密码');
+                        }
+                        finalMessage = 'ENC:' + xorEncrypt(message, password);
+                    }
+
+                    progressFill.style.width = '50%';
+
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = encodeImage.width;
+                    canvas.height = encodeImage.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(encodeImage, 0, 0);
+                    
+                    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    progressFill.style.width = '70%';
+                    
+                    imageData = encodeMessage(imageData, finalMessage);
+                    ctx.putImageData(imageData, 0, 0);
+                    
+                    progressFill.style.width = '90%';
+                    
+                    encodedImageData = canvas.toDataURL('image/png');
+                    document.getElementById('resultPreview').src = encodedImageData;
+                    document.getElementById('encodeResult').style.display = 'block';
+                    document.getElementById('downloadBtn').style.display = 'inline-block';
+                    
+                    progressFill.style.width = '100%';
+                    setTimeout(function() {
+                        progressBar.classList.remove('active');
+                        progressFill.style.width = '0%';
+                    }, 500);
+                    
+                } catch (err) {
+                    progressBar.classList.remove('active');
+                    alert('编码失败: ' + err.message);
+                }
+            }, 100);
+        });
+
+        // 下载按钮
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (!encodedImageData) return;
+            
+            const a = document.createElement('a');
+            a.href = encodedImageData;
+            a.download = 'steganography_' + Date.now() + '.png';
+            a.click();
+        });
+
+        // 解码按钮
+        document.getElementById('decodeBtn').addEventListener('click', function() {
+            if (!decodeImage) return;
+
+            const progressBar = document.getElementById('decodeProgress');
+            const progressFill = document.getElementById('decodeProgressFill');
+            progressBar.classList.add('active');
+            progressFill.style.width = '30%';
+
+            setTimeout(function() {
+                try {
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = decodeImage.width;
+                    canvas.height = decodeImage.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(decodeImage, 0, 0);
+                    
+                    progressFill.style.width = '50%';
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    let message = decodeMessage(imageData);
+                    
+                    progressFill.style.width = '80%';
+                    
+                    // 检查是否加密
+                    if (message.startsWith('ENC:')) {
+                        if (!document.getElementById('needDecryption').checked) {
+                            throw new Error('此信息已加密，请勾选"需要密码解密"并输入正确密码');
+                        }
+                        const password = document.getElementById('decryptPassword').value;
+                        if (!password) {
+                            throw new Error('请输入解密密码');
+                        }
+                        message = xorEncrypt(message.substr(4), password);
+                    }
+                    
+                    document.getElementById('decodedMessage').textContent = message;
+                    document.getElementById('decodeResult').style.display = 'block';
+                    
+                    progressFill.style.width = '100%';
+                    setTimeout(function() {
+                        progressBar.classList.remove('active');
+                        progressFill.style.width = '0%';
+                    }, 500);
+                    
+                } catch (err) {
+                    progressBar.classList.remove('active');
+                    alert('解码失败: ' + err.message);
+                }
+            }, 100);
+        });
+
+        // 复制信息
+        document.getElementById('copyMessageBtn').addEventListener('click', function() {
+            const message = document.getElementById('decodedMessage').textContent;
+            navigator.clipboard.writeText(message).then(function() {
+                alert('已复制到剪贴板');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHANGELOG 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1200px;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+        }
+        .panel h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        .entry-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+        .entry-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: var(--pico-background-color);
+            border-radius: var(--pico-border-radius);
+            border-left: 4px solid var(--pico-primary);
+        }
+        .entry-item.added { border-left-color: #22c55e; }
+        .entry-item.changed { border-left-color: #3b82f6; }
+        .entry-item.deprecated { border-left-color: #f59e0b; }
+        .entry-item.removed { border-left-color: #ef4444; }
+        .entry-item.fixed { border-left-color: #8b5cf6; }
+        .entry-item.security { border-left-color: #ec4899; }
+        .entry-content {
+            flex: 1;
+            margin-right: 0.5rem;
+        }
+        .entry-type {
+            font-size: 0.75rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            margin-right: 0.5rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .entry-type.added { background: #dcfce7; color: #166534; }
+        .entry-type.changed { background: #dbeafe; color: #1e40af; }
+        .entry-type.deprecated { background: #fef3c7; color: #92400e; }
+        .entry-type.removed { background: #fee2e2; color: #991b1b; }
+        .entry-type.fixed { background: #ede9fe; color: #5b21b6; }
+        .entry-type.security { background: #fce7f3; color: #9d174d; }
+        [data-theme="dark"] .entry-type.added { background: #166534; color: #dcfce7; }
+        [data-theme="dark"] .entry-type.changed { background: #1e40af; color: #dbeafe; }
+        [data-theme="dark"] .entry-type.deprecated { background: #92400e; color: #fef3c7; }
+        [data-theme="dark"] .entry-type.removed { background: #991b1b; color: #fee2e2; }
+        [data-theme="dark"] .entry-type.fixed { background: #5b21b6; color: #ede9fe; }
+        [data-theme="dark"] .entry-type.security { background: #9d174d; color: #fce7f3; }
+        .btn-delete {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            background: transparent;
+            border: 1px solid var(--pico-muted-border-color);
+            cursor: pointer;
+        }
+        .btn-delete:hover {
+            background: var(--pico-del-color);
+            color: white;
+        }
+        .preview-area {
+            background: var(--pico-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        .version-list {
+            margin-bottom: 1rem;
+        }
+        .version-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--pico-background-color);
+            border-radius: var(--pico-border-radius);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+        }
+        .version-item:hover {
+            background: var(--pico-primary-focus);
+        }
+        .version-item.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            color: var(--pico-muted-color);
+            padding: 2rem;
+        }
+        small {
+            display: block;
+            margin-top: 0.25rem;
+            color: var(--pico-muted-color);
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <div class="header">
+            <h1>CHANGELOG 生成器</h1>
+            <button id="themeToggle" class="outline">深色模式</button>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="panel">
+                    <h3>版本信息</h3>
+                    <div class="form-row">
+                        <label>
+                            版本号
+                            <input type="text" id="version" placeholder="1.0.0">
+                        </label>
+                        <label>
+                            发布日期
+                            <input type="date" id="releaseDate">
+                        </label>
+                    </div>
+                    <button onclick="addVersion()" style="width: 100%;">添加版本</button>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;">
+                    <h3>版本列表</h3>
+                    <div class="version-list" id="versionList">
+                        <div class="empty-state">暂无版本，请先添加版本</div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;" id="entryPanel" style="display: none;">
+                    <h3>添加变更记录</h3>
+                    <label>
+                        变更类型
+                        <select id="changeType">
+                            <option value="added">Added - 新增功能</option>
+                            <option value="changed">Changed - 功能变更</option>
+                            <option value="deprecated">Deprecated - 即将废弃</option>
+                            <option value="removed">Removed - 已删除</option>
+                            <option value="fixed">Fixed - Bug修复</option>
+                            <option value="security">Security - 安全更新</option>
+                        </select>
+                    </label>
+                    <label>
+                        变更描述
+                        <input type="text" id="changeDesc" placeholder="描述变更内容...">
+                    </label>
+                    <button onclick="addEntry()" style="width: 100%;">添加记录</button>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;" id="entriesPanel">
+                    <h3>当前版本变更 <span id="currentVersionLabel"></span></h3>
+                    <div class="entry-list" id="entryList">
+                        <div class="empty-state">请先选择一个版本</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel">
+                    <h3>预览输出</h3>
+                    <div class="toolbar">
+                        <button class="secondary" onclick="copyChangelog()">复制内容</button>
+                        <button class="secondary" onclick="downloadChangelog()">下载文件</button>
+                        <button class="secondary" onclick="clearAll()">清空全部</button>
+                        <button class="secondary" onclick="loadExample()">加载示例</button>
+                    </div>
+                    <div class="preview-area" id="preview"># Changelog
+
+所有项目的显著变更都将记录在此文件中。
+
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const versionInput = document.getElementById('version');
+        const releaseDateInput = document.getElementById('releaseDate');
+        const changeTypeSelect = document.getElementById('changeType');
+        const changeDescInput = document.getElementById('changeDesc');
+        const versionListEl = document.getElementById('versionList');
+        const entryListEl = document.getElementById('entryList');
+        const previewEl = document.getElementById('preview');
+        const currentVersionLabel = document.getElementById('currentVersionLabel');
+
+        let versions = [];
+        let currentVersionIndex = -1;
+
+        // 初始化日期
+        releaseDateInput.value = new Date().toISOString().split('T')[0];
+
+        // 主题切换
+        function initTheme() {
+            const savedTheme = localStorage.getItem('changelog-gen-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        }
+
+        function updateThemeButton(theme) {
+            themeToggle.textContent = theme === 'dark' ? '浅色模式' : '深色模式';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('changelog-gen-theme', newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        // 添加版本
+        function addVersion() {
+            const version = versionInput.value.trim();
+            const date = releaseDateInput.value;
+
+            if (!version) {
+                alert('请输入版本号！');
+                return;
+            }
+
+            if (versions.find(v => v.version === version)) {
+                alert('版本号已存在！');
+                return;
+            }
+
+            versions.unshift({
+                version,
+                date,
+                entries: {
+                    added: [],
+                    changed: [],
+                    deprecated: [],
+                    removed: [],
+                    fixed: [],
+                    security: []
+                }
+            });
+
+            versionInput.value = '';
+            currentVersionIndex = 0;
+            renderVersionList();
+            renderEntries();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 渲染版本列表
+        function renderVersionList() {
+            if (versions.length === 0) {
+                versionListEl.innerHTML = '<div class="empty-state">暂无版本，请先添加版本</div>';
+                return;
+            }
+
+            versionListEl.innerHTML = versions.map((v, i) => `
+                <div class="version-item ${i === currentVersionIndex ? 'active' : ''}" onclick="selectVersion(${i})">
+                    <span><strong>v${v.version}</strong> - ${v.date}</span>
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteVersion(${i})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        // 选择版本
+        function selectVersion(index) {
+            currentVersionIndex = index;
+            renderVersionList();
+            renderEntries();
+        }
+
+        // 删除版本
+        function deleteVersion(index) {
+            if (confirm('确定要删除这个版本吗？')) {
+                versions.splice(index, 1);
+                if (currentVersionIndex >= versions.length) {
+                    currentVersionIndex = versions.length - 1;
+                }
+                renderVersionList();
+                renderEntries();
+                updatePreview();
+                saveToStorage();
+            }
+        }
+
+        // 添加条目
+        function addEntry() {
+            if (currentVersionIndex < 0) {
+                alert('请先选择一个版本！');
+                return;
+            }
+
+            const type = changeTypeSelect.value;
+            const desc = changeDescInput.value.trim();
+
+            if (!desc) {
+                alert('请输入变更描述！');
+                return;
+            }
+
+            versions[currentVersionIndex].entries[type].push(desc);
+            changeDescInput.value = '';
+            renderEntries();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 渲染条目列表
+        function renderEntries() {
+            if (currentVersionIndex < 0) {
+                entryListEl.innerHTML = '<div class="empty-state">请先选择一个版本</div>';
+                currentVersionLabel.textContent = '';
+                return;
+            }
+
+            const ver = versions[currentVersionIndex];
+            currentVersionLabel.textContent = `(v${ver.version})`;
+
+            const allEntries = [];
+            const typeNames = {
+                added: 'Added',
+                changed: 'Changed', 
+                deprecated: 'Deprecated',
+                removed: 'Removed',
+                fixed: 'Fixed',
+                security: 'Security'
+            };
+
+            Object.keys(ver.entries).forEach(type => {
+                ver.entries[type].forEach((entry, idx) => {
+                    allEntries.push({ type, entry, idx });
+                });
+            });
+
+            if (allEntries.length === 0) {
+                entryListEl.innerHTML = '<div class="empty-state">暂无变更记录</div>';
+                return;
+            }
+
+            entryListEl.innerHTML = allEntries.map(item => `
+                <div class="entry-item ${item.type}">
+                    <div class="entry-content">
+                        <span class="entry-type ${item.type}">${typeNames[item.type]}</span>
+                        ${item.entry}
+                    </div>
+                    <button class="btn-delete" onclick="deleteEntry('${item.type}', ${item.idx})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        // 删除条目
+        function deleteEntry(type, idx) {
+            versions[currentVersionIndex].entries[type].splice(idx, 1);
+            renderEntries();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 更新预览
+        function updatePreview() {
+            let md = `# Changelog
+
+所有项目的显著变更都将记录在此文件中。
+
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+`;
+
+            const typeHeaders = {
+                added: '### Added',
+                changed: '### Changed',
+                deprecated: '### Deprecated',
+                removed: '### Removed',
+                fixed: '### Fixed',
+                security: '### Security'
+            };
+
+            versions.forEach(ver => {
+                md += `## [${ver.version}] - ${ver.date}\n\n`;
+
+                Object.keys(ver.entries).forEach(type => {
+                    if (ver.entries[type].length > 0) {
+                        md += `${typeHeaders[type]}\n\n`;
+                        ver.entries[type].forEach(entry => {
+                            md += `- ${entry}\n`;
+                        });
+                        md += '\n';
+                    }
+                });
+            });
+
+            previewEl.textContent = md;
+        }
+
+        // 复制
+        function copyChangelog() {
+            navigator.clipboard.writeText(previewEl.textContent).then(() => {
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        // 下载
+        function downloadChangelog() {
+            const content = previewEl.textContent;
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'CHANGELOG.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 清空
+        function clearAll() {
+            if (confirm('确定要清空所有数据吗？')) {
+                versions = [];
+                currentVersionIndex = -1;
+                renderVersionList();
+                renderEntries();
+                updatePreview();
+                saveToStorage();
+            }
+        }
+
+        // 加载示例
+        function loadExample() {
+            if (versions.length > 0 && !confirm('这将替换当前数据，确定继续吗？')) {
+                return;
+            }
+
+            versions = [
+                {
+                    version: '1.1.0',
+                    date: '2024-01-15',
+                    entries: {
+                        added: ['新增用户个人资料页面', '支持暗黑模式切换'],
+                        changed: ['优化首页加载速度'],
+                        deprecated: [],
+                        removed: [],
+                        fixed: ['修复登录页面样式问题'],
+                        security: []
+                    }
+                },
+                {
+                    version: '1.0.0',
+                    date: '2024-01-01',
+                    entries: {
+                        added: ['用户注册和登录功能', '基础数据展示页面', '响应式布局支持'],
+                        changed: [],
+                        deprecated: [],
+                        removed: [],
+                        fixed: [],
+                        security: ['使用 HTTPS 加密传输']
+                    }
+                }
+            ];
+
+            currentVersionIndex = 0;
+            renderVersionList();
+            renderEntries();
+            updatePreview();
+            saveToStorage();
+        }
+
+        // 保存到本地存储
+        function saveToStorage() {
+            localStorage.setItem('changelog-gen-data', JSON.stringify(versions));
+        }
+
+        // 从本地存储加载
+        function loadFromStorage() {
+            const saved = localStorage.getItem('changelog-gen-data');
+            if (saved) {
+                try {
+                    versions = JSON.parse(saved);
+                    if (versions.length > 0) {
+                        currentVersionIndex = 0;
+                    }
+                    renderVersionList();
+                    renderEntries();
+                    updatePreview();
+                } catch (e) {
+                    console.error('Failed to load saved data:', e);
+                }
+            }
+        }
+
+        // 快捷键
+        changeDescInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addEntry();
+            }
+        });
+
+        versionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addVersion();
+            }
+        });
+
+        // 初始化
+        initTheme();
+        loadFromStorage();
+    </script>
+</body>
+</html>

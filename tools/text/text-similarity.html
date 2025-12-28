@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本相似度计算</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .text-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .text-inputs {
+                grid-template-columns: 1fr;
+            }
+        }
+        .text-inputs textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 1.5rem 0;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .result-section {
+            margin-top: 2rem;
+        }
+        .result-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .result-card {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .result-card h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            color: var(--pico-muted-color);
+        }
+        .result-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .result-card .percent {
+            font-size: 1.2rem;
+            color: var(--pico-muted-color);
+        }
+        .similarity-bar {
+            height: 8px;
+            background: var(--pico-muted-border-color);
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        .similarity-bar .fill {
+            height: 100%;
+            background: var(--pico-primary);
+            transition: width 0.3s ease;
+        }
+        .detail-section {
+            margin-top: 2rem;
+        }
+        .detail-box {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+        }
+        .diff-view {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+        .diff-add {
+            background: rgba(0, 200, 0, 0.2);
+            color: #0a0;
+        }
+        .diff-del {
+            background: rgba(255, 0, 0, 0.2);
+            color: #c00;
+            text-decoration: line-through;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background: var(--pico-secondary-background);
+            border-radius: var(--pico-border-radius);
+        }
+        .algorithm-info {
+            margin-top: 2rem;
+        }
+        .algorithm-info details {
+            margin-bottom: 1rem;
+        }
+        [data-theme="dark"] .diff-add {
+            color: #4f4;
+        }
+        [data-theme="dark"] .diff-del {
+            color: #f77;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>📊 文本相似度计算</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌙</button>
+        </header>
+
+        <section class="text-inputs">
+            <label>
+                文本 A
+                <textarea id="textA" placeholder="输入第一段文本..."></textarea>
+            </label>
+            <label>
+                文本 B
+                <textarea id="textB" placeholder="输入第二段文本..."></textarea>
+            </label>
+        </section>
+
+        <section class="controls">
+            <div class="btn-group">
+                <button onclick="calculate()">📐 计算相似度</button>
+                <button class="secondary" onclick="swapTexts()">🔄 交换文本</button>
+                <button class="secondary" onclick="clearAll()">🗑️ 清空</button>
+                <button class="outline" onclick="loadExample()">📝 加载示例</button>
+            </div>
+        </section>
+
+        <section class="result-section">
+            <h3>计算结果</h3>
+            <div class="result-cards">
+                <div class="result-card">
+                    <h4>余弦相似度</h4>
+                    <div class="value" id="cosineSim">-</div>
+                    <div class="similarity-bar"><div class="fill" id="cosineBar" style="width: 0"></div></div>
+                </div>
+                <div class="result-card">
+                    <h4>Jaccard 相似度</h4>
+                    <div class="value" id="jaccardSim">-</div>
+                    <div class="similarity-bar"><div class="fill" id="jaccardBar" style="width: 0"></div></div>
+                </div>
+                <div class="result-card">
+                    <h4>编辑距离</h4>
+                    <div class="value" id="editDist">-</div>
+                    <div class="percent" id="editDistPercent"></div>
+                </div>
+                <div class="result-card">
+                    <h4>最长公共子序列</h4>
+                    <div class="value" id="lcsSim">-</div>
+                    <div class="similarity-bar"><div class="fill" id="lcsBar" style="width: 0"></div></div>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="statsGrid">
+                <!-- 动态生成统计信息 -->
+            </div>
+        </section>
+
+        <section class="detail-section">
+            <details>
+                <summary>差异对比</summary>
+                <div class="detail-box">
+                    <div class="diff-view" id="diffView">计算后显示差异</div>
+                </div>
+            </details>
+        </section>
+
+        <section class="algorithm-info">
+            <details>
+                <summary>算法说明</summary>
+                <article>
+                    <h4>余弦相似度 (Cosine Similarity)</h4>
+                    <p>将文本转换为词频向量，计算向量夹角的余弦值。值域 [0, 1]，1 表示完全相同。</p>
+                    
+                    <h4>Jaccard 相似度</h4>
+                    <p>计算两个集合的交集与并集的比值。值域 [0, 1]，适合比较词集重合度。</p>
+                    
+                    <h4>编辑距离 (Levenshtein Distance)</h4>
+                    <p>将一个字符串转换为另一个所需的最少操作数（插入、删除、替换）。数值越小越相似。</p>
+                    
+                    <h4>最长公共子序列 (LCS)</h4>
+                    <p>找出两个序列中最长的公共子序列长度，反映结构相似性。</p>
+                </article>
+            </details>
+        </section>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 分词（简单按字符和空格分词）
+        function tokenize(text) {
+            return text.toLowerCase()
+                .split(/[\s\n\r\t]+/)
+                .filter(w => w.length > 0);
+        }
+
+        // 字符级分词
+        function charTokenize(text) {
+            return text.split('');
+        }
+
+        // 词频统计
+        function getTermFrequency(tokens) {
+            const tf = {};
+            tokens.forEach(token => {
+                tf[token] = (tf[token] || 0) + 1;
+            });
+            return tf;
+        }
+
+        // 余弦相似度
+        function cosineSimilarity(textA, textB) {
+            const tokensA = tokenize(textA);
+            const tokensB = tokenize(textB);
+            
+            if (tokensA.length === 0 && tokensB.length === 0) return 1;
+            if (tokensA.length === 0 || tokensB.length === 0) return 0;
+
+            const tfA = getTermFrequency(tokensA);
+            const tfB = getTermFrequency(tokensB);
+            
+            const allTerms = new Set([...Object.keys(tfA), ...Object.keys(tfB)]);
+            
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            
+            allTerms.forEach(term => {
+                const a = tfA[term] || 0;
+                const b = tfB[term] || 0;
+                dotProduct += a * b;
+                normA += a * a;
+                normB += b * b;
+            });
+            
+            if (normA === 0 || normB === 0) return 0;
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+
+        // Jaccard 相似度
+        function jaccardSimilarity(textA, textB) {
+            const tokensA = new Set(tokenize(textA));
+            const tokensB = new Set(tokenize(textB));
+            
+            if (tokensA.size === 0 && tokensB.size === 0) return 1;
+            if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+            const intersection = new Set([...tokensA].filter(x => tokensB.has(x)));
+            const union = new Set([...tokensA, ...tokensB]);
+            
+            return intersection.size / union.size;
+        }
+
+        // 编辑距离（Levenshtein）
+        function levenshteinDistance(strA, strB) {
+            const m = strA.length;
+            const n = strB.length;
+            
+            if (m === 0) return n;
+            if (n === 0) return m;
+
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    const cost = strA[i - 1] === strB[j - 1] ? 0 : 1;
+                    dp[i][j] = Math.min(
+                        dp[i - 1][j] + 1,      // 删除
+                        dp[i][j - 1] + 1,      // 插入
+                        dp[i - 1][j - 1] + cost // 替换
+                    );
+                }
+            }
+            
+            return dp[m][n];
+        }
+
+        // 最长公共子序列
+        function lcsLength(strA, strB) {
+            const m = strA.length;
+            const n = strB.length;
+            
+            if (m === 0 || n === 0) return 0;
+
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (strA[i - 1] === strB[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            
+            return dp[m][n];
+        }
+
+        // 简单差异对比
+        function simpleDiff(textA, textB) {
+            const wordsA = textA.split(/(\s+)/);
+            const wordsB = textB.split(/(\s+)/);
+            
+            const result = [];
+            let i = 0, j = 0;
+            
+            while (i < wordsA.length || j < wordsB.length) {
+                if (i >= wordsA.length) {
+                    result.push({ type: 'add', text: wordsB[j] });
+                    j++;
+                } else if (j >= wordsB.length) {
+                    result.push({ type: 'del', text: wordsA[i] });
+                    i++;
+                } else if (wordsA[i] === wordsB[j]) {
+                    result.push({ type: 'same', text: wordsA[i] });
+                    i++;
+                    j++;
+                } else {
+                    // 简单处理：先删后加
+                    result.push({ type: 'del', text: wordsA[i] });
+                    result.push({ type: 'add', text: wordsB[j] });
+                    i++;
+                    j++;
+                }
+            }
+            
+            return result;
+        }
+
+        // 计算所有相似度
+        function calculate() {
+            const textA = document.getElementById('textA').value;
+            const textB = document.getElementById('textB').value;
+
+            if (!textA.trim() && !textB.trim()) {
+                alert('请输入文本');
+                return;
+            }
+
+            // 余弦相似度
+            const cosine = cosineSimilarity(textA, textB);
+            document.getElementById('cosineSim').textContent = (cosine * 100).toFixed(1) + '%';
+            document.getElementById('cosineBar').style.width = (cosine * 100) + '%';
+
+            // Jaccard 相似度
+            const jaccard = jaccardSimilarity(textA, textB);
+            document.getElementById('jaccardSim').textContent = (jaccard * 100).toFixed(1) + '%';
+            document.getElementById('jaccardBar').style.width = (jaccard * 100) + '%';
+
+            // 编辑距离
+            const editDist = levenshteinDistance(textA, textB);
+            const maxLen = Math.max(textA.length, textB.length);
+            const editSim = maxLen > 0 ? (1 - editDist / maxLen) : 1;
+            document.getElementById('editDist').textContent = editDist;
+            document.getElementById('editDistPercent').textContent = '相似度: ' + (editSim * 100).toFixed(1) + '%';
+
+            // LCS
+            const lcs = lcsLength(textA, textB);
+            const lcsSim = maxLen > 0 ? (lcs / maxLen) : 1;
+            document.getElementById('lcsSim').textContent = (lcsSim * 100).toFixed(1) + '%';
+            document.getElementById('lcsBar').style.width = (lcsSim * 100) + '%';
+
+            // 统计信息
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.textContent = '';
+            
+            const stats = [
+                ['文本A字符数', textA.length],
+                ['文本B字符数', textB.length],
+                ['文本A词数', tokenize(textA).length],
+                ['文本B词数', tokenize(textB).length],
+                ['LCS长度', lcs],
+                ['编辑操作数', editDist]
+            ];
+            
+            stats.forEach(([label, value]) => {
+                const div = document.createElement('div');
+                div.className = 'stat-item';
+                
+                const labelSpan = document.createElement('span');
+                labelSpan.textContent = label;
+                
+                const valueStrong = document.createElement('strong');
+                valueStrong.textContent = value;
+                
+                div.appendChild(labelSpan);
+                div.appendChild(valueStrong);
+                statsGrid.appendChild(div);
+            });
+
+            // 差异对比
+            const diffView = document.getElementById('diffView');
+            diffView.textContent = '';
+            
+            const diff = simpleDiff(textA, textB);
+            diff.forEach(item => {
+                const span = document.createElement('span');
+                if (item.type === 'add') {
+                    span.className = 'diff-add';
+                } else if (item.type === 'del') {
+                    span.className = 'diff-del';
+                }
+                span.textContent = item.text;
+                diffView.appendChild(span);
+            });
+        }
+
+        // 交换文本
+        function swapTexts() {
+            const textA = document.getElementById('textA');
+            const textB = document.getElementById('textB');
+            const temp = textA.value;
+            textA.value = textB.value;
+            textB.value = temp;
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('textA').value = '';
+            document.getElementById('textB').value = '';
+            document.getElementById('cosineSim').textContent = '-';
+            document.getElementById('jaccardSim').textContent = '-';
+            document.getElementById('editDist').textContent = '-';
+            document.getElementById('editDistPercent').textContent = '';
+            document.getElementById('lcsSim').textContent = '-';
+            document.getElementById('cosineBar').style.width = '0';
+            document.getElementById('jaccardBar').style.width = '0';
+            document.getElementById('lcsBar').style.width = '0';
+            document.getElementById('statsGrid').textContent = '';
+            document.getElementById('diffView').textContent = '计算后显示差异';
+        }
+
+        // 加载示例
+        function loadExample() {
+            document.getElementById('textA').value = '今天天气很好，适合出去散步。阳光明媚，微风习习。';
+            document.getElementById('textB').value = '今天天气不错，适合外出散步。阳光灿烂，微风轻拂。';
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', initTheme);
+    </script>
+</body>
+</html>

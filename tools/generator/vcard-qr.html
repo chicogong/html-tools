@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码名片生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] {
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        header h1 {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--primary-gradient);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .controls {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .control-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .color-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .color-row input[type="color"] {
+            width: 50px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .style-btn {
+            padding: 0.5rem;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        
+        .style-btn:hover, .style-btn.active {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .preview-area {
+            background: var(--pico-card-background-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .qr-preview {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        #qrCanvas {
+            display: block;
+        }
+        
+        .card-preview {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 2rem;
+            color: white;
+            text-align: center;
+        }
+        
+        .card-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .card-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        
+        .card-title {
+            opacity: 0.9;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+            color: #333;
+        }
+        
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-info:last-child {
+            border-bottom: none;
+        }
+        
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: #f5f5f5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .card-qr {
+            text-align: center;
+            padding: 1rem;
+            background: #f9f9f9;
+        }
+        
+        .card-qr img {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .card-qr small {
+            display: block;
+            margin-top: 0.5rem;
+            color: #666;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-group button {
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 0.5rem;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn:hover, .tab-btn.active {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .slider-group input[type="range"] {
+            flex: 1;
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>📱 二维码名片生成器</h1>
+            <p>创建包含个人信息的 vCard 二维码</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="controls">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="info">个人信息</button>
+                    <button class="tab-btn" data-tab="style">样式设置</button>
+                </div>
+                
+                <div id="info-tab" class="tab-content active">
+                    <div class="control-group">
+                        <label>👤 姓名</label>
+                        <div class="control-row">
+                            <input type="text" id="firstName" placeholder="名" value="三">
+                            <input type="text" id="lastName" placeholder="姓" value="张">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>💼 职位 / 公司</label>
+                        <input type="text" id="title" placeholder="职位" value="高级软件工程师">
+                        <input type="text" id="company" placeholder="公司" value="科技创新有限公司" style="margin-top: 0.5rem;">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📱 电话</label>
+                        <input type="tel" id="phone" placeholder="手机号码" value="+86 138 0000 0000">
+                        <input type="tel" id="workPhone" placeholder="工作电话 (可选)" style="margin-top: 0.5rem;">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📧 邮箱</label>
+                        <input type="email" id="email" placeholder="邮箱地址" value="zhangsan@example.com">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>🌐 网站</label>
+                        <input type="url" id="website" placeholder="个人网站" value="https://example.com">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📍 地址</label>
+                        <input type="text" id="address" placeholder="详细地址" value="北京市朝阳区科技园区">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📝 备注</label>
+                        <textarea id="note" placeholder="其他信息" rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div id="style-tab" class="tab-content">
+                    <div class="control-group">
+                        <label>🎨 二维码颜色</label>
+                        <div class="color-row">
+                            <span>前景</span>
+                            <input type="color" id="qrFgColor" value="#2c3e50">
+                        </div>
+                        <div class="color-row">
+                            <span>背景</span>
+                            <input type="color" id="qrBgColor" value="#ffffff">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📐 二维码大小</label>
+                        <div class="slider-group">
+                            <input type="range" id="qrSize" min="150" max="400" value="250">
+                            <span class="slider-value" id="qrSizeValue">250px</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>🔲 纠错等级</label>
+                        <div class="style-grid">
+                            <button class="style-btn" data-level="L">L (7%)</button>
+                            <button class="style-btn active" data-level="M">M (15%)</button>
+                            <button class="style-btn" data-level="Q">Q (25%)</button>
+                            <button class="style-btn" data-level="H">H (30%)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>🎨 名片主题色</label>
+                        <div class="color-row">
+                            <input type="color" id="cardColor" value="#2c3e50">
+                            <span>选择名片头部颜色</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>📷 头像</label>
+                        <input type="file" id="avatarUpload" accept="image/*">
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="downloadQR()">📥 下载二维码</button>
+                    <button onclick="downloadCard()">📥 下载名片</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button onclick="copyVCard()">📋 复制 vCard</button>
+                </div>
+            </div>
+            
+            <div class="preview-area">
+                <h3>预览</h3>
+                <div class="preview-container">
+                    <div class="qr-preview">
+                        <canvas id="qrCanvas"></canvas>
+                    </div>
+                    
+                    <div class="card-preview" id="cardPreview">
+                        <div class="card-header" id="cardHeader">
+                            <div class="card-avatar" id="cardAvatar">👤</div>
+                            <div class="card-name" id="cardName">张三</div>
+                            <div class="card-title" id="cardTitle">高级软件工程师</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-info">
+                                <div class="card-icon">🏢</div>
+                                <div id="cardCompany">科技创新有限公司</div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-icon">📱</div>
+                                <div id="cardPhone">+86 138 0000 0000</div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-icon">📧</div>
+                                <div id="cardEmail">zhangsan@example.com</div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-icon">🌐</div>
+                                <div id="cardWebsite">https://example.com</div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-icon">📍</div>
+                                <div id="cardAddress">北京市朝阳区科技园区</div>
+                            </div>
+                        </div>
+                        <div class="card-qr">
+                            <canvas id="cardQrCanvas" width="100" height="100"></canvas>
+                            <small>扫描二维码添加联系人</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Theme management
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        let state = {
+            firstName: '三',
+            lastName: '张',
+            title: '高级软件工程师',
+            company: '科技创新有限公司',
+            phone: '+86 138 0000 0000',
+            workPhone: '',
+            email: 'zhangsan@example.com',
+            website: 'https://example.com',
+            address: '北京市朝阳区科技园区',
+            note: '',
+            qrFgColor: '#2c3e50',
+            qrBgColor: '#ffffff',
+            qrSize: 250,
+            errorLevel: 'M',
+            cardColor: '#2c3e50',
+            avatar: null
+        };
+        
+        // Tab management
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+        
+        // Event listeners
+        const inputs = ['firstName', 'lastName', 'title', 'company', 'phone', 'workPhone', 'email', 'website', 'address', 'note'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', e => {
+                state[id] = e.target.value;
+                render();
+            });
+        });
+        
+        document.getElementById('qrFgColor').addEventListener('input', e => {
+            state.qrFgColor = e.target.value;
+            render();
+        });
+        
+        document.getElementById('qrBgColor').addEventListener('input', e => {
+            state.qrBgColor = e.target.value;
+            render();
+        });
+        
+        document.getElementById('qrSize').addEventListener('input', e => {
+            state.qrSize = parseInt(e.target.value);
+            document.getElementById('qrSizeValue').textContent = e.target.value + 'px';
+            render();
+        });
+        
+        document.getElementById('cardColor').addEventListener('input', e => {
+            state.cardColor = e.target.value;
+            render();
+        });
+        
+        document.querySelectorAll('[data-level]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-level]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.errorLevel = btn.dataset.level;
+                render();
+            });
+        });
+        
+        document.getElementById('avatarUpload').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    state.avatar = event.target.result;
+                    render();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function generateVCard() {
+            let vcard = 'BEGIN:VCARD\n';
+            vcard += 'VERSION:3.0\n';
+            vcard += 'N:' + state.lastName + ';' + state.firstName + ';;;\n';
+            vcard += 'FN:' + state.lastName + state.firstName + '\n';
+            
+            if (state.title) vcard += 'TITLE:' + state.title + '\n';
+            if (state.company) vcard += 'ORG:' + state.company + '\n';
+            if (state.phone) vcard += 'TEL;TYPE=CELL:' + state.phone + '\n';
+            if (state.workPhone) vcard += 'TEL;TYPE=WORK:' + state.workPhone + '\n';
+            if (state.email) vcard += 'EMAIL:' + state.email + '\n';
+            if (state.website) vcard += 'URL:' + state.website + '\n';
+            if (state.address) vcard += 'ADR;TYPE=WORK:;;' + state.address + ';;;;\n';
+            if (state.note) vcard += 'NOTE:' + state.note + '\n';
+            
+            vcard += 'END:VCARD';
+            return vcard;
+        }
+        
+        function generateQR(canvas, size) {
+            const vcard = generateVCard();
+            
+            const errorLevels = { L: 1, M: 0, Q: 3, H: 2 };
+            const qr = qrcode(0, state.errorLevel);
+            qr.addData(vcard);
+            qr.make();
+            
+            const ctx = canvas.getContext('2d');
+            const moduleCount = qr.getModuleCount();
+            const cellSize = size / moduleCount;
+            
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Background
+            ctx.fillStyle = state.qrBgColor;
+            ctx.fillRect(0, 0, size, size);
+            
+            // QR modules
+            ctx.fillStyle = state.qrFgColor;
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qr.isDark(row, col)) {
+                        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+        
+        function render() {
+            // Update QR code
+            generateQR(document.getElementById('qrCanvas'), state.qrSize);
+            generateQR(document.getElementById('cardQrCanvas'), 100);
+            
+            // Update card preview
+            document.getElementById('cardHeader').style.background = state.cardColor;
+            document.getElementById('cardName').textContent = state.lastName + state.firstName;
+            document.getElementById('cardTitle').textContent = state.title;
+            document.getElementById('cardCompany').textContent = state.company;
+            document.getElementById('cardPhone').textContent = state.phone;
+            document.getElementById('cardEmail').textContent = state.email;
+            document.getElementById('cardWebsite').textContent = state.website;
+            document.getElementById('cardAddress').textContent = state.address;
+            
+            // Avatar
+            const avatarEl = document.getElementById('cardAvatar');
+            if (state.avatar) {
+                avatarEl.style.backgroundImage = 'url(' + state.avatar + ')';
+                avatarEl.style.backgroundSize = 'cover';
+                avatarEl.textContent = '';
+            } else {
+                avatarEl.style.backgroundImage = '';
+                avatarEl.textContent = '👤';
+            }
+        }
+        
+        function downloadQR() {
+            const canvas = document.getElementById('qrCanvas');
+            const link = document.createElement('a');
+            link.download = 'vcard-qr-' + state.lastName + state.firstName + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function downloadCard() {
+            const cardPreview = document.getElementById('cardPreview');
+            
+            // Create a canvas to render the card
+            const canvas = document.createElement('canvas');
+            const scale = 2; // For higher resolution
+            canvas.width = 500 * scale;
+            canvas.height = 600 * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+            
+            // Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 500, 600);
+            
+            // Header
+            ctx.fillStyle = state.cardColor;
+            ctx.fillRect(0, 0, 500, 180);
+            
+            // Avatar circle
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.arc(250, 70, 40, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(state.lastName + state.firstName, 250, 130);
+            
+            // Title
+            ctx.font = '16px sans-serif';
+            ctx.globalAlpha = 0.9;
+            ctx.fillText(state.title, 250, 155);
+            ctx.globalAlpha = 1;
+            
+            // Info items
+            ctx.fillStyle = '#333333';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'left';
+            
+            const items = [
+                { icon: '🏢', text: state.company },
+                { icon: '📱', text: state.phone },
+                { icon: '📧', text: state.email },
+                { icon: '🌐', text: state.website },
+                { icon: '📍', text: state.address }
+            ];
+            
+            items.forEach((item, i) => {
+                const y = 220 + i * 50;
+                ctx.font = '20px sans-serif';
+                ctx.fillText(item.icon, 50, y);
+                ctx.font = '14px sans-serif';
+                ctx.fillText(item.text, 90, y);
+            });
+            
+            // QR code at bottom
+            ctx.fillStyle = '#f9f9f9';
+            ctx.fillRect(0, 480, 500, 120);
+            
+            const qrCanvas = document.getElementById('cardQrCanvas');
+            ctx.drawImage(qrCanvas, 200, 490, 100, 100);
+            
+            ctx.fillStyle = '#666666';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('扫描二维码添加联系人', 250, 580);
+            
+            // Download
+            const link = document.createElement('a');
+            link.download = 'business-card-' + state.lastName + state.firstName + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function copyVCard() {
+            const vcard = generateVCard();
+            navigator.clipboard.writeText(vcard).then(() => {
+                alert('vCard 已复制到剪贴板！');
+            });
+        }
+        
+        // Initial render
+        render();
+    </script>
+</body>
+</html>

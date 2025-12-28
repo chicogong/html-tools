@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 转 SQL INSERT 语句</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 900px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-panel label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .editor-panel textarea {
+            min-height: 400px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        .options-panel {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .options-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .options-row:last-child {
+            margin-bottom: 0;
+        }
+        .options-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        .options-row input[type="text"] {
+            width: 200px;
+            margin: 0;
+            padding: 0.25rem 0.5rem;
+        }
+        .options-row select {
+            width: auto;
+            margin: 0;
+            padding: 0.25rem 0.5rem;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: var(--pico-secondary-background);
+            border-radius: var(--pico-border-radius);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        .status-bar .error {
+            color: #ef4444;
+        }
+        .status-bar .success {
+            color: #22c55e;
+        }
+        .copy-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .preview-table {
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+        .preview-table table {
+            font-size: 0.85rem;
+        }
+        .preview-table th {
+            background: var(--pico-secondary-background);
+            white-space: nowrap;
+        }
+        .preview-table td {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .field-mapping {
+            margin-top: 1rem;
+        }
+        .field-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: var(--pico-secondary-background);
+            border-radius: var(--pico-border-radius);
+        }
+        .field-item input[type="checkbox"] {
+            margin: 0;
+        }
+        .field-item .field-name {
+            min-width: 120px;
+            font-weight: bold;
+        }
+        .field-item .field-type {
+            color: var(--pico-muted-color);
+            font-size: 0.85rem;
+        }
+        .field-item input[type="text"] {
+            flex: 1;
+            margin: 0;
+            padding: 0.25rem 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>🔄 JSON 转 SQL INSERT</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌙</button>
+        </header>
+
+        <section class="options-panel">
+            <div class="options-row">
+                <label>
+                    表名：
+                    <input type="text" id="tableName" value="table_name" placeholder="输入表名">
+                </label>
+                <label>
+                    数据库类型：
+                    <select id="dbType">
+                        <option value="mysql">MySQL</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="sqlite">SQLite</option>
+                        <option value="sqlserver">SQL Server</option>
+                        <option value="oracle">Oracle</option>
+                    </select>
+                </label>
+                <label>
+                    <input type="checkbox" id="optBatch">
+                    批量插入模式
+                </label>
+            </div>
+            <div class="options-row">
+                <label>
+                    <input type="checkbox" id="optIgnore">
+                    INSERT IGNORE
+                </label>
+                <label>
+                    <input type="checkbox" id="optReplace">
+                    REPLACE INTO
+                </label>
+                <label>
+                    <input type="checkbox" id="optPretty" checked>
+                    格式化输出
+                </label>
+                <label>
+                    <input type="checkbox" id="optNullString">
+                    空字符串转 NULL
+                </label>
+            </div>
+        </section>
+
+        <section class="controls">
+            <div class="btn-group">
+                <button onclick="convertToSql()">🔄 生成 SQL</button>
+                <button class="secondary" onclick="formatJson()">📝 格式化 JSON</button>
+                <button class="secondary" onclick="clearAll()">🗑️ 清空</button>
+                <button class="outline" onclick="loadExample()">📋 加载示例</button>
+            </div>
+        </section>
+
+        <section class="editor-container">
+            <div class="editor-panel">
+                <label for="jsonInput">输入 JSON 数据（对象或数组）</label>
+                <textarea id="jsonInput" placeholder='[{"name": "张三", "age": 25}, {"name": "李四", "age": 30}]'></textarea>
+            </div>
+            <div class="editor-panel">
+                <label for="sqlOutput">
+                    生成的 SQL 语句
+                    <button class="copy-btn outline secondary" onclick="copySql()">复制</button>
+                </label>
+                <textarea id="sqlOutput" readonly placeholder="点击生成按钮查看结果"></textarea>
+            </div>
+        </section>
+
+        <div class="status-bar">
+            <span id="statusText">就绪</span>
+            <span id="statsText"></span>
+        </div>
+
+        <section>
+            <details>
+                <summary>字段映射（可选）</summary>
+                <div class="field-mapping" id="fieldMapping">
+                    <p style="color: var(--pico-muted-color);">解析 JSON 后显示字段列表</p>
+                </div>
+            </details>
+        </section>
+
+        <section>
+            <details>
+                <summary>数据预览</summary>
+                <div class="preview-table" id="previewTable">
+                    <p style="color: var(--pico-muted-color);">解析 JSON 后显示数据预览</p>
+                </div>
+            </details>
+        </section>
+
+        <section style="margin-top: 2rem;">
+            <details>
+                <summary>使用说明</summary>
+                <article>
+                    <h4>支持的输入格式</h4>
+                    <ul>
+                        <li>单个对象：<code>{"name": "张三", "age": 25}</code></li>
+                        <li>对象数组：<code>[{"name": "张三"}, {"name": "李四"}]</code></li>
+                    </ul>
+                    
+                    <h4>数据库差异</h4>
+                    <ul>
+                        <li><strong>MySQL</strong>：支持 INSERT IGNORE, REPLACE INTO, 批量插入</li>
+                        <li><strong>PostgreSQL</strong>：使用 ON CONFLICT DO NOTHING</li>
+                        <li><strong>SQLite</strong>：支持 INSERT OR IGNORE, INSERT OR REPLACE</li>
+                        <li><strong>SQL Server</strong>：使用方括号包裹标识符</li>
+                        <li><strong>Oracle</strong>：使用 INSERT ALL 语法</li>
+                    </ul>
+                    
+                    <h4>注意事项</h4>
+                    <ul>
+                        <li>字符串值会自动转义单引号</li>
+                        <li>null 值会生成 NULL</li>
+                        <li>布尔值根据数据库类型转换</li>
+                        <li>嵌套对象会转为 JSON 字符串</li>
+                    </ul>
+                </article>
+            </details>
+        </section>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 字段配置
+        let fieldConfig = {};
+
+        // 转义字符串
+        function escapeString(str, dbType) {
+            if (str === null || str === undefined) return null;
+            str = String(str);
+            
+            // 基本转义
+            str = str.replace(/'/g, "''");
+            
+            if (dbType === 'mysql') {
+                str = str.replace(/\\/g, '\\\\');
+            }
+            
+            return str;
+        }
+
+        // 格式化值
+        function formatValue(value, dbType, nullString) {
+            if (value === null || value === undefined) {
+                return 'NULL';
+            }
+            
+            if (nullString && value === '') {
+                return 'NULL';
+            }
+            
+            if (typeof value === 'boolean') {
+                if (dbType === 'postgresql') {
+                    return value ? 'TRUE' : 'FALSE';
+                }
+                return value ? '1' : '0';
+            }
+            
+            if (typeof value === 'number') {
+                return String(value);
+            }
+            
+            if (typeof value === 'object') {
+                // 嵌套对象转 JSON 字符串
+                return "'" + escapeString(JSON.stringify(value), dbType) + "'";
+            }
+            
+            return "'" + escapeString(value, dbType) + "'";
+        }
+
+        // 包裹标识符
+        function wrapIdentifier(name, dbType) {
+            switch (dbType) {
+                case 'mysql':
+                    return '`' + name + '`';
+                case 'postgresql':
+                    return '"' + name + '"';
+                case 'sqlserver':
+                    return '[' + name + ']';
+                case 'oracle':
+                    return '"' + name.toUpperCase() + '"';
+                default:
+                    return name;
+            }
+        }
+
+        // 生成单条 INSERT
+        function generateSingleInsert(data, columns, tableName, dbType, options) {
+            const values = columns.map(col => {
+                const mappedCol = fieldConfig[col];
+                if (mappedCol && mappedCol.exclude) return null;
+                return formatValue(data[col], dbType, options.nullString);
+            }).filter(v => v !== null);
+            
+            const cols = columns.filter(col => !fieldConfig[col] || !fieldConfig[col].exclude)
+                .map(col => {
+                    const mapped = fieldConfig[col];
+                    return wrapIdentifier(mapped && mapped.rename ? mapped.rename : col, dbType);
+                });
+            
+            let sql = '';
+            
+            if (options.replace && (dbType === 'mysql' || dbType === 'sqlite')) {
+                sql = 'REPLACE INTO';
+            } else if (options.ignore) {
+                if (dbType === 'mysql') {
+                    sql = 'INSERT IGNORE INTO';
+                } else if (dbType === 'sqlite') {
+                    sql = 'INSERT OR IGNORE INTO';
+                } else {
+                    sql = 'INSERT INTO';
+                }
+            } else {
+                sql = 'INSERT INTO';
+            }
+            
+            sql += ' ' + wrapIdentifier(tableName, dbType);
+            
+            if (options.pretty) {
+                sql += '\n  (' + cols.join(', ') + ')\nVALUES\n  (' + values.join(', ') + ')';
+            } else {
+                sql += ' (' + cols.join(', ') + ') VALUES (' + values.join(', ') + ')';
+            }
+            
+            // PostgreSQL ON CONFLICT
+            if (options.ignore && dbType === 'postgresql') {
+                sql += '\nON CONFLICT DO NOTHING';
+            }
+            
+            return sql + ';';
+        }
+
+        // 生成批量 INSERT (MySQL)
+        function generateBatchInsertMySQL(dataArray, columns, tableName, dbType, options) {
+            const cols = columns.filter(col => !fieldConfig[col] || !fieldConfig[col].exclude)
+                .map(col => {
+                    const mapped = fieldConfig[col];
+                    return wrapIdentifier(mapped && mapped.rename ? mapped.rename : col, dbType);
+                });
+            
+            let sql = options.ignore ? 'INSERT IGNORE INTO' : 'INSERT INTO';
+            sql += ' ' + wrapIdentifier(tableName, dbType);
+            
+            if (options.pretty) {
+                sql += '\n  (' + cols.join(', ') + ')\nVALUES';
+            } else {
+                sql += ' (' + cols.join(', ') + ') VALUES ';
+            }
+            
+            const valueRows = dataArray.map(data => {
+                const values = columns.map(col => {
+                    if (fieldConfig[col] && fieldConfig[col].exclude) return null;
+                    return formatValue(data[col], dbType, options.nullString);
+                }).filter(v => v !== null);
+                return '(' + values.join(', ') + ')';
+            });
+            
+            if (options.pretty) {
+                sql += '\n  ' + valueRows.join(',\n  ');
+            } else {
+                sql += valueRows.join(', ');
+            }
+            
+            return sql + ';';
+        }
+
+        // 生成 Oracle INSERT ALL
+        function generateOracleInsertAll(dataArray, columns, tableName, dbType, options) {
+            const cols = columns.filter(col => !fieldConfig[col] || !fieldConfig[col].exclude)
+                .map(col => {
+                    const mapped = fieldConfig[col];
+                    return wrapIdentifier(mapped && mapped.rename ? mapped.rename : col, dbType);
+                });
+            
+            let sql = 'INSERT ALL';
+            
+            dataArray.forEach(data => {
+                const values = columns.map(col => {
+                    if (fieldConfig[col] && fieldConfig[col].exclude) return null;
+                    return formatValue(data[col], dbType, options.nullString);
+                }).filter(v => v !== null);
+                
+                if (options.pretty) {
+                    sql += '\n  INTO ' + wrapIdentifier(tableName, dbType);
+                    sql += ' (' + cols.join(', ') + ')';
+                    sql += ' VALUES (' + values.join(', ') + ')';
+                } else {
+                    sql += ' INTO ' + wrapIdentifier(tableName, dbType);
+                    sql += ' (' + cols.join(', ') + ') VALUES (' + values.join(', ') + ')';
+                }
+            });
+            
+            sql += '\nSELECT 1 FROM DUAL;';
+            return sql;
+        }
+
+        // 主转换函数
+        function convertToSql() {
+            const input = document.getElementById('jsonInput').value.trim();
+            const tableName = document.getElementById('tableName').value.trim() || 'table_name';
+            const dbType = document.getElementById('dbType').value;
+            const statusText = document.getElementById('statusText');
+            const statsText = document.getElementById('statsText');
+
+            if (!input) {
+                setStatus('请输入 JSON 数据', 'error');
+                return;
+            }
+
+            try {
+                let json = JSON.parse(input);
+                
+                // 确保是数组
+                const dataArray = Array.isArray(json) ? json : [json];
+                
+                if (dataArray.length === 0) {
+                    setStatus('JSON 数组为空', 'error');
+                    return;
+                }
+
+                // 获取所有列
+                const allColumns = new Set();
+                dataArray.forEach(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        Object.keys(item).forEach(key => allColumns.add(key));
+                    }
+                });
+                const columns = Array.from(allColumns);
+
+                if (columns.length === 0) {
+                    setStatus('无法从 JSON 中提取字段', 'error');
+                    return;
+                }
+
+                // 更新字段映射 UI
+                updateFieldMapping(columns, dataArray[0]);
+
+                // 生成 SQL
+                const options = {
+                    batch: document.getElementById('optBatch').checked,
+                    ignore: document.getElementById('optIgnore').checked,
+                    replace: document.getElementById('optReplace').checked,
+                    pretty: document.getElementById('optPretty').checked,
+                    nullString: document.getElementById('optNullString').checked
+                };
+
+                let sql = '';
+
+                if (options.batch && dataArray.length > 1) {
+                    if (dbType === 'oracle') {
+                        sql = generateOracleInsertAll(dataArray, columns, tableName, dbType, options);
+                    } else {
+                        sql = generateBatchInsertMySQL(dataArray, columns, tableName, dbType, options);
+                    }
+                } else {
+                    const statements = dataArray.map(data => 
+                        generateSingleInsert(data, columns, tableName, dbType, options)
+                    );
+                    sql = statements.join(options.pretty ? '\n\n' : '\n');
+                }
+
+                document.getElementById('sqlOutput').value = sql;
+
+                // 更新预览表格
+                updatePreviewTable(dataArray, columns);
+
+                statsText.textContent = '记录数: ' + dataArray.length + ' | 字段数: ' + columns.length;
+                setStatus('生成成功', 'success');
+
+            } catch (e) {
+                setStatus('JSON 解析错误: ' + e.message, 'error');
+                document.getElementById('sqlOutput').value = '';
+                statsText.textContent = '';
+            }
+        }
+
+        // 更新字段映射
+        function updateFieldMapping(columns, sampleData) {
+            const container = document.getElementById('fieldMapping');
+            container.textContent = '';
+
+            columns.forEach(col => {
+                const value = sampleData[col];
+                const type = value === null ? 'null' : typeof value;
+                
+                if (!fieldConfig[col]) {
+                    fieldConfig[col] = { exclude: false, rename: '' };
+                }
+
+                const div = document.createElement('div');
+                div.className = 'field-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = !fieldConfig[col].exclude;
+                checkbox.onchange = function() {
+                    fieldConfig[col].exclude = !this.checked;
+                };
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'field-name';
+                nameSpan.textContent = col;
+
+                const typeSpan = document.createElement('span');
+                typeSpan.className = 'field-type';
+                typeSpan.textContent = '(' + type + ')';
+
+                const renameInput = document.createElement('input');
+                renameInput.type = 'text';
+                renameInput.placeholder = '重命名为...';
+                renameInput.value = fieldConfig[col].rename || '';
+                renameInput.oninput = function() {
+                    fieldConfig[col].rename = this.value;
+                };
+
+                div.appendChild(checkbox);
+                div.appendChild(nameSpan);
+                div.appendChild(typeSpan);
+                div.appendChild(renameInput);
+                container.appendChild(div);
+            });
+        }
+
+        // 更新预览表格
+        function updatePreviewTable(dataArray, columns) {
+            const container = document.getElementById('previewTable');
+            container.textContent = '';
+
+            const table = document.createElement('table');
+            
+            // 表头
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // 表体（最多显示10行）
+            const tbody = document.createElement('tbody');
+            const displayData = dataArray.slice(0, 10);
+            displayData.forEach(data => {
+                const tr = document.createElement('tr');
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    const value = data[col];
+                    if (value === null || value === undefined) {
+                        td.textContent = 'NULL';
+                        td.style.color = 'var(--pico-muted-color)';
+                    } else if (typeof value === 'object') {
+                        td.textContent = JSON.stringify(value);
+                    } else {
+                        td.textContent = String(value);
+                    }
+                    td.title = td.textContent;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            container.appendChild(table);
+
+            if (dataArray.length > 10) {
+                const note = document.createElement('p');
+                note.style.color = 'var(--pico-muted-color)';
+                note.style.fontSize = '0.85rem';
+                note.textContent = '仅显示前 10 条，共 ' + dataArray.length + ' 条记录';
+                container.appendChild(note);
+            }
+        }
+
+        // 设置状态
+        function setStatus(text, type) {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+            statusText.className = type || '';
+        }
+
+        // 格式化 JSON
+        function formatJson() {
+            const input = document.getElementById('jsonInput');
+            try {
+                const json = JSON.parse(input.value);
+                input.value = JSON.stringify(json, null, 2);
+                setStatus('格式化成功', 'success');
+            } catch (e) {
+                setStatus('JSON 格式错误: ' + e.message, 'error');
+            }
+        }
+
+        // 复制 SQL
+        function copySql() {
+            const output = document.getElementById('sqlOutput');
+            if (!output.value) {
+                setStatus('没有可复制的内容', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output.value).then(() => {
+                setStatus('已复制到剪贴板', 'success');
+            }).catch(() => {
+                output.select();
+                document.execCommand('copy');
+                setStatus('已复制到剪贴板', 'success');
+            });
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('sqlOutput').value = '';
+            document.getElementById('statsText').textContent = '';
+            document.getElementById('fieldMapping').textContent = '';
+            document.getElementById('previewTable').textContent = '';
+            fieldConfig = {};
+            setStatus('已清空', 'success');
+        }
+
+        // 加载示例
+        function loadExample() {
+            const example = [
+                {
+                    "id": 1,
+                    "name": "张三",
+                    "email": "zhangsan@example.com",
+                    "age": 28,
+                    "is_active": true,
+                    "balance": 1234.56,
+                    "created_at": "2024-01-15 10:30:00"
+                },
+                {
+                    "id": 2,
+                    "name": "李四",
+                    "email": "lisi@example.com",
+                    "age": 32,
+                    "is_active": false,
+                    "balance": 5678.90,
+                    "created_at": "2024-01-16 14:20:00"
+                },
+                {
+                    "id": 3,
+                    "name": "王五",
+                    "email": null,
+                    "age": 25,
+                    "is_active": true,
+                    "balance": 0,
+                    "created_at": "2024-01-17 09:15:00"
+                }
+            ];
+            document.getElementById('jsonInput').value = JSON.stringify(example, null, 2);
+            document.getElementById('tableName').value = 'users';
+            setStatus('已加载示例数据', 'success');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            
+            // 互斥选项
+            document.getElementById('optIgnore').addEventListener('change', function() {
+                if (this.checked) {
+                    document.getElementById('optReplace').checked = false;
+                }
+            });
+            
+            document.getElementById('optReplace').addEventListener('change', function() {
+                if (this.checked) {
+                    document.getElementById('optIgnore').checked = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

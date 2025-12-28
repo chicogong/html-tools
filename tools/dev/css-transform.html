@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Transform 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .controls-panel {
+            padding: 20px;
+            border-radius: 8px;
+            background: var(--pico-card-background-color);
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--pico-primary);
+            color: var(--pico-primary);
+        }
+        .section-title:first-child {
+            margin-top: 0;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .control-header label {
+            font-weight: 600;
+            margin: 0;
+            font-size: 14px;
+        }
+        .control-value {
+            font-family: monospace;
+            background: var(--pico-code-background-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-container input[type="range"] {
+            flex: 1;
+            margin: 0;
+        }
+        .reset-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            background: var(--pico-secondary);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .preview-container {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        .preview-stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 800px;
+            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            border-radius: 8px;
+            min-height: 350px;
+            position: relative;
+            overflow: hidden;
+        }
+        [data-theme="dark"] .preview-stage {
+            background: linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+                        linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+                        linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #1a1a1a;
+        }
+        .preview-box {
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease-out;
+            transform-style: preserve-3d;
+        }
+        .origin-marker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff4757;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.3);
+        }
+        .origin-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .origin-presets {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .origin-preset-btn {
+            padding: 8px;
+            font-size: 11px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .origin-preset-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+            border-color: var(--pico-primary);
+        }
+        .origin-preset-btn.active {
+            background: var(--pico-primary);
+            color: white;
+        }
+        .code-output {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .copy-btn {
+            margin-top: 10px;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 24px;
+        }
+        .reset-all-btn {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .presets-section {
+            margin-bottom: 20px;
+        }
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 8px;
+        }
+        .preset-btn {
+            padding: 8px 10px;
+            font-size: 12px;
+            border: 2px solid var(--pico-primary);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .preset-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <div class="header">
+            <h1>CSS Transform 生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <div class="main-grid">
+            <div class="controls-panel">
+                <div class="presets-section">
+                    <label>快速预设</label>
+                    <div class="presets-grid">
+                        <button class="preset-btn" onclick="applyPreset('flip')">水平翻转</button>
+                        <button class="preset-btn" onclick="applyPreset('flipV')">垂直翻转</button>
+                        <button class="preset-btn" onclick="applyPreset('rotate45')">旋转45°</button>
+                        <button class="preset-btn" onclick="applyPreset('scale2x')">放大2倍</button>
+                        <button class="preset-btn" onclick="applyPreset('skew')">倾斜</button>
+                        <button class="preset-btn" onclick="applyPreset('perspective')">透视</button>
+                        <button class="preset-btn" onclick="applyPreset('card3d')">3D卡片</button>
+                        <button class="preset-btn" onclick="applyPreset('swing')">摆动</button>
+                    </div>
+                </div>
+
+                <div class="section-title">2D 变换</div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>translateX (水平位移)</label>
+                        <span class="control-value" id="translateXValue">0px</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="translateX" min="-200" max="200" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('translateX', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>translateY (垂直位移)</label>
+                        <span class="control-value" id="translateYValue">0px</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="translateY" min="-200" max="200" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('translateY', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>rotate (旋转)</label>
+                        <span class="control-value" id="rotateValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="rotate" min="-180" max="180" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('rotate', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>scaleX (水平缩放)</label>
+                        <span class="control-value" id="scaleXValue">1</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="scaleX" min="0" max="3" value="1" step="0.1" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('scaleX', 1)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>scaleY (垂直缩放)</label>
+                        <span class="control-value" id="scaleYValue">1</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="scaleY" min="0" max="3" value="1" step="0.1" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('scaleY', 1)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>skewX (水平倾斜)</label>
+                        <span class="control-value" id="skewXValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="skewX" min="-60" max="60" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('skewX', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>skewY (垂直倾斜)</label>
+                        <span class="control-value" id="skewYValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="skewY" min="-60" max="60" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('skewY', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="section-title">3D 变换</div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>perspective (透视距离)</label>
+                        <span class="control-value" id="perspectiveValue">800px</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="perspective" min="100" max="2000" value="800" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('perspective', 800)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>rotateX (X轴旋转)</label>
+                        <span class="control-value" id="rotateXValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="rotateX" min="-180" max="180" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('rotateX', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>rotateY (Y轴旋转)</label>
+                        <span class="control-value" id="rotateYValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="rotateY" min="-180" max="180" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('rotateY', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>rotateZ (Z轴旋转)</label>
+                        <span class="control-value" id="rotateZValue">0deg</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="rotateZ" min="-180" max="180" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('rotateZ', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label>translateZ (Z轴位移)</label>
+                        <span class="control-value" id="translateZValue">0px</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="translateZ" min="-300" max="300" value="0" oninput="updateTransform()">
+                        <button class="reset-btn" onclick="resetControl('translateZ', 0)">重置</button>
+                    </div>
+                </div>
+
+                <div class="section-title">变换原点</div>
+
+                <div class="origin-presets">
+                    <button class="origin-preset-btn" onclick="setOrigin('0%', '0%')">左上</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('50%', '0%')">上中</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('100%', '0%')">右上</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('0%', '50%')">左中</button>
+                    <button class="origin-preset-btn active" onclick="setOrigin('50%', '50%')">中心</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('100%', '50%')">右中</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('0%', '100%')">左下</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('50%', '100%')">下中</button>
+                    <button class="origin-preset-btn" onclick="setOrigin('100%', '100%')">右下</button>
+                </div>
+
+                <div class="origin-controls">
+                    <div>
+                        <label style="font-size: 12px;">X: <span id="originXValue">50%</span></label>
+                        <input type="range" id="originX" min="0" max="100" value="50" oninput="updateOrigin()">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px;">Y: <span id="originYValue">50%</span></label>
+                        <input type="range" id="originY" min="0" max="100" value="50" oninput="updateOrigin()">
+                    </div>
+                </div>
+
+                <button class="reset-all-btn" onclick="resetAll()">重置所有变换</button>
+            </div>
+
+            <div class="preview-area">
+                <div class="preview-container">
+                    <h3>预览</h3>
+                    <div class="preview-stage" id="previewStage">
+                        <div class="preview-box" id="previewBox">Transform</div>
+                    </div>
+                </div>
+
+                <div class="code-output">
+                    <h3>CSS 代码</h3>
+                    <div class="code-block" id="codeOutput"></div>
+                    <button class="copy-btn" onclick="copyCode()">复制代码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const defaults = {
+            translateX: 0,
+            translateY: 0,
+            rotate: 0,
+            scaleX: 1,
+            scaleY: 1,
+            skewX: 0,
+            skewY: 0,
+            perspective: 800,
+            rotateX: 0,
+            rotateY: 0,
+            rotateZ: 0,
+            translateZ: 0,
+            originX: 50,
+            originY: 50
+        };
+
+        function updateTransform() {
+            const translateX = document.getElementById('translateX').value;
+            const translateY = document.getElementById('translateY').value;
+            const rotate = document.getElementById('rotate').value;
+            const scaleX = document.getElementById('scaleX').value;
+            const scaleY = document.getElementById('scaleY').value;
+            const skewX = document.getElementById('skewX').value;
+            const skewY = document.getElementById('skewY').value;
+            const perspective = document.getElementById('perspective').value;
+            const rotateX = document.getElementById('rotateX').value;
+            const rotateY = document.getElementById('rotateY').value;
+            const rotateZ = document.getElementById('rotateZ').value;
+            const translateZ = document.getElementById('translateZ').value;
+
+            document.getElementById('translateXValue').textContent = translateX + 'px';
+            document.getElementById('translateYValue').textContent = translateY + 'px';
+            document.getElementById('rotateValue').textContent = rotate + 'deg';
+            document.getElementById('scaleXValue').textContent = scaleX;
+            document.getElementById('scaleYValue').textContent = scaleY;
+            document.getElementById('skewXValue').textContent = skewX + 'deg';
+            document.getElementById('skewYValue').textContent = skewY + 'deg';
+            document.getElementById('perspectiveValue').textContent = perspective + 'px';
+            document.getElementById('rotateXValue').textContent = rotateX + 'deg';
+            document.getElementById('rotateYValue').textContent = rotateY + 'deg';
+            document.getElementById('rotateZValue').textContent = rotateZ + 'deg';
+            document.getElementById('translateZValue').textContent = translateZ + 'px';
+
+            document.getElementById('previewStage').style.perspective = perspective + 'px';
+
+            let transformParts = [];
+            if (translateX != 0 || translateY != 0 || translateZ != 0) {
+                transformParts.push('translate3d(' + translateX + 'px, ' + translateY + 'px, ' + translateZ + 'px)');
+            }
+            if (rotateX != 0) transformParts.push('rotateX(' + rotateX + 'deg)');
+            if (rotateY != 0) transformParts.push('rotateY(' + rotateY + 'deg)');
+            if (rotateZ != 0) transformParts.push('rotateZ(' + rotateZ + 'deg)');
+            if (rotate != 0) transformParts.push('rotate(' + rotate + 'deg)');
+            if (scaleX != 1 || scaleY != 1) {
+                transformParts.push('scale(' + scaleX + ', ' + scaleY + ')');
+            }
+            if (skewX != 0 || skewY != 0) {
+                transformParts.push('skew(' + skewX + 'deg, ' + skewY + 'deg)');
+            }
+
+            const transformValue = transformParts.length > 0 ? transformParts.join(' ') : 'none';
+            document.getElementById('previewBox').style.transform = transformValue;
+
+            generateCode(transformParts, perspective);
+        }
+
+        function updateOrigin() {
+            const originX = document.getElementById('originX').value;
+            const originY = document.getElementById('originY').value;
+
+            document.getElementById('originXValue').textContent = originX + '%';
+            document.getElementById('originYValue').textContent = originY + '%';
+
+            document.getElementById('previewBox').style.transformOrigin = originX + '% ' + originY + '%';
+
+            document.querySelectorAll('.origin-preset-btn').forEach(btn => btn.classList.remove('active'));
+
+            updateTransform();
+        }
+
+        function setOrigin(x, y) {
+            document.getElementById('originX').value = parseInt(x);
+            document.getElementById('originY').value = parseInt(y);
+            
+            document.querySelectorAll('.origin-preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.onclick.toString().includes(x) && btn.onclick.toString().includes(y)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updateOrigin();
+        }
+
+        function generateCode(transformParts, perspective) {
+            const originX = document.getElementById('originX').value;
+            const originY = document.getElementById('originY').value;
+
+            let css = '.container {\n';
+            css += '  perspective: ' + perspective + 'px;\n';
+            css += '}\n\n';
+            css += '.element {\n';
+            
+            if (transformParts.length > 0) {
+                css += '  transform: ' + transformParts.join('\n             ') + ';\n';
+            } else {
+                css += '  transform: none;\n';
+            }
+            
+            if (originX != 50 || originY != 50) {
+                css += '  transform-origin: ' + originX + '% ' + originY + '%;\n';
+            }
+            
+            css += '  transform-style: preserve-3d;\n';
+            css += '}';
+
+            document.getElementById('codeOutput').textContent = css;
+        }
+
+        function resetControl(id, defaultValue) {
+            document.getElementById(id).value = defaultValue;
+            updateTransform();
+        }
+
+        function resetAll() {
+            Object.keys(defaults).forEach(key => {
+                const el = document.getElementById(key);
+                if (el) el.value = defaults[key];
+            });
+            
+            document.querySelectorAll('.origin-preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.origin-preset-btn')[4].classList.add('active');
+            
+            updateOrigin();
+            updateTransform();
+        }
+
+        function applyPreset(preset) {
+            resetAll();
+            
+            switch(preset) {
+                case 'flip':
+                    document.getElementById('scaleX').value = -1;
+                    break;
+                case 'flipV':
+                    document.getElementById('scaleY').value = -1;
+                    break;
+                case 'rotate45':
+                    document.getElementById('rotate').value = 45;
+                    break;
+                case 'scale2x':
+                    document.getElementById('scaleX').value = 2;
+                    document.getElementById('scaleY').value = 2;
+                    break;
+                case 'skew':
+                    document.getElementById('skewX').value = 20;
+                    document.getElementById('skewY').value = 10;
+                    break;
+                case 'perspective':
+                    document.getElementById('perspective').value = 500;
+                    document.getElementById('rotateY').value = 45;
+                    break;
+                case 'card3d':
+                    document.getElementById('perspective').value = 600;
+                    document.getElementById('rotateX').value = 20;
+                    document.getElementById('rotateY').value = -30;
+                    break;
+                case 'swing':
+                    document.getElementById('rotate').value = 15;
+                    setOrigin('50%', '0%');
+                    break;
+            }
+            
+            updateTransform();
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeOutput').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                setTimeout(() => {
+                    btn.textContent = '复制代码';
+                }, 2000);
+            });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+
+        updateTransform();
+    </script>
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>噪点纹理生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --preview-bg: #f0f0f0;
+        }
+        [data-theme="dark"] {
+            --preview-bg: #2a2a2a;
+        }
+        body {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .preview-area {
+            background: var(--preview-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #noiseCanvas {
+            border: 1px solid var(--pico-muted-border-color);
+            max-width: 100%;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .color-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-inputs input[type="color"] {
+            width: 60px;
+            height: 40px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .range-value {
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .noise-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .noise-type {
+            padding: 0.5rem;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .noise-type:hover {
+            border-color: var(--pico-primary);
+        }
+        .noise-type.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .size-presets {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .size-preset {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>噪点纹理生成器</h1>
+            <button id="themeToggle" class="outline">切换主题</button>
+        </header>
+
+        <div class="preview-area">
+            <canvas id="noiseCanvas" width="512" height="512"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>噪点类型</label>
+                <div class="noise-types">
+                    <div class="noise-type active" data-type="random">随机噪点</div>
+                    <div class="noise-type" data-type="perlin">柏林噪声</div>
+                    <div class="noise-type" data-type="grain">胶片颗粒</div>
+                    <div class="noise-type" data-type="static">静态噪声</div>
+                    <div class="noise-type" data-type="clouds">云彩纹理</div>
+                    <div class="noise-type" data-type="marble">大理石</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>前景颜色</label>
+                <div class="color-inputs">
+                    <input type="color" id="fgColor" value="#000000">
+                    <input type="text" id="fgColorText" value="#000000" maxlength="7">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>背景颜色</label>
+                <div class="color-inputs">
+                    <input type="color" id="bgColor" value="#ffffff">
+                    <input type="text" id="bgColorText" value="#ffffff" maxlength="7">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>噪点强度: <span class="range-value" id="intensityValue">50</span>%</label>
+                <input type="range" id="intensity" min="1" max="100" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>噪点密度: <span class="range-value" id="densityValue">50</span>%</label>
+                <input type="range" id="density" min="1" max="100" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>噪点大小: <span class="range-value" id="grainSizeValue">1</span></label>
+                <input type="range" id="grainSize" min="1" max="10" value="1">
+            </div>
+
+            <div class="control-group">
+                <label>缩放比例: <span class="range-value" id="scaleValue">50</span></label>
+                <input type="range" id="scale" min="10" max="200" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>画布尺寸</label>
+                <div class="size-presets">
+                    <button class="size-preset outline" data-size="256">256</button>
+                    <button class="size-preset outline" data-size="512">512</button>
+                    <button class="size-preset outline" data-size="1024">1024</button>
+                    <button class="size-preset outline" data-size="2048">2048</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="monochrome" checked>
+                    单色模式
+                </label>
+                <label>
+                    <input type="checkbox" id="seamless">
+                    无缝平铺
+                </label>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="generateBtn">生成噪点</button>
+            <button id="randomBtn" class="secondary">随机生成</button>
+            <button id="downloadPng" class="outline">下载 PNG</button>
+            <button id="downloadJpg" class="outline">下载 JPG</button>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Elements
+        const canvas = document.getElementById('noiseCanvas');
+        const ctx = canvas.getContext('2d');
+        const fgColor = document.getElementById('fgColor');
+        const fgColorText = document.getElementById('fgColorText');
+        const bgColor = document.getElementById('bgColor');
+        const bgColorText = document.getElementById('bgColorText');
+        const intensity = document.getElementById('intensity');
+        const density = document.getElementById('density');
+        const grainSize = document.getElementById('grainSize');
+        const scale = document.getElementById('scale');
+        const monochrome = document.getElementById('monochrome');
+        const seamless = document.getElementById('seamless');
+
+        let currentNoiseType = 'random';
+
+        // Noise type selection
+        document.querySelectorAll('.noise-type').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.noise-type').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentNoiseType = btn.dataset.type;
+                generateNoise();
+            });
+        });
+
+        // Size presets
+        document.querySelectorAll('.size-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const size = parseInt(btn.dataset.size);
+                canvas.width = size;
+                canvas.height = size;
+                generateNoise();
+            });
+        });
+
+        // Sync color inputs
+        function syncColorInputs(colorInput, textInput) {
+            colorInput.addEventListener('input', () => {
+                textInput.value = colorInput.value;
+                generateNoise();
+            });
+            textInput.addEventListener('input', () => {
+                if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+                    colorInput.value = textInput.value;
+                    generateNoise();
+                }
+            });
+        }
+
+        syncColorInputs(fgColor, fgColorText);
+        syncColorInputs(bgColor, bgColorText);
+
+        // Update range values
+        const rangeInputs = [
+            { input: intensity, display: 'intensityValue' },
+            { input: density, display: 'densityValue' },
+            { input: grainSize, display: 'grainSizeValue' },
+            { input: scale, display: 'scaleValue' }
+        ];
+
+        rangeInputs.forEach(({ input, display }) => {
+            input.addEventListener('input', () => {
+                document.getElementById(display).textContent = input.value;
+                generateNoise();
+            });
+        });
+
+        monochrome.addEventListener('change', generateNoise);
+        seamless.addEventListener('change', generateNoise);
+
+        // Parse color
+        function parseColor(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        }
+
+        // Perlin noise implementation
+        function createPerlinNoise() {
+            const perm = [];
+            for (let i = 0; i < 256; i++) perm[i] = i;
+            for (let i = 255; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [perm[i], perm[j]] = [perm[j], perm[i]];
+            }
+            for (let i = 0; i < 256; i++) perm[256 + i] = perm[i];
+            
+            function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            function lerp(a, b, t) { return a + t * (b - a); }
+            function grad(hash, x, y) {
+                const h = hash & 3;
+                const u = h < 2 ? x : y;
+                const v = h < 2 ? y : x;
+                return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+            }
+            
+            return function(x, y) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+                const u = fade(x);
+                const v = fade(y);
+                const A = perm[X] + Y;
+                const B = perm[X + 1] + Y;
+                return lerp(
+                    lerp(grad(perm[A], x, y), grad(perm[B], x - 1, y), u),
+                    lerp(grad(perm[A + 1], x, y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+                    v
+                );
+            };
+        }
+
+        // Generate noise
+        function generateNoise() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const intensityVal = parseInt(intensity.value) / 100;
+            const densityVal = parseInt(density.value) / 100;
+            const grainSizeVal = parseInt(grainSize.value);
+            const scaleVal = parseInt(scale.value);
+            const isMonochrome = monochrome.checked;
+            const isSeamless = seamless.checked;
+
+            const fg = parseColor(fgColor.value);
+            const bg = parseColor(bgColor.value);
+
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+
+            const perlin = createPerlinNoise();
+
+            for (let y = 0; y < height; y += grainSizeVal) {
+                for (let x = 0; x < width; x += grainSizeVal) {
+                    let noiseValue = 0;
+
+                    // Calculate seamless coordinates if needed
+                    let nx = x / scaleVal;
+                    let ny = y / scaleVal;
+
+                    if (isSeamless) {
+                        const sx = x / width;
+                        const sy = y / height;
+                        nx = Math.cos(sx * Math.PI * 2) * scaleVal / 100;
+                        ny = Math.sin(sy * Math.PI * 2) * scaleVal / 100;
+                    }
+
+                    switch (currentNoiseType) {
+                        case 'random':
+                            noiseValue = Math.random() < densityVal ? Math.random() : 0;
+                            break;
+                        case 'perlin':
+                            noiseValue = (perlin(nx, ny) + 1) / 2;
+                            break;
+                        case 'grain':
+                            const base = Math.random();
+                            noiseValue = base * base * densityVal;
+                            break;
+                        case 'static':
+                            noiseValue = Math.random() < densityVal ? (Math.random() > 0.5 ? 1 : 0) : 0.5;
+                            break;
+                        case 'clouds':
+                            let cloud = 0;
+                            let amp = 1;
+                            let freq = 1;
+                            for (let i = 0; i < 4; i++) {
+                                cloud += perlin(nx * freq, ny * freq) * amp;
+                                amp *= 0.5;
+                                freq *= 2;
+                            }
+                            noiseValue = (cloud + 1) / 2;
+                            break;
+                        case 'marble':
+                            const marble = perlin(nx, ny) * 10;
+                            noiseValue = (Math.sin(nx + marble) + 1) / 2;
+                            break;
+                    }
+
+                    noiseValue = Math.max(0, Math.min(1, noiseValue * intensityVal));
+
+                    let r, g, b;
+                    if (isMonochrome) {
+                        r = Math.round(bg.r + (fg.r - bg.r) * noiseValue);
+                        g = Math.round(bg.g + (fg.g - bg.g) * noiseValue);
+                        b = Math.round(bg.b + (fg.b - bg.b) * noiseValue);
+                    } else {
+                        r = Math.round(Math.random() * 255 * noiseValue);
+                        g = Math.round(Math.random() * 255 * noiseValue);
+                        b = Math.round(Math.random() * 255 * noiseValue);
+                    }
+
+                    // Fill grain size area
+                    for (let dy = 0; dy < grainSizeVal && y + dy < height; dy++) {
+                        for (let dx = 0; dx < grainSizeVal && x + dx < width; dx++) {
+                            const idx = ((y + dy) * width + (x + dx)) * 4;
+                            data[idx] = r;
+                            data[idx + 1] = g;
+                            data[idx + 2] = b;
+                            data[idx + 3] = 255;
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Random generation
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            const randomColor = () => '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            const noiseTypes = ['random', 'perlin', 'grain', 'static', 'clouds', 'marble'];
+
+            if (Math.random() > 0.5) {
+                fgColor.value = randomColor();
+                fgColorText.value = fgColor.value;
+                bgColor.value = randomColor();
+                bgColorText.value = bgColor.value;
+            } else {
+                fgColor.value = '#000000';
+                fgColorText.value = fgColor.value;
+                bgColor.value = '#ffffff';
+                bgColorText.value = bgColor.value;
+            }
+
+            intensity.value = Math.floor(Math.random() * 80) + 20;
+            document.getElementById('intensityValue').textContent = intensity.value;
+
+            density.value = Math.floor(Math.random() * 80) + 20;
+            document.getElementById('densityValue').textContent = density.value;
+
+            scale.value = Math.floor(Math.random() * 150) + 20;
+            document.getElementById('scaleValue').textContent = scale.value;
+
+            currentNoiseType = noiseTypes[Math.floor(Math.random() * noiseTypes.length)];
+            document.querySelectorAll('.noise-type').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === currentNoiseType);
+            });
+
+            generateNoise();
+        });
+
+        // Generate button
+        document.getElementById('generateBtn').addEventListener('click', generateNoise);
+
+        // Download PNG
+        document.getElementById('downloadPng').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'noise-texture.png';
+            a.click();
+        });
+
+        // Download JPG
+        document.getElementById('downloadJpg').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/jpeg', 0.9);
+            a.download = 'noise-texture.jpg';
+            a.click();
+        });
+
+        // Initial generation
+        generateNoise();
+    </script>
+</body>
+</html>

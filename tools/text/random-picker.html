@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机文本选择器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --animation-duration: 0.3s;
+        }
+        body {
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .input-section textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        .controls input[type="number"] {
+            width: 80px;
+            margin: 0;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .result-section {
+            margin-top: 2rem;
+        }
+        .result-box {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1.5rem;
+            min-height: 100px;
+        }
+        .result-item {
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            background: var(--pico-secondary-background);
+            border-radius: var(--pico-border-radius);
+            animation: fadeIn var(--animation-duration) ease-in;
+        }
+        .result-item.highlight {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+            font-weight: bold;
+            transform: scale(1.02);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            color: var(--pico-muted-color);
+            font-size: 0.9rem;
+        }
+        .history-section {
+            margin-top: 2rem;
+        }
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-time {
+            color: var(--pico-muted-color);
+            font-size: 0.8rem;
+        }
+        .empty-state {
+            text-align: center;
+            color: var(--pico-muted-color);
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>🎲 随机文本选择器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌙</button>
+        </header>
+
+        <section class="input-section">
+            <label for="textInput">
+                输入文本（每行一个选项）
+                <textarea id="textInput" placeholder="选项1&#10;选项2&#10;选项3&#10;..."></textarea>
+            </label>
+        </section>
+
+        <section class="controls">
+            <label>
+                抽取数量：
+                <input type="number" id="pickCount" value="1" min="1" max="100">
+            </label>
+            <label>
+                <input type="checkbox" id="allowDuplicate">
+                允许重复
+            </label>
+            <label>
+                <input type="checkbox" id="showAnimation" checked>
+                显示动画
+            </label>
+        </section>
+
+        <div class="btn-group">
+            <button onclick="pickRandom()">🎯 开始抽取</button>
+            <button class="secondary" onclick="shuffleAll()">🔀 打乱顺序</button>
+            <button class="secondary" onclick="clearAll()">🗑️ 清空</button>
+            <button class="outline" onclick="loadExample()">📝 加载示例</button>
+        </div>
+
+        <div class="stats">
+            <span>总选项数：<strong id="totalCount">0</strong></span>
+            <span>已去重：<strong id="uniqueCount">0</strong></span>
+        </div>
+
+        <section class="result-section">
+            <h3>抽取结果</h3>
+            <div class="result-box" id="resultBox">
+                <div class="empty-state">点击"开始抽取"查看结果</div>
+            </div>
+        </section>
+
+        <section class="history-section">
+            <details>
+                <summary>抽取历史</summary>
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">暂无历史记录</div>
+                </div>
+                <button class="outline secondary" onclick="clearHistory()" style="margin-top: 0.5rem;">清空历史</button>
+            </details>
+        </section>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 获取所有选项
+        function getOptions() {
+            const text = document.getElementById('textInput').value;
+            return text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+        }
+
+        // 获取去重后的选项
+        function getUniqueOptions() {
+            return [...new Set(getOptions())];
+        }
+
+        // 更新统计
+        function updateStats() {
+            const options = getOptions();
+            const unique = getUniqueOptions();
+            document.getElementById('totalCount').textContent = options.length;
+            document.getElementById('uniqueCount').textContent = unique.length;
+        }
+
+        // 随机抽取
+        function pickRandom() {
+            const options = getUniqueOptions();
+            const count = parseInt(document.getElementById('pickCount').value) || 1;
+            const allowDuplicate = document.getElementById('allowDuplicate').checked;
+            const showAnimation = document.getElementById('showAnimation').checked;
+
+            if (options.length === 0) {
+                alert('请先输入选项');
+                return;
+            }
+
+            let results = [];
+            if (allowDuplicate) {
+                for (let i = 0; i < count; i++) {
+                    const idx = Math.floor(Math.random() * options.length);
+                    results.push(options[idx]);
+                }
+            } else {
+                if (count > options.length) {
+                    alert(`选项数量不足，最多只能抽取 ${options.length} 个不重复选项`);
+                    return;
+                }
+                const shuffled = [...options].sort(() => Math.random() - 0.5);
+                results = shuffled.slice(0, count);
+            }
+
+            displayResults(results, showAnimation);
+            addToHistory(results);
+        }
+
+        // 显示结果
+        function displayResults(results, animate) {
+            const box = document.getElementById('resultBox');
+            box.textContent = '';
+
+            if (animate) {
+                results.forEach((item, index) => {
+                    setTimeout(() => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        div.textContent = (index + 1) + '. ' + item;
+                        if (index === results.length - 1) {
+                            div.classList.add('highlight');
+                        }
+                        box.appendChild(div);
+                    }, index * 150);
+                });
+            } else {
+                results.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    if (index === results.length - 1 && results.length === 1) {
+                        div.classList.add('highlight');
+                    }
+                    div.textContent = (index + 1) + '. ' + item;
+                    box.appendChild(div);
+                });
+            }
+        }
+
+        // 打乱顺序
+        function shuffleAll() {
+            const options = getOptions();
+            if (options.length === 0) {
+                alert('请先输入选项');
+                return;
+            }
+            const shuffled = options.sort(() => Math.random() - 0.5);
+            document.getElementById('textInput').value = shuffled.join('\n');
+            updateStats();
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('textInput').value = '';
+            const box = document.getElementById('resultBox');
+            box.textContent = '';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.textContent = '点击"开始抽取"查看结果';
+            box.appendChild(emptyDiv);
+            updateStats();
+        }
+
+        // 加载示例
+        function loadExample() {
+            const examples = [
+                '张三', '李四', '王五', '赵六', '钱七',
+                '孙八', '周九', '吴十', '郑十一', '王十二'
+            ];
+            document.getElementById('textInput').value = examples.join('\n');
+            updateStats();
+        }
+
+        // 历史记录
+        let history = JSON.parse(localStorage.getItem('picker-history') || '[]');
+
+        function addToHistory(results) {
+            const record = {
+                time: new Date().toLocaleString('zh-CN'),
+                results: results
+            };
+            history.unshift(record);
+            if (history.length > 50) history.pop();
+            localStorage.setItem('picker-history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.textContent = '';
+            
+            if (history.length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-state';
+                emptyDiv.textContent = '暂无历史记录';
+                list.appendChild(emptyDiv);
+                return;
+            }
+            
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                
+                const resultSpan = document.createElement('span');
+                resultSpan.textContent = item.results.join(', ');
+                
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'history-time';
+                timeSpan.textContent = item.time;
+                
+                div.appendChild(resultSpan);
+                div.appendChild(timeSpan);
+                list.appendChild(div);
+            });
+        }
+
+        function clearHistory() {
+            history = [];
+            localStorage.removeItem('picker-history');
+            renderHistory();
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            renderHistory();
+            document.getElementById('textInput').addEventListener('input', updateStats);
+            updateStats();
+        });
+    </script>
+</body>
+</html>

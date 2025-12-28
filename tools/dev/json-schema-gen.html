@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Schema 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 900px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-panel label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .editor-panel textarea {
+            min-height: 400px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .options-panel {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .options-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: var(--pico-secondary-background);
+            border-radius: var(--pico-border-radius);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        .status-bar .error {
+            color: #ef4444;
+        }
+        .status-bar .success {
+            color: #22c55e;
+        }
+        .schema-version {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .schema-version select {
+            width: auto;
+            margin: 0;
+            padding: 0.25rem 0.5rem;
+        }
+        .copy-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>📋 JSON Schema 生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">🌙</button>
+        </header>
+
+        <section class="options-panel">
+            <div class="options-grid">
+                <div class="schema-version">
+                    <span>Schema 版本：</span>
+                    <select id="schemaVersion">
+                        <option value="draft-07">Draft-07</option>
+                        <option value="draft-06">Draft-06</option>
+                        <option value="draft-04">Draft-04</option>
+                        <option value="2020-12">2020-12</option>
+                    </select>
+                </div>
+                <label>
+                    <input type="checkbox" id="optRequired" checked>
+                    生成 required 字段
+                </label>
+                <label>
+                    <input type="checkbox" id="optAdditional">
+                    禁止额外属性
+                </label>
+                <label>
+                    <input type="checkbox" id="optExamples" checked>
+                    包含示例值
+                </label>
+                <label>
+                    <input type="checkbox" id="optDescription">
+                    生成描述字段
+                </label>
+                <label>
+                    <input type="checkbox" id="optNullable">
+                    支持 null 值
+                </label>
+            </div>
+        </section>
+
+        <section class="controls">
+            <div class="btn-group">
+                <button onclick="generateSchema()">🔄 生成 Schema</button>
+                <button class="secondary" onclick="formatJson()">📝 格式化 JSON</button>
+                <button class="secondary" onclick="clearAll()">🗑️ 清空</button>
+                <button class="outline" onclick="loadExample()">📋 加载示例</button>
+            </div>
+        </section>
+
+        <section class="editor-container">
+            <div class="editor-panel">
+                <label for="jsonInput">输入 JSON 数据</label>
+                <textarea id="jsonInput" placeholder='{"name": "张三", "age": 25}'></textarea>
+            </div>
+            <div class="editor-panel">
+                <label for="schemaOutput">
+                    生成的 JSON Schema
+                    <button class="copy-btn outline secondary" onclick="copySchema()">复制</button>
+                </label>
+                <textarea id="schemaOutput" readonly placeholder="点击生成按钮查看结果"></textarea>
+            </div>
+        </section>
+
+        <div class="status-bar">
+            <span id="statusText">就绪</span>
+            <span id="statsText"></span>
+        </div>
+
+        <section style="margin-top: 2rem;">
+            <details>
+                <summary>使用说明</summary>
+                <article>
+                    <h4>功能介绍</h4>
+                    <p>本工具可以根据 JSON 数据自动生成对应的 JSON Schema，支持多种配置选项。</p>
+                    
+                    <h4>选项说明</h4>
+                    <ul>
+                        <li><strong>Schema 版本</strong>：选择生成的 Schema 标准版本</li>
+                        <li><strong>生成 required</strong>：将所有属性标记为必需</li>
+                        <li><strong>禁止额外属性</strong>：设置 additionalProperties 为 false</li>
+                        <li><strong>包含示例值</strong>：在 Schema 中添加 examples 字段</li>
+                        <li><strong>生成描述</strong>：自动生成属性描述</li>
+                        <li><strong>支持 null</strong>：类型中包含 null</li>
+                    </ul>
+                    
+                    <h4>支持的类型</h4>
+                    <ul>
+                        <li>string - 字符串</li>
+                        <li>number/integer - 数字/整数</li>
+                        <li>boolean - 布尔值</li>
+                        <li>array - 数组</li>
+                        <li>object - 对象</li>
+                        <li>null - 空值</li>
+                    </ul>
+                </article>
+            </details>
+        </section>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // 获取配置
+        function getOptions() {
+            return {
+                version: document.getElementById('schemaVersion').value,
+                required: document.getElementById('optRequired').checked,
+                additionalProperties: !document.getElementById('optAdditional').checked,
+                examples: document.getElementById('optExamples').checked,
+                description: document.getElementById('optDescription').checked,
+                nullable: document.getElementById('optNullable').checked
+            };
+        }
+
+        // 获取 Schema URL
+        function getSchemaUrl(version) {
+            const urls = {
+                'draft-04': 'http://json-schema.org/draft-04/schema#',
+                'draft-06': 'http://json-schema.org/draft-06/schema#',
+                'draft-07': 'http://json-schema.org/draft-07/schema#',
+                '2020-12': 'https://json-schema.org/draft/2020-12/schema'
+            };
+            return urls[version] || urls['draft-07'];
+        }
+
+        // 获取值类型
+        function getType(value) {
+            if (value === null) return 'null';
+            if (Array.isArray(value)) return 'array';
+            if (typeof value === 'number') {
+                return Number.isInteger(value) ? 'integer' : 'number';
+            }
+            return typeof value;
+        }
+
+        // 生成类型描述
+        function generateDescription(key, type) {
+            const typeNames = {
+                'string': '字符串',
+                'number': '数字',
+                'integer': '整数',
+                'boolean': '布尔值',
+                'array': '数组',
+                'object': '对象',
+                'null': '空值'
+            };
+            return key + ' - ' + (typeNames[type] || '未知类型');
+        }
+
+        // 生成 Schema
+        function generateSchemaFromValue(value, key, options) {
+            const type = getType(value);
+            const schema = {};
+
+            if (options.nullable && type !== 'null') {
+                schema.type = [type, 'null'];
+            } else {
+                schema.type = type;
+            }
+
+            if (options.description && key) {
+                schema.description = generateDescription(key, type);
+            }
+
+            if (options.examples && value !== null) {
+                schema.examples = [value];
+            }
+
+            switch (type) {
+                case 'object':
+                    if (value !== null && Object.keys(value).length > 0) {
+                        schema.properties = {};
+                        const keys = Object.keys(value);
+                        
+                        keys.forEach(k => {
+                            schema.properties[k] = generateSchemaFromValue(value[k], k, options);
+                        });
+
+                        if (options.required && keys.length > 0) {
+                            schema.required = keys;
+                        }
+
+                        if (!options.additionalProperties) {
+                            schema.additionalProperties = false;
+                        }
+                    }
+                    break;
+
+                case 'array':
+                    if (value.length > 0) {
+                        // 分析数组元素类型
+                        const itemTypes = new Set();
+                        const itemSchemas = [];
+                        
+                        value.forEach(item => {
+                            const itemType = getType(item);
+                            if (!itemTypes.has(itemType)) {
+                                itemTypes.add(itemType);
+                                itemSchemas.push(generateSchemaFromValue(item, null, options));
+                            }
+                        });
+
+                        if (itemSchemas.length === 1) {
+                            schema.items = itemSchemas[0];
+                        } else if (itemSchemas.length > 1) {
+                            schema.items = { anyOf: itemSchemas };
+                        }
+                    }
+                    break;
+
+                case 'string':
+                    // 检测特殊格式
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                        schema.format = 'date';
+                    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+                        schema.format = 'date-time';
+                    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                        schema.format = 'email';
+                    } else if (/^https?:\/\//.test(value)) {
+                        schema.format = 'uri';
+                    } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+                        schema.format = 'uuid';
+                    }
+                    break;
+            }
+
+            return schema;
+        }
+
+        // 主生成函数
+        function generateSchema() {
+            const input = document.getElementById('jsonInput').value.trim();
+            const statusText = document.getElementById('statusText');
+            const statsText = document.getElementById('statsText');
+
+            if (!input) {
+                setStatus('请输入 JSON 数据', 'error');
+                return;
+            }
+
+            try {
+                const json = JSON.parse(input);
+                const options = getOptions();
+
+                const schema = {
+                    $schema: getSchemaUrl(options.version),
+                    ...generateSchemaFromValue(json, null, options)
+                };
+
+                const output = JSON.stringify(schema, null, 2);
+                document.getElementById('schemaOutput').value = output;
+
+                // 统计
+                const propCount = countProperties(schema);
+                statsText.textContent = '属性数: ' + propCount.total + ' | 必需: ' + propCount.required;
+                setStatus('生成成功', 'success');
+
+            } catch (e) {
+                setStatus('JSON 解析错误: ' + e.message, 'error');
+                document.getElementById('schemaOutput').value = '';
+                statsText.textContent = '';
+            }
+        }
+
+        // 统计属性数量
+        function countProperties(schema, counts) {
+            counts = counts || { total: 0, required: 0 };
+            
+            if (schema.properties) {
+                const keys = Object.keys(schema.properties);
+                counts.total += keys.length;
+                
+                if (schema.required) {
+                    counts.required += schema.required.length;
+                }
+
+                keys.forEach(key => {
+                    countProperties(schema.properties[key], counts);
+                });
+            }
+
+            if (schema.items) {
+                if (schema.items.anyOf) {
+                    schema.items.anyOf.forEach(item => countProperties(item, counts));
+                } else {
+                    countProperties(schema.items, counts);
+                }
+            }
+
+            return counts;
+        }
+
+        // 设置状态
+        function setStatus(text, type) {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+            statusText.className = type || '';
+        }
+
+        // 格式化 JSON
+        function formatJson() {
+            const input = document.getElementById('jsonInput');
+            try {
+                const json = JSON.parse(input.value);
+                input.value = JSON.stringify(json, null, 2);
+                setStatus('格式化成功', 'success');
+            } catch (e) {
+                setStatus('JSON 格式错误: ' + e.message, 'error');
+            }
+        }
+
+        // 复制 Schema
+        function copySchema() {
+            const output = document.getElementById('schemaOutput');
+            if (!output.value) {
+                setStatus('没有可复制的内容', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output.value).then(() => {
+                setStatus('已复制到剪贴板', 'success');
+            }).catch(() => {
+                output.select();
+                document.execCommand('copy');
+                setStatus('已复制到剪贴板', 'success');
+            });
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('schemaOutput').value = '';
+            document.getElementById('statsText').textContent = '';
+            setStatus('已清空', 'success');
+        }
+
+        // 加载示例
+        function loadExample() {
+            const example = {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "name": "张三",
+                "email": "zhangsan@example.com",
+                "age": 28,
+                "isActive": true,
+                "balance": 1234.56,
+                "registeredAt": "2024-01-15T10:30:00Z",
+                "tags": ["vip", "new"],
+                "address": {
+                    "city": "北京",
+                    "zipCode": "100000"
+                },
+                "orders": [
+                    {"orderId": "ORD001", "amount": 99.9},
+                    {"orderId": "ORD002", "amount": 199.0}
+                ]
+            };
+            document.getElementById('jsonInput').value = JSON.stringify(example, null, 2);
+            setStatus('已加载示例数据', 'success');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            
+            // 实时生成
+            document.getElementById('jsonInput').addEventListener('input', () => {
+                const input = document.getElementById('jsonInput').value.trim();
+                if (input) {
+                    try {
+                        JSON.parse(input);
+                        setStatus('JSON 格式正确', 'success');
+                    } catch (e) {
+                        setStatus('JSON 格式错误', 'error');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

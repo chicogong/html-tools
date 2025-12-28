@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计计算器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .input-section { margin-bottom: 2rem; }
+        .input-section textarea { width: 100%; height: 120px; font-family: monospace; }
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .result-card { background: var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 1rem; }
+        .result-card h5 { margin: 0 0 0.5rem 0; color: var(--pico-muted-color); font-size: 0.9rem; }
+        .result-card .value { font-size: 1.5rem; font-weight: bold; font-family: monospace; }
+        .chart-container { margin-top: 2rem; padding: 1rem; background: var(--pico-muted-border-color); border-radius: var(--pico-border-radius); }
+        .histogram { display: flex; align-items: flex-end; gap: 2px; height: 150px; }
+        .histogram-bar { background: var(--pico-primary); min-width: 20px; flex: 1; }
+        .histogram-labels { display: flex; gap: 2px; font-size: 0.7rem; color: var(--pico-muted-color); margin-top: 0.5rem; }
+        .histogram-labels span { min-width: 20px; flex: 1; text-align: center; }
+        .frequency-table { margin-top: 1rem; }
+        .frequency-table table { width: 100%; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>统计计算器</h1>
+            <button id="themeToggle" class="outline" onclick="toggleTheme()">🌙</button>
+        </header>
+
+        <div class="input-section">
+            <label for="dataInput">输入数据（用逗号、空格或换行分隔）：</label>
+            <textarea id="dataInput" placeholder="例如: 1, 2, 3, 4, 5 或 1 2 3 4 5">12, 15, 18, 22, 25, 28, 30, 32, 35, 38, 40, 42, 45, 48, 50</textarea>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button onclick="calculate()">计算统计量</button>
+                <button class="outline" onclick="clearData()">清空</button>
+                <button class="outline" onclick="generateSample()">生成示例数据</button>
+            </div>
+        </div>
+
+        <div id="results" style="display: none;">
+            <h3>统计结果</h3>
+            <div class="results-grid">
+                <div class="result-card"><h5>数据个数 (n)</h5><div class="value" id="count">-</div></div>
+                <div class="result-card"><h5>总和 (Σx)</h5><div class="value" id="sum">-</div></div>
+                <div class="result-card"><h5>平均值 (x̄)</h5><div class="value" id="mean">-</div></div>
+                <div class="result-card"><h5>中位数</h5><div class="value" id="median">-</div></div>
+                <div class="result-card"><h5>众数</h5><div class="value" id="mode">-</div></div>
+                <div class="result-card"><h5>极差</h5><div class="value" id="range">-</div></div>
+                <div class="result-card"><h5>最小值</h5><div class="value" id="min">-</div></div>
+                <div class="result-card"><h5>最大值</h5><div class="value" id="max">-</div></div>
+                <div class="result-card"><h5>方差 (σ²)</h5><div class="value" id="variance">-</div></div>
+                <div class="result-card"><h5>标准差 (σ)</h5><div class="value" id="stddev">-</div></div>
+                <div class="result-card"><h5>样本方差 (s²)</h5><div class="value" id="sampleVariance">-</div></div>
+                <div class="result-card"><h5>样本标准差 (s)</h5><div class="value" id="sampleStddev">-</div></div>
+                <div class="result-card"><h5>Q1 (25%)</h5><div class="value" id="q1">-</div></div>
+                <div class="result-card"><h5>Q3 (75%)</h5><div class="value" id="q3">-</div></div>
+                <div class="result-card"><h5>四分位距 (IQR)</h5><div class="value" id="iqr">-</div></div>
+                <div class="result-card"><h5>变异系数 (CV)</h5><div class="value" id="cv">-</div></div>
+                <div class="result-card"><h5>偏度</h5><div class="value" id="skewness">-</div></div>
+                <div class="result-card"><h5>峰度</h5><div class="value" id="kurtosis">-</div></div>
+            </div>
+
+            <div class="chart-container">
+                <h4>直方图</h4>
+                <div class="histogram" id="histogram"></div>
+                <div class="histogram-labels" id="histogramLabels"></div>
+            </div>
+
+            <div class="frequency-table">
+                <h4>频率分布表</h4>
+                <table id="freqTable">
+                    <thead><tr><th>区间</th><th>频数</th><th>频率</th><th>累计频率</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <article style="margin-top: 2rem;">
+            <h4>使用说明</h4>
+            <ul>
+                <li><strong>输入格式</strong>：支持逗号、空格或换行分隔的数字</li>
+                <li><strong>基础统计</strong>：计算均值、中位数、众数、极差</li>
+                <li><strong>离散程度</strong>：方差、标准差、变异系数</li>
+                <li><strong>分位数</strong>：Q1、Q3、四分位距</li>
+                <li><strong>分布形态</strong>：偏度、峰度</li>
+            </ul>
+        </article>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeToggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function parseData(input) {
+            return input.split(/[\s,\n]+/).map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+        }
+
+        function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+        
+        function median(arr) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+        
+        function mode(arr) {
+            const freq = {};
+            arr.forEach(n => freq[n] = (freq[n] || 0) + 1);
+            const maxFreq = Math.max(...Object.values(freq));
+            const modes = Object.keys(freq).filter(k => freq[k] === maxFreq).map(Number);
+            return modes.length === arr.length ? '无' : modes.join(', ');
+        }
+        
+        function variance(arr, sample = false) {
+            const m = mean(arr);
+            const sum = arr.reduce((acc, val) => acc + Math.pow(val - m, 2), 0);
+            return sum / (sample ? arr.length - 1 : arr.length);
+        }
+        
+        function quantile(arr, q) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const pos = (sorted.length - 1) * q;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sorted[base + 1] !== undefined) {
+                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            }
+            return sorted[base];
+        }
+        
+        function skewness(arr) {
+            const m = mean(arr);
+            const s = Math.sqrt(variance(arr));
+            const n = arr.length;
+            return arr.reduce((acc, val) => acc + Math.pow((val - m) / s, 3), 0) / n;
+        }
+        
+        function kurtosis(arr) {
+            const m = mean(arr);
+            const s = Math.sqrt(variance(arr));
+            const n = arr.length;
+            return arr.reduce((acc, val) => acc + Math.pow((val - m) / s, 4), 0) / n - 3;
+        }
+
+        function calculate() {
+            const input = document.getElementById('dataInput').value;
+            const data = parseData(input);
+            
+            if (data.length < 2) {
+                alert('请输入至少2个有效数字');
+                return;
+            }
+
+            document.getElementById('results').style.display = 'block';
+
+            const n = data.length;
+            const sum = data.reduce((a, b) => a + b, 0);
+            const m = mean(data);
+            const v = variance(data);
+            const sv = variance(data, true);
+            const q1 = quantile(data, 0.25);
+            const q3 = quantile(data, 0.75);
+            const sorted = [...data].sort((a, b) => a - b);
+
+            const format = (num) => Number.isFinite(num) ? (Number.isInteger(num) ? num : num.toFixed(4)) : '-';
+
+            document.getElementById('count').textContent = n;
+            document.getElementById('sum').textContent = format(sum);
+            document.getElementById('mean').textContent = format(m);
+            document.getElementById('median').textContent = format(median(data));
+            document.getElementById('mode').textContent = mode(data);
+            document.getElementById('range').textContent = format(sorted[n-1] - sorted[0]);
+            document.getElementById('min').textContent = format(sorted[0]);
+            document.getElementById('max').textContent = format(sorted[n-1]);
+            document.getElementById('variance').textContent = format(v);
+            document.getElementById('stddev').textContent = format(Math.sqrt(v));
+            document.getElementById('sampleVariance').textContent = format(sv);
+            document.getElementById('sampleStddev').textContent = format(Math.sqrt(sv));
+            document.getElementById('q1').textContent = format(q1);
+            document.getElementById('q3').textContent = format(q3);
+            document.getElementById('iqr').textContent = format(q3 - q1);
+            document.getElementById('cv').textContent = format((Math.sqrt(v) / m) * 100) + '%';
+            document.getElementById('skewness').textContent = format(skewness(data));
+            document.getElementById('kurtosis').textContent = format(kurtosis(data));
+
+            drawHistogram(data);
+        }
+
+        function drawHistogram(data) {
+            const sorted = [...data].sort((a, b) => a - b);
+            const min = sorted[0];
+            const max = sorted[sorted.length - 1];
+            const binCount = Math.min(10, Math.ceil(Math.sqrt(data.length)));
+            const binWidth = (max - min) / binCount || 1;
+            
+            const bins = Array(binCount).fill(0);
+            data.forEach(val => {
+                let binIndex = Math.floor((val - min) / binWidth);
+                if (binIndex >= binCount) binIndex = binCount - 1;
+                bins[binIndex]++;
+            });
+
+            const maxBin = Math.max(...bins);
+            const histogram = document.getElementById('histogram');
+            const labels = document.getElementById('histogramLabels');
+            histogram.textContent = '';
+            labels.textContent = '';
+
+            bins.forEach((count, i) => {
+                const bar = document.createElement('div');
+                bar.className = 'histogram-bar';
+                bar.style.height = (count / maxBin * 100) + '%';
+                bar.title = '频数: ' + count;
+                histogram.appendChild(bar);
+
+                const label = document.createElement('span');
+                label.textContent = (min + i * binWidth).toFixed(1);
+                labels.appendChild(label);
+            });
+
+            const tbody = document.querySelector('#freqTable tbody');
+            tbody.textContent = '';
+            let cumFreq = 0;
+            bins.forEach((count, i) => {
+                const from = (min + i * binWidth).toFixed(2);
+                const to = (min + (i + 1) * binWidth).toFixed(2);
+                const freq = count / data.length;
+                cumFreq += freq;
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>[' + from + ', ' + to + ')</td><td>' + count + '</td><td>' + (freq * 100).toFixed(2) + '%</td><td>' + (cumFreq * 100).toFixed(2) + '%</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearData() {
+            document.getElementById('dataInput').value = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function generateSample() {
+            const n = 30;
+            const data = [];
+            for (let i = 0; i < n; i++) {
+                data.push(Math.round((Math.random() * 100) * 10) / 10);
+            }
+            document.getElementById('dataInput').value = data.join(', ');
+        }
+
+        loadTheme();
+    </script>
+</body>
+</html>

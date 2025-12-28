@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Schema 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .panel-header h3 {
+            margin: 0;
+        }
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .panel-actions button {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .editor-container {
+            flex: 1;
+            position: relative;
+        }
+        .editor {
+            width: 100%;
+            height: 500px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            resize: vertical;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .output-container {
+            flex: 1;
+            position: relative;
+        }
+        .output {
+            width: 100%;
+            height: 500px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            overflow: auto;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            white-space: pre-wrap;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 24px;
+        }
+        .options-section {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .option-group label {
+            margin: 0;
+            font-size: 14px;
+        }
+        .option-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        .status-bar {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--pico-code-background-color);
+            border-radius: 4px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .status-bar.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        [data-theme="dark"] .status-bar.error {
+            background: #3e2723;
+            color: #ef9a9a;
+        }
+        .status-bar.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        [data-theme="dark"] .status-bar.success {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+        .sample-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .sample-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .sample-btn:hover {
+            background: var(--pico-primary);
+            color: white;
+            border-color: var(--pico-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <div class="header">
+            <h1>JSON Schema 生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <div class="options-section">
+            <div class="options-grid">
+                <div class="option-group">
+                    <input type="checkbox" id="inferRequired" checked>
+                    <label for="inferRequired">推断必需字段</label>
+                </div>
+                <div class="option-group">
+                    <input type="checkbox" id="addExamples" checked>
+                    <label for="addExamples">添加示例值</label>
+                </div>
+                <div class="option-group">
+                    <input type="checkbox" id="addDescriptions">
+                    <label for="addDescriptions">添加描述占位符</label>
+                </div>
+                <div class="option-group">
+                    <input type="checkbox" id="strictArrays">
+                    <label for="strictArrays">严格数组类型</label>
+                </div>
+                <div class="option-group">
+                    <label for="schemaVersion">Schema 版本:</label>
+                    <select id="schemaVersion" style="width: auto; padding: 4px 8px;">
+                        <option value="draft-07">Draft-07</option>
+                        <option value="draft-06">Draft-06</option>
+                        <option value="draft-04">Draft-04</option>
+                        <option value="2020-12">2020-12</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>输入 JSON</h3>
+                    <div class="panel-actions">
+                        <div class="sample-buttons">
+                            <button class="sample-btn" onclick="loadSample('user')">用户</button>
+                            <button class="sample-btn" onclick="loadSample('product')">商品</button>
+                            <button class="sample-btn" onclick="loadSample('order')">订单</button>
+                            <button class="sample-btn" onclick="loadSample('api')">API响应</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="editor-container">
+                    <textarea class="editor" id="jsonInput" placeholder="在此输入 JSON 数据...">{
+  "id": 1,
+  "name": "张三",
+  "email": "zhangsan@example.com",
+  "age": 28,
+  "isActive": true,
+  "tags": ["developer", "designer"],
+  "address": {
+    "city": "北京",
+    "zipCode": "100000"
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}</textarea>
+                </div>
+                <div class="status-bar" id="inputStatus">准备就绪</div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>JSON Schema</h3>
+                    <div class="panel-actions">
+                        <button onclick="generateSchema()">生成 Schema</button>
+                        <button onclick="copyOutput()">复制</button>
+                    </div>
+                </div>
+                <div class="output-container">
+                    <div class="output" id="schemaOutput"></div>
+                </div>
+                <div class="status-bar success" id="outputStatus">点击"生成 Schema"按钮开始</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const samples = {
+            user: {
+                id: 1,
+                name: "张三",
+                email: "zhangsan@example.com",
+                age: 28,
+                isActive: true,
+                tags: ["developer", "designer"],
+                address: {
+                    city: "北京",
+                    street: "中关村大街1号",
+                    zipCode: "100000"
+                },
+                createdAt: "2024-01-15T10:30:00Z"
+            },
+            product: {
+                sku: "PROD-001",
+                name: "智能手表",
+                description: "高端智能手表，支持心率监测",
+                price: 2999.00,
+                currency: "CNY",
+                inStock: true,
+                quantity: 150,
+                categories: ["电子产品", "穿戴设备"],
+                attributes: {
+                    color: "黑色",
+                    weight: "45g",
+                    waterproof: true
+                },
+                images: [
+                    { url: "https://example.com/img1.jpg", alt: "正面图" },
+                    { url: "https://example.com/img2.jpg", alt: "侧面图" }
+                ]
+            },
+            order: {
+                orderId: "ORD-2024-001",
+                customerId: 12345,
+                status: "pending",
+                items: [
+                    { productId: "PROD-001", quantity: 2, unitPrice: 99.99 },
+                    { productId: "PROD-002", quantity: 1, unitPrice: 149.99 }
+                ],
+                totalAmount: 349.97,
+                shippingAddress: {
+                    name: "李四",
+                    phone: "13800138000",
+                    address: "上海市浦东新区张江高科技园区",
+                    zipCode: "201203"
+                },
+                payment: {
+                    method: "alipay",
+                    status: "completed",
+                    transactionId: "TXN-123456"
+                },
+                createdAt: "2024-01-20T14:25:30Z",
+                updatedAt: "2024-01-20T14:30:00Z"
+            },
+            api: {
+                success: true,
+                code: 200,
+                message: "操作成功",
+                data: {
+                    total: 100,
+                    page: 1,
+                    pageSize: 10,
+                    items: [
+                        { id: 1, title: "文章一", views: 1500 },
+                        { id: 2, title: "文章二", views: 2300 }
+                    ]
+                },
+                timestamp: 1705742130000
+            }
+        };
+
+        function loadSample(type) {
+            document.getElementById('jsonInput').value = JSON.stringify(samples[type], null, 2);
+            generateSchema();
+        }
+
+        function getSchemaUrl(version) {
+            const urls = {
+                'draft-04': 'http://json-schema.org/draft-04/schema#',
+                'draft-06': 'http://json-schema.org/draft-06/schema#',
+                'draft-07': 'http://json-schema.org/draft-07/schema#',
+                '2020-12': 'https://json-schema.org/draft/2020-12/schema'
+            };
+            return urls[version] || urls['draft-07'];
+        }
+
+        function inferType(value) {
+            if (value === null) return 'null';
+            if (Array.isArray(value)) return 'array';
+            if (typeof value === 'object') return 'object';
+            if (typeof value === 'number') {
+                return Number.isInteger(value) ? 'integer' : 'number';
+            }
+            return typeof value;
+        }
+
+        function inferFormat(value, key) {
+            if (typeof value !== 'string') return null;
+            
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) return 'date-time';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'date';
+            if (/^\d{2}:\d{2}:\d{2}$/.test(value)) return 'time';
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'email';
+            if (/^https?:\/\//.test(value)) return 'uri';
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) return 'uuid';
+            if (key && (key.toLowerCase().includes('ip') || /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value))) return 'ipv4';
+            
+            return null;
+        }
+
+        function generateSchemaForValue(value, key, options) {
+            const type = inferType(value);
+            const schema = { type: type };
+            
+            if (options.addDescriptions) {
+                schema.description = '';
+            }
+            
+            switch (type) {
+                case 'string':
+                    const format = inferFormat(value, key);
+                    if (format) schema.format = format;
+                    if (options.addExamples) schema.examples = [value];
+                    break;
+                    
+                case 'number':
+                case 'integer':
+                    if (options.addExamples) schema.examples = [value];
+                    break;
+                    
+                case 'boolean':
+                    if (options.addExamples) schema.examples = [value];
+                    break;
+                    
+                case 'array':
+                    if (value.length > 0) {
+                        if (options.strictArrays) {
+                            const itemSchemas = value.map((item, i) => generateSchemaForValue(item, key + '[' + i + ']', options));
+                            const uniqueTypes = new Set(itemSchemas.map(s => JSON.stringify(s)));
+                            if (uniqueTypes.size === 1) {
+                                schema.items = itemSchemas[0];
+                            } else {
+                                schema.items = { anyOf: Array.from(uniqueTypes).map(s => JSON.parse(s)) };
+                            }
+                        } else {
+                            schema.items = generateSchemaForValue(value[0], key + '[0]', options);
+                        }
+                    } else {
+                        schema.items = {};
+                    }
+                    if (options.addExamples && value.length > 0) {
+                        schema.examples = [value];
+                    }
+                    break;
+                    
+                case 'object':
+                    schema.properties = {};
+                    const keys = Object.keys(value);
+                    keys.forEach(k => {
+                        schema.properties[k] = generateSchemaForValue(value[k], k, options);
+                    });
+                    if (options.inferRequired && keys.length > 0) {
+                        schema.required = keys;
+                    }
+                    schema.additionalProperties = false;
+                    break;
+                    
+                case 'null':
+                    break;
+            }
+            
+            return schema;
+        }
+
+        function generateSchema() {
+            const input = document.getElementById('jsonInput').value.trim();
+            const inputStatus = document.getElementById('inputStatus');
+            const outputStatus = document.getElementById('outputStatus');
+            
+            if (!input) {
+                inputStatus.textContent = '请输入 JSON 数据';
+                inputStatus.className = 'status-bar error';
+                return;
+            }
+            
+            let jsonData;
+            try {
+                jsonData = JSON.parse(input);
+                inputStatus.textContent = 'JSON 格式正确';
+                inputStatus.className = 'status-bar success';
+            } catch (e) {
+                inputStatus.textContent = '错误: ' + e.message;
+                inputStatus.className = 'status-bar error';
+                document.getElementById('schemaOutput').textContent = '';
+                return;
+            }
+            
+            const options = {
+                inferRequired: document.getElementById('inferRequired').checked,
+                addExamples: document.getElementById('addExamples').checked,
+                addDescriptions: document.getElementById('addDescriptions').checked,
+                strictArrays: document.getElementById('strictArrays').checked
+            };
+            
+            const version = document.getElementById('schemaVersion').value;
+            
+            const schema = {
+                $schema: getSchemaUrl(version),
+                $id: 'https://example.com/schema.json',
+                title: 'Generated Schema',
+                ...generateSchemaForValue(jsonData, 'root', options)
+            };
+            
+            const output = JSON.stringify(schema, null, 2);
+            document.getElementById('schemaOutput').textContent = output;
+            
+            const propCount = countProperties(schema);
+            outputStatus.textContent = '生成成功! 共 ' + propCount + ' 个属性';
+            outputStatus.className = 'status-bar success';
+        }
+
+        function countProperties(schema) {
+            let count = 0;
+            if (schema.properties) {
+                count += Object.keys(schema.properties).length;
+                Object.values(schema.properties).forEach(prop => {
+                    count += countProperties(prop);
+                });
+            }
+            if (schema.items && typeof schema.items === 'object') {
+                count += countProperties(schema.items);
+            }
+            return count;
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('schemaOutput').textContent;
+            if (!output) {
+                alert('没有可复制的内容');
+                return;
+            }
+            navigator.clipboard.writeText(output).then(() => {
+                const outputStatus = document.getElementById('outputStatus');
+                outputStatus.textContent = '已复制到剪贴板!';
+                setTimeout(() => {
+                    outputStatus.textContent = '生成成功!';
+                }, 2000);
+            });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+
+        document.getElementById('jsonInput').addEventListener('input', function() {
+            const inputStatus = document.getElementById('inputStatus');
+            try {
+                JSON.parse(this.value);
+                inputStatus.textContent = 'JSON 格式正确';
+                inputStatus.className = 'status-bar success';
+            } catch (e) {
+                inputStatus.textContent = '等待有效的 JSON...';
+                inputStatus.className = 'status-bar';
+            }
+        });
+
+        generateSchema();
+    </script>
+</body>
+</html>

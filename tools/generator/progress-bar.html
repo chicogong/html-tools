@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进度条生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .slider-container {
+            margin-bottom: var(--spacing-md);
+        }
+        .slider-value {
+            display: inline-block;
+            min-width: 3rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        .style-section {
+            margin-bottom: var(--spacing-md);
+        }
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--spacing-sm);
+        }
+        .style-btn {
+            padding: 0.75rem;
+            font-family: monospace;
+            cursor: pointer;
+            text-align: center;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            background: var(--pico-card-background-color);
+            transition: all 0.2s;
+        }
+        .style-btn:hover {
+            border-color: var(--pico-primary);
+        }
+        .style-btn.active {
+            border-color: var(--pico-primary);
+            background: var(--pico-primary-focus);
+        }
+        .output-area {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+        .output-area pre {
+            margin: 0;
+            white-space: pre;
+            overflow-x: auto;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .btn-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-top: var(--spacing-md);
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .preview-section {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+            font-family: monospace;
+            font-size: 18px;
+        }
+        .batch-section {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <div class="header">
+            <h1>进度条生成器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </div>
+
+        <article>
+            <div class="slider-container">
+                <label>
+                    进度: <span class="slider-value" id="progressValue">50%</span>
+                    <input type="range" id="progress" value="50" min="0" max="100" oninput="updateProgress()">
+                </label>
+            </div>
+
+            <div class="grid-inputs">
+                <label>
+                    总长度
+                    <input type="number" id="totalLength" value="20" min="5" max="100" oninput="updateProgress()">
+                </label>
+                <label>
+                    显示格式
+                    <select id="displayFormat" onchange="updateProgress()">
+                        <option value="percent">百分比 (50%)</option>
+                        <option value="fraction">分数 (10/20)</option>
+                        <option value="both">两者都显示</option>
+                        <option value="none">不显示</option>
+                    </select>
+                </label>
+                <label>
+                    百分比位置
+                    <select id="percentPosition" onchange="updateProgress()">
+                        <option value="right">右侧</option>
+                        <option value="left">左侧</option>
+                        <option value="inside">内部</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="showBrackets" checked onchange="updateProgress()">
+                    显示边框
+                </label>
+                <label>
+                    <input type="checkbox" id="animated" onchange="updateProgress()">
+                    动画效果提示
+                </label>
+            </div>
+
+            <div class="style-section">
+                <label>进度条样式</label>
+                <div class="style-grid">
+                    <button class="style-btn active" data-style="ascii" onclick="selectStyle(this)">
+                        [====----] ASCII
+                    </button>
+                    <button class="style-btn" data-style="hash" onclick="selectStyle(this)">
+                        [####----] 井号
+                    </button>
+                    <button class="style-btn" data-style="block" onclick="selectStyle(this)">
+                        [████░░░░] 方块
+                    </button>
+                    <button class="style-btn" data-style="circle" onclick="selectStyle(this)">
+                        [●●●●○○○○] 圆点
+                    </button>
+                    <button class="style-btn" data-style="star" onclick="selectStyle(this)">
+                        [★★★★☆☆☆☆] 星星
+                    </button>
+                    <button class="style-btn" data-style="heart" onclick="selectStyle(this)">
+                        [❤❤❤❤♡♡♡♡] 爱心
+                    </button>
+                    <button class="style-btn" data-style="arrow" onclick="selectStyle(this)">
+                        [▸▸▸▸▹▹▹▹] 箭头
+                    </button>
+                    <button class="style-btn" data-style="shade" onclick="selectStyle(this)">
+                        [▓▓▓▓░░░░] 阴影
+                    </button>
+                    <button class="style-btn" data-style="pipe" onclick="selectStyle(this)">
+                        [||||....] 管道
+                    </button>
+                    <button class="style-btn" data-style="wave" onclick="selectStyle(this)">
+                        [~~~~    ] 波浪
+                    </button>
+                    <button class="style-btn" data-style="emoji-fire" onclick="selectStyle(this)">
+                        🔥🔥🔥⬜⬜ 火焰
+                    </button>
+                    <button class="style-btn" data-style="emoji-plant" onclick="selectStyle(this)">
+                        🌱🌿🌳⬜⬜ 植物
+                    </button>
+                </div>
+            </div>
+
+            <label>实时预览</label>
+            <div class="preview-section" id="preview">[==========----------] 50%</div>
+
+            <details class="batch-section">
+                <summary>批量生成</summary>
+                <div class="grid-inputs" style="margin-top: var(--spacing-md);">
+                    <label>
+                        起始百分比
+                        <input type="number" id="batchStart" value="0" min="0" max="100">
+                    </label>
+                    <label>
+                        结束百分比
+                        <input type="number" id="batchEnd" value="100" min="0" max="100">
+                    </label>
+                    <label>
+                        步进
+                        <input type="number" id="batchStep" value="10" min="1" max="50">
+                    </label>
+                </div>
+                <button onclick="generateBatch()">批量生成</button>
+            </details>
+
+            <div class="btn-group">
+                <button onclick="generateSingle()">生成进度条</button>
+                <button class="secondary" onclick="copyOutput()">复制结果</button>
+                <button class="secondary" onclick="clearAll()">清空</button>
+            </div>
+
+            <div class="output-area">
+                <pre id="output">点击"生成进度条"查看结果</pre>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        const styles = {
+            'ascii': { filled: '=', empty: '-', left: '[', right: ']' },
+            'hash': { filled: '#', empty: '-', left: '[', right: ']' },
+            'block': { filled: '█', empty: '░', left: '[', right: ']' },
+            'circle': { filled: '●', empty: '○', left: '[', right: ']' },
+            'star': { filled: '★', empty: '☆', left: '[', right: ']' },
+            'heart': { filled: '❤', empty: '♡', left: '[', right: ']' },
+            'arrow': { filled: '▸', empty: '▹', left: '[', right: ']' },
+            'shade': { filled: '▓', empty: '░', left: '[', right: ']' },
+            'pipe': { filled: '|', empty: '.', left: '[', right: ']' },
+            'wave': { filled: '~', empty: ' ', left: '[', right: ']' },
+            'emoji-fire': { filled: '🔥', empty: '⬜', left: '', right: '' },
+            'emoji-plant': { filled: '🌳', empty: '⬜', left: '', right: '' }
+        };
+
+        let currentStyle = 'ascii';
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+        }
+
+        function selectStyle(btn) {
+            document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentStyle = btn.dataset.style;
+            updateProgress();
+        }
+
+        function generateProgressBar(percent) {
+            const totalLength = parseInt(document.getElementById('totalLength').value) || 20;
+            const displayFormat = document.getElementById('displayFormat').value;
+            const percentPosition = document.getElementById('percentPosition').value;
+            const showBrackets = document.getElementById('showBrackets').checked;
+            const animated = document.getElementById('animated').checked;
+
+            const style = styles[currentStyle];
+            const filledCount = Math.round((percent / 100) * totalLength);
+            const emptyCount = totalLength - filledCount;
+
+            let bar = style.filled.repeat(filledCount) + style.empty.repeat(emptyCount);
+            
+            if (showBrackets && style.left && style.right) {
+                bar = style.left + bar + style.right;
+            }
+
+            let label = '';
+            if (displayFormat === 'percent') {
+                label = ` ${percent}%`;
+            } else if (displayFormat === 'fraction') {
+                label = ` ${filledCount}/${totalLength}`;
+            } else if (displayFormat === 'both') {
+                label = ` ${percent}% (${filledCount}/${totalLength})`;
+            }
+
+            let result;
+            if (percentPosition === 'left' && label) {
+                result = label.trim() + ' ' + bar;
+            } else if (percentPosition === 'inside' && label && showBrackets) {
+                const labelTrim = label.trim();
+                const insertPos = Math.floor(bar.length / 2) - Math.floor(labelTrim.length / 2);
+                result = bar.slice(0, insertPos) + labelTrim + bar.slice(insertPos + labelTrim.length);
+            } else {
+                result = bar + label;
+            }
+
+            if (animated && percent < 100) {
+                result += ' ⏳';
+            } else if (animated && percent === 100) {
+                result += ' ✅';
+            }
+
+            return result;
+        }
+
+        function updateProgress() {
+            const progress = document.getElementById('progress').value;
+            document.getElementById('progressValue').textContent = progress + '%';
+            document.getElementById('preview').textContent = generateProgressBar(parseInt(progress));
+        }
+
+        function generateSingle() {
+            const progress = parseInt(document.getElementById('progress').value);
+            document.getElementById('output').textContent = generateProgressBar(progress);
+        }
+
+        function generateBatch() {
+            const start = parseInt(document.getElementById('batchStart').value) || 0;
+            const end = parseInt(document.getElementById('batchEnd').value) || 100;
+            const step = parseInt(document.getElementById('batchStep').value) || 10;
+
+            let results = [];
+            for (let p = start; p <= end; p += step) {
+                results.push(generateProgressBar(Math.min(p, 100)));
+            }
+
+            document.getElementById('output').textContent = results.join('\n');
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                alert('已复制到剪贴板！');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = output;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('已复制到剪贴板！');
+            });
+        }
+
+        function clearAll() {
+            document.getElementById('progress').value = 50;
+            document.getElementById('totalLength').value = 20;
+            document.getElementById('displayFormat').value = 'percent';
+            document.getElementById('percentPosition').value = 'right';
+            document.getElementById('showBrackets').checked = true;
+            document.getElementById('animated').checked = false;
+            document.getElementById('batchStart').value = 0;
+            document.getElementById('batchEnd').value = 100;
+            document.getElementById('batchStep').value = 10;
+            currentStyle = 'ascii';
+            document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-style="ascii"]').classList.add('active');
+            updateProgress();
+            document.getElementById('output').textContent = '点击"生成进度条"查看结果';
+        }
+
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>

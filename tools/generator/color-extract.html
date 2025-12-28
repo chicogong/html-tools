@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调色板提取器 - Color Palette Extractor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root { --primary-color: #14b8a6; }
+        body { min-height: 100vh; padding: 2rem 1rem; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        h1 { margin: 0; font-size: 1.75rem; }
+        
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--pico-muted-border-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .upload-section {
+            background: var(--pico-card-background-color);
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-section:hover {
+            border-color: var(--primary-color);
+            background: var(--pico-secondary-background);
+        }
+        
+        .upload-section.dragover {
+            border-color: var(--primary-color);
+            background: rgba(20, 184, 166, 0.1);
+        }
+        
+        .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .upload-section input { display: none; }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+        
+        .image-panel {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .image-preview {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .image-preview canvas {
+            display: none;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .controls-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        
+        .controls-row input[type="range"] { width: 150px; margin: 0; }
+        
+        .palette-panel {
+            background: var(--pico-card-background-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .color-list { margin-bottom: 1.5rem; }
+        
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .color-item:hover { transform: translateX(4px); }
+        
+        .color-swatch {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .color-info { flex: 1; }
+        .color-hex { font-family: monospace; font-weight: bold; font-size: 1rem; }
+        .color-rgb { font-size: 0.8rem; color: var(--pico-muted-color); }
+        .color-percent { font-size: 0.75rem; color: var(--pico-muted-color); }
+        
+        .palette-preview {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 60px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .palette-preview .segment { flex: 1; }
+        
+        .export-section { margin-top: 1.5rem; }
+        .export-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        .output-code {
+            background: var(--pico-secondary-background);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            word-break: break-all;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--pico-muted-color);
+        }
+        
+        @media (max-width: 900px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>调色板提取器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+        </header>
+        
+        <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">🖼️</div>
+            <h3>点击或拖拽上传图片</h3>
+            <p>支持 JPG, PNG, GIF, WebP 格式</p>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+        
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="image-panel">
+                <h3>原图预览</h3>
+                <div class="image-preview">
+                    <img id="previewImage" src="" alt="Preview">
+                    <canvas id="imageCanvas"></canvas>
+                </div>
+                
+                <div class="controls-row">
+                    <label>
+                        提取颜色数:
+                        <input type="range" id="colorCount" min="3" max="12" value="6" onchange="extractColors()">
+                        <span id="colorCountValue">6</span>
+                    </label>
+                </div>
+                
+                <div class="controls-row">
+                    <button onclick="document.getElementById('fileInput').click()">更换图片</button>
+                    <button class="secondary" onclick="extractColors()">重新提取</button>
+                </div>
+            </div>
+            
+            <div class="palette-panel">
+                <h3>提取的颜色</h3>
+                
+                <div class="palette-preview" id="palettePreview"></div>
+                
+                <div class="color-list" id="colorList">
+                    <div class="empty-state">上传图片后将显示提取的颜色</div>
+                </div>
+                
+                <div class="export-section">
+                    <div class="export-buttons">
+                        <button onclick="copyAllColors()">复制全部颜色</button>
+                        <button class="secondary" onclick="copyCSS()">复制 CSS 变量</button>
+                        <button class="secondary" onclick="downloadPalette()">下载色板图</button>
+                    </div>
+                    
+                    <div class="output-code" id="outputCode"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let extractedColors = [];
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            html.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+        
+        // Drag and drop handling
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        
+        uploadSection.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+        });
+        
+        uploadSection.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        });
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                loadImage(file);
+            }
+        }
+        
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('previewImage');
+                img.onload = function() {
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'grid';
+                    extractColors();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function extractColors() {
+            const img = document.getElementById('previewImage');
+            const canvas = document.getElementById('imageCanvas');
+            const ctx = canvas.getContext('2d');
+            const colorCount = parseInt(document.getElementById('colorCount').value);
+            
+            document.getElementById('colorCountValue').textContent = colorCount;
+            
+            // Draw image to canvas
+            const maxSize = 200;
+            const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight);
+            canvas.width = img.naturalWidth * scale;
+            canvas.height = img.naturalHeight * scale;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Get pixel data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            // Collect all colors with frequency
+            const colorMap = {};
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = Math.round(pixels[i] / 16) * 16;
+                const g = Math.round(pixels[i + 1] / 16) * 16;
+                const b = Math.round(pixels[i + 2] / 16) * 16;
+                const key = r + ',' + g + ',' + b;
+                colorMap[key] = (colorMap[key] || 0) + 1;
+            }
+            
+            // Sort by frequency and get top colors
+            const sortedColors = Object.entries(colorMap)
+                .sort(function(a, b) { return b[1] - a[1]; });
+            
+            // Use k-means like clustering to get distinct colors
+            const totalPixels = pixels.length / 4;
+            extractedColors = [];
+            
+            for (let i = 0; i < sortedColors.length && extractedColors.length < colorCount; i++) {
+                const rgb = sortedColors[i][0].split(',').map(Number);
+                const frequency = sortedColors[i][1];
+                
+                // Check if this color is distinct enough from existing colors
+                let isDistinct = true;
+                for (let j = 0; j < extractedColors.length; j++) {
+                    const existing = extractedColors[j].rgb;
+                    const distance = Math.sqrt(
+                        Math.pow(rgb[0] - existing[0], 2) +
+                        Math.pow(rgb[1] - existing[1], 2) +
+                        Math.pow(rgb[2] - existing[2], 2)
+                    );
+                    if (distance < 50) {
+                        isDistinct = false;
+                        break;
+                    }
+                }
+                
+                if (isDistinct) {
+                    extractedColors.push({
+                        rgb: rgb,
+                        hex: rgbToHex(rgb[0], rgb[1], rgb[2]),
+                        percent: ((frequency / totalPixels) * 100).toFixed(1)
+                    });
+                }
+            }
+            
+            renderPalette();
+        }
+        
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(function(x) {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+        
+        function renderPalette() {
+            // Render preview bar
+            const preview = document.getElementById('palettePreview');
+            preview.innerHTML = extractedColors.map(function(c) {
+                return '<div class="segment" style="background:' + c.hex + '" title="' + c.hex + '"></div>';
+            }).join('');
+            
+            // Render color list
+            const list = document.getElementById('colorList');
+            list.innerHTML = extractedColors.map(function(c, i) {
+                return '<div class="color-item" onclick="copyColor(\'' + c.hex + '\')">' +
+                    '<div class="color-swatch" style="background:' + c.hex + '"></div>' +
+                    '<div class="color-info">' +
+                    '<div class="color-hex">' + c.hex.toUpperCase() + '</div>' +
+                    '<div class="color-rgb">rgb(' + c.rgb.join(', ') + ')</div>' +
+                    '<div class="color-percent">占比: ' + c.percent + '%</div>' +
+                    '</div></div>';
+            }).join('');
+            
+            // Update output
+            document.getElementById('outputCode').textContent = extractedColors.map(function(c) {
+                return c.hex;
+            }).join(', ');
+        }
+        
+        function copyColor(hex) {
+            navigator.clipboard.writeText(hex).then(function() {
+                showToast('颜色 ' + hex + ' 已复制');
+            });
+        }
+        
+        function copyAllColors() {
+            const colors = extractedColors.map(function(c) { return c.hex; }).join(', ');
+            navigator.clipboard.writeText(colors).then(function() {
+                showToast('所有颜色已复制');
+            });
+        }
+        
+        function copyCSS() {
+            const css = extractedColors.map(function(c, i) {
+                return '  --color-' + (i + 1) + ': ' + c.hex + ';';
+            }).join('\n');
+            const fullCSS = ':root {\n' + css + '\n}';
+            navigator.clipboard.writeText(fullCSS).then(function() {
+                showToast('CSS 变量已复制');
+            });
+        }
+        
+        function downloadPalette() {
+            const canvas = document.createElement('canvas');
+            const count = extractedColors.length;
+            canvas.width = count * 100;
+            canvas.height = 150;
+            const ctx = canvas.getContext('2d');
+            
+            extractedColors.forEach(function(c, i) {
+                ctx.fillStyle = c.hex;
+                ctx.fillRect(i * 100, 0, 100, 100);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(i * 100, 100, 100, 50);
+                
+                ctx.fillStyle = '#333333';
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(c.hex.toUpperCase(), i * 100 + 50, 125);
+                ctx.font = '9px sans-serif';
+                ctx.fillText(c.percent + '%', i * 100 + 50, 140);
+            });
+            
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'extracted-palette.png';
+            a.click();
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:12px 24px;border-radius:8px;z-index:1000;';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 2000);
+        }
+    </script>
+</body>
+</html>

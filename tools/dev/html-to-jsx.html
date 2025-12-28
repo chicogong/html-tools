@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 转 JSX/React 转换器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --editor-height: 450px;
+        }
+        .container {
+            max-width: 1400px;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-panel label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        textarea {
+            height: var(--editor-height);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .button-group button {
+            margin: 0;
+        }
+        .options-panel {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        .options-panel label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+            cursor: pointer;
+        }
+        .options-panel input[type="checkbox"] {
+            margin: 0;
+        }
+        .stats {
+            font-size: 0.875rem;
+            color: var(--pico-muted-color);
+            margin-top: 0.5rem;
+        }
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+        }
+        .conversion-rules {
+            margin-top: 1rem;
+        }
+        .conversion-rules table {
+            font-size: 0.875rem;
+        }
+        .conversion-rules code {
+            background: var(--pico-code-background-color);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="../../index.html" style="display:inline-block;margin-bottom:1rem;color:var(--pico-primary);text-decoration:none;">← 返回首页</a>
+        <header>
+            <h1>HTML 转 JSX/React 转换器</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        </header>
+
+        <div class="options-panel">
+            <label>
+                <input type="checkbox" id="opt-component" checked>
+                生成完整组件
+            </label>
+            <label>
+                <input type="checkbox" id="opt-typescript">
+                使用 TypeScript
+            </label>
+            <label>
+                <input type="checkbox" id="opt-arrow">
+                使用箭头函数
+            </label>
+            <label>
+                <input type="checkbox" id="opt-memo">
+                使用 React.memo
+            </label>
+            <label>
+                组件名称:
+                <input type="text" id="component-name" value="MyComponent" style="width: 150px; margin: 0; padding: 0.3rem;">
+            </label>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <label for="html-input">HTML 输入</label>
+                <textarea id="html-input" placeholder="在此输入 HTML 代码..."><div class="container">
+    <header class="header">
+        <nav class="nav">
+            <a href="#home" class="nav-link active">首页</a>
+            <a href="#about" class="nav-link">关于</a>
+        </nav>
+    </header>
+    <main class="content">
+        <h1 class="title">欢迎使用</h1>
+        <p style="color: red; font-size: 16px;">这是一段示例文本</p>
+        <img src="image.jpg" alt="示例图片" class="image">
+        <button onclick="handleClick()" class="btn">点击我</button>
+        <input type="text" value="默认值" readonly disabled>
+        <label for="email">邮箱:</label>
+        <input type="email" id="email" tabindex="1" maxlength="50">
+        <!-- 这是注释 -->
+        <div data-id="123" aria-label="标签"></div>
+    </main>
+</div></textarea>
+                <div class="stats" id="input-stats">字符: 0 | 行数: 0</div>
+            </div>
+
+            <div class="editor-panel">
+                <label for="jsx-output">JSX/React 输出</label>
+                <textarea id="jsx-output" readonly placeholder="转换后的 JSX 将显示在这里..."></textarea>
+                <div class="stats" id="output-stats">字符: 0 | 行数: 0</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="convertToJSX()">转换</button>
+            <button class="secondary" onclick="copyJSX()">复制 JSX</button>
+            <button class="secondary" onclick="downloadJSX()">下载文件</button>
+            <button class="secondary" onclick="clearAll()">清空</button>
+            <button class="secondary" onclick="loadSample()">加载示例</button>
+        </div>
+
+        <details>
+            <summary>转换规则说明</summary>
+            <div class="conversion-rules">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>HTML 属性</th>
+                            <th>JSX 属性</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>class</code></td><td><code>className</code></td><td>CSS 类名</td></tr>
+                        <tr><td><code>for</code></td><td><code>htmlFor</code></td><td>label 关联</td></tr>
+                        <tr><td><code>onclick</code></td><td><code>onClick</code></td><td>事件处理器 (驼峰命名)</td></tr>
+                        <tr><td><code>tabindex</code></td><td><code>tabIndex</code></td><td>Tab 索引</td></tr>
+                        <tr><td><code>maxlength</code></td><td><code>maxLength</code></td><td>最大长度</td></tr>
+                        <tr><td><code>readonly</code></td><td><code>readOnly</code></td><td>只读属性</td></tr>
+                        <tr><td><code>style="..."</code></td><td><code>style={{...}}</code></td><td>内联样式转对象</td></tr>
+                        <tr><td><code>&lt;!-- --&gt;</code></td><td><code>{/* */}</code></td><td>注释语法</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </main>
+
+    <script>
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // 加载保存的主题
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // HTML 属性到 JSX 属性的映射
+        const attributeMap = {
+            'class': 'className',
+            'for': 'htmlFor',
+            'tabindex': 'tabIndex',
+            'readonly': 'readOnly',
+            'maxlength': 'maxLength',
+            'minlength': 'minLength',
+            'colspan': 'colSpan',
+            'rowspan': 'rowSpan',
+            'cellpadding': 'cellPadding',
+            'cellspacing': 'cellSpacing',
+            'frameborder': 'frameBorder',
+            'allowfullscreen': 'allowFullScreen',
+            'autocomplete': 'autoComplete',
+            'autofocus': 'autoFocus',
+            'autoplay': 'autoPlay',
+            'enctype': 'encType',
+            'formaction': 'formAction',
+            'formenctype': 'formEncType',
+            'formmethod': 'formMethod',
+            'formnovalidate': 'formNoValidate',
+            'formtarget': 'formTarget',
+            'hreflang': 'hrefLang',
+            'inputmode': 'inputMode',
+            'srcdoc': 'srcDoc',
+            'srcset': 'srcSet',
+            'usemap': 'useMap',
+            'datetime': 'dateTime',
+            'crossorigin': 'crossOrigin',
+            'charset': 'charSet',
+            'contenteditable': 'contentEditable',
+            'contextmenu': 'contextMenu',
+            'spellcheck': 'spellCheck',
+            'accesskey': 'accessKey',
+            'acceptcharset': 'acceptCharset'
+        };
+
+        // 事件属性映射 (小写到驼峰)
+        const eventMap = {
+            'onclick': 'onClick',
+            'ondblclick': 'onDoubleClick',
+            'onmousedown': 'onMouseDown',
+            'onmouseup': 'onMouseUp',
+            'onmouseover': 'onMouseOver',
+            'onmouseout': 'onMouseOut',
+            'onmousemove': 'onMouseMove',
+            'onmouseenter': 'onMouseEnter',
+            'onmouseleave': 'onMouseLeave',
+            'onkeydown': 'onKeyDown',
+            'onkeyup': 'onKeyUp',
+            'onkeypress': 'onKeyPress',
+            'onfocus': 'onFocus',
+            'onblur': 'onBlur',
+            'onchange': 'onChange',
+            'oninput': 'onInput',
+            'onsubmit': 'onSubmit',
+            'onreset': 'onReset',
+            'onscroll': 'onScroll',
+            'onwheel': 'onWheel',
+            'ondrag': 'onDrag',
+            'ondragstart': 'onDragStart',
+            'ondragend': 'onDragEnd',
+            'ondragenter': 'onDragEnter',
+            'ondragleave': 'onDragLeave',
+            'ondragover': 'onDragOver',
+            'ondrop': 'onDrop',
+            'onload': 'onLoad',
+            'onerror': 'onError',
+            'ontouchstart': 'onTouchStart',
+            'ontouchend': 'onTouchEnd',
+            'ontouchmove': 'onTouchMove',
+            'ontouchcancel': 'onTouchCancel',
+            'onanimationstart': 'onAnimationStart',
+            'onanimationend': 'onAnimationEnd',
+            'onanimationiteration': 'onAnimationIteration',
+            'ontransitionend': 'onTransitionEnd',
+            'oncopy': 'onCopy',
+            'oncut': 'onCut',
+            'onpaste': 'onPaste',
+            'onselect': 'onSelect'
+        };
+
+        // 自闭合标签
+        const selfClosingTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+
+        // 转换内联样式为对象
+        function convertStyleToObject(styleString) {
+            if (!styleString) return null;
+            
+            const styles = {};
+            const declarations = styleString.split(';').filter(s => s.trim());
+            
+            declarations.forEach(declaration => {
+                const colonIndex = declaration.indexOf(':');
+                if (colonIndex === -1) return;
+                
+                let property = declaration.substring(0, colonIndex).trim();
+                let value = declaration.substring(colonIndex + 1).trim();
+                
+                // 转换为驼峰命名
+                property = property.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+                
+                // 处理数值
+                if (/^\d+px$/.test(value)) {
+                    value = parseInt(value);
+                } else if (/^\d+$/.test(value)) {
+                    value = parseInt(value);
+                } else {
+                    value = `"${value}"`;
+                }
+                
+                styles[property] = value;
+            });
+            
+            const styleEntries = Object.entries(styles)
+                .map(([key, val]) => `${key}: ${val}`)
+                .join(', ');
+            
+            return `{{ ${styleEntries} }}`;
+        }
+
+        // 转换 HTML 到 JSX
+        function htmlToJsx(html) {
+            let jsx = html;
+            
+            // 转换注释
+            jsx = jsx.replace(/<!--([\s\S]*?)-->/g, '{/*$1*/}');
+            
+            // 处理自闭合标签
+            selfClosingTags.forEach(tag => {
+                const regex = new RegExp(`<${tag}([^>]*?)(?<!/)>`, 'gi');
+                jsx = jsx.replace(regex, `<${tag}$1 />`);
+            });
+            
+            // 转换 class 为 className
+            jsx = jsx.replace(/\bclass=/g, 'className=');
+            
+            // 转换 for 为 htmlFor
+            jsx = jsx.replace(/\bfor=/g, 'htmlFor=');
+            
+            // 转换其他属性
+            Object.entries(attributeMap).forEach(([html, jsxAttr]) => {
+                const regex = new RegExp(`\\b${html}=`, 'gi');
+                jsx = jsx.replace(regex, `${jsxAttr}=`);
+            });
+            
+            // 转换事件处理器
+            Object.entries(eventMap).forEach(([html, jsxEvent]) => {
+                const regex = new RegExp(`\\b${html}=`, 'gi');
+                jsx = jsx.replace(regex, `${jsxEvent}=`);
+            });
+            
+            // 转换布尔属性
+            jsx = jsx.replace(/\b(disabled|checked|selected|required|multiple|hidden|autoFocus|autoPlay|controls|loop|muted|default|defer|async|noValidate|readOnly)(?=[\s>\/])/gi, 
+                (match) => {
+                    const camelCase = match.charAt(0).toLowerCase() + match.slice(1);
+                    return `${camelCase}={true}`;
+                });
+            
+            // 转换内联样式
+            jsx = jsx.replace(/style="([^"]*)"/g, (match, styleContent) => {
+                const styleObj = convertStyleToObject(styleContent);
+                return styleObj ? `style=${styleObj}` : match;
+            });
+            
+            // 将事件处理器的值转换为花括号
+            jsx = jsx.replace(/(on[A-Z][a-zA-Z]*)="([^"]*)"/g, '$1={$2}');
+            
+            return jsx;
+        }
+
+        // 生成完整组件
+        function generateComponent(jsxContent) {
+            const useComponent = document.getElementById('opt-component').checked;
+            const useTypeScript = document.getElementById('opt-typescript').checked;
+            const useArrow = document.getElementById('opt-arrow').checked;
+            const useMemo = document.getElementById('opt-memo').checked;
+            const componentName = document.getElementById('component-name').value || 'MyComponent';
+            
+            if (!useComponent) {
+                return jsxContent;
+            }
+            
+            let output = '';
+            const typeAnnotation = useTypeScript ? ': React.FC' : '';
+            const importMemo = useMemo ? ', memo' : '';
+            
+            output += `import React${importMemo} from 'react';\n\n`;
+            
+            if (useArrow) {
+                output += `const ${componentName}${typeAnnotation} = () => {\n`;
+                output += `  return (\n`;
+            } else {
+                output += `function ${componentName}()${useTypeScript ? ': JSX.Element' : ''} {\n`;
+                output += `  return (\n`;
+            }
+            
+            // 缩进 JSX 内容
+            const indentedJsx = jsxContent.split('\n').map(line => '    ' + line).join('\n');
+            output += indentedJsx + '\n';
+            
+            output += `  );\n`;
+            output += `}${useArrow ? ';' : ''}\n\n`;
+            
+            if (useMemo) {
+                output += `export default memo(${componentName});\n`;
+            } else {
+                output += `export default ${componentName};\n`;
+            }
+            
+            return output;
+        }
+
+        // 转换
+        function convertToJSX() {
+            const input = document.getElementById('html-input').value;
+            const jsx = htmlToJsx(input);
+            const output = generateComponent(jsx);
+            
+            document.getElementById('jsx-output').value = output;
+            updateStats();
+        }
+
+        // 更新统计
+        function updateStats() {
+            const input = document.getElementById('html-input').value;
+            const output = document.getElementById('jsx-output').value;
+            
+            document.getElementById('input-stats').textContent = 
+                `字符: ${input.length} | 行数: ${input.split('\n').length}`;
+            document.getElementById('output-stats').textContent = 
+                `字符: ${output.length} | 行数: ${output.split('\n').length}`;
+        }
+
+        // 复制
+        function copyJSX() {
+            const jsx = document.getElementById('jsx-output').value;
+            navigator.clipboard.writeText(jsx).then(() => {
+                alert('JSX 代码已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                const textarea = document.getElementById('jsx-output');
+                textarea.select();
+                document.execCommand('copy');
+                alert('JSX 代码已复制到剪贴板！');
+            });
+        }
+
+        // 下载
+        function downloadJSX() {
+            const jsx = document.getElementById('jsx-output').value;
+            const useTypeScript = document.getElementById('opt-typescript').checked;
+            const componentName = document.getElementById('component-name').value || 'MyComponent';
+            const ext = useTypeScript ? 'tsx' : 'jsx';
+            
+            const blob = new Blob([jsx], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${componentName}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 清空
+        function clearAll() {
+            document.getElementById('html-input').value = '';
+            document.getElementById('jsx-output').value = '';
+            updateStats();
+        }
+
+        // 加载示例
+        function loadSample() {
+            const sample = `<div class="app">
+    <header class="header">
+        <h1 class="title">我的应用</h1>
+        <nav class="nav">
+            <a href="#home" class="nav-link active">首页</a>
+            <a href="#about" class="nav-link">关于</a>
+            <a href="#contact" class="nav-link">联系</a>
+        </nav>
+    </header>
+    
+    <main class="main-content">
+        <section class="hero" style="background-color: #f5f5f5; padding: 20px;">
+            <h2>欢迎来到我的网站</h2>
+            <p style="color: #666; font-size: 14px;">这是一段描述文字</p>
+            <button onclick="handleClick()" class="btn primary">开始使用</button>
+        </section>
+        
+        <form class="contact-form" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="name">姓名:</label>
+                <input type="text" id="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="email">邮箱:</label>
+                <input type="email" id="email" class="form-input" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label for="message">留言:</label>
+                <textarea id="message" class="form-textarea" rows="5"></textarea>
+            </div>
+            <button type="submit" class="btn" disabled>提交</button>
+        </form>
+        
+        <!-- 图片展示区 -->
+        <div class="gallery">
+            <img src="photo1.jpg" alt="图片1" class="gallery-img">
+            <img src="photo2.jpg" alt="图片2" class="gallery-img">
+        </div>
+    </main>
+    
+    <footer class="footer">
+        <p>&copy; 2024 我的应用</p>
+    </footer>
+</div>`;
+            document.getElementById('html-input').value = sample;
+            convertToJSX();
+        }
+
+        // 实时转换
+        document.getElementById('html-input').addEventListener('input', convertToJSX);
+        document.querySelectorAll('.options-panel input').forEach(input => {
+            input.addEventListener('change', convertToJSX);
+        });
+        document.getElementById('component-name').addEventListener('input', convertToJSX);
+
+        // 初始化
+        loadTheme();
+        convertToJSX();
+    </script>
+</body>
+</html>

@@ -2,11 +2,13 @@
 /**
  * 工具列表同步脚本
  * 读取 tools.json 并更新 index.html 中的 TOOLS 和 CATEGORIES 数组
+ * 同时更新 GitHub 仓库描述中的工具数量
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -158,6 +160,40 @@ function main() {
     if (categories[cat] && groupedTools[cat]) {
       console.log(`   ${categories[cat].icon || '📦'} ${categories[cat].name}: ${groupedTools[cat].length}`);
     }
+  }
+  
+  // 更新 GitHub 仓库描述
+  updateGitHubDescription(toolCount);
+}
+
+/**
+ * 更新 GitHub 仓库描述中的工具数量
+ */
+function updateGitHubDescription(toolCount) {
+  try {
+    // 获取当前仓库描述
+    const result = execSync('gh repo view --json description -q .description', { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    const currentDesc = result.trim();
+    
+    // 替换描述中的工具数量 (匹配 "数字+" 格式)
+    const newDesc = currentDesc.replace(/\d+\+\s*纯前端/, `${toolCount}+ 纯前端`);
+    
+    if (newDesc !== currentDesc) {
+      // 更新仓库描述 - 使用数组参数避免 shell 注入
+      execSync('gh repo edit --description ' + JSON.stringify(newDesc), {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      console.log(`\n✅ Updated GitHub repo description: ${toolCount}+ 纯前端在线工具集`);
+    } else {
+      console.log(`\n📋 GitHub repo description already up to date`);
+    }
+  } catch {
+    // gh CLI 可能未安装或未认证，静默忽略
+    console.log('\n⚠️  Could not update GitHub repo description (gh CLI not available or not authenticated)');
   }
 }
 

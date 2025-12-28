@@ -76,16 +76,17 @@ function main() {
     groupedTools[tool.category].push(tool);
   }
   
-  // 生成 CATEGORIES 数组（单行格式）
+  // 生成 CATEGORIES 数组（单行格式，包含 icon）
   const categoriesItems = [
-    "      { id: 'all', name: '全部' },",
-    "      { id: 'favorites', name: '⭐ 收藏' },"
+    "      { id: 'all', name: '全部', icon: '🏠' },",
+    "      { id: 'favorites', name: '收藏', icon: '⭐' },"
   ];
   
   for (const catId of CATEGORY_ORDER) {
     const cat = categories[catId];
     if (cat) {
-      categoriesItems.push(`      { id: '${catId}', name: '${escapeString(cat.name)}' },`);
+      const icon = escapeString(cat.icon || '📦');
+      categoriesItems.push(`      { id: '${catId}', name: '${escapeString(cat.name)}', icon: '${icon}' },`);
     }
   }
   

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>骰子模拟器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --border: #2a2a3a;
+            --success: #4ade80;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent: #4f46e5;
+            --accent-hover: #6366f1;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 5px; color: #fff; }
+        .header p { font-size: 14px; opacity: 0.9; color: #fff; }
+        .theme-toggle {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .dice-area {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dice-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            perspective: 1000px;
+        }
+        .dice {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s;
+        }
+        .dice.rolling {
+            animation: roll 0.5s ease-out;
+        }
+        @keyframes roll {
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            25% { transform: rotateX(90deg) rotateY(90deg); }
+            50% { transform: rotateX(180deg) rotateY(180deg); }
+            75% { transform: rotateX(270deg) rotateY(270deg); }
+            100% { transform: rotateX(360deg) rotateY(360deg); }
+        }
+        .dice-face {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #fff, #e6e6e6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #1a1a2e;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1), 0 4px 15px rgba(0,0,0,0.2);
+            border: 3px solid #ddd;
+        }
+        [data-theme="light"] .dice-face {
+            background: linear-gradient(145deg, #fff, #f0f0f0);
+        }
+        .dice-dots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            padding: 12px;
+            width: 100%;
+            height: 100%;
+        }
+        .dot {
+            width: 14px;
+            height: 14px;
+            background: #1a1a2e;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .dot.visible { opacity: 1; }
+        /* D6 点位布局 */
+        .dice-1 .dot:nth-child(5) { opacity: 1; }
+        .dice-2 .dot:nth-child(1), .dice-2 .dot:nth-child(9) { opacity: 1; }
+        .dice-3 .dot:nth-child(1), .dice-3 .dot:nth-child(5), .dice-3 .dot:nth-child(9) { opacity: 1; }
+        .dice-4 .dot:nth-child(1), .dice-4 .dot:nth-child(3), .dice-4 .dot:nth-child(7), .dice-4 .dot:nth-child(9) { opacity: 1; }
+        .dice-5 .dot:nth-child(1), .dice-5 .dot:nth-child(3), .dice-5 .dot:nth-child(5), .dice-5 .dot:nth-child(7), .dice-5 .dot:nth-child(9) { opacity: 1; }
+        .dice-6 .dot:nth-child(1), .dice-6 .dot:nth-child(3), .dice-6 .dot:nth-child(4), .dice-6 .dot:nth-child(6), .dice-6 .dot:nth-child(7), .dice-6 .dot:nth-child(9) { opacity: 1; }
+        .result-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--accent);
+            margin: 20px 0;
+            min-height: 60px;
+        }
+        .result-breakdown {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .roll-btn {
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        .roll-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+        .roll-btn:active {
+            transform: translateY(0);
+        }
+        .roll-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .controls {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .control-row:last-child { border-bottom: none; }
+        .control-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .control-value {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .num-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .num-btn:hover {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .num-display {
+            font-size: 20px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+        .dice-type-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .dice-type-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dice-type-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .dice-type-btn:hover:not(.active) {
+            border-color: var(--accent);
+        }
+        .stats-panel {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .stats-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        .history-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .shake-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 15px;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .dice { width: 60px; height: 60px; }
+            .dice-face { width: 60px; height: 60px; font-size: 28px; }
+            .dice-dots { padding: 8px; gap: 4px; }
+            .dot { width: 10px; height: 10px; }
+            .result-display { font-size: 36px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎲 骰子模拟器</h1>
+        <p>支持多种骰子 · 真正随机</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-row">
+                <span class="control-label">骰子类型</span>
+                <div class="dice-type-selector">
+                    <button class="dice-type-btn active" data-sides="6">D6</button>
+                    <button class="dice-type-btn" data-sides="4">D4</button>
+                    <button class="dice-type-btn" data-sides="8">D8</button>
+                    <button class="dice-type-btn" data-sides="10">D10</button>
+                    <button class="dice-type-btn" data-sides="12">D12</button>
+                    <button class="dice-type-btn" data-sides="20">D20</button>
+                    <button class="dice-type-btn" data-sides="100">D100</button>
+                </div>
+            </div>
+            <div class="control-row">
+                <span class="control-label">骰子数量</span>
+                <div class="control-value">
+                    <button class="num-btn" onclick="changeDiceCount(-1)">−</button>
+                    <span class="num-display" id="diceCount">1</span>
+                    <button class="num-btn" onclick="changeDiceCount(1)">+</button>
+                </div>
+            </div>
+            <div class="control-row">
+                <span class="control-label">修正值</span>
+                <div class="control-value">
+                    <button class="num-btn" onclick="changeModifier(-1)">−</button>
+                    <span class="num-display" id="modifier">+0</span>
+                    <button class="num-btn" onclick="changeModifier(1)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="dice-area">
+            <div class="dice-container" id="diceContainer"></div>
+            <div class="result-breakdown" id="resultBreakdown"></div>
+            <div class="result-display" id="resultDisplay">-</div>
+            <button class="roll-btn" id="rollBtn" onclick="rollDice()">🎲 掷骰子</button>
+            <div class="shake-hint">💡 也可以摇动手机来掷骰子</div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-title">📊 统计数据</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRolls">0</div>
+                    <div class="stat-label">总投掷次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSum">0</div>
+                    <div class="stat-label">累计点数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="maxRoll">-</div>
+                    <div class="stat-label">最大值</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="minRoll">-</div>
+                    <div class="stat-label">最小值</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgRoll">-</div>
+                    <div class="stat-label">平均值</div>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <div class="stats-title" style="margin-bottom:10px;">
+                    <span>📜 历史记录</span>
+                    <button style="margin-left:auto;background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:12px;" onclick="clearStats()">清空</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <span style="color:var(--text-secondary);font-size:13px;">暂无记录</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let diceSides = 6;
+        let diceCount = 1;
+        let modifier = 0;
+        let isRolling = false;
+        
+        // 统计数据
+        let stats = JSON.parse(localStorage.getItem('diceStats') || '{"totalRolls":0,"totalSum":0,"max":null,"min":null,"history":[]}');
+        
+        // 音频上下文
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playRollSound() {
+            initAudio();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.frequency.value = 200 + Math.random() * 100;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // 加密安全随机数
+        function secureRandom() {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] / (0xFFFFFFFF + 1);
+        }
+
+        function rollSingleDice() {
+            return Math.floor(secureRandom() * diceSides) + 1;
+        }
+
+        // 创建骰子DOM
+        function createDiceElement(value) {
+            const dice = document.createElement('div');
+            dice.className = 'dice';
+            
+            const face = document.createElement('div');
+            face.className = 'dice-face';
+            
+            if (diceSides === 6) {
+                // D6 使用点数显示
+                const dots = document.createElement('div');
+                dots.className = `dice-dots dice-${value}`;
+                for (let i = 0; i < 9; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dots.appendChild(dot);
+                }
+                face.appendChild(dots);
+            } else {
+                // 其他骰子显示数字
+                face.textContent = value;
+            }
+            
+            dice.appendChild(face);
+            return dice;
+        }
+
+        function rollDice() {
+            if (isRolling) return;
+            isRolling = true;
+            
+            initAudio();
+            const rollBtn = document.getElementById('rollBtn');
+            rollBtn.disabled = true;
+            
+            const container = document.getElementById('diceContainer');
+            container.innerHTML = '';
+            
+            // 创建骰子
+            const diceElements = [];
+            for (let i = 0; i < diceCount; i++) {
+                const dice = createDiceElement('?');
+                dice.querySelector('.dice-face').textContent = '?';
+                container.appendChild(dice);
+                diceElements.push(dice);
+            }
+            
+            // 滚动动画
+            let rollCount = 0;
+            const maxRolls = 15;
+            const rollInterval = setInterval(() => {
+                playRollSound();
+                diceElements.forEach(dice => {
+                    dice.classList.add('rolling');
+                    const tempValue = rollSingleDice();
+                    const face = dice.querySelector('.dice-face');
+                    
+                    if (diceSides === 6) {
+                        face.innerHTML = '';
+                        const dots = document.createElement('div');
+                        dots.className = `dice-dots dice-${tempValue}`;
+                        for (let i = 0; i < 9; i++) {
+                            const dot = document.createElement('div');
+                            dot.className = 'dot';
+                            dots.appendChild(dot);
+                        }
+                        face.appendChild(dots);
+                    } else {
+                        face.textContent = tempValue;
+                    }
+                });
+                
+                rollCount++;
+                if (rollCount >= maxRolls) {
+                    clearInterval(rollInterval);
+                    
+                    // 最终结果
+                    const results = [];
+                    diceElements.forEach(dice => {
+                        const finalValue = rollSingleDice();
+                        results.push(finalValue);
+                        
+                        const face = dice.querySelector('.dice-face');
+                        if (diceSides === 6) {
+                            face.innerHTML = '';
+                            const dots = document.createElement('div');
+                            dots.className = `dice-dots dice-${finalValue}`;
+                            for (let i = 0; i < 9; i++) {
+                                const dot = document.createElement('div');
+                                dot.className = 'dot';
+                                dots.appendChild(dot);
+                            }
+                            face.appendChild(dots);
+                        } else {
+                            face.textContent = finalValue;
+                        }
+                        
+                        dice.classList.remove('rolling');
+                    });
+                    
+                    // 计算结果
+                    const sum = results.reduce((a, b) => a + b, 0);
+                    const total = sum + modifier;
+                    
+                    // 显示结果
+                    const breakdown = document.getElementById('resultBreakdown');
+                    if (diceCount > 1 || modifier !== 0) {
+                        let text = results.join(' + ');
+                        if (modifier !== 0) {
+                            text += ` ${modifier >= 0 ? '+' : ''}${modifier}`;
+                        }
+                        breakdown.textContent = text;
+                    } else {
+                        breakdown.textContent = '';
+                    }
+                    
+                    document.getElementById('resultDisplay').textContent = total;
+                    
+                    // 更新统计
+                    updateStats(total);
+                    
+                    isRolling = false;
+                    rollBtn.disabled = false;
+                }
+            }, 80);
+        }
+
+        function updateStats(result) {
+            stats.totalRolls++;
+            stats.totalSum += result;
+            
+            if (stats.max === null || result > stats.max) stats.max = result;
+            if (stats.min === null || result < stats.min) stats.min = result;
+            
+            stats.history.unshift({
+                value: result,
+                dice: `${diceCount}D${diceSides}${modifier !== 0 ? (modifier > 0 ? '+' : '') + modifier : ''}`
+            });
+            if (stats.history.length > 50) stats.history.pop();
+            
+            localStorage.setItem('diceStats', JSON.stringify(stats));
+            renderStats();
+        }
+
+        function renderStats() {
+            document.getElementById('totalRolls').textContent = stats.totalRolls;
+            document.getElementById('totalSum').textContent = stats.totalSum;
+            document.getElementById('maxRoll').textContent = stats.max !== null ? stats.max : '-';
+            document.getElementById('minRoll').textContent = stats.min !== null ? stats.min : '-';
+            document.getElementById('avgRoll').textContent = stats.totalRolls > 0 
+                ? (stats.totalSum / stats.totalRolls).toFixed(1) 
+                : '-';
+            
+            const historyList = document.getElementById('historyList');
+            if (stats.history.length === 0) {
+                historyList.innerHTML = '<span style="color:var(--text-secondary);font-size:13px;">暂无记录</span>';
+            } else {
+                historyList.innerHTML = stats.history.slice(0, 20).map(h => 
+                    `<span class="history-item">${h.dice}: ${h.value}</span>`
+                ).join('');
+            }
+        }
+
+        function clearStats() {
+            stats = { totalRolls: 0, totalSum: 0, max: null, min: null, history: [] };
+            localStorage.setItem('diceStats', JSON.stringify(stats));
+            renderStats();
+        }
+
+        function changeDiceCount(delta) {
+            diceCount = Math.max(1, Math.min(10, diceCount + delta));
+            document.getElementById('diceCount').textContent = diceCount;
+        }
+
+        function changeModifier(delta) {
+            modifier = Math.max(-20, Math.min(20, modifier + delta));
+            document.getElementById('modifier').textContent = modifier >= 0 ? `+${modifier}` : modifier;
+        }
+
+        // 骰子类型选择
+        document.querySelectorAll('.dice-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.dice-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                diceSides = parseInt(btn.dataset.sides);
+                document.getElementById('diceContainer').innerHTML = '';
+                document.getElementById('resultDisplay').textContent = '-';
+                document.getElementById('resultBreakdown').textContent = '';
+            });
+        });
+
+        // 摇动检测
+        let lastShake = 0;
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                if (acc) {
+                    const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+                    if (total > 35 && Date.now() - lastShake > 1000) {
+                        lastShake = Date.now();
+                        rollDice();
+                    }
+                }
+            });
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                rollDice();
+            }
+        });
+
+        function toggleTheme() {
+            const body = document.body;
+            const current = body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        // 初始化
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        renderStats();
+    </script>
+</body>
+</html>

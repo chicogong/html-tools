@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抛硬币 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #f59e0b;
+            --accent-hover: #fbbf24;
+            --border: #2a2a3a;
+            --success: #4ade80;
+            --heads: #fbbf24;
+            --tails: #60a5fa;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent: #d97706;
+            --accent-hover: #f59e0b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24, #fcd34d);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 5px; color: #1a1a2e; }
+        .header p { font-size: 14px; opacity: 0.8; color: #1a1a2e; }
+        .theme-toggle {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .coin-area {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 40px 30px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .coin-container {
+            perspective: 1000px;
+            margin: 30px 0;
+        }
+        .coin {
+            width: 180px;
+            height: 180px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s;
+            cursor: pointer;
+        }
+        .coin.flipping {
+            animation: flip 1s ease-out forwards;
+        }
+        .coin.flipping-tails {
+            animation: flipToTails 1s ease-out forwards;
+        }
+        @keyframes flip {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(1800deg); }
+        }
+        @keyframes flipToTails {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(1980deg); }
+        }
+        .coin-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 
+                inset 0 0 40px rgba(0,0,0,0.2),
+                0 10px 30px rgba(0,0,0,0.3),
+                0 0 0 8px rgba(255,255,255,0.1);
+        }
+        .coin-heads {
+            background: linear-gradient(145deg, #fcd34d, #f59e0b, #d97706);
+            border: 4px solid #b45309;
+        }
+        .coin-tails {
+            background: linear-gradient(145deg, #93c5fd, #60a5fa, #3b82f6);
+            border: 4px solid #1d4ed8;
+            transform: rotateY(180deg);
+        }
+        .coin-inner {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .coin-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+        }
+        .result-text {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            min-height: 45px;
+        }
+        .result-heads { color: var(--heads); }
+        .result-tails { color: var(--tails); }
+        .flip-btn {
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: #1a1a2e;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        .flip-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+        .flip-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .stats-panel {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .stats-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stats-bars {
+            margin-bottom: 20px;
+        }
+        .stat-bar {
+            margin-bottom: 15px;
+        }
+        .stat-bar-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .stat-bar-label { color: var(--text-secondary); }
+        .stat-bar-value { font-weight: bold; }
+        .stat-bar-track {
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+        }
+        .stat-bar-fill-heads {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a2e;
+            min-width: 40px;
+        }
+        .stat-bar-fill-tails {
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            min-width: 40px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        .history-section {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .history-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-clear {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .history-clear:hover { color: var(--accent); }
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .history-item {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .history-heads {
+            background: linear-gradient(145deg, #fbbf24, #f59e0b);
+        }
+        .history-tails {
+            background: linear-gradient(145deg, #60a5fa, #3b82f6);
+        }
+        .streak-display {
+            margin-top: 15px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .streak-value {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        .shake-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🪙 抛硬币</h1>
+        <p>公平随机 · 帮你做决定</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div class="container">
+        <div class="coin-area">
+            <div class="coin-container">
+                <div class="coin" id="coin" onclick="flipCoin()">
+                    <div class="coin-face coin-heads">
+                        <div class="coin-inner">
+                            <span>👑</span>
+                            <span class="coin-label">正面</span>
+                        </div>
+                    </div>
+                    <div class="coin-face coin-tails">
+                        <div class="coin-inner">
+                            <span>🦅</span>
+                            <span class="coin-label">反面</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="result-text" id="resultText">点击硬币开始</div>
+            <button class="flip-btn" id="flipBtn" onclick="flipCoin()">🪙 抛硬币</button>
+            <div class="shake-hint">💡 点击硬币或摇动手机</div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-title">📊 统计概率</div>
+            <div class="stats-bars">
+                <div class="stat-bar">
+                    <div class="stat-bar-header">
+                        <span class="stat-bar-label">正面 vs 反面</span>
+                        <span class="stat-bar-value"><span id="headsCount">0</span> : <span id="tailsCount">0</span></span>
+                    </div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar-fill-heads" id="headsBar" style="width: 50%;">50%</div>
+                        <div class="stat-bar-fill-tails" id="tailsBar" style="width: 50%;">50%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalFlips">0</div>
+                    <div class="stat-label">总次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="headsPercent">-</div>
+                    <div class="stat-label">正面概率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="tailsPercent">-</div>
+                    <div class="stat-label">反面概率</div>
+                </div>
+            </div>
+            <div class="streak-display">
+                当前连续: <span class="streak-value" id="currentStreak">-</span>
+                &nbsp;|&nbsp;
+                最长连续: <span class="streak-value" id="maxStreak">-</span>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">
+                <span>📜 历史记录 (最近50次)</span>
+                <button class="history-clear" onclick="clearHistory()">清空</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <span style="color:var(--text-secondary);font-size:13px;padding:10px;">暂无记录</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isFlipping = false;
+        let stats = JSON.parse(localStorage.getItem('coinStats') || '{"heads":0,"tails":0,"history":[],"currentStreak":0,"currentStreakType":null,"maxStreak":0}');
+
+        // 音频
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playFlipSound() {
+            initAudio();
+            // 硬币翻转音效
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.frequency.value = 800 + Math.random() * 400;
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.05);
+                }, i * 100);
+            }
+        }
+
+        function playResultSound(isHeads) {
+            initAudio();
+            const freq = isHeads ? 523.25 : 392;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = freq;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // 加密安全随机
+        function secureRandom() {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] / (0xFFFFFFFF + 1);
+        }
+
+        function flipCoin() {
+            if (isFlipping) return;
+            isFlipping = true;
+            
+            initAudio();
+            const coin = document.getElementById('coin');
+            const flipBtn = document.getElementById('flipBtn');
+            const resultText = document.getElementById('resultText');
+            
+            flipBtn.disabled = true;
+            resultText.textContent = '...';
+            resultText.className = 'result-text';
+            
+            // 使用加密随机
+            const isHeads = secureRandom() >= 0.5;
+            
+            // 移除之前的动画类
+            coin.classList.remove('flipping', 'flipping-tails');
+            
+            // 强制重绘
+            void coin.offsetWidth;
+            
+            // 添加动画
+            playFlipSound();
+            coin.classList.add(isHeads ? 'flipping' : 'flipping-tails');
+            
+            setTimeout(() => {
+                // 显示结果
+                if (isHeads) {
+                    resultText.textContent = '👑 正面';
+                    resultText.className = 'result-text result-heads';
+                    stats.heads++;
+                } else {
+                    resultText.textContent = '🦅 反面';
+                    resultText.className = 'result-text result-tails';
+                    stats.tails++;
+                }
+                
+                playResultSound(isHeads);
+                
+                // 更新连续记录
+                const resultType = isHeads ? 'heads' : 'tails';
+                if (stats.currentStreakType === resultType) {
+                    stats.currentStreak++;
+                } else {
+                    stats.currentStreakType = resultType;
+                    stats.currentStreak = 1;
+                }
+                if (stats.currentStreak > stats.maxStreak) {
+                    stats.maxStreak = stats.currentStreak;
+                }
+                
+                // 添加历史
+                stats.history.unshift(isHeads ? 'heads' : 'tails');
+                if (stats.history.length > 50) stats.history.pop();
+                
+                localStorage.setItem('coinStats', JSON.stringify(stats));
+                updateUI();
+                
+                isFlipping = false;
+                flipBtn.disabled = false;
+            }, 1000);
+        }
+
+        function updateUI() {
+            const total = stats.heads + stats.tails;
+            
+            document.getElementById('headsCount').textContent = stats.heads;
+            document.getElementById('tailsCount').textContent = stats.tails;
+            document.getElementById('totalFlips').textContent = total;
+            
+            if (total > 0) {
+                const headsP = ((stats.heads / total) * 100).toFixed(1);
+                const tailsP = ((stats.tails / total) * 100).toFixed(1);
+                
+                document.getElementById('headsPercent').textContent = headsP + '%';
+                document.getElementById('tailsPercent').textContent = tailsP + '%';
+                
+                document.getElementById('headsBar').style.width = headsP + '%';
+                document.getElementById('headsBar').textContent = headsP + '%';
+                document.getElementById('tailsBar').style.width = tailsP + '%';
+                document.getElementById('tailsBar').textContent = tailsP + '%';
+            } else {
+                document.getElementById('headsPercent').textContent = '-';
+                document.getElementById('tailsPercent').textContent = '-';
+                document.getElementById('headsBar').style.width = '50%';
+                document.getElementById('headsBar').textContent = '50%';
+                document.getElementById('tailsBar').style.width = '50%';
+                document.getElementById('tailsBar').textContent = '50%';
+            }
+            
+            const streakType = stats.currentStreakType === 'heads' ? '正面' : (stats.currentStreakType === 'tails' ? '反面' : '-');
+            document.getElementById('currentStreak').textContent = stats.currentStreak > 0 ? `${stats.currentStreak}次${streakType}` : '-';
+            document.getElementById('maxStreak').textContent = stats.maxStreak > 0 ? `${stats.maxStreak}次` : '-';
+            
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            if (stats.history.length === 0) {
+                list.innerHTML = '<span style="color:var(--text-secondary);font-size:13px;padding:10px;">暂无记录</span>';
+                return;
+            }
+            list.innerHTML = stats.history.map(h => 
+                `<div class="history-item ${h === 'heads' ? 'history-heads' : 'history-tails'}">${h === 'heads' ? '👑' : '🦅'}</div>`
+            ).join('');
+        }
+
+        function clearHistory() {
+            stats = { heads: 0, tails: 0, history: [], currentStreak: 0, currentStreakType: null, maxStreak: 0 };
+            localStorage.setItem('coinStats', JSON.stringify(stats));
+            document.getElementById('resultText').textContent = '点击硬币开始';
+            document.getElementById('resultText').className = 'result-text';
+            updateUI();
+        }
+
+        // 摇动检测
+        let lastShake = 0;
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                if (acc) {
+                    const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+                    if (total > 35 && Date.now() - lastShake > 1500) {
+                        lastShake = Date.now();
+                        flipCoin();
+                    }
+                }
+            });
+        }
+
+        // 键盘
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                flipCoin();
+            }
+        });
+
+        function toggleTheme() {
+            const body = document.body;
+            const current = body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        // 初始化
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        updateUI();
+    </script>
+</body>
+</html>

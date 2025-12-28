@@ -16,7 +16,7 @@ const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
 const INDEX_HTML = path.join(ROOT_DIR, 'index.html');
 
 // 分类顺序
-const CATEGORY_ORDER = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai'];
+const CATEGORY_ORDER = ['dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 'network', 'calculator', 'converter', 'extractor', 'ai', 'life'];
 
 // 分类中文注释
 const CATEGORY_COMMENTS = {

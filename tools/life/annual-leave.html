@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>年假计算器 - 带薪年休假天数计算</title>
+    <meta name="description" content="根据《职工带薪年休假条例》计算年假天数，支持累计工龄计算、新入职折算、离职折算、未休年假工资补偿计算">
+    <meta name="keywords" content="年假计算,带薪年休假,年假天数,工龄计算,年假补偿,未休年假">
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #fff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --border-color: #e1e8ed;
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a2e;
+                --card-bg: #16213e;
+                --text-primary: #eaf0f6;
+                --text-secondary: #a0aab4;
+                --border-color: #2d3748;
+                --primary-color: #5dade2;
+                --primary-hover: #3498db;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        /* 计算模式选择 */
+        .mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .mode-tab {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .mode-tab:hover {
+            border-color: var(--primary-color);
+        }
+
+        .mode-tab.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* 工龄输入方式 */
+        .input-method {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .method-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .method-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .input-section {
+            display: none;
+        }
+
+        .input-section.show {
+            display: block;
+        }
+
+        /* 结果展示 */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-main {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            border-radius: 16px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .result-value {
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .result-unit {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+
+        .result-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .result-details {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-color);
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .detail-value.highlight {
+            color: var(--primary-color);
+        }
+
+        /* 政策说明 */
+        .policy-box {
+            background: var(--bg-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+
+        .policy-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .policy-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .policy-table th,
+        .policy-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .policy-table th {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .policy-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 补偿计算区 */
+        .compensation-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .compensation-section.show {
+            display: block;
+        }
+
+        .compensation-result {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--danger-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .compensation-result .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--danger-color);
+        }
+
+        .info-note {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 6px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .result-value {
+                font-size: 3rem;
+            }
+            .mode-tabs {
+                flex-direction: column;
+            }
+            .mode-tab {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏖️ 年假计算器</h1>
+        <p class="subtitle">依据《职工带薪年休假条例》计算带薪年休假天数</p>
+
+        <!-- 计算模式 -->
+        <div class="card">
+            <div class="card-title">
+                <span>📋</span> 选择计算场景
+            </div>
+            <div class="mode-tabs">
+                <button class="mode-tab active" data-mode="standard" onclick="switchMode('standard')">
+                    📅 标准年假计算
+                </button>
+                <button class="mode-tab" data-mode="newEntry" onclick="switchMode('newEntry')">
+                    🆕 新入职折算
+                </button>
+                <button class="mode-tab" data-mode="resign" onclick="switchMode('resign')">
+                    👋 离职折算
+                </button>
+                <button class="mode-tab" data-mode="compensation" onclick="switchMode('compensation')">
+                    💰 未休年假补偿
+                </button>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="card">
+            <div class="card-title">
+                <span>✏️</span> 输入信息
+            </div>
+
+            <!-- 工龄输入方式选择 -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label>累计工龄输入方式</label>
+                <div class="input-method">
+                    <button class="method-btn active" data-method="years" onclick="switchInputMethod('years')">直接输入年数</button>
+                    <button class="method-btn" data-method="date" onclick="switchInputMethod('date')">按工作日期计算</button>
+                </div>
+            </div>
+
+            <!-- 直接输入年数 -->
+            <div class="input-section show" id="yearsInput">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>累计工龄（年）</label>
+                        <input type="number" id="workYears" placeholder="输入累计工作年数" min="0" max="50" step="1">
+                        <span class="help-text">包括所有单位的累计工作年限</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按日期计算 -->
+            <div class="input-section" id="dateInput">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>首次参加工作日期</label>
+                        <input type="date" id="firstWorkDate">
+                        <span class="help-text">第一份工作的入职日期</span>
+                    </div>
+                    <div class="form-group">
+                        <label>计算截止日期</label>
+                        <input type="date" id="calcDate">
+                        <span class="help-text">通常为当年12月31日</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新入职折算专用 -->
+            <div class="input-section" id="newEntrySection">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>新单位入职日期</label>
+                        <input type="date" id="entryDate">
+                    </div>
+                    <div class="form-group">
+                        <label>当年剩余天数计算截止日</label>
+                        <input type="date" id="yearEndDate">
+                        <span class="help-text">通常为12月31日</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 离职折算专用 -->
+            <div class="input-section" id="resignSection">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>当年入职日期</label>
+                        <input type="date" id="yearStartDate">
+                        <span class="help-text">当年1月1日或入职日期（取较晚者）</span>
+                    </div>
+                    <div class="form-group">
+                        <label>离职日期</label>
+                        <input type="date" id="resignDate">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 未休年假补偿专用 -->
+            <div class="input-section" id="compensationSection">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>应休年假天数</label>
+                        <input type="number" id="totalLeaveDays" placeholder="应休天数" min="0" max="20">
+                    </div>
+                    <div class="form-group">
+                        <label>已休年假天数</label>
+                        <input type="number" id="usedLeaveDays" placeholder="已休天数" min="0" max="20">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>月工资（元）</label>
+                        <input type="number" id="monthlySalary" placeholder="税前月工资">
+                        <span class="help-text">用于计算日工资（月工资÷21.75）</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="calculate()" style="margin-top: 16px;">
+                🧮 计算年假
+            </button>
+        </div>
+
+        <!-- 计算结果 -->
+        <div class="result-section" id="resultSection">
+            <div class="card">
+                <div class="result-main" id="resultMain">
+                    <div class="result-value" id="resultValue">0</div>
+                    <div class="result-unit">天</div>
+                    <div class="result-label" id="resultLabel">应休年假天数</div>
+                </div>
+
+                <div class="result-details" id="resultDetails">
+                    <!-- 动态生成 -->
+                </div>
+
+                <!-- 补偿计算结果 -->
+                <div class="compensation-result" id="compensationResult" style="display: none;">
+                    <div style="margin-bottom: 8px; color: var(--text-secondary);">未休年假工资补偿</div>
+                    <div class="value" id="compensationValue">¥0</div>
+                    <div class="info-note">
+                        💡 根据规定，用人单位经职工同意不安排年休假或安排的年休假少于应休天数的，应按日工资的300%支付报酬（其中包含正常工作期间的工资收入）。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 政策说明 -->
+        <div class="card">
+            <div class="policy-box">
+                <div class="policy-title">
+                    <span>📜</span> 年假政策标准
+                </div>
+                <table class="policy-table">
+                    <thead>
+                        <tr>
+                            <th>累计工龄</th>
+                            <th>年假天数</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>不满1年</td>
+                            <td>0天</td>
+                            <td>暂无年假资格</td>
+                        </tr>
+                        <tr>
+                            <td>1年 ≤ 工龄 &lt; 10年</td>
+                            <td>5天</td>
+                            <td>基础年假</td>
+                        </tr>
+                        <tr>
+                            <td>10年 ≤ 工龄 &lt; 20年</td>
+                            <td>10天</td>
+                            <td>中级年假</td>
+                        </tr>
+                        <tr>
+                            <td>工龄 ≥ 20年</td>
+                            <td>15天</td>
+                            <td>高级年假</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="info-note" style="margin-top: 12px;">
+                    <strong>注意：</strong>
+                    <ul style="margin: 8px 0 0 16px; line-height: 1.8;">
+                        <li>累计工龄指在所有用人单位的工作年限之和</li>
+                        <li>国家法定休假日、休息日不计入年休假</li>
+                        <li>新入职员工按当年剩余日历天数折算年假（不足1整天不享受）</li>
+                        <li>离职时按当年已过日历天数折算年假</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'standard';
+        let inputMethod = 'years';
+
+        // 初始化日期
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const yearEnd = new Date(today.getFullYear(), 11, 31);
+            const yearStart = new Date(today.getFullYear(), 0, 1);
+            
+            document.getElementById('calcDate').value = yearEnd.toISOString().split('T')[0];
+            document.getElementById('yearEndDate').value = yearEnd.toISOString().split('T')[0];
+            document.getElementById('yearStartDate').value = yearStart.toISOString().split('T')[0];
+            document.getElementById('resignDate').value = today.toISOString().split('T')[0];
+            document.getElementById('entryDate').value = today.toISOString().split('T')[0];
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // 更新标签页状态
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
+
+            // 显示/隐藏对应的输入区域
+            document.getElementById('newEntrySection').classList.toggle('show', mode === 'newEntry');
+            document.getElementById('resignSection').classList.toggle('show', mode === 'resign');
+            document.getElementById('compensationSection').classList.toggle('show', mode === 'compensation');
+
+            // 隐藏结果
+            document.getElementById('resultSection').classList.remove('show');
+        }
+
+        function switchInputMethod(method) {
+            inputMethod = method;
+            
+            document.querySelectorAll('.method-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.method === method);
+            });
+
+            document.getElementById('yearsInput').classList.toggle('show', method === 'years');
+            document.getElementById('dateInput').classList.toggle('show', method === 'date');
+        }
+
+        function getWorkYears() {
+            if (inputMethod === 'years') {
+                return parseFloat(document.getElementById('workYears').value) || 0;
+            } else {
+                const firstDate = new Date(document.getElementById('firstWorkDate').value);
+                const calcDate = new Date(document.getElementById('calcDate').value);
+                
+                if (isNaN(firstDate.getTime()) || isNaN(calcDate.getTime())) {
+                    return 0;
+                }
+
+                const diffTime = calcDate.getTime() - firstDate.getTime();
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                return diffDays / 365;
+            }
+        }
+
+        function getBaseLeaveDays(workYears) {
+            if (workYears < 1) return 0;
+            if (workYears < 10) return 5;
+            if (workYears < 20) return 10;
+            return 15;
+        }
+
+        function calculate() {
+            const workYears = getWorkYears();
+            const baseDays = getBaseLeaveDays(workYears);
+            
+            let resultDays = baseDays;
+            let details = [];
+            let showCompensation = false;
+
+            details.push({ label: '累计工龄', value: workYears.toFixed(1) + ' 年' });
+            details.push({ label: '基准年假', value: baseDays + ' 天' });
+
+            switch (currentMode) {
+                case 'standard':
+                    resultDays = baseDays;
+                    break;
+
+                case 'newEntry': {
+                    const entryDate = new Date(document.getElementById('entryDate').value);
+                    const yearEndDate = new Date(document.getElementById('yearEndDate').value);
+                    
+                    if (isNaN(entryDate.getTime()) || isNaN(yearEndDate.getTime())) {
+                        alert('请填写正确的日期');
+                        return;
+                    }
+
+                    const remainingDays = Math.ceil((yearEndDate - entryDate) / (1000 * 60 * 60 * 24)) + 1;
+                    const yearDays = isLeapYear(entryDate.getFullYear()) ? 366 : 365;
+                    
+                    // 折算公式：(当年度剩余日历天数÷365天)×职工本人全年应享受的年休假天数
+                    resultDays = Math.floor((remainingDays / yearDays) * baseDays);
+                    
+                    details.push({ label: '入职日期', value: formatDate(entryDate) });
+                    details.push({ label: '当年剩余天数', value: remainingDays + ' 天' });
+                    details.push({ label: '折算比例', value: (remainingDays / yearDays * 100).toFixed(1) + '%' });
+                    break;
+                }
+
+                case 'resign': {
+                    const yearStartDate = new Date(document.getElementById('yearStartDate').value);
+                    const resignDate = new Date(document.getElementById('resignDate').value);
+                    
+                    if (isNaN(yearStartDate.getTime()) || isNaN(resignDate.getTime())) {
+                        alert('请填写正确的日期');
+                        return;
+                    }
+
+                    const workedDays = Math.ceil((resignDate - yearStartDate) / (1000 * 60 * 60 * 24)) + 1;
+                    const yearDays = isLeapYear(resignDate.getFullYear()) ? 366 : 365;
+                    
+                    // 折算公式：(当年度已过日历天数÷365天)×职工本人全年应享受的年休假天数
+                    resultDays = Math.floor((workedDays / yearDays) * baseDays);
+                    
+                    details.push({ label: '起始日期', value: formatDate(yearStartDate) });
+                    details.push({ label: '离职日期', value: formatDate(resignDate) });
+                    details.push({ label: '当年已工作天数', value: workedDays + ' 天' });
+                    details.push({ label: '折算比例', value: (workedDays / yearDays * 100).toFixed(1) + '%' });
+                    break;
+                }
+
+                case 'compensation': {
+                    const totalDays = parseFloat(document.getElementById('totalLeaveDays').value) || 0;
+                    const usedDays = parseFloat(document.getElementById('usedLeaveDays').value) || 0;
+                    const monthlySalary = parseFloat(document.getElementById('monthlySalary').value) || 0;
+                    
+                    const unusedDays = Math.max(0, totalDays - usedDays);
+                    resultDays = unusedDays;
+                    
+                    // 日工资 = 月工资 ÷ 21.75
+                    const dailySalary = monthlySalary / 21.75;
+                    // 补偿 = 未休天数 × 日工资 × 300%（包含正常工资，所以实际额外补偿是200%）
+                    const compensation = unusedDays * dailySalary * 2; // 额外补偿部分
+                    
+                    details.push({ label: '应休年假', value: totalDays + ' 天' });
+                    details.push({ label: '已休年假', value: usedDays + ' 天' });
+                    details.push({ label: '未休年假', value: unusedDays + ' 天', highlight: true });
+                    
+                    if (monthlySalary > 0) {
+                        details.push({ label: '日工资', value: '¥' + dailySalary.toFixed(2) });
+                        showCompensation = true;
+                        document.getElementById('compensationValue').textContent = '¥' + compensation.toFixed(2);
+                    }
+                    break;
+                }
+            }
+
+            // 显示结果
+            document.getElementById('resultSection').classList.add('show');
+            document.getElementById('resultValue').textContent = resultDays;
+            
+            const labelMap = {
+                'standard': '应休年假天数',
+                'newEntry': '当年可享年假（折算）',
+                'resign': '离职前应休年假（折算）',
+                'compensation': '未休年假天数'
+            };
+            document.getElementById('resultLabel').textContent = labelMap[currentMode];
+
+            // 渲染详情
+            const detailsHtml = details.map(item => `
+                <div class="detail-item">
+                    <span class="detail-label">${item.label}</span>
+                    <span class="detail-value ${item.highlight ? 'highlight' : ''}">${item.value}</span>
+                </div>
+            `).join('');
+            document.getElementById('resultDetails').innerHTML = detailsHtml;
+
+            // 显示补偿结果
+            document.getElementById('compensationResult').style.display = showCompensation ? 'block' : 'none';
+
+            // 滚动到结果
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+    </script>
+</body>
+</html>

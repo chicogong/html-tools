@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞机大战 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --text-primary: #fff;
+            --text-secondary: #a0a0a0;
+            --accent: #ef4444;
+            --border: #2a2a3a;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #fff;
+            --text-primary: #1a1a2e;
+            --text-secondary: #666;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; color: #fff; margin-bottom: 3px; }
+        .header p { font-size: 12px; opacity: 0.8; color: #fff; }
+        .back-link {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .theme-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+        }
+        .stat-item { text-align: center; }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .game-wrapper {
+            position: relative;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid var(--border);
+        }
+        canvas {
+            display: block;
+            border-radius: 8px;
+            width: 100%;
+            cursor: crosshair;
+        }
+        .overlay {
+            position: absolute;
+            inset: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.9);
+            border-radius: 8px;
+            z-index: 10;
+        }
+        .overlay.hidden { display: none; }
+        .overlay h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: var(--accent);
+        }
+        .overlay p {
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .btn {
+            padding: 12px 30px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            transition: transform 0.2s;
+            margin-top: 15px;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .controls-hint {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>飞机大战</h1>
+        <p>击落敌机获得高分</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="score">0</div>
+                <div class="stat-label">分数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="level">1</div>
+                <div class="stat-label">关卡</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="lives">3</div>
+                <div class="stat-label">生命</div>
+            </div>
+        </div>
+
+        <div class="game-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <div class="overlay" id="overlay">
+                <h2>飞机大战</h2>
+                <p>方向键或触摸移动飞机</p>
+                <p>自动发射子弹</p>
+                <button class="btn" onclick="startGame()">开始游戏</button>
+            </div>
+        </div>
+
+        <div class="controls-hint">
+            方向键移动 / 触摸控制
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = container.clientWidth - 20;
+            canvas.width = width;
+            canvas.height = width * 1.5;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+
+        const player = {
+            x: 0,
+            y: 0,
+            width: 40,
+            height: 50,
+            speed: 6
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+        let enemyTimer = 0;
+        let bulletTimer = 0;
+
+        const keys = {};
+
+        function initGame() {
+            player.x = canvas.width / 2 - player.width / 2;
+            player.y = canvas.height - player.height - 20;
+            bullets = [];
+            enemies = [];
+            particles = [];
+        }
+
+        function spawnEnemy() {
+            const types = [
+                { width: 30, height: 30, speed: 2, hp: 1, points: 10, color: '#22c55e' },
+                { width: 40, height: 35, speed: 1.5, hp: 2, points: 25, color: '#f59e0b' },
+                { width: 50, height: 45, speed: 1, hp: 3, points: 50, color: '#ef4444' }
+            ];
+            const type = types[Math.floor(Math.random() * Math.min(types.length, level))];
+            
+            enemies.push({
+                x: Math.random() * (canvas.width - type.width),
+                y: -type.height,
+                ...type,
+                currentHp: type.hp
+            });
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 30,
+                    color: color
+                });
+            }
+        }
+
+        function update() {
+            // 玩家移动
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.x = Math.max(0, player.x - player.speed);
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+            }
+            if (keys['ArrowUp'] || keys['w']) {
+                player.y = Math.max(0, player.y - player.speed);
+            }
+            if (keys['ArrowDown'] || keys['s']) {
+                player.y = Math.min(canvas.height - player.height, player.y + player.speed);
+            }
+
+            // 自动发射
+            bulletTimer++;
+            if (bulletTimer >= 15) {
+                bullets.push({
+                    x: player.x + player.width / 2 - 3,
+                    y: player.y,
+                    width: 6,
+                    height: 15,
+                    speed: 10
+                });
+                bulletTimer = 0;
+            }
+
+            // 更新子弹
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+                if (bullets[i].y + bullets[i].height < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // 生成敌人
+            enemyTimer++;
+            const spawnRate = Math.max(30, 90 - level * 10);
+            if (enemyTimer >= spawnRate) {
+                spawnEnemy();
+                enemyTimer = 0;
+            }
+
+            // 更新敌人
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                enemy.y += enemy.speed;
+
+                // 敌人出界
+                if (enemy.y > canvas.height) {
+                    enemies.splice(i, 1);
+                    continue;
+                }
+
+                // 子弹碰撞
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const bullet = bullets[j];
+                    if (bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y) {
+                        
+                        bullets.splice(j, 1);
+                        enemy.currentHp--;
+                        
+                        if (enemy.currentHp <= 0) {
+                            createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                            score += enemy.points;
+                            enemies.splice(i, 1);
+                            
+                            // 升级检测
+                            if (score >= level * 200) {
+                                level++;
+                            }
+                            updateStats();
+                        }
+                        break;
+                    }
+                }
+
+                // 玩家碰撞
+                if (enemies[i] && 
+                    player.x < enemy.x + enemy.width &&
+                    player.x + player.width > enemy.x &&
+                    player.y < enemy.y + enemy.height &&
+                    player.y + player.height > enemy.y) {
+                    
+                    createParticles(player.x + player.width / 2, player.y + player.height / 2, '#00f5d4');
+                    enemies.splice(i, 1);
+                    lives--;
+                    updateStats();
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            // 更新粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // 背景
+            ctx.fillStyle = '#0f0f1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 星星背景
+            ctx.fillStyle = '#ffffff33';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 37 + Date.now() * 0.01) % canvas.width;
+                const y = (i * 23 + Date.now() * 0.02) % canvas.height;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            // 粒子
+            for (const p of particles) {
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+            }
+            ctx.globalAlpha = 1;
+
+            // 子弹
+            ctx.fillStyle = '#fbbf24';
+            for (const bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+
+            // 敌人
+            for (const enemy of enemies) {
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.moveTo(enemy.x + enemy.width / 2, enemy.y + enemy.height);
+                ctx.lineTo(enemy.x, enemy.y);
+                ctx.lineTo(enemy.x + enemy.width / 2, enemy.y + 10);
+                ctx.lineTo(enemy.x + enemy.width, enemy.y);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // 玩家飞机
+            ctx.fillStyle = '#00f5d4';
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width / 2, player.y);
+            ctx.lineTo(player.x, player.y + player.height);
+            ctx.lineTo(player.x + player.width / 2, player.y + player.height - 10);
+            ctx.lineTo(player.x + player.width, player.y + player.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // 机翼
+            ctx.fillStyle = '#00d4aa';
+            ctx.fillRect(player.x - 5, player.y + 25, 15, 8);
+            ctx.fillRect(player.x + player.width - 10, player.y + 25, 15, 8);
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('lives').textContent = lives;
+        }
+
+        function startGame() {
+            score = 0;
+            level = 1;
+            lives = 3;
+            gameRunning = true;
+            overlay.classList.add('hidden');
+            initGame();
+            updateStats();
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.querySelector('#overlay h2').textContent = '游戏结束';
+            document.querySelector('#overlay p').textContent = '最终得分: ' + score;
+            overlay.classList.remove('hidden');
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', function(e) {
+            keys[e.key] = true;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('keyup', function(e) {
+            keys[e.key] = false;
+        });
+
+        // 触摸控制
+        let touchX = null;
+        let touchY = null;
+
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            touchX = e.touches[0].clientX;
+            touchY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            if (touchX === null) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const newX = e.touches[0].clientX;
+            const newY = e.touches[0].clientY;
+            
+            const dx = (newX - touchX) * scaleX;
+            const dy = (newY - touchY) * scaleY;
+            
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x + dx));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y + dy));
+            
+            touchX = newX;
+            touchY = newY;
+        });
+
+        canvas.addEventListener('touchend', function() {
+            touchX = null;
+            touchY = null;
+        });
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        initGame();
+        draw();
+    </script>
+</body>
+</html>

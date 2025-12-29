@@ -20,6 +20,9 @@ const BASE_URL = 'https://tools.realtime-ai.chat/html-tools';
 // 读取 tools.json
 const toolsData = JSON.parse(fs.readFileSync(TOOLS_JSON, 'utf8'));
 
+// Convert tools object to array
+const toolsList = Object.values(toolsData.tools);
+
 // 获取今天的日期
 const today = new Date().toISOString().split('T')[0];
 
@@ -38,7 +41,7 @@ function generateSitemap() {
 
   // 按类别分组工具
   const categories = {};
-  for (const tool of toolsData.tools) {
+  for (const tool of toolsList) {
     if (!categories[tool.category]) {
       categories[tool.category] = [];
     }
@@ -46,7 +49,7 @@ function generateSitemap() {
   }
 
   // 添加每个工具页面
-  for (const tool of toolsData.tools) {
+  for (const tool of toolsList) {
     xml += `
   <url>
     <loc>${BASE_URL}/${tool.path}</loc>
@@ -69,4 +72,4 @@ fs.writeFileSync(SITEMAP_PATH, sitemap, 'utf8');
 
 console.log(`✅ sitemap.xml 已生成`);
 console.log(`   📍 位置: ${SITEMAP_PATH}`);
-console.log(`   📄 页面数: ${toolsData.tools.length + 1}`);
+console.log(`   📄 页面数: ${toolsList.length + 1}`);

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>租房成本计算器 - WebUtils</title>
+  <meta name="description" content="计算租房总成本，包含月租、押金、中介费、物业费等" />
+  <meta name="keywords" content="租房 成本 计算器 月租 押金 中介费" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --border-strong: #3a3a4a;
+      --accent-cyan: #00f5d4;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --accent-blue: #3b82f6;
+      --glow-cyan: rgba(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    [data-theme="light"] {
+      --bg-deep: #fafafa;
+      --bg-surface: #fff;
+      --bg-card: #fff;
+      --bg-input: #f5f5f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-subtle: #e5e5e5;
+      --border-strong: #d5d5d5;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      flex-wrap: wrap;
+    }
+    .breadcrumb a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .breadcrumb a:hover {
+      color: var(--accent-cyan);
+    }
+    .breadcrumb-separator {
+      color: var(--text-muted);
+      user-select: none;
+    }
+    .breadcrumb-current {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+    .back-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .title-section {
+      flex: 1;
+    }
+    .title-section h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--bg-deep);
+    }
+    .title-section .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .main-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      flex: 1;
+    }
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .form-section {
+      margin-bottom: 24px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .input-group {
+      position: relative;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 12px 16px;
+      padding-right: 60px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+    .input-group input::placeholder {
+      color: var(--text-muted);
+    }
+    .input-suffix {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .optional-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .optional-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .optional-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    .optional-toggle {
+      font-size: 0.8rem;
+      color: var(--accent-cyan);
+    }
+    .optional-content {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .optional-content.show {
+      display: block;
+    }
+    .btn-calculate {
+      width: 100%;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--accent-cyan);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-calculate:hover {
+      background: #00dfc4;
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+    .result-section {
+      display: none;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .result-section.show {
+      display: block;
+    }
+    .result-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .result-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card.primary {
+      grid-column: span 2;
+      background: linear-gradient(135deg, rgba(0, 245, 212, 0.1), rgba(59, 130, 246, 0.1));
+      border-color: var(--accent-cyan);
+    }
+    .result-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .result-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .result-card.primary .result-value {
+      font-size: 2rem;
+      color: var(--accent-cyan);
+    }
+    .breakdown-list {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.9rem;
+    }
+    .breakdown-item:last-child {
+      border-bottom: none;
+    }
+    .breakdown-item.total {
+      background: var(--bg-card);
+      font-weight: 600;
+    }
+    .breakdown-label {
+      color: var(--text-secondary);
+    }
+    .breakdown-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-primary);
+    }
+    .breakdown-item.total .breakdown-value {
+      color: var(--accent-cyan);
+    }
+    .chart-section {
+      margin-top: 24px;
+    }
+    .chart-bar {
+      display: flex;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .chart-segment {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    footer a:hover {
+      color: var(--text-primary);
+    }
+    @media (max-width: 640px) {
+      .container {
+        padding: 16px;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      .result-cards {
+        grid-template-columns: 1fr;
+      }
+      .result-card.primary {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  
+  <div class="container">
+    <div class="header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#realestate">房产工具</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">租房成本计算</span>
+      </nav>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+      <div class="title-section">
+        <h1>
+          <span class="title-icon">🏘️</span>
+          租房成本计算器
+        </h1>
+        <p class="desc">计算租期内总成本和月均支出</p>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="form-section">
+        <h3 class="section-title">基本信息</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="monthlyRent">月租金</label>
+            <div class="input-group">
+              <input type="number" id="monthlyRent" placeholder="每月租金" min="0" step="1">
+              <span class="input-suffix">元</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="leaseTerm">租期</label>
+            <div class="input-group">
+              <input type="number" id="leaseTerm" placeholder="租赁期限" min="1" value="12">
+              <span class="input-suffix">月</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="deposit">押金</label>
+            <div class="input-group">
+              <input type="number" id="deposit" placeholder="押金金额" min="0" step="1">
+              <span class="input-suffix">元</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="agencyFee">中介费</label>
+            <div class="input-group">
+              <input type="number" id="agencyFee" placeholder="中介费" min="0" step="1" value="0">
+              <span class="input-suffix">元</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="propertyFee">物业费（月）</label>
+          <div class="input-group">
+            <input type="number" id="propertyFee" placeholder="每月物业费" min="0" step="1" value="0">
+            <span class="input-suffix">元</span>
+          </div>
+        </div>
+
+        <div class="optional-section">
+          <div class="optional-header" id="optionalHeader">
+            <span class="optional-title">其他费用（可选）</span>
+            <span class="optional-toggle" id="optionalToggle">展开</span>
+          </div>
+          <div class="optional-content" id="optionalContent">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="utilities">水电费（月均）</label>
+                <div class="input-group">
+                  <input type="number" id="utilities" placeholder="水电燃气" min="0" step="1" value="0">
+                  <span class="input-suffix">元</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="internet">网络费（月）</label>
+                <div class="input-group">
+                  <input type="number" id="internet" placeholder="宽带费用" min="0" step="1" value="0">
+                  <span class="input-suffix">元</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="parking">停车费（月）</label>
+                <div class="input-group">
+                  <input type="number" id="parking" placeholder="停车费" min="0" step="1" value="0">
+                  <span class="input-suffix">元</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="other">其他费用（月）</label>
+                <div class="input-group">
+                  <input type="number" id="other" placeholder="其他" min="0" step="1" value="0">
+                  <span class="input-suffix">元</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-calculate" id="btnCalculate">计算总成本</button>
+      </div>
+
+      <div class="result-section" id="resultSection">
+        <div class="result-cards">
+          <div class="result-card primary">
+            <div class="result-label">租期总成本</div>
+            <div class="result-value" id="totalCost">¥0</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">月均成本</div>
+            <div class="result-value" id="monthlyCost">¥0</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">首月支出</div>
+            <div class="result-value" id="firstMonth">¥0</div>
+          </div>
+        </div>
+
+        <div class="breakdown-list" id="breakdownList"></div>
+
+        <div class="chart-section">
+          <h3 class="section-title">费用构成</h3>
+          <div class="chart-bar" id="chartBar"></div>
+          <div class="chart-legend" id="chartLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
+        <span>·</span>
+        <span>纯前端 · 无服务器</span>
+        <span>·</span>
+        <a href="../../index.html">WebUtils</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    const optionalHeader = document.getElementById('optionalHeader');
+    const optionalContent = document.getElementById('optionalContent');
+    const optionalToggle = document.getElementById('optionalToggle');
+    const btnCalculate = document.getElementById('btnCalculate');
+    const resultSection = document.getElementById('resultSection');
+
+    optionalHeader.addEventListener('click', function() {
+      const isShow = optionalContent.classList.toggle('show');
+      optionalToggle.textContent = isShow ? '收起' : '展开';
+    });
+
+    function formatMoney(num) {
+      return num.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function calculate() {
+      const monthlyRent = parseFloat(document.getElementById('monthlyRent').value) || 0;
+      const leaseTerm = parseInt(document.getElementById('leaseTerm').value, 10) || 12;
+      const deposit = parseFloat(document.getElementById('deposit').value) || 0;
+      const agencyFee = parseFloat(document.getElementById('agencyFee').value) || 0;
+      const propertyFee = parseFloat(document.getElementById('propertyFee').value) || 0;
+      const utilities = parseFloat(document.getElementById('utilities').value) || 0;
+      const internet = parseFloat(document.getElementById('internet').value) || 0;
+      const parking = parseFloat(document.getElementById('parking').value) || 0;
+      const other = parseFloat(document.getElementById('other').value) || 0;
+
+      if (monthlyRent <= 0) {
+        alert('请输入有效的月租金');
+        return;
+      }
+
+      const totalRent = monthlyRent * leaseTerm;
+      const totalProperty = propertyFee * leaseTerm;
+      const totalUtilities = utilities * leaseTerm;
+      const totalInternet = internet * leaseTerm;
+      const totalParking = parking * leaseTerm;
+      const totalOther = other * leaseTerm;
+
+      const totalCost = totalRent + deposit + agencyFee + totalProperty + totalUtilities + totalInternet + totalParking + totalOther;
+      const effectiveTotal = totalRent + agencyFee + totalProperty + totalUtilities + totalInternet + totalParking + totalOther;
+      const monthlyCost = effectiveTotal / leaseTerm;
+      const firstMonth = monthlyRent + deposit + agencyFee + propertyFee + utilities + internet + parking + other;
+
+      document.getElementById('totalCost').textContent = '¥' + formatMoney(totalCost);
+      document.getElementById('monthlyCost').textContent = '¥' + formatMoney(monthlyCost);
+      document.getElementById('firstMonth').textContent = '¥' + formatMoney(firstMonth);
+
+      const breakdownList = document.getElementById('breakdownList');
+      breakdownList.textContent = '';
+
+      const items = [
+        { label: '租金 (' + leaseTerm + '个月)', value: totalRent, show: true },
+        { label: '押金（可退还）', value: deposit, show: deposit > 0 },
+        { label: '中介费', value: agencyFee, show: agencyFee > 0 },
+        { label: '物业费 (' + leaseTerm + '个月)', value: totalProperty, show: propertyFee > 0 },
+        { label: '水电费 (' + leaseTerm + '个月)', value: totalUtilities, show: utilities > 0 },
+        { label: '网络费 (' + leaseTerm + '个月)', value: totalInternet, show: internet > 0 },
+        { label: '停车费 (' + leaseTerm + '个月)', value: totalParking, show: parking > 0 },
+        { label: '其他费用 (' + leaseTerm + '个月)', value: totalOther, show: other > 0 }
+      ];
+
+      items.forEach(function(item) {
+        if (item.show) {
+          const div = document.createElement('div');
+          div.className = 'breakdown-item';
+
+          const labelSpan = document.createElement('span');
+          labelSpan.className = 'breakdown-label';
+          labelSpan.textContent = item.label;
+
+          const valueSpan = document.createElement('span');
+          valueSpan.className = 'breakdown-value';
+          valueSpan.textContent = '¥' + formatMoney(item.value);
+
+          div.appendChild(labelSpan);
+          div.appendChild(valueSpan);
+          breakdownList.appendChild(div);
+        }
+      });
+
+      const totalDiv = document.createElement('div');
+      totalDiv.className = 'breakdown-item total';
+      const totalLabel = document.createElement('span');
+      totalLabel.className = 'breakdown-label';
+      totalLabel.textContent = '总计';
+      const totalValue = document.createElement('span');
+      totalValue.className = 'breakdown-value';
+      totalValue.textContent = '¥' + formatMoney(totalCost);
+      totalDiv.appendChild(totalLabel);
+      totalDiv.appendChild(totalValue);
+      breakdownList.appendChild(totalDiv);
+
+      const chartData = [
+        { label: '租金', value: totalRent, color: '#00f5d4' },
+        { label: '押金', value: deposit, color: '#fbbf24' },
+        { label: '中介费', value: agencyFee, color: '#f97316' },
+        { label: '物业费', value: totalProperty, color: '#a855f7' },
+        { label: '水电', value: totalUtilities, color: '#3b82f6' },
+        { label: '其他', value: totalInternet + totalParking + totalOther, color: '#6b7280' }
+      ].filter(function(d) { return d.value > 0; });
+
+      const chartBar = document.getElementById('chartBar');
+      chartBar.textContent = '';
+      chartData.forEach(function(d) {
+        const segment = document.createElement('div');
+        segment.className = 'chart-segment';
+        segment.style.width = ((d.value / totalCost) * 100) + '%';
+        segment.style.backgroundColor = d.color;
+        chartBar.appendChild(segment);
+      });
+
+      const chartLegend = document.getElementById('chartLegend');
+      chartLegend.textContent = '';
+      chartData.forEach(function(d) {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+
+        const color = document.createElement('div');
+        color.className = 'legend-color';
+        color.style.backgroundColor = d.color;
+
+        const label = document.createElement('span');
+        label.textContent = d.label + ' ' + ((d.value / totalCost) * 100).toFixed(1) + '%';
+
+        item.appendChild(color);
+        item.appendChild(label);
+        chartLegend.appendChild(item);
+      });
+
+      resultSection.classList.add('show');
+    }
+
+    btnCalculate.addEventListener('click', calculate);
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        const btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

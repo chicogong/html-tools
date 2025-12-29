@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爆仓价格计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f7931a; --accent2: #ff9500; --green: #00d395; --red: #ff6b6b; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #1a1a1a; --text2: #666; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(247, 147, 26, 0.4); }
+        .highlight { background: linear-gradient(135deg, var(--red), #ff5252); border-radius: 12px; padding: 24px; color: white; text-align: center; margin-bottom: 16px; }
+        .highlight-label { font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px; }
+        .highlight-value { font-size: 2.5rem; font-weight: 700; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+        .result-item { background: var(--bg); border-radius: 12px; padding: 16px; text-align: center; }
+        .result-label { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .result-value { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+        .result-value.green { color: var(--green); }
+        .result-value.red { color: var(--red); }
+        .price-bar { margin: 20px 0; }
+        .price-bar-container { height: 24px; background: var(--border); border-radius: 12px; position: relative; overflow: hidden; }
+        .price-safe { position: absolute; height: 100%; background: linear-gradient(90deg, var(--green), #00b386); left: 0; }
+        .price-danger { position: absolute; height: 100%; background: linear-gradient(90deg, var(--red), #ff5252); right: 0; }
+        .price-marker { position: absolute; top: -8px; width: 4px; height: 40px; background: var(--accent); border-radius: 2px; transform: translateX(-50%); }
+        .price-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.85rem; color: var(--text2); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>💥 爆仓价格计算器</h1>
+        <p class="subtitle">计算合约交易的强制平仓价格</p>
+
+        <div class="card">
+            <div class="card-title">💰 仓位信息</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>保证金 (USDT)</label>
+                    <input type="number" id="margin" value="1000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>开仓价格 (USDT)</label>
+                    <input type="number" id="entryPrice" value="30000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>杠杆倍数</label>
+                    <input type="number" id="leverage" value="10" min="1" max="125">
+                </div>
+                <div class="form-group">
+                    <label>方向</label>
+                    <select id="direction">
+                        <option value="long">做多 (Long)</option>
+                        <option value="short">做空 (Short)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>维持保证金率 (%)</label>
+                    <input type="number" id="maintenanceRate" value="0.5" min="0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>模式</label>
+                    <select id="mode">
+                        <option value="isolated">逐仓</option>
+                        <option value="cross">全仓</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="calculate()">计算爆仓价</button>
+        </div>
+
+        <div id="resultSection" class="hidden">
+            <div class="highlight">
+                <div class="highlight-label">爆仓价格</div>
+                <div class="highlight-value" id="liquidationPrice"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📊 风险分析</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">仓位价值</div>
+                        <div class="result-value" id="positionValue"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">距离爆仓</div>
+                        <div class="result-value" id="distanceToLiq"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">最大亏损</div>
+                        <div class="result-value red" id="maxLoss"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">有效杠杆</div>
+                        <div class="result-value" id="effectiveLeverage"></div>
+                    </div>
+                </div>
+
+                <div class="price-bar">
+                    <p style="font-size: 0.9rem; color: var(--text2); margin-bottom: 8px;">价格区间示意</p>
+                    <div class="price-bar-container" id="priceBarContainer">
+                        <div class="price-safe" id="priceSafe"></div>
+                        <div class="price-danger" id="priceDanger"></div>
+                        <div class="price-marker" id="priceMarker"></div>
+                    </div>
+                    <div class="price-labels">
+                        <span id="labelLiq"></span>
+                        <span id="labelEntry">开仓价</span>
+                        <span id="labelMax"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">💡 建议止损价位</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">保守止损 (亏损10%)</div>
+                        <div class="result-value" id="stopLoss10"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">标准止损 (亏损20%)</div>
+                        <div class="result-value" id="stopLoss20"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">激进止损 (亏损50%)</div>
+                        <div class="result-value" id="stopLoss50"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatMoney(num) {
+            if (Math.abs(num) >= 10000) {
+                return (num / 10000).toFixed(2) + '万';
+            }
+            return num.toFixed(2) + ' USDT';
+        }
+
+        function calculate() {
+            var margin = parseFloat(document.getElementById('margin').value) || 0;
+            var entryPrice = parseFloat(document.getElementById('entryPrice').value) || 1;
+            var leverage = parseFloat(document.getElementById('leverage').value) || 1;
+            var direction = document.getElementById('direction').value;
+            var maintenanceRate = parseFloat(document.getElementById('maintenanceRate').value) / 100 || 0.005;
+
+            var positionValue = margin * leverage;
+            var positionSize = positionValue / entryPrice;
+
+            var liquidationPrice;
+            if (direction === 'long') {
+                liquidationPrice = entryPrice * (1 - (1 - maintenanceRate) / leverage);
+            } else {
+                liquidationPrice = entryPrice * (1 + (1 - maintenanceRate) / leverage);
+            }
+
+            var distanceToLiq = Math.abs((entryPrice - liquidationPrice) / entryPrice) * 100;
+            var maxLoss = margin * (1 - maintenanceRate);
+
+            // 止损价位计算
+            var stopLoss10, stopLoss20, stopLoss50;
+            if (direction === 'long') {
+                stopLoss10 = entryPrice * (1 - 0.1 / leverage);
+                stopLoss20 = entryPrice * (1 - 0.2 / leverage);
+                stopLoss50 = entryPrice * (1 - 0.5 / leverage);
+            } else {
+                stopLoss10 = entryPrice * (1 + 0.1 / leverage);
+                stopLoss20 = entryPrice * (1 + 0.2 / leverage);
+                stopLoss50 = entryPrice * (1 + 0.5 / leverage);
+            }
+
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            document.getElementById('liquidationPrice').textContent = liquidationPrice.toFixed(2) + ' USDT';
+            document.getElementById('positionValue').textContent = formatMoney(positionValue);
+            document.getElementById('distanceToLiq').textContent = distanceToLiq.toFixed(2) + '%';
+            document.getElementById('maxLoss').textContent = formatMoney(maxLoss);
+            document.getElementById('effectiveLeverage').textContent = leverage + 'x';
+
+            document.getElementById('stopLoss10').textContent = stopLoss10.toFixed(2) + ' USDT';
+            document.getElementById('stopLoss20').textContent = stopLoss20.toFixed(2) + ' USDT';
+            document.getElementById('stopLoss50').textContent = stopLoss50.toFixed(2) + ' USDT';
+
+            // 价格条
+            var range, safeWidth, dangerWidth, markerPos;
+            if (direction === 'long') {
+                range = entryPrice * 0.3;
+                safeWidth = ((entryPrice - liquidationPrice) / range) * 100;
+                markerPos = 50;
+                document.getElementById('labelLiq').textContent = '爆仓: ' + liquidationPrice.toFixed(0);
+                document.getElementById('labelMax').textContent = '';
+            } else {
+                range = entryPrice * 0.3;
+                safeWidth = ((liquidationPrice - entryPrice) / range) * 100;
+                markerPos = 50;
+                document.getElementById('labelLiq').textContent = '';
+                document.getElementById('labelMax').textContent = '爆仓: ' + liquidationPrice.toFixed(0);
+            }
+
+            document.getElementById('priceSafe').style.width = Math.min(safeWidth, 100) + '%';
+            document.getElementById('priceMarker').style.left = markerPos + '%';
+        }
+
+        calculate();
+    </script>
+</body>
+</html>

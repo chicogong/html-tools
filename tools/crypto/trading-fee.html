@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易手续费计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f7931a; --accent2: #ff9500; --green: #00d395; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #1a1a1a; --text2: #666; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(247, 147, 26, 0.4); }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+        .result-item { background: var(--bg); border-radius: 12px; padding: 20px; text-align: center; }
+        .result-icon { font-size: 2rem; margin-bottom: 8px; }
+        .result-label { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .result-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .exchange-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+        .exchange-item { background: var(--bg); border-radius: 8px; padding: 12px; text-align: center; }
+        .exchange-name { font-size: 0.85rem; color: var(--text2); margin-bottom: 4px; }
+        .exchange-fee { font-weight: 600; color: var(--accent); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>💱 交易手续费计算器</h1>
+        <p class="subtitle">计算不同交易所的交易手续费</p>
+
+        <div class="card">
+            <div class="card-title">💰 交易信息</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>交易金额 (USDT)</label>
+                    <input type="number" id="tradeAmount" value="10000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>交易类型</label>
+                    <select id="tradeType">
+                        <option value="spot">现货交易</option>
+                        <option value="futures">合约交易</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>订单类型</label>
+                    <select id="orderType">
+                        <option value="taker">吃单 (Taker)</option>
+                        <option value="maker">挂单 (Maker)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>VIP等级</label>
+                    <select id="vipLevel">
+                        <option value="0">普通用户</option>
+                        <option value="1">VIP 1</option>
+                        <option value="2">VIP 2</option>
+                        <option value="3">VIP 3+</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="calculate()">计算手续费</button>
+        </div>
+
+        <div id="resultSection" class="hidden">
+            <div class="card">
+                <div class="card-title">📊 手续费计算结果</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-icon">💵</div>
+                        <div class="result-label">单次手续费</div>
+                        <div class="result-value" id="singleFee"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-icon">🔄</div>
+                        <div class="result-label">往返手续费</div>
+                        <div class="result-value" id="roundTripFee"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-icon">📊</div>
+                        <div class="result-label">费率</div>
+                        <div class="result-value" id="feeRate"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🏢 各交易所费率对比</div>
+                <div class="exchange-grid" id="exchangeGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var exchangeRates = {
+            spot: {
+                taker: {
+                    '0': [
+                        { name: 'Binance', rate: 0.1 },
+                        { name: 'OKX', rate: 0.1 },
+                        { name: 'Bybit', rate: 0.1 },
+                        { name: 'Coinbase', rate: 0.6 },
+                        { name: 'Kraken', rate: 0.26 }
+                    ],
+                    '1': [
+                        { name: 'Binance', rate: 0.09 },
+                        { name: 'OKX', rate: 0.08 },
+                        { name: 'Bybit', rate: 0.08 }
+                    ],
+                    '2': [
+                        { name: 'Binance', rate: 0.08 },
+                        { name: 'OKX', rate: 0.065 },
+                        { name: 'Bybit', rate: 0.06 }
+                    ],
+                    '3': [
+                        { name: 'Binance', rate: 0.06 },
+                        { name: 'OKX', rate: 0.05 },
+                        { name: 'Bybit', rate: 0.04 }
+                    ]
+                },
+                maker: {
+                    '0': [
+                        { name: 'Binance', rate: 0.1 },
+                        { name: 'OKX', rate: 0.08 },
+                        { name: 'Bybit', rate: 0.1 },
+                        { name: 'Coinbase', rate: 0.4 },
+                        { name: 'Kraken', rate: 0.16 }
+                    ],
+                    '1': [
+                        { name: 'Binance', rate: 0.08 },
+                        { name: 'OKX', rate: 0.06 },
+                        { name: 'Bybit', rate: 0.06 }
+                    ],
+                    '2': [
+                        { name: 'Binance', rate: 0.06 },
+                        { name: 'OKX', rate: 0.04 },
+                        { name: 'Bybit', rate: 0.04 }
+                    ],
+                    '3': [
+                        { name: 'Binance', rate: 0.04 },
+                        { name: 'OKX', rate: 0.02 },
+                        { name: 'Bybit', rate: 0.02 }
+                    ]
+                }
+            },
+            futures: {
+                taker: {
+                    '0': [
+                        { name: 'Binance', rate: 0.05 },
+                        { name: 'OKX', rate: 0.05 },
+                        { name: 'Bybit', rate: 0.055 }
+                    ],
+                    '1': [
+                        { name: 'Binance', rate: 0.04 },
+                        { name: 'OKX', rate: 0.04 },
+                        { name: 'Bybit', rate: 0.045 }
+                    ],
+                    '2': [
+                        { name: 'Binance', rate: 0.035 },
+                        { name: 'OKX', rate: 0.035 },
+                        { name: 'Bybit', rate: 0.04 }
+                    ],
+                    '3': [
+                        { name: 'Binance', rate: 0.03 },
+                        { name: 'OKX', rate: 0.03 },
+                        { name: 'Bybit', rate: 0.03 }
+                    ]
+                },
+                maker: {
+                    '0': [
+                        { name: 'Binance', rate: 0.02 },
+                        { name: 'OKX', rate: 0.02 },
+                        { name: 'Bybit', rate: 0.02 }
+                    ],
+                    '1': [
+                        { name: 'Binance', rate: 0.016 },
+                        { name: 'OKX', rate: 0.015 },
+                        { name: 'Bybit', rate: 0.016 }
+                    ],
+                    '2': [
+                        { name: 'Binance', rate: 0.014 },
+                        { name: 'OKX', rate: 0.012 },
+                        { name: 'Bybit', rate: 0.014 }
+                    ],
+                    '3': [
+                        { name: 'Binance', rate: 0.01 },
+                        { name: 'OKX', rate: 0.01 },
+                        { name: 'Bybit', rate: 0.01 }
+                    ]
+                }
+            }
+        };
+
+        function calculate() {
+            var tradeAmount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            var tradeType = document.getElementById('tradeType').value;
+            var orderType = document.getElementById('orderType').value;
+            var vipLevel = document.getElementById('vipLevel').value;
+
+            var exchanges = exchangeRates[tradeType][orderType][vipLevel];
+            var avgRate = exchanges.reduce(function(sum, e) { return sum + e.rate; }, 0) / exchanges.length;
+            
+            var singleFee = tradeAmount * avgRate / 100;
+            var roundTripFee = singleFee * 2;
+
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            document.getElementById('singleFee').textContent = singleFee.toFixed(2) + ' USDT';
+            document.getElementById('roundTripFee').textContent = roundTripFee.toFixed(2) + ' USDT';
+            document.getElementById('feeRate').textContent = avgRate.toFixed(3) + '%';
+
+            var grid = document.getElementById('exchangeGrid');
+            while (grid.firstChild) {
+                grid.removeChild(grid.firstChild);
+            }
+
+            exchanges.forEach(function(ex) {
+                var fee = tradeAmount * ex.rate / 100;
+                var item = document.createElement('div');
+                item.className = 'exchange-item';
+                
+                var name = document.createElement('div');
+                name.className = 'exchange-name';
+                name.textContent = ex.name;
+                
+                var feeEl = document.createElement('div');
+                feeEl.className = 'exchange-fee';
+                feeEl.textContent = fee.toFixed(2) + ' USDT (' + ex.rate + '%)';
+                
+                item.appendChild(name);
+                item.appendChild(feeEl);
+                grid.appendChild(item);
+            });
+        }
+
+        calculate();
+    </script>
+</body>
+</html>

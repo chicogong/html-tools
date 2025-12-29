@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发票计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #6366f1; --accent2: #8b5cf6; --green: #10b981; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #1a1a1a; --text2: #666; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .tab.active { border-color: var(--accent); background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1)); color: var(--accent); }
+        .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .result-item { background: var(--bg); border-radius: 12px; padding: 20px; text-align: center; }
+        .result-label { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .result-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .tax-rates { margin-top: 16px; padding: 16px; background: var(--bg); border-radius: 8px; }
+        .tax-rates-title { font-weight: 600; margin-bottom: 12px; }
+        .rate-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .rate-item:last-child { border-bottom: none; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>🧾 发票计算器</h1>
+        <p class="subtitle">计算含税价、不含税价和税额</p>
+
+        <div class="card">
+            <div class="card-title">💰 计算方式</div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchMode('withTax')">已知含税价</div>
+                <div class="tab" onclick="switchMode('withoutTax')">已知不含税价</div>
+            </div>
+
+            <div class="grid">
+                <div class="form-group" id="withTaxInput">
+                    <label>含税金额 (元)</label>
+                    <input type="number" id="amountWithTax" value="11300" min="0" step="0.01" oninput="calculate()">
+                </div>
+                <div class="form-group hidden" id="withoutTaxInput">
+                    <label>不含税金额 (元)</label>
+                    <input type="number" id="amountWithoutTax" value="10000" min="0" step="0.01" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>税率</label>
+                    <select id="taxRate" onchange="calculate()">
+                        <option value="0.13">13% (一般商品)</option>
+                        <option value="0.09">9% (农产品/运输)</option>
+                        <option value="0.06">6% (服务业)</option>
+                        <option value="0.05">5% (简易征收)</option>
+                        <option value="0.03">3% (小规模)</option>
+                        <option value="0.01">1% (优惠税率)</option>
+                        <option value="0">0% (免税)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📊 计算结果</div>
+            <div class="result-grid">
+                <div class="result-item">
+                    <div class="result-label">不含税金额</div>
+                    <div class="result-value" id="resultWithoutTax"></div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">税额</div>
+                    <div class="result-value" id="resultTax"></div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">含税金额</div>
+                    <div class="result-value" id="resultWithTax"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="tax-rates">
+                <div class="tax-rates-title">📋 常用税率说明</div>
+                <div class="rate-item">
+                    <span>13%</span>
+                    <span>一般货物、有形动产租赁</span>
+                </div>
+                <div class="rate-item">
+                    <span>9%</span>
+                    <span>农产品、交通运输、建筑服务、不动产租赁</span>
+                </div>
+                <div class="rate-item">
+                    <span>6%</span>
+                    <span>现代服务、生活服务、金融服务</span>
+                </div>
+                <div class="rate-item">
+                    <span>5%</span>
+                    <span>不动产销售（简易征收）</span>
+                </div>
+                <div class="rate-item">
+                    <span>3%</span>
+                    <span>小规模纳税人</span>
+                </div>
+                <div class="rate-item">
+                    <span>1%</span>
+                    <span>小规模纳税人优惠税率</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var mode = 'withTax';
+
+        function switchMode(newMode) {
+            mode = newMode;
+            var tabs = document.querySelectorAll('.tab');
+            tabs.forEach(function(tab, index) {
+                tab.classList.remove('active');
+                if ((newMode === 'withTax' && index === 0) || (newMode === 'withoutTax' && index === 1)) {
+                    tab.classList.add('active');
+                }
+            });
+
+            document.getElementById('withTaxInput').classList.toggle('hidden', newMode !== 'withTax');
+            document.getElementById('withoutTaxInput').classList.toggle('hidden', newMode !== 'withoutTax');
+            calculate();
+        }
+
+        function formatMoney(num) {
+            return '¥' + num.toFixed(2);
+        }
+
+        function calculate() {
+            var taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+            var amountWithTax, amountWithoutTax, taxAmount;
+
+            if (mode === 'withTax') {
+                amountWithTax = parseFloat(document.getElementById('amountWithTax').value) || 0;
+                amountWithoutTax = amountWithTax / (1 + taxRate);
+                taxAmount = amountWithTax - amountWithoutTax;
+            } else {
+                amountWithoutTax = parseFloat(document.getElementById('amountWithoutTax').value) || 0;
+                taxAmount = amountWithoutTax * taxRate;
+                amountWithTax = amountWithoutTax + taxAmount;
+            }
+
+            document.getElementById('resultWithoutTax').textContent = formatMoney(amountWithoutTax);
+            document.getElementById('resultTax').textContent = formatMoney(taxAmount);
+            document.getElementById('resultWithTax').textContent = formatMoney(amountWithTax);
+        }
+
+        calculate();
+    </script>
+</body>
+</html>

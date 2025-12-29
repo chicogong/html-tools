@@ -112,7 +112,8 @@ function main() {
   // 生成 CATEGORIES 数组
   const categoriesItems = [
     "      { id: 'all', name: '全部', icon: '🏠' },",
-    "      { id: 'favorites', name: '收藏', icon: '⭐' },"
+    "      { id: 'favorites', name: '收藏', icon: '⭐' },",
+    "      { id: 'recent', name: '最近', icon: '🕐' },"
   ];
   
   for (const catId of sortedCategories) {

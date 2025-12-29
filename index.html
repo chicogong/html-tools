@@ -1038,6 +1038,9 @@
             <span class="stat-label">分类</span>
           </div>
         </div>
+        <button class="theme-toggle" id="lang-toggle" aria-label="切换语言" title="English / 中文">
+          <span class="theme-icon">EN</span>
+        </button>
         <button class="theme-toggle" id="theme-toggle" aria-label="切换主题">
           <span class="theme-icon">🌙</span>
         </button>
@@ -1079,10 +1082,93 @@
   </div>
 
   <script>
+    // ==================== 国际化 ====================
+    const I18N = {
+      zh: {
+        tagline: '纯前端工具集',
+        tools: '工具',
+        categories: '分类',
+        searchPlaceholder: '搜索工具... (按 / 聚焦)',
+        moreCategories: '更多分类',
+        collapse: '收起',
+        noResults: '没有找到匹配的工具',
+        noFavorites: '还没有收藏的工具',
+        noRecent: '还没有使用过工具',
+        found: '找到',
+        toolsFound: '个工具',
+        pureHtml: '纯 HTML/CSS/JS',
+        noBuild: '无构建步骤',
+        catNames: {
+          all: '全部', favorites: '收藏', recent: '最近',
+          dev: '开发工具', text: '文本工具', time: '时间工具',
+          generator: '生成器', media: '媒体工具', privacy: '隐私安全',
+          security: '安全工具', network: '网络工具', calculator: '计算器',
+          converter: '转换器', extractor: '提取器', ai: 'AI 工具',
+          life: '生活工具', seo: 'SEO 工具', fun: '趣味工具',
+          game: '小游戏', finance: '财务工具', health: '医疗健康',
+          education: '教育学习', food: '餐饮食品', chinese: '中文工具',
+          'ai-coding': 'AI 编程', realestate: '房产工具', business: '商业工具',
+          crypto: '加密货币'
+        }
+      },
+      en: {
+        tagline: 'Frontend Toolbox',
+        tools: 'Tools',
+        categories: 'Categories',
+        searchPlaceholder: 'Search tools... (Press /)',
+        moreCategories: 'More',
+        collapse: 'Less',
+        noResults: 'No matching tools found',
+        noFavorites: 'No favorite tools yet',
+        noRecent: 'No recently used tools',
+        found: 'Found',
+        toolsFound: 'tools',
+        pureHtml: 'Pure HTML/CSS/JS',
+        noBuild: 'Zero build',
+        catNames: {
+          all: 'All', favorites: 'Favorites', recent: 'Recent',
+          dev: 'Dev Tools', text: 'Text', time: 'Time',
+          generator: 'Generators', media: 'Media', privacy: 'Privacy',
+          security: 'Security', network: 'Network', calculator: 'Calculator',
+          converter: 'Converter', extractor: 'Extractor', ai: 'AI Tools',
+          life: 'Lifestyle', seo: 'SEO', fun: 'Fun',
+          game: 'Games', finance: 'Finance', health: 'Health',
+          education: 'Education', food: 'Food', chinese: 'Chinese',
+          'ai-coding': 'AI Coding', realestate: 'Real Estate', business: 'Business',
+          crypto: 'Crypto'
+        }
+      }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'zh';
+    const t = (key) => I18N[currentLang][key] || key;
+    const catName = (id) => I18N[currentLang].catNames[id] || id;
+
+    function updateUILanguage() {
+      // Update static texts
+      document.querySelector('.tagline span:last-child').textContent = t('tagline');
+      document.querySelector('.stat-label').textContent = t('tools');
+      document.querySelectorAll('.stat-label')[1].textContent = t('categories');
+      document.getElementById('search').placeholder = t('searchPlaceholder');
+      document.querySelector('.expand-text').textContent = t('moreCategories');
+      document.querySelector('.no-results p').textContent = t('noResults');
+      document.querySelector('footer span:first-child').textContent = t('pureHtml');
+      document.querySelectorAll('footer span')[2].textContent = t('noBuild');
+      document.getElementById('lang-toggle').querySelector('.theme-icon').textContent = currentLang === 'zh' ? 'EN' : '中';
+      
+      // Update category buttons
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        const catId = btn.dataset.category;
+        const nameSpan = btn.querySelector('span:not(.cat-icon):not(.cat-count)');
+        if (nameSpan) nameSpan.textContent = catName(catId);
+      });
+    }
+
     // ==================== 数据定义 ====================
     const CATEGORIES = [
       { id: 'all', name: '全部', icon: '🏠' },
       { id: 'favorites', name: '收藏', icon: '⭐' },
+      { id: 'recent', name: '最近', icon: '🕐' },
       { id: 'dev', name: '开发工具', icon: '⚡' },
       { id: 'text', name: '文本工具', icon: '📝' },
       { id: 'time', name: '时间工具', icon: '⏰' },
@@ -1777,6 +1863,7 @@
     const categoriesContainer = document.getElementById('categories');
     const noResults = document.getElementById('no-results');
     const themeToggle = document.getElementById('theme-toggle');
+    const langToggle = document.getElementById('lang-toggle');
     const themeIcon = themeToggle.querySelector('.theme-icon');
     const htmlElement = document.documentElement;
     const searchResultsCount = document.getElementById('search-results-count');
@@ -1802,6 +1889,14 @@
         themeIcon.textContent = '🌙';
       }
       localStorage.setItem('theme', newTheme);
+    });
+
+    // ==================== 语言切换 ====================
+    langToggle.addEventListener('click', () => {
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('lang', currentLang);
+      htmlElement.setAttribute('lang', currentLang);
+      updateUILanguage();
     });
 
     // ==================== 收藏管理 ====================
@@ -1852,6 +1947,49 @@
       }
     }
 
+    // ==================== 最近使用 ====================
+    const RECENT_KEY = 'html_tools_recent_v1';
+    const MAX_RECENT = 20;
+    let recentTools = [];
+
+    try {
+      const stored = localStorage.getItem(RECENT_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        recentTools = Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (e) {
+      console.warn('Could not load recent tools:', e);
+      recentTools = [];
+    }
+
+    function saveRecent() {
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(recentTools));
+      } catch (e) {
+        console.warn('Could not save recent tools:', e);
+      }
+    }
+
+    function isRecent(url) {
+      return recentTools.includes(url);
+    }
+
+    function addToRecent(url) {
+      // Remove if already exists
+      const index = recentTools.indexOf(url);
+      if (index > -1) {
+        recentTools.splice(index, 1);
+      }
+      // Add to front
+      recentTools.unshift(url);
+      // Keep max limit
+      if (recentTools.length > MAX_RECENT) {
+        recentTools = recentTools.slice(0, MAX_RECENT);
+      }
+      saveRecent();
+    }
+
     // ==================== 渲染分类按钮 ====================
     function renderCategories() {
       const categoryCounts = {};
@@ -1860,12 +1998,12 @@
       });
 
       const activeCategories = CATEGORIES.filter(cat => 
-        cat.id === 'all' || cat.id === 'favorites' || categoryCounts[cat.id]
+        cat.id === 'all' || cat.id === 'favorites' || cat.id === 'recent' || categoryCounts[cat.id]
       );
 
       // Update stats
       document.getElementById('tool-count').textContent = TOOLS.length;
-      document.getElementById('category-count').textContent = activeCategories.length - 2; // Exclude 'all' and 'favorites'
+      document.getElementById('category-count').textContent = activeCategories.length - 3; // Exclude 'all', 'favorites', 'recent'
 
       activeCategories.forEach(cat => {
         const btn = document.createElement('button');
@@ -1881,7 +2019,7 @@
         span.textContent = cat.name;
         btn.appendChild(span);
         
-        if (cat.id !== 'all' && cat.id !== 'favorites' && categoryCounts[cat.id]) {
+        if (cat.id !== 'all' && cat.id !== 'favorites' && cat.id !== 'recent' && categoryCounts[cat.id]) {
           const count = document.createElement('span');
           count.className = 'cat-count';
           count.textContent = categoryCounts[cat.id];
@@ -1915,6 +2053,11 @@
       if (index < 20) {
         card.style.animationDelay = (index * 0.02) + 's';
       }
+      
+      // Record to recent when clicked
+      card.addEventListener('click', () => {
+        addToRecent(tool.url);
+      });
 
       const header = document.createElement('div');
       header.className = 'tool-card-header';
@@ -2091,6 +2234,7 @@
         const tool = TOOLS[index];
         const matchesCategory = currentCategory === 'all' 
           || (currentCategory === 'favorites' && isFavorite(tool.url))
+          || (currentCategory === 'recent' && isRecent(tool.url))
           || tool.category === currentCategory;
 
         const matchesSearch = !query ||
@@ -2112,10 +2256,13 @@
       if (visibleCount === 0) {
         if (currentCategory === 'favorites' && !query) {
           noResultsIcon.textContent = '⭐';
-          noResultsText.textContent = '还没有收藏的工具';
+          noResultsText.textContent = t('noFavorites');
+        } else if (currentCategory === 'recent' && !query) {
+          noResultsIcon.textContent = '🕐';
+          noResultsText.textContent = t('noRecent');
         } else {
           noResultsIcon.textContent = '∅';
-          noResultsText.textContent = '没有找到匹配的工具';
+          noResultsText.textContent = t('noResults');
         }
         noResults.classList.add('show');
       } else {
@@ -2123,7 +2270,7 @@
       }
 
       if (query || currentCategory !== 'all') {
-        searchResultsCount.textContent = visibleCount > 0 ? '找到 ' + visibleCount + ' 个工具' : '';
+        searchResultsCount.textContent = visibleCount > 0 ? t('found') + ' ' + visibleCount + ' ' + t('toolsFound') : '';
       } else {
         searchResultsCount.textContent = '';
       }
@@ -2171,7 +2318,7 @@
       
       expandBtn.addEventListener('click', () => {
         const isExpanded = wrapper.classList.toggle('expanded');
-        expandBtn.querySelector('.expand-text').textContent = isExpanded ? '收起' : '更多分类';
+        expandBtn.querySelector('.expand-text').textContent = isExpanded ? t('collapse') : t('moreCategories');
       });
       
       // 初始检查 + resize 监听
@@ -2184,6 +2331,31 @@
     renderCategories();
     renderTools();
     setupCategoriesExpand();
+    updateUILanguage();
+
+    // ==================== Service Worker ====================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => {
+            console.log('SW registered:', reg.scope);
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available, show update prompt
+                  if (confirm('新版本可用，是否刷新页面更新？')) {
+                    newWorker.postMessage('skipWaiting');
+                    window.location.reload();
+                  }
+                }
+              });
+            });
+          })
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>

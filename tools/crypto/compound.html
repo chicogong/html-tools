@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复利计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f7931a; --accent2: #ff9500; --green: #00d395; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #1a1a1a; --text2: #666; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(247, 147, 26, 0.4); }
+        .highlight { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 12px; padding: 24px; color: white; text-align: center; margin-bottom: 16px; }
+        .highlight-label { font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px; }
+        .highlight-value { font-size: 2.5rem; font-weight: 700; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+        .result-item { background: var(--bg); border-radius: 12px; padding: 16px; text-align: center; }
+        .result-label { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .result-value { font-size: 1.3rem; font-weight: 700; color: var(--green); }
+        .timeline { margin-top: 16px; }
+        .timeline-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .timeline-item:last-child { border-bottom: none; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>📈 复利计算器</h1>
+        <p class="subtitle">计算加密货币质押/挖矿的复利收益</p>
+
+        <div class="card">
+            <div class="card-title">💰 投资设置</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>初始本金 (USDT)</label>
+                    <input type="number" id="principal" value="10000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>年化收益率 (%)</label>
+                    <input type="number" id="apy" value="20" min="0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>复利频率</label>
+                    <select id="compoundFreq">
+                        <option value="365">每日</option>
+                        <option value="52">每周</option>
+                        <option value="12">每月</option>
+                        <option value="4">每季度</option>
+                        <option value="1">每年</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>投资期限 (年)</label>
+                    <input type="number" id="years" value="3" min="1" max="30">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="calculate()">计算收益</button>
+        </div>
+
+        <div id="resultSection" class="hidden">
+            <div class="highlight">
+                <div class="highlight-label">最终金额</div>
+                <div class="highlight-value" id="finalAmount"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📊 收益分析</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">总收益</div>
+                        <div class="result-value" id="totalProfit"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">收益倍数</div>
+                        <div class="result-value" id="multiple"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">单利收益</div>
+                        <div class="result-value" id="simpleInterest"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">复利增益</div>
+                        <div class="result-value" id="compoundBonus"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📅 年度增长</div>
+                <div class="timeline" id="timeline"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatMoney(num) {
+            if (num >= 100000000) {
+                return (num / 100000000).toFixed(2) + '亿';
+            }
+            if (num >= 10000) {
+                return (num / 10000).toFixed(2) + '万';
+            }
+            return num.toFixed(2);
+        }
+
+        function calculate() {
+            var principal = parseFloat(document.getElementById('principal').value) || 0;
+            var apy = parseFloat(document.getElementById('apy').value) / 100 || 0;
+            var compoundFreq = parseInt(document.getElementById('compoundFreq').value) || 365;
+            var years = parseInt(document.getElementById('years').value) || 1;
+
+            var ratePerPeriod = apy / compoundFreq;
+            var totalPeriods = compoundFreq * years;
+            var finalAmount = principal * Math.pow(1 + ratePerPeriod, totalPeriods);
+            var totalProfit = finalAmount - principal;
+            var simpleInterest = principal * apy * years;
+            var compoundBonus = totalProfit - simpleInterest;
+            var multiple = finalAmount / principal;
+
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            document.getElementById('finalAmount').textContent = formatMoney(finalAmount) + ' USDT';
+            document.getElementById('totalProfit').textContent = '+' + formatMoney(totalProfit);
+            document.getElementById('multiple').textContent = multiple.toFixed(2) + 'x';
+            document.getElementById('simpleInterest').textContent = formatMoney(simpleInterest);
+            document.getElementById('compoundBonus').textContent = '+' + formatMoney(compoundBonus);
+
+            var timeline = document.getElementById('timeline');
+            while (timeline.firstChild) {
+                timeline.removeChild(timeline.firstChild);
+            }
+
+            for (var year = 1; year <= Math.min(years, 10); year++) {
+                var yearAmount = principal * Math.pow(1 + ratePerPeriod, compoundFreq * year);
+                var yearProfit = yearAmount - principal;
+                
+                var item = document.createElement('div');
+                item.className = 'timeline-item';
+                
+                var yearLabel = document.createElement('span');
+                yearLabel.textContent = '第' + year + '年';
+                
+                var valueSpan = document.createElement('span');
+                valueSpan.textContent = formatMoney(yearAmount) + ' USDT';
+                valueSpan.style.color = 'var(--accent)';
+                
+                var profitSpan = document.createElement('span');
+                profitSpan.textContent = '+' + formatMoney(yearProfit);
+                profitSpan.style.color = 'var(--green)';
+                
+                item.appendChild(yearLabel);
+                item.appendChild(valueSpan);
+                item.appendChild(profitSpan);
+                timeline.appendChild(item);
+            }
+        }
+
+        calculate();
+    </script>
+</body>
+</html>

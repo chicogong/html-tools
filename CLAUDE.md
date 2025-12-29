@@ -44,6 +44,10 @@ html-tools/
 ├── scripts/
 │   └── sync-tools.js      # 工具同步脚本 (tools.json → index.html)
 ├── package.json           # lint 和 sync 脚本依赖
+├── PWA 相关文件:
+│   ├── sw.js              # Service Worker (离线缓存、请求拦截)
+│   ├── offline.html       # 离线回退页面 (断网时显示已缓存工具列表)
+│   └── manifest.json      # PWA 清单 (应用名称、图标、快捷方式)
 └── 部署配置文件:
     ├── vercel.json        # Vercel 配置
     ├── netlify.toml       # Netlify 配置
@@ -169,6 +173,18 @@ const TOOLS = [
   - Twitter Card 标签
   - JSON-LD 结构化数据 (WebApplication schema)
   - canonical URL
+- **PWA 离线支持**:
+  - Service Worker (`sw.js`) 拦截网络请求并缓存资源
+  - 离线页面 (`offline.html`) 显示已缓存的工具列表
+  - 支持"添加到主屏幕"功能
+- **国际化 (i18n)**:
+  - 支持中文/英文切换 (右上角语言按钮)
+  - 语言偏好保存在 localStorage (`html_tools_lang_v1`)
+  - 分类名、搜索框、空状态文案等动态切换
+- **最近使用功能**:
+  - 新增「最近」分类,记录最近使用的 20 个工具
+  - 点击工具卡片时自动记录
+  - 数据保存在 localStorage (`html_tools_recent_v1`)
 
 **DOM 结构和选择器（重要！）**：
 - 工具卡片使用 `<span class="tool-name">` 而非 `<h3>` 来存储工具名称

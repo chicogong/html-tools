@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字棋 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --text-primary: #fff;
+            --text-secondary: #a0a0a0;
+            --accent: #f72585;
+            --accent2: #00f5d4;
+            --border: #2a2a3a;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #fff;
+            --text-primary: #1a1a2e;
+            --text-secondary: #666;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #f72585, #b5179e);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; color: #fff; margin-bottom: 3px; }
+        .header p { font-size: 12px; opacity: 0.8; color: #fff; }
+        .back-link {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .theme-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--border);
+        }
+        .score-item {
+            text-align: center;
+        }
+        .score-item .symbol {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        .score-item .symbol.x { color: var(--accent); }
+        .score-item .symbol.o { color: var(--accent2); }
+        .score-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .score-item .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .status {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cell:hover:not(.taken) {
+            background: var(--bg-primary);
+            transform: scale(1.02);
+        }
+        .cell.x { color: var(--accent); }
+        .cell.o { color: var(--accent2); }
+        .cell.win {
+            animation: pulse 0.5s ease-in-out;
+            box-shadow: 0 0 20px currentcolor;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .mode-select {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .mode-select label {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .mode-select input { display: none; }
+        .mode-select input:checked + span {
+            background: var(--accent);
+            color: #fff;
+        }
+        .mode-select label span {
+            display: block;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: -10px -20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>⭕ 井字棋</h1>
+        <p>经典三子棋游戏</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div class="container">
+        <div class="score-board">
+            <div class="score-item">
+                <div class="symbol x">✕</div>
+                <div class="value" id="scoreX">0</div>
+                <div class="label">玩家 X</div>
+            </div>
+            <div class="score-item">
+                <div class="symbol" style="color: var(--text-secondary)">—</div>
+                <div class="value" id="scoreDraw">0</div>
+                <div class="label">平局</div>
+            </div>
+            <div class="score-item">
+                <div class="symbol o">○</div>
+                <div class="value" id="scoreO">0</div>
+                <div class="label">玩家 O</div>
+            </div>
+        </div>
+
+        <div class="mode-select">
+            <label><input type="radio" name="mode" value="pvp" checked><span>👥 双人对战</span></label>
+            <label><input type="radio" name="mode" value="pve"><span>🤖 人机对战</span></label>
+        </div>
+
+        <div class="status" id="status">轮到 ✕ 下棋</div>
+
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="resetGame()">🔄 新游戏</button>
+            <button class="btn secondary" onclick="resetScore()">重置比分</button>
+        </div>
+    </div>
+
+    <script>
+        const board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let scoreX = 0;
+        let scoreO = 0;
+        let scoreDraw = 0;
+
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        const cells = document.querySelectorAll('.cell');
+        const statusEl = document.getElementById('status');
+
+        cells.forEach(cell => {
+            cell.addEventListener('click', () => handleCellClick(cell));
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', resetGame);
+        });
+
+        function handleCellClick(cell) {
+            const index = parseInt(cell.dataset.index);
+            
+            if (board[index] !== '' || !gameActive) return;
+            
+            makeMove(index, currentPlayer);
+            
+            if (gameActive && getMode() === 'pve' && currentPlayer === 'O') {
+                setTimeout(aiMove, 300);
+            }
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = cells[index];
+            cell.textContent = player === 'X' ? '✕' : '○';
+            cell.classList.add(player.toLowerCase(), 'taken');
+            
+            if (checkWin(player)) {
+                gameActive = false;
+                highlightWin(player);
+                statusEl.textContent = `${player === 'X' ? '✕' : '○'} 获胜！`;
+                if (player === 'X') scoreX++;
+                else scoreO++;
+                updateScore();
+                return;
+            }
+            
+            if (board.every(cell => cell !== '')) {
+                gameActive = false;
+                statusEl.textContent = '平局！';
+                scoreDraw++;
+                updateScore();
+                return;
+            }
+            
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusEl.textContent = `轮到 ${currentPlayer === 'X' ? '✕' : '○'} 下棋`;
+        }
+
+        function checkWin(player) {
+            return winPatterns.some(pattern => {
+                return pattern.every(index => board[index] === player);
+            });
+        }
+
+        function highlightWin(player) {
+            winPatterns.forEach(pattern => {
+                if (pattern.every(index => board[index] === player)) {
+                    pattern.forEach(index => {
+                        cells[index].classList.add('win');
+                    });
+                }
+            });
+        }
+
+        function getMode() {
+            return document.querySelector('input[name="mode"]:checked').value;
+        }
+
+        function aiMove() {
+            if (!gameActive) return;
+            
+            // 简单 AI：优先中心、角落、边
+            let move = findWinningMove('O') || findWinningMove('X') || findBestMove();
+            
+            if (move !== null) {
+                makeMove(move, 'O');
+            }
+        }
+
+        function findWinningMove(player) {
+            for (let pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                const cells = [board[a], board[b], board[c]];
+                const playerCount = cells.filter(c => c === player).length;
+                const emptyCount = cells.filter(c => c === '').length;
+                
+                if (playerCount === 2 && emptyCount === 1) {
+                    const emptyIndex = pattern.find(i => board[i] === '');
+                    return emptyIndex;
+                }
+            }
+            return null;
+        }
+
+        function findBestMove() {
+            const priorities = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+            for (let index of priorities) {
+                if (board[index] === '') return index;
+            }
+            return null;
+        }
+
+        function resetGame() {
+            board.fill('');
+            currentPlayer = 'X';
+            gameActive = true;
+            statusEl.textContent = '轮到 ✕ 下棋';
+            
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.className = 'cell';
+            });
+        }
+
+        function resetScore() {
+            scoreX = 0;
+            scoreO = 0;
+            scoreDraw = 0;
+            updateScore();
+            resetGame();
+        }
+
+        function updateScore() {
+            document.getElementById('scoreX').textContent = scoreX;
+            document.getElementById('scoreO').textContent = scoreO;
+            document.getElementById('scoreDraw').textContent = scoreDraw;
+        }
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
+</body>
+</html>

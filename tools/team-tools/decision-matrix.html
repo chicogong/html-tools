@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策矩阵 | HTML Tools</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --primary-color: #0f3460;
+            --accent-color: #00d9ff;
+            --border-color: #0f3460;
+            --input-bg: #1a1a2e;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --card-bg: #fff;
+            --text-color: #1a1a2e;
+            --primary-color: #e0e7ff;
+            --accent-color: #0891b2;
+            --border-color: #c7d2fe;
+            --input-bg: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .back-link {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+
+        .decision-title {
+            width: 100%;
+            padding: 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .decision-title:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .criteria-list, .option-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .criteria-item, .option-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .criteria-item input, .option-item input {
+            flex: 1;
+            padding: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .criteria-item input:focus, .option-item input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .weight-input {
+            width: 80px !important;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger-color);
+            padding: 8px 12px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .matrix-wrapper {
+            overflow-x: auto;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .matrix-table th, .matrix-table td {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .matrix-table th {
+            background: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .matrix-table th.criteria-header {
+            font-size: 12px;
+        }
+
+        .matrix-table th.criteria-header span {
+            display: block;
+            font-size: 10px;
+            opacity: 0.7;
+            font-weight: normal;
+        }
+
+        .matrix-table td.option-name {
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .matrix-table td.score-cell {
+            background: var(--input-bg);
+        }
+
+        .matrix-table td.total-cell {
+            font-weight: bold;
+            background: var(--primary-color);
+        }
+
+        .matrix-table tr.winner td {
+            background: rgba(74, 222, 128, 0.2);
+        }
+
+        .matrix-table tr.winner td.total-cell {
+            color: var(--success-color);
+        }
+
+        .score-input {
+            width: 50px;
+            padding: 6px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .score-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .result-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--input-bg);
+            border-radius: 12px;
+        }
+
+        .winner-display {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .winner-label {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .winner-name {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--success-color);
+            margin: 10px 0;
+        }
+
+        .winner-score {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .ranking-list {
+            margin-top: 20px;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: var(--card-bg);
+        }
+
+        .ranking-item.rank-1 {
+            background: rgba(74, 222, 128, 0.2);
+        }
+
+        .rank-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .rank-1 .rank-number {
+            background: var(--success-color);
+            color: #000;
+        }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .setup-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../../index.html" class="back-link">← 返回工具列表</a>
+            <h1>决策矩阵</h1>
+            <p>加权评分决策分析工具</p>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🎯 决策问题</div>
+            <input type="text" class="decision-title" id="decisionTitle" placeholder="描述你要做的决策，例如：选择哪个技术方案？">
+        </div>
+
+        <div class="setup-grid">
+            <div class="panel">
+                <div class="panel-title">⚖️ 评估标准 (权重 1-10)</div>
+                <div class="criteria-list" id="criteriaList"></div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="addCriteria()">+ 添加标准</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">📋 可选方案</div>
+                <div class="option-list" id="optionList"></div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="addOption()">+ 添加方案</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📊 评分矩阵 (1-10 分)</div>
+            <div class="matrix-wrapper">
+                <table class="matrix-table" id="matrixTable"></table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🏆 结果分析</div>
+            <div class="result-section">
+                <div class="winner-display" id="winnerDisplay">
+                    <div class="winner-label">推荐选择</div>
+                    <div class="winner-name" id="winnerName">-</div>
+                    <div class="winner-score" id="winnerScore">请完成评分</div>
+                </div>
+                <div class="ranking-list" id="rankingList"></div>
+            </div>
+            <div class="btn-group" style="justify-content: center;">
+                <button class="btn btn-primary" onclick="exportResult()">📋 导出结果</button>
+                <button class="btn btn-secondary" onclick="shareMatrix()">🔗 分享</button>
+                <button class="btn btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LS_KEY = 'decision-matrix-data';
+        
+        let criteria = [];
+        let options = [];
+        let scores = {};
+
+        function init() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+            }
+
+            loadFromStorage();
+            loadFromUrl();
+
+            if (criteria.length === 0) {
+                criteria = [
+                    { id: 1, name: '成本', weight: 8 },
+                    { id: 2, name: '效果', weight: 9 },
+                    { id: 3, name: '风险', weight: 7 }
+                ];
+            }
+            if (options.length === 0) {
+                options = [
+                    { id: 1, name: '方案 A' },
+                    { id: 2, name: '方案 B' }
+                ];
+            }
+
+            renderCriteria();
+            renderOptions();
+            renderMatrix();
+
+            document.getElementById('decisionTitle').addEventListener('input', saveToStorage);
+        }
+
+        function generateId() {
+            return Date.now() + Math.random().toString(36).substr(2, 9);
+        }
+
+        function addCriteria(name = '', weight = 5) {
+            criteria.push({ id: generateId(), name: name, weight: weight });
+            renderCriteria();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function removeCriteria(id) {
+            criteria = criteria.filter(c => c.id !== id);
+            renderCriteria();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function renderCriteria() {
+            const container = document.getElementById('criteriaList');
+            container.textContent = '';
+
+            criteria.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'criteria-item';
+
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = '评估标准';
+                nameInput.value = c.name;
+                nameInput.addEventListener('input', (e) => {
+                    c.name = e.target.value;
+                    renderMatrix();
+                    saveToStorage();
+                });
+
+                const weightInput = document.createElement('input');
+                weightInput.type = 'number';
+                weightInput.className = 'weight-input';
+                weightInput.min = '1';
+                weightInput.max = '10';
+                weightInput.placeholder = '权重';
+                weightInput.value = c.weight;
+                weightInput.addEventListener('input', (e) => {
+                    c.weight = parseInt(e.target.value) || 1;
+                    renderMatrix();
+                    calculateResults();
+                    saveToStorage();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', () => removeCriteria(c.id));
+
+                div.appendChild(nameInput);
+                div.appendChild(weightInput);
+                div.appendChild(deleteBtn);
+
+                container.appendChild(div);
+            });
+        }
+
+        function addOption(name = '') {
+            options.push({ id: generateId(), name: name });
+            renderOptions();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function removeOption(id) {
+            options = options.filter(o => o.id !== id);
+            renderOptions();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function renderOptions() {
+            const container = document.getElementById('optionList');
+            container.textContent = '';
+
+            options.forEach(o => {
+                const div = document.createElement('div');
+                div.className = 'option-item';
+
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = '方案名称';
+                nameInput.value = o.name;
+                nameInput.addEventListener('input', (e) => {
+                    o.name = e.target.value;
+                    renderMatrix();
+                    saveToStorage();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', () => removeOption(o.id));
+
+                div.appendChild(nameInput);
+                div.appendChild(deleteBtn);
+
+                container.appendChild(div);
+            });
+        }
+
+        function renderMatrix() {
+            const table = document.getElementById('matrixTable');
+            table.textContent = '';
+
+            if (criteria.length === 0 || options.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.textContent = '请先添加评估标准和可选方案';
+                cell.style.padding = '20px';
+                cell.style.opacity = '0.5';
+                row.appendChild(cell);
+                table.appendChild(row);
+                return;
+            }
+
+            // Header row
+            const headerRow = document.createElement('tr');
+            const emptyHeader = document.createElement('th');
+            emptyHeader.textContent = '方案 / 标准';
+            headerRow.appendChild(emptyHeader);
+
+            criteria.forEach(c => {
+                const th = document.createElement('th');
+                th.className = 'criteria-header';
+                const nameSpan = document.createElement('div');
+                nameSpan.textContent = c.name || '(未命名)';
+                const weightSpan = document.createElement('span');
+                weightSpan.textContent = '权重: ' + c.weight;
+                th.appendChild(nameSpan);
+                th.appendChild(weightSpan);
+                headerRow.appendChild(th);
+            });
+
+            const totalHeader = document.createElement('th');
+            totalHeader.textContent = '加权总分';
+            headerRow.appendChild(totalHeader);
+
+            table.appendChild(headerRow);
+
+            // Calculate totals for each option
+            const totals = [];
+            options.forEach(o => {
+                let total = 0;
+                criteria.forEach(c => {
+                    const key = o.id + '-' + c.id;
+                    const score = scores[key] || 0;
+                    total += score * c.weight;
+                });
+                totals.push({ optionId: o.id, total: total });
+            });
+
+            const maxTotal = Math.max(...totals.map(t => t.total));
+
+            // Option rows
+            options.forEach(o => {
+                const row = document.createElement('tr');
+                const optionTotal = totals.find(t => t.optionId === o.id);
+                
+                if (optionTotal && optionTotal.total === maxTotal && maxTotal > 0) {
+                    row.className = 'winner';
+                }
+
+                const nameCell = document.createElement('td');
+                nameCell.className = 'option-name';
+                nameCell.textContent = o.name || '(未命名)';
+                row.appendChild(nameCell);
+
+                criteria.forEach(c => {
+                    const cell = document.createElement('td');
+                    cell.className = 'score-cell';
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'score-input';
+                    input.min = '1';
+                    input.max = '10';
+                    const key = o.id + '-' + c.id;
+                    input.value = scores[key] || '';
+                    input.addEventListener('input', (e) => {
+                        const val = parseInt(e.target.value);
+                        if (val >= 1 && val <= 10) {
+                            scores[key] = val;
+                        } else if (!e.target.value) {
+                            delete scores[key];
+                        }
+                        renderMatrix();
+                        calculateResults();
+                        saveToStorage();
+                    });
+
+                    cell.appendChild(input);
+                    row.appendChild(cell);
+                });
+
+                const totalCell = document.createElement('td');
+                totalCell.className = 'total-cell';
+                totalCell.textContent = optionTotal ? optionTotal.total.toFixed(1) : '0';
+                row.appendChild(totalCell);
+
+                table.appendChild(row);
+            });
+
+            calculateResults();
+        }
+
+        function calculateResults() {
+            const results = options.map(o => {
+                let total = 0;
+                let hasScores = false;
+                criteria.forEach(c => {
+                    const key = o.id + '-' + c.id;
+                    if (scores[key]) {
+                        total += scores[key] * c.weight;
+                        hasScores = true;
+                    }
+                });
+                return { option: o, total: total, hasScores: hasScores };
+            });
+
+            results.sort((a, b) => b.total - a.total);
+
+            const winnerName = document.getElementById('winnerName');
+            const winnerScore = document.getElementById('winnerScore');
+            const rankingList = document.getElementById('rankingList');
+
+            if (results.length > 0 && results[0].hasScores) {
+                winnerName.textContent = results[0].option.name || '(未命名)';
+                winnerScore.textContent = '加权总分: ' + results[0].total.toFixed(1);
+            } else {
+                winnerName.textContent = '-';
+                winnerScore.textContent = '请完成评分';
+            }
+
+            rankingList.textContent = '';
+            results.forEach((r, index) => {
+                const div = document.createElement('div');
+                div.className = 'ranking-item' + (index === 0 ? ' rank-1' : '');
+
+                const left = document.createElement('div');
+                left.style.cssText = 'display:flex;align-items:center;gap:12px;';
+
+                const rankNum = document.createElement('div');
+                rankNum.className = 'rank-number';
+                rankNum.textContent = index + 1;
+
+                const name = document.createElement('span');
+                name.textContent = r.option.name || '(未命名)';
+
+                left.appendChild(rankNum);
+                left.appendChild(name);
+
+                const score = document.createElement('span');
+                score.textContent = r.total.toFixed(1);
+                score.style.fontWeight = 'bold';
+
+                div.appendChild(left);
+                div.appendChild(score);
+
+                rankingList.appendChild(div);
+            });
+        }
+
+        function exportResult() {
+            const title = document.getElementById('decisionTitle').value || '决策分析';
+            let text = '═══════════════════════════════════════\n';
+            text += '        决策矩阵分析结果\n';
+            text += '═══════════════════════════════════════\n\n';
+            text += '决策问题: ' + title + '\n\n';
+
+            text += '评估标准:\n';
+            criteria.forEach(c => {
+                text += '• ' + (c.name || '(未命名)') + ' (权重: ' + c.weight + ')\n';
+            });
+            text += '\n';
+
+            text += '评分矩阵:\n';
+            text += '───────────────────────────────────────\n';
+
+            const results = options.map(o => {
+                let total = 0;
+                let scoreDetails = [];
+                criteria.forEach(c => {
+                    const key = o.id + '-' + c.id;
+                    const score = scores[key] || 0;
+                    total += score * c.weight;
+                    scoreDetails.push((c.name || '标准') + ':' + score);
+                });
+                return { option: o, total: total, details: scoreDetails };
+            });
+
+            results.sort((a, b) => b.total - a.total);
+
+            results.forEach((r, index) => {
+                text += (index + 1) + '. ' + (r.option.name || '(未命名)') + '\n';
+                text += '   评分: ' + r.details.join(', ') + '\n';
+                text += '   加权总分: ' + r.total.toFixed(1) + '\n\n';
+            });
+
+            text += '───────────────────────────────────────\n';
+            text += '推荐选择: ' + (results[0]?.option.name || '-') + '\n';
+            text += '═══════════════════════════════════════\n';
+
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板');
+            });
+        }
+
+        function shareMatrix() {
+            const data = {
+                title: document.getElementById('decisionTitle').value,
+                criteria: criteria,
+                options: options,
+                scores: scores
+            };
+            const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+            const url = window.location.href.split('#')[0] + '#' + encoded;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('分享链接已复制');
+            });
+        }
+
+        function loadFromUrl() {
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(atob(hash)));
+                    document.getElementById('decisionTitle').value = data.title || '';
+                    if (data.criteria) criteria = data.criteria;
+                    if (data.options) options = data.options;
+                    if (data.scores) scores = data.scores;
+                } catch (e) {
+                    console.error('Failed to load from URL:', e);
+                }
+            }
+        }
+
+        function saveToStorage() {
+            const data = {
+                title: document.getElementById('decisionTitle').value,
+                criteria: criteria,
+                options: options,
+                scores: scores
+            };
+            localStorage.setItem(LS_KEY, JSON.stringify(data));
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    document.getElementById('decisionTitle').value = data.title || '';
+                    if (data.criteria) criteria = data.criteria;
+                    if (data.options) options = data.options;
+                    if (data.scores) scores = data.scores;
+                } catch (e) {
+                    console.error('Failed to load from storage:', e);
+                }
+            }
+        }
+
+        function clearAll() {
+            if (confirm('确定要清空所有内容吗？')) {
+                document.getElementById('decisionTitle').value = '';
+                criteria = [
+                    { id: generateId(), name: '成本', weight: 8 },
+                    { id: generateId(), name: '效果', weight: 9 },
+                    { id: generateId(), name: '风险', weight: 7 }
+                ];
+                options = [
+                    { id: generateId(), name: '方案 A' },
+                    { id: generateId(), name: '方案 B' }
+                ];
+                scores = {};
+                renderCriteria();
+                renderOptions();
+                renderMatrix();
+                localStorage.removeItem(LS_KEY);
+                window.location.hash = '';
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-color);color:#000;padding:12px 24px;border-radius:8px;z-index:1000;font-size:14px;';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.toggleTheme = function() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        };
+
+        init();
+    </script>
+</body>
+</html>

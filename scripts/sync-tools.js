@@ -83,7 +83,10 @@ function main() {
   }
   
   const toolsData = JSON.parse(fs.readFileSync(TOOLS_JSON, 'utf8'));
-  const { categories, tools } = toolsData;
+  const { categories, tools: toolsObj } = toolsData;
+  
+  // 将 tools 对象转换为数组
+  const tools = Object.values(toolsObj);
   
   const toolCount = tools.length;
   const categoryCount = Object.keys(categories).length;

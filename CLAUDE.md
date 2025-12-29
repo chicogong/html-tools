@@ -88,7 +88,7 @@ npm test
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
-  <title>工具名 - HTML Tools</title>
+  <title>工具名 - WebUtils</title>
 
   <!-- 字体从 Google Fonts CDN 加载 -->
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:..." rel="stylesheet">

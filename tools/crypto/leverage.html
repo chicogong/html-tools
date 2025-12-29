@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>杠杆计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f7931a; --accent2: #ff9500; --green: #00d395; --red: #ff6b6b; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #1a1a1a; --text2: #666; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .card-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; width: 100%; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(247, 147, 26, 0.4); }
+        .leverage-select { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .leverage-btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; transition: all 0.2s; }
+        .leverage-btn.active { border-color: var(--accent); background: linear-gradient(135deg, rgba(247,147,26,0.1), rgba(255,149,0,0.1)); color: var(--accent); }
+        .leverage-btn:hover { border-color: var(--accent); }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+        .result-item { background: var(--bg); border-radius: 12px; padding: 16px; text-align: center; }
+        .result-label { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .result-value { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+        .result-value.green { color: var(--green); }
+        .result-value.red { color: var(--red); }
+        .warning { background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,107,107,0.1)); border: 1px solid var(--red); border-radius: 12px; padding: 16px; margin-top: 16px; }
+        .warning-title { font-weight: 600; color: var(--red); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .warning-text { font-size: 0.9rem; color: var(--text2); line-height: 1.6; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>⚡ 杠杆计算器</h1>
+        <p class="subtitle">计算合约杠杆交易的盈亏和风险</p>
+
+        <div class="card">
+            <div class="card-title">💰 仓位设置</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>保证金 (USDT)</label>
+                    <input type="number" id="margin" value="1000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>开仓价格 (USDT)</label>
+                    <input type="number" id="entryPrice" value="30000" min="0">
+                </div>
+                <div class="form-group">
+                    <label>方向</label>
+                    <select id="direction">
+                        <option value="long">做多 (Long)</option>
+                        <option value="short">做空 (Short)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>杠杆倍数</label>
+                <div class="leverage-select" id="leverageSelect">
+                    <div class="leverage-btn" data-leverage="1">1x</div>
+                    <div class="leverage-btn" data-leverage="2">2x</div>
+                    <div class="leverage-btn" data-leverage="3">3x</div>
+                    <div class="leverage-btn" data-leverage="5">5x</div>
+                    <div class="leverage-btn active" data-leverage="10">10x</div>
+                    <div class="leverage-btn" data-leverage="20">20x</div>
+                    <div class="leverage-btn" data-leverage="50">50x</div>
+                    <div class="leverage-btn" data-leverage="100">100x</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">📊 价格变动模拟</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>目标价格 (USDT)</label>
+                    <input type="number" id="targetPrice" value="33000" min="0">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="calculate()">计算盈亏</button>
+        </div>
+
+        <div id="resultSection" class="hidden">
+            <div class="card">
+                <div class="card-title">📈 杠杆交易结果</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">仓位价值</div>
+                        <div class="result-value" id="positionValue"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">仓位数量</div>
+                        <div class="result-value" id="positionSize"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">价格变动</div>
+                        <div class="result-value" id="priceChange"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">盈亏金额</div>
+                        <div class="result-value" id="pnl"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">收益率</div>
+                        <div class="result-value" id="returnRate"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">爆仓价格</div>
+                        <div class="result-value red" id="liquidationPrice"></div>
+                    </div>
+                </div>
+
+                <div class="warning">
+                    <div class="warning-title">⚠️ 风险提示</div>
+                    <div class="warning-text" id="riskWarning"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var selectedLeverage = 10;
+
+        document.getElementById('leverageSelect').addEventListener('click', function(e) {
+            if (e.target.classList.contains('leverage-btn')) {
+                document.querySelectorAll('.leverage-btn').forEach(function(btn) {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                selectedLeverage = parseInt(e.target.dataset.leverage);
+            }
+        });
+
+        function formatMoney(num) {
+            if (Math.abs(num) >= 10000) {
+                return (num / 10000).toFixed(2) + '万';
+            }
+            return num.toFixed(2) + ' USDT';
+        }
+
+        function calculate() {
+            var margin = parseFloat(document.getElementById('margin').value) || 0;
+            var entryPrice = parseFloat(document.getElementById('entryPrice').value) || 1;
+            var direction = document.getElementById('direction').value;
+            var targetPrice = parseFloat(document.getElementById('targetPrice').value) || entryPrice;
+
+            var positionValue = margin * selectedLeverage;
+            var positionSize = positionValue / entryPrice;
+            var priceChangeAbs = targetPrice - entryPrice;
+            var priceChangePct = (priceChangeAbs / entryPrice) * 100;
+
+            var pnl;
+            if (direction === 'long') {
+                pnl = positionSize * priceChangeAbs;
+            } else {
+                pnl = positionSize * -priceChangeAbs;
+            }
+
+            var returnRate = (pnl / margin) * 100;
+
+            // 爆仓价格计算（假设维持保证金率5%）
+            var maintenanceMarginRate = 0.05;
+            var liquidationPrice;
+            if (direction === 'long') {
+                liquidationPrice = entryPrice * (1 - (1 - maintenanceMarginRate) / selectedLeverage);
+            } else {
+                liquidationPrice = entryPrice * (1 + (1 - maintenanceMarginRate) / selectedLeverage);
+            }
+
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            document.getElementById('positionValue').textContent = formatMoney(positionValue);
+            document.getElementById('positionSize').textContent = positionSize.toFixed(6);
+            
+            var pcEl = document.getElementById('priceChange');
+            pcEl.textContent = (priceChangePct >= 0 ? '+' : '') + priceChangePct.toFixed(2) + '%';
+            pcEl.className = 'result-value ' + (priceChangePct >= 0 ? 'green' : 'red');
+
+            var pnlEl = document.getElementById('pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + formatMoney(pnl);
+            pnlEl.className = 'result-value ' + (pnl >= 0 ? 'green' : 'red');
+
+            var rrEl = document.getElementById('returnRate');
+            rrEl.textContent = (returnRate >= 0 ? '+' : '') + returnRate.toFixed(2) + '%';
+            rrEl.className = 'result-value ' + (returnRate >= 0 ? 'green' : 'red');
+
+            document.getElementById('liquidationPrice').textContent = liquidationPrice.toFixed(2) + ' USDT';
+
+            var riskLevel;
+            if (selectedLeverage <= 3) {
+                riskLevel = '低风险';
+            } else if (selectedLeverage <= 10) {
+                riskLevel = '中等风险';
+            } else if (selectedLeverage <= 50) {
+                riskLevel = '高风险';
+            } else {
+                riskLevel = '极高风险';
+            }
+
+            var distanceToLiq = Math.abs((entryPrice - liquidationPrice) / entryPrice * 100);
+            
+            document.getElementById('riskWarning').textContent = 
+                '当前杠杆倍数: ' + selectedLeverage + 'x (' + riskLevel + ')\n' +
+                '距离爆仓价格仅 ' + distanceToLiq.toFixed(2) + '%\n' +
+                '高杠杆交易风险极大，请谨慎操作，建议设置止损。';
+        }
+
+        calculate();
+    </script>
+</body>
+</html>

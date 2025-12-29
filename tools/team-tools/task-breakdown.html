@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务分解器 (WBS) - WebUtils</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --primary-color: #0f3460;
+            --accent-color: #00d9ff;
+            --border-color: #0f3460;
+            --input-bg: #1a1a2e;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --card-bg: #fff;
+            --text-color: #1a1a2e;
+            --primary-color: #e0e7ff;
+            --accent-color: #0891b2;
+            --border-color: #c7d2fe;
+            --input-bg: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .back-link {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+
+        .project-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .wbs-tree {
+            padding: 10px 0;
+        }
+
+        .wbs-item {
+            margin-bottom: 8px;
+        }
+
+        .wbs-node {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .wbs-node.level-1 {
+            border-left-color: var(--accent-color);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .wbs-node.level-2 {
+            margin-left: 30px;
+            border-left-color: var(--success-color);
+        }
+
+        .wbs-node.level-3 {
+            margin-left: 60px;
+            border-left-color: var(--warning-color);
+        }
+
+        .wbs-node.level-4 {
+            margin-left: 90px;
+            border-left-color: #a855f7;
+        }
+
+        .wbs-code {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--accent-color);
+            min-width: 50px;
+        }
+
+        .wbs-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 14px;
+            padding: 4px;
+        }
+
+        .wbs-input:focus {
+            outline: none;
+            background: var(--card-bg);
+            border-radius: 4px;
+        }
+
+        .wbs-hours {
+            width: 60px;
+            padding: 4px 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .wbs-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .wbs-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0.6;
+        }
+
+        .wbs-btn:hover {
+            opacity: 1;
+            background: var(--primary-color);
+        }
+
+        .wbs-btn.delete:hover {
+            color: var(--danger-color);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: var(--input-bg);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .preview {
+            background: var(--input-bg);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .wbs-node.level-2 { margin-left: 20px; }
+            .wbs-node.level-3 { margin-left: 40px; }
+            .wbs-node.level-4 { margin-left: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../../index.html" class="back-link">← 返回工具列表</a>
+            <h1>任务分解器 (WBS)</h1>
+            <p>工作分解结构 - 项目任务分解</p>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📋 项目信息</div>
+            <div class="project-header">
+                <div class="form-group">
+                    <input type="text" id="projectName" placeholder="项目名称">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🌳 WBS 结构</div>
+            <div class="wbs-tree" id="wbsTree"></div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="addTopLevel()">+ 添加一级任务</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📊 统计信息</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTasks">0</div>
+                    <div class="stat-label">总任务数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalHours">0</div>
+                    <div class="stat-label">总工时 (小时)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalDays">0</div>
+                    <div class="stat-label">预计天数 (8h/天)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="maxDepth">0</div>
+                    <div class="stat-label">最大深度</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">👀 预览导出</div>
+            <div class="preview" id="preview"></div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="copyWBS()">📋 复制</button>
+                <button class="btn btn-secondary" onclick="downloadWBS()">💾 下载</button>
+                <button class="btn btn-secondary" onclick="shareWBS()">🔗 分享</button>
+                <button class="btn btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LS_KEY = 'wbs-data';
+        let wbsData = [];
+
+        function init() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+            }
+
+            loadFromStorage();
+            loadFromUrl();
+
+            if (wbsData.length === 0) {
+                wbsData = [
+                    { id: 1, name: '项目启动', hours: 0, children: [] }
+                ];
+            }
+
+            renderWBS();
+
+            document.getElementById('projectName').addEventListener('input', () => {
+                updatePreview();
+                saveToStorage();
+            });
+        }
+
+        function generateId() {
+            return Date.now() + Math.random().toString(36).substr(2, 9);
+        }
+
+        function addTopLevel() {
+            wbsData.push({
+                id: generateId(),
+                name: '',
+                hours: 0,
+                children: []
+            });
+            renderWBS();
+            saveToStorage();
+        }
+
+        function addChild(parentId) {
+            function findAndAdd(items) {
+                for (let item of items) {
+                    if (item.id === parentId) {
+                        item.children.push({
+                            id: generateId(),
+                            name: '',
+                            hours: 0,
+                            children: []
+                        });
+                        return true;
+                    }
+                    if (item.children && findAndAdd(item.children)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            findAndAdd(wbsData);
+            renderWBS();
+            saveToStorage();
+        }
+
+        function deleteItem(id) {
+            function findAndDelete(items) {
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].id === id) {
+                        items.splice(i, 1);
+                        return true;
+                    }
+                    if (items[i].children && findAndDelete(items[i].children)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            findAndDelete(wbsData);
+            renderWBS();
+            saveToStorage();
+        }
+
+        function updateItem(id, field, value) {
+            function findAndUpdate(items) {
+                for (let item of items) {
+                    if (item.id === id) {
+                        item[field] = value;
+                        return true;
+                    }
+                    if (item.children && findAndUpdate(item.children)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            findAndUpdate(wbsData);
+            updateStats();
+            updatePreview();
+            saveToStorage();
+        }
+
+        function renderWBS() {
+            const container = document.getElementById('wbsTree');
+            container.textContent = '';
+
+            function renderItems(items, level, prefix) {
+                items.forEach((item, index) => {
+                    const code = prefix ? prefix + '.' + (index + 1) : String(index + 1);
+                    const div = document.createElement('div');
+                    div.className = 'wbs-item';
+
+                    const node = document.createElement('div');
+                    node.className = 'wbs-node level-' + Math.min(level, 4);
+
+                    const codeSpan = document.createElement('span');
+                    codeSpan.className = 'wbs-code';
+                    codeSpan.textContent = code;
+
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.className = 'wbs-input';
+                    nameInput.placeholder = '任务名称';
+                    nameInput.value = item.name;
+                    nameInput.addEventListener('input', (e) => {
+                        updateItem(item.id, 'name', e.target.value);
+                    });
+
+                    const hoursInput = document.createElement('input');
+                    hoursInput.type = 'number';
+                    hoursInput.className = 'wbs-hours';
+                    hoursInput.placeholder = '工时';
+                    hoursInput.min = '0';
+                    hoursInput.value = item.hours || '';
+                    hoursInput.addEventListener('input', (e) => {
+                        updateItem(item.id, 'hours', parseFloat(e.target.value) || 0);
+                    });
+
+                    const actions = document.createElement('div');
+                    actions.className = 'wbs-actions';
+
+                    if (level < 4) {
+                        const addBtn = document.createElement('button');
+                        addBtn.className = 'wbs-btn';
+                        addBtn.textContent = '+';
+                        addBtn.title = '添加子任务';
+                        addBtn.addEventListener('click', () => addChild(item.id));
+                        actions.appendChild(addBtn);
+                    }
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'wbs-btn delete';
+                    deleteBtn.textContent = '×';
+                    deleteBtn.title = '删除';
+                    deleteBtn.addEventListener('click', () => {
+                        if (confirm('确定删除此任务及其子任务？')) {
+                            deleteItem(item.id);
+                        }
+                    });
+                    actions.appendChild(deleteBtn);
+
+                    node.appendChild(codeSpan);
+                    node.appendChild(nameInput);
+                    node.appendChild(hoursInput);
+                    node.appendChild(actions);
+
+                    div.appendChild(node);
+                    container.appendChild(div);
+
+                    if (item.children && item.children.length > 0) {
+                        renderItems(item.children, level + 1, code);
+                    }
+                });
+            }
+
+            renderItems(wbsData, 1, '');
+            updateStats();
+            updatePreview();
+        }
+
+        function calculateStats() {
+            let totalTasks = 0;
+            let totalHours = 0;
+            let maxDepth = 0;
+
+            function traverse(items, depth) {
+                items.forEach(item => {
+                    totalTasks++;
+                    totalHours += item.hours || 0;
+                    maxDepth = Math.max(maxDepth, depth);
+                    if (item.children && item.children.length > 0) {
+                        traverse(item.children, depth + 1);
+                    }
+                });
+            }
+
+            traverse(wbsData, 1);
+
+            return { totalTasks, totalHours, maxDepth };
+        }
+
+        function updateStats() {
+            const stats = calculateStats();
+            document.getElementById('totalTasks').textContent = stats.totalTasks;
+            document.getElementById('totalHours').textContent = stats.totalHours;
+            document.getElementById('totalDays').textContent = Math.ceil(stats.totalHours / 8);
+            document.getElementById('maxDepth').textContent = stats.maxDepth;
+        }
+
+        function generateWBSText() {
+            const projectName = document.getElementById('projectName').value || '项目';
+            let text = '═══════════════════════════════════════\n';
+            text += '     ' + projectName + ' - WBS 工作分解结构\n';
+            text += '═══════════════════════════════════════\n\n';
+
+            function renderText(items, prefix, indent) {
+                items.forEach((item, index) => {
+                    const code = prefix ? prefix + '.' + (index + 1) : String(index + 1);
+                    const hours = item.hours ? ' (' + item.hours + 'h)' : '';
+                    text += indent + code + ' ' + (item.name || '(未命名)') + hours + '\n';
+                    if (item.children && item.children.length > 0) {
+                        renderText(item.children, code, indent + '  ');
+                    }
+                });
+            }
+
+            renderText(wbsData, '', '');
+
+            const stats = calculateStats();
+            text += '\n───────────────────────────────────────\n';
+            text += '总任务数: ' + stats.totalTasks + '\n';
+            text += '总工时: ' + stats.totalHours + ' 小时\n';
+            text += '预计天数: ' + Math.ceil(stats.totalHours / 8) + ' 天 (按8小时/天计算)\n';
+            text += '═══════════════════════════════════════\n';
+
+            return text;
+        }
+
+        function updatePreview() {
+            document.getElementById('preview').textContent = generateWBSText();
+        }
+
+        function copyWBS() {
+            navigator.clipboard.writeText(generateWBSText()).then(() => {
+                showToast('已复制到剪贴板');
+            });
+        }
+
+        function downloadWBS() {
+            const projectName = document.getElementById('projectName').value || 'WBS';
+            const blob = new Blob([generateWBSText()], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = projectName + '-WBS.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function shareWBS() {
+            const data = {
+                projectName: document.getElementById('projectName').value,
+                wbsData: wbsData
+            };
+            const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+            const url = window.location.href.split('#')[0] + '#' + encoded;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('分享链接已复制');
+            });
+        }
+
+        function loadFromUrl() {
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(atob(hash)));
+                    document.getElementById('projectName').value = data.projectName || '';
+                    if (data.wbsData) wbsData = data.wbsData;
+                    renderWBS();
+                } catch (e) {
+                    console.error('Failed to load from URL:', e);
+                }
+            }
+        }
+
+        function saveToStorage() {
+            const data = {
+                projectName: document.getElementById('projectName').value,
+                wbsData: wbsData
+            };
+            localStorage.setItem(LS_KEY, JSON.stringify(data));
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    document.getElementById('projectName').value = data.projectName || '';
+                    if (data.wbsData) wbsData = data.wbsData;
+                } catch (e) {
+                    console.error('Failed to load from storage:', e);
+                }
+            }
+        }
+
+        function clearAll() {
+            if (confirm('确定要清空所有内容吗？')) {
+                document.getElementById('projectName').value = '';
+                wbsData = [{ id: generateId(), name: '项目启动', hours: 0, children: [] }];
+                renderWBS();
+                localStorage.removeItem(LS_KEY);
+                window.location.hash = '';
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-color);color:#000;padding:12px 24px;border-radius:8px;z-index:1000;font-size:14px;';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.toggleTheme = function() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        };
+
+        init();
+    </script>
+</body>
+</html>

@@ -166,6 +166,38 @@ Only use CDN when necessary. Current dependencies:
 - `marked` + `DOMPurify` - Markdown preview
 - `QRCode.js` - QR code generation
 
+## Local Testing
+
+### Start Local Server
+
+```bash
+open index.html               # macOS - direct open
+# or
+python3 -m http.server 8080   # http://localhost:8080 (if HTTP required)
+```
+
+### Testing Checklist
+
+**Functional**:
+- [ ] Page loads without console errors
+- [ ] Paste/Copy/Share buttons work
+- [ ] localStorage and URL hash persistence work
+
+**Responsive** (DevTools F12):
+- [ ] Desktop (1440px+)
+- [ ] Tablet (768px)
+- [ ] Mobile (375px)
+
+**Theme**:
+- [ ] Dark/Light themes display correctly
+
+### Pre-commit
+
+```bash
+npm run lint          # Run all linters
+npm run sync:tools    # Sync tools.json → index.html
+```
+
 ## CI/CD
 
 - **Lint**: PR triggers HTMLHint + Stylelint + ESLint

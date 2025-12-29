@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>身份证号码生成器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f43f5e; --accent2: #ec4899; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .warning { background: rgba(244, 63, 94, 0.1); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem; color: var(--accent); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; font-weight: 500; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+        .btn-secondary:hover { border-color: var(--accent); }
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .result-box { background: var(--bg); border-radius: 8px; padding: 20px; margin-top: 16px; }
+        .result-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card); border-radius: 8px; margin-bottom: 8px; font-family: 'Courier New', monospace; font-size: 1.1rem; }
+        .result-item:last-child { margin-bottom: 0; }
+        .copy-btn { padding: 6px 12px; font-size: 0.85rem; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; cursor: pointer; }
+        .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .copy-btn.copied { background: var(--accent); border-color: var(--accent); color: white; }
+        .gender-select { display: flex; gap: 12px; }
+        .gender-option { flex: 1; padding: 12px; text-align: center; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .gender-option.active { border-color: var(--accent); background: rgba(244, 63, 94, 0.1); color: var(--accent); }
+        .gender-option:hover { border-color: var(--accent); }
+        .count-control { display: flex; align-items: center; gap: 12px; }
+        .count-btn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1.2rem; cursor: pointer; }
+        .count-btn:hover { border-color: var(--accent); }
+        .count-display { font-size: 1.2rem; font-weight: 600; min-width: 40px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>身份证号码生成器</h1>
+        <p class="subtitle">生成符合规则的测试用身份证号码</p>
+        
+        <div class="warning">
+            本工具仅用于开发测试目的，生成的号码为随机虚构，请勿用于任何非法用途。
+        </div>
+        
+        <div class="card">
+            <div class="card-title">生成配置</div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>省份</label>
+                    <select id="province" onchange="updateCities()">
+                        <option value="">随机省份</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>城市</label>
+                    <select id="city">
+                        <option value="">随机城市</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid">
+                <div class="form-group">
+                    <label>出生年份范围</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="number" id="yearStart" value="1970" min="1900" max="2024">
+                        <span>至</span>
+                        <input type="number" id="yearEnd" value="2005" min="1900" max="2024">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>性别</label>
+                    <div class="gender-select">
+                        <div class="gender-option active" data-gender="random" onclick="selectGender(this)">随机</div>
+                        <div class="gender-option" data-gender="male" onclick="selectGender(this)">男</div>
+                        <div class="gender-option" data-gender="female" onclick="selectGender(this)">女</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>生成数量</label>
+                <div class="count-control">
+                    <button class="count-btn" onclick="changeCount(-1)">−</button>
+                    <span class="count-display" id="countDisplay">5</span>
+                    <button class="count-btn" onclick="changeCount(1)">+</button>
+                    <span style="color: var(--text2); margin-left: 8px;">（最多20个）</span>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="generate()">生成身份证号码</button>
+                <button class="btn btn-secondary" onclick="copyAll()">复制全部</button>
+                <button class="btn btn-secondary" onclick="clearResults()">清空</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">生成结果</div>
+            <div class="result-box" id="resultBox">
+                <div style="text-align: center; color: var(--text2); padding: 20px;">
+                    点击"生成身份证号码"按钮开始生成
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 地区码数据（省份-城市映射）
+        const regionData = {
+            "11": { name: "北京市", cities: { "1101": "北京市" } },
+            "12": { name: "天津市", cities: { "1201": "天津市" } },
+            "13": { name: "河北省", cities: { "1301": "石家庄市", "1302": "唐山市", "1303": "秦皇岛市", "1304": "邯郸市", "1305": "邢台市", "1306": "保定市" } },
+            "14": { name: "山西省", cities: { "1401": "太原市", "1402": "大同市", "1403": "阳泉市", "1404": "长治市", "1405": "晋城市" } },
+            "15": { name: "内蒙古", cities: { "1501": "呼和浩特市", "1502": "包头市", "1503": "乌海市", "1504": "赤峰市" } },
+            "21": { name: "辽宁省", cities: { "2101": "沈阳市", "2102": "大连市", "2103": "鞍山市", "2104": "抚顺市", "2105": "本溪市" } },
+            "22": { name: "吉林省", cities: { "2201": "长春市", "2202": "吉林市", "2203": "四平市", "2204": "辽源市" } },
+            "23": { name: "黑龙江省", cities: { "2301": "哈尔滨市", "2302": "齐齐哈尔市", "2303": "鸡西市", "2304": "鹤岗市" } },
+            "31": { name: "上海市", cities: { "3101": "上海市" } },
+            "32": { name: "江苏省", cities: { "3201": "南京市", "3202": "无锡市", "3203": "徐州市", "3204": "常州市", "3205": "苏州市" } },
+            "33": { name: "浙江省", cities: { "3301": "杭州市", "3302": "宁波市", "3303": "温州市", "3304": "嘉兴市", "3305": "湖州市" } },
+            "34": { name: "安徽省", cities: { "3401": "合肥市", "3402": "芜湖市", "3403": "蚌埠市", "3404": "淮南市", "3405": "马鞍山市" } },
+            "35": { name: "福建省", cities: { "3501": "福州市", "3502": "厦门市", "3503": "莆田市", "3504": "三明市", "3505": "泉州市" } },
+            "36": { name: "江西省", cities: { "3601": "南昌市", "3602": "景德镇市", "3603": "萍乡市", "3604": "九江市" } },
+            "37": { name: "山东省", cities: { "3701": "济南市", "3702": "青岛市", "3703": "淄博市", "3704": "枣庄市", "3705": "东营市" } },
+            "41": { name: "河南省", cities: { "4101": "郑州市", "4102": "开封市", "4103": "洛阳市", "4104": "平顶山市" } },
+            "42": { name: "湖北省", cities: { "4201": "武汉市", "4202": "黄石市", "4203": "十堰市", "4205": "宜昌市" } },
+            "43": { name: "湖南省", cities: { "4301": "长沙市", "4302": "株洲市", "4303": "湘潭市", "4304": "衡阳市" } },
+            "44": { name: "广东省", cities: { "4401": "广州市", "4402": "韶关市", "4403": "深圳市", "4404": "珠海市", "4406": "佛山市" } },
+            "45": { name: "广西", cities: { "4501": "南宁市", "4502": "柳州市", "4503": "桂林市", "4504": "梧州市" } },
+            "46": { name: "海南省", cities: { "4601": "海口市", "4602": "三亚市" } },
+            "50": { name: "重庆市", cities: { "5001": "重庆市" } },
+            "51": { name: "四川省", cities: { "5101": "成都市", "5103": "自贡市", "5104": "攀枝花市", "5105": "泸州市" } },
+            "52": { name: "贵州省", cities: { "5201": "贵阳市", "5202": "六盘水市", "5203": "遵义市" } },
+            "53": { name: "云南省", cities: { "5301": "昆明市", "5303": "曲靖市", "5304": "玉溪市" } },
+            "54": { name: "西藏", cities: { "5401": "拉萨市" } },
+            "61": { name: "陕西省", cities: { "6101": "西安市", "6102": "铜川市", "6103": "宝鸡市", "6104": "咸阳市" } },
+            "62": { name: "甘肃省", cities: { "6201": "兰州市", "6202": "嘉峪关市", "6203": "金昌市" } },
+            "63": { name: "青海省", cities: { "6301": "西宁市" } },
+            "64": { name: "宁夏", cities: { "6401": "银川市", "6402": "石嘴山市" } },
+            "65": { name: "新疆", cities: { "6501": "乌鲁木齐市", "6502": "克拉玛依市" } }
+        };
+        
+        let count = 5;
+        let selectedGender = 'random';
+        let generatedIds = [];
+        
+        // 初始化省份下拉框
+        function initProvinces() {
+            const select = document.getElementById('province');
+            Object.keys(regionData).forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = regionData[code].name;
+                select.appendChild(option);
+            });
+        }
+        
+        // 更新城市下拉框
+        function updateCities() {
+            const provinceCode = document.getElementById('province').value;
+            const citySelect = document.getElementById('city');
+            citySelect.textContent = '';
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '随机城市';
+            citySelect.appendChild(defaultOption);
+            
+            if (provinceCode && regionData[provinceCode]) {
+                const cities = regionData[provinceCode].cities;
+                Object.keys(cities).forEach(code => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = cities[code];
+                    citySelect.appendChild(option);
+                });
+            }
+        }
+        
+        // 选择性别
+        function selectGender(el) {
+            document.querySelectorAll('.gender-option').forEach(e => e.classList.remove('active'));
+            el.classList.add('active');
+            selectedGender = el.dataset.gender;
+        }
+        
+        // 修改数量
+        function changeCount(delta) {
+            count = Math.max(1, Math.min(20, count + delta));
+            document.getElementById('countDisplay').textContent = count;
+        }
+        
+        // 生成随机数
+        function random(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        // 计算校验码
+        function calcCheckCode(id17) {
+            const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+            const checkCodes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+            let sum = 0;
+            for (let i = 0; i < 17; i++) {
+                sum += parseInt(id17[i]) * weights[i];
+            }
+            return checkCodes[sum % 11];
+        }
+        
+        // 生成单个身份证号
+        function generateOne() {
+            const provinceCode = document.getElementById('province').value;
+            const cityCode = document.getElementById('city').value;
+            const yearStart = parseInt(document.getElementById('yearStart').value) || 1970;
+            const yearEnd = parseInt(document.getElementById('yearEnd').value) || 2005;
+            
+            // 地区码
+            let areaCode;
+            if (cityCode) {
+                areaCode = cityCode + String(random(0, 9)).padStart(2, '0');
+            } else if (provinceCode) {
+                const cities = Object.keys(regionData[provinceCode].cities);
+                const randomCity = cities[random(0, cities.length - 1)];
+                areaCode = randomCity + String(random(0, 9)).padStart(2, '0');
+            } else {
+                const provinces = Object.keys(regionData);
+                const randomProvince = provinces[random(0, provinces.length - 1)];
+                const cities = Object.keys(regionData[randomProvince].cities);
+                const randomCity = cities[random(0, cities.length - 1)];
+                areaCode = randomCity + String(random(0, 9)).padStart(2, '0');
+            }
+            
+            // 出生日期
+            const year = random(yearStart, yearEnd);
+            const month = random(1, 12);
+            const maxDay = new Date(year, month, 0).getDate();
+            const day = random(1, maxDay);
+            const birthDate = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+            
+            // 顺序码
+            let seqCode;
+            if (selectedGender === 'male') {
+                seqCode = random(0, 49) * 2 + 1; // 奇数
+            } else if (selectedGender === 'female') {
+                seqCode = random(0, 49) * 2; // 偶数
+            } else {
+                seqCode = random(0, 999);
+            }
+            seqCode = String(seqCode).padStart(3, '0');
+            
+            // 组合前17位并计算校验码
+            const id17 = areaCode + birthDate + seqCode;
+            const checkCode = calcCheckCode(id17);
+            
+            return id17 + checkCode;
+        }
+        
+        // 生成身份证号码
+        function generate() {
+            generatedIds = [];
+            for (let i = 0; i < count; i++) {
+                generatedIds.push(generateOne());
+            }
+            renderResults();
+        }
+        
+        // 渲染结果
+        function renderResults() {
+            const box = document.getElementById('resultBox');
+            box.textContent = '';
+            
+            if (generatedIds.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.cssText = 'text-align: center; color: var(--text2); padding: 20px;';
+                empty.textContent = '点击"生成身份证号码"按钮开始生成';
+                box.appendChild(empty);
+                return;
+            }
+            
+            generatedIds.forEach((id, index) => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                
+                const idSpan = document.createElement('span');
+                idSpan.textContent = id;
+                
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = '复制';
+                copyBtn.onclick = () => copyOne(id, copyBtn);
+                
+                item.appendChild(idSpan);
+                item.appendChild(copyBtn);
+                box.appendChild(item);
+            });
+        }
+        
+        // 复制单个
+        function copyOne(id, btn) {
+            navigator.clipboard.writeText(id).then(() => {
+                btn.textContent = '已复制';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '复制';
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        }
+        
+        // 复制全部
+        function copyAll() {
+            if (generatedIds.length === 0) return;
+            navigator.clipboard.writeText(generatedIds.join('\n')).then(() => {
+                alert('已复制 ' + generatedIds.length + ' 个身份证号码');
+            });
+        }
+        
+        // 清空结果
+        function clearResults() {
+            generatedIds = [];
+            renderResults();
+        }
+        
+        // 初始化
+        initProvinces();
+    </script>
+</body>
+</html>

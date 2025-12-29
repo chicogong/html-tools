@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基础代谢率计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #10b981; --accent2: #f59e0b; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .radio-group { display: flex; gap: 12px; }
+        .radio-btn { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .radio-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .result-hero { background: linear-gradient(135deg, var(--accent), #059669); padding: 24px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero .big { font-size: 2.5rem; font-weight: 700; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 4px; }
+        .result-hero .unit { font-size: 1rem; opacity: 0.8; }
+        .result-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .result-row .label { color: var(--text2); }
+        .result-row .value { font-weight: 600; }
+        .result-row .value.accent { color: var(--accent); }
+        .tdee-card { background: linear-gradient(135deg, var(--accent2), #d97706); padding: 16px; border-radius: 12px; color: white; margin-top: 16px; }
+        .tdee-card .title { font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px; }
+        .tdee-card .value { font-size: 1.8rem; font-weight: 700; }
+        .activity-levels { margin-top: 16px; }
+        .activity-level { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; cursor: pointer; border: 1px solid var(--border); transition: all 0.2s; }
+        .activity-level:hover { border-color: var(--accent); }
+        .activity-level.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .activity-level .name { font-size: 0.9rem; }
+        .activity-level .desc { font-size: 0.75rem; opacity: 0.7; }
+        .activity-level .kcal { font-weight: 600; }
+        .note { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem; color: var(--text2); }
+        .formula-info { margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.8rem; color: var(--text2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>基础代谢率计算器</h1>
+        <p class="subtitle">BMR / TDEE 计算 - 了解你每天需要多少热量</p>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">基本信息</div>
+                <div class="form-group">
+                    <label>性别</label>
+                    <div class="radio-group">
+                        <div class="radio-btn active" data-value="male" onclick="setGender('male')">男性</div>
+                        <div class="radio-btn" data-value="female" onclick="setGender('female')">女性</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>年龄 (岁)</label>
+                    <input type="number" id="age" value="25" min="1" max="120" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>身高 (cm)</label>
+                    <input type="number" id="height" value="170" min="50" max="250" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>体重 (kg)</label>
+                    <input type="number" id="weight" value="65" min="20" max="300" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>计算公式</label>
+                    <select id="formula" onchange="calculate()">
+                        <option value="mifflin">Mifflin-St Jeor（推荐）</option>
+                        <option value="harris">Harris-Benedict</option>
+                        <option value="katch">Katch-McArdle（需体脂率）</option>
+                    </select>
+                </div>
+                <div class="form-group" id="bodyFatGroup" style="display: none;">
+                    <label>体脂率 (%)</label>
+                    <input type="number" id="bodyFat" value="20" min="3" max="60" oninput="calculate()">
+                </div>
+                <div class="formula-info" id="formulaInfo"></div>
+            </div>
+            
+            <div>
+                <div class="result-hero">
+                    <div class="label">基础代谢率 (BMR)</div>
+                    <div class="big" id="bmrValue">0</div>
+                    <div class="unit">千卡/天</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">选择活动水平计算 TDEE</div>
+                    <div class="activity-levels" id="activityLevels"></div>
+                    
+                    <div class="tdee-card">
+                        <div class="title">每日总能量消耗 (TDEE)</div>
+                        <div class="value" id="tdeeValue">0 千卡/天</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">热量目标建议</div>
+                    <div class="result-row">
+                        <span class="label">减脂（-500千卡）</span>
+                        <span class="value" id="deficitValue">0 千卡/天</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">维持体重</span>
+                        <span class="value accent" id="maintainValue">0 千卡/天</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">增肌（+300千卡）</span>
+                        <span class="value" id="surplusValue">0 千卡/天</span>
+                    </div>
+                    <div class="note">
+                        减脂建议每周减重0.5kg左右，过快减重可能导致肌肉流失。增肌期适度热量盈余有助于肌肉增长。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let gender = 'male';
+        let selectedActivity = 1.55;
+        
+        const activityLevels = [
+            { name: '久坐不动', desc: '几乎不运动', factor: 1.2 },
+            { name: '轻度活动', desc: '每周运动1-3天', factor: 1.375 },
+            { name: '中度活动', desc: '每周运动3-5天', factor: 1.55 },
+            { name: '高度活动', desc: '每周运动6-7天', factor: 1.725 },
+            { name: '专业运动', desc: '每天高强度训练', factor: 1.9 }
+        ];
+        
+        const formulas = {
+            mifflin: '男: BMR = 10×体重 + 6.25×身高 - 5×年龄 + 5\n女: BMR = 10×体重 + 6.25×身高 - 5×年龄 - 161',
+            harris: '男: BMR = 88.362 + 13.397×体重 + 4.799×身高 - 5.677×年龄\n女: BMR = 447.593 + 9.247×体重 + 3.098×身高 - 4.330×年龄',
+            katch: 'BMR = 370 + 21.6 × 去脂体重(kg)\n去脂体重 = 体重 × (1 - 体脂率/100)'
+        };
+        
+        function setGender(g) {
+            gender = g;
+            document.querySelectorAll('.radio-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === g);
+            });
+            calculate();
+        }
+        
+        function setActivity(factor) {
+            selectedActivity = factor;
+            renderActivityLevels();
+            calculate();
+        }
+        
+        function renderActivityLevels() {
+            const container = document.getElementById('activityLevels');
+            container.textContent = '';
+            activityLevels.forEach(level => {
+                const div = document.createElement('div');
+                div.className = 'activity-level' + (level.factor === selectedActivity ? ' active' : '');
+                div.onclick = () => setActivity(level.factor);
+                
+                const left = document.createElement('div');
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'name';
+                nameSpan.textContent = level.name;
+                const descSpan = document.createElement('div');
+                descSpan.className = 'desc';
+                descSpan.textContent = level.desc;
+                left.appendChild(nameSpan);
+                left.appendChild(descSpan);
+                
+                const right = document.createElement('div');
+                right.className = 'kcal';
+                right.textContent = '×' + level.factor;
+                
+                div.appendChild(left);
+                div.appendChild(right);
+                container.appendChild(div);
+            });
+        }
+        
+        function calculate() {
+            const age = parseFloat(document.getElementById('age').value) || 0;
+            const height = parseFloat(document.getElementById('height').value) || 0;
+            const weight = parseFloat(document.getElementById('weight').value) || 0;
+            const formula = document.getElementById('formula').value;
+            const bodyFat = parseFloat(document.getElementById('bodyFat').value) || 20;
+            
+            document.getElementById('bodyFatGroup').style.display = formula === 'katch' ? 'block' : 'none';
+            document.getElementById('formulaInfo').textContent = formulas[formula];
+            
+            let bmr = 0;
+            
+            if (formula === 'mifflin') {
+                if (gender === 'male') {
+                    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+                } else {
+                    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+                }
+            } else if (formula === 'harris') {
+                if (gender === 'male') {
+                    bmr = 88.362 + 13.397 * weight + 4.799 * height - 5.677 * age;
+                } else {
+                    bmr = 447.593 + 9.247 * weight + 3.098 * height - 4.330 * age;
+                }
+            } else if (formula === 'katch') {
+                const leanMass = weight * (1 - bodyFat / 100);
+                bmr = 370 + 21.6 * leanMass;
+            }
+            
+            bmr = Math.round(bmr);
+            const tdee = Math.round(bmr * selectedActivity);
+            
+            document.getElementById('bmrValue').textContent = bmr.toLocaleString();
+            document.getElementById('tdeeValue').textContent = tdee.toLocaleString() + ' 千卡/天';
+            document.getElementById('deficitValue').textContent = (tdee - 500).toLocaleString() + ' 千卡/天';
+            document.getElementById('maintainValue').textContent = tdee.toLocaleString() + ' 千卡/天';
+            document.getElementById('surplusValue').textContent = (tdee + 300).toLocaleString() + ' 千卡/天';
+            
+            renderActivityLevels();
+        }
+        
+        renderActivityLevels();
+        calculate();
+    </script>
+</body>
+</html>

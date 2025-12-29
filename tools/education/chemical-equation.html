@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>化学方程式配平 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #8b5cf6; --success: #22c55e; --danger: #ef4444; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; font-family: 'Courier New', monospace; }
+        input:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn:hover { opacity: 0.9; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-top: 16px; }
+        .result-equation { font-size: 1.5rem; font-family: 'Times New Roman', serif; text-align: center; padding: 20px; }
+        .result-equation .coef { color: var(--accent); font-weight: 700; }
+        .result-equation .arrow { margin: 0 10px; color: var(--text2); }
+        .element-count { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 16px; }
+        .element-badge { padding: 8px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; font-size: 0.9rem; }
+        .element-badge.balanced { border-color: var(--success); color: var(--success); }
+        .examples { margin-top: 16px; }
+        .example-btn { padding: 8px 12px; margin: 4px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text2); cursor: pointer; font-size: 0.85rem; font-family: monospace; }
+        .example-btn:hover { border-color: var(--accent); color: var(--text); }
+        .note { font-size: 0.85rem; color: var(--text2); margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 8px; line-height: 1.6; }
+        .error { color: var(--danger); text-align: center; padding: 20px; }
+        .steps { margin-top: 16px; }
+        .step { padding: 12px; background: var(--card); border-left: 3px solid var(--accent); margin-bottom: 8px; border-radius: 0 8px 8px 0; }
+        .step-title { font-size: 0.85rem; color: var(--text2); margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚗️ 化学方程式配平</h1>
+        <p class="subtitle">自动配平化学方程式</p>
+        
+        <div class="card">
+            <div class="card-title">输入化学方程式</div>
+            <div class="form-group">
+                <label>方程式（使用 = 或 -&gt; 分隔反应物和生成物）</label>
+                <input type="text" id="equation" placeholder="例如: H2 + O2 = H2O" oninput="balance()">
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="balance()">配平</button>
+                <button class="btn btn-outline" onclick="clearInput()">清空</button>
+            </div>
+            
+            <div class="examples">
+                <div class="card-title">常见方程式示例</div>
+                <button class="example-btn" onclick="setExample('H2 + O2 = H2O')">H2 + O2 = H2O</button>
+                <button class="example-btn" onclick="setExample('Fe + O2 = Fe2O3')">Fe + O2 = Fe2O3</button>
+                <button class="example-btn" onclick="setExample('C2H6 + O2 = CO2 + H2O')">C2H6 + O2 = CO2 + H2O</button>
+                <button class="example-btn" onclick="setExample('NH3 + O2 = NO + H2O')">NH3 + O2 = NO + H2O</button>
+                <button class="example-btn" onclick="setExample('Al + HCl = AlCl3 + H2')">Al + HCl = AlCl3 + H2</button>
+                <button class="example-btn" onclick="setExample('CaCO3 + HCl = CaCl2 + H2O + CO2')">CaCO3 + HCl = ...</button>
+                <button class="example-btn" onclick="setExample('NaOH + H2SO4 = Na2SO4 + H2O')">NaOH + H2SO4 = ...</button>
+                <button class="example-btn" onclick="setExample('CH4 + O2 = CO2 + H2O')">CH4 + O2 = CO2 + H2O</button>
+            </div>
+        </div>
+        
+        <div class="card" id="resultCard" style="display: none;">
+            <div class="card-title">配平结果</div>
+            <div class="result-box">
+                <div class="result-equation" id="resultEquation"></div>
+                <div class="element-count" id="elementCount"></div>
+            </div>
+            
+            <div class="steps" id="steps"></div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">使用说明</div>
+            <div class="note">
+                <p><strong>输入格式：</strong></p>
+                <p>• 元素符号首字母大写，如 H、O、Fe、Ca</p>
+                <p>• 下标数字直接写在元素后面，如 H2O、H2SO4</p>
+                <p>• 用 + 连接多个物质</p>
+                <p>• 用 = 或 -&gt; 分隔反应物和生成物</p>
+                <br>
+                <p><strong>示例：</strong></p>
+                <p>• 氢气燃烧: H2 + O2 = H2O</p>
+                <p>• 铁生锈: Fe + O2 = Fe2O3</p>
+                <p>• 中和反应: NaOH + HCl = NaCl + H2O</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function parseFormula(formula) {
+            var elements = {};
+            var regex = /([A-Z][a-z]?)(\d*)/g;
+            var match;
+            
+            while ((match = regex.exec(formula)) !== null) {
+                var element = match[1];
+                var count = parseInt(match[2]) || 1;
+                elements[element] = (elements[element] || 0) + count;
+            }
+            
+            return elements;
+        }
+        
+        function parseEquation(eq) {
+            eq = eq.replace(/\s+/g, '').replace(/->/g, '=');
+            var sides = eq.split('=');
+            if (sides.length !== 2) return null;
+            
+            var reactants = sides[0].split('+').filter(function(s) { return s; });
+            var products = sides[1].split('+').filter(function(s) { return s; });
+            
+            if (reactants.length === 0 || products.length === 0) return null;
+            
+            return { reactants: reactants, products: products };
+        }
+        
+        function getAllElements(compounds) {
+            var elements = {};
+            compounds.forEach(function(compound) {
+                var parsed = parseFormula(compound);
+                for (var el in parsed) {
+                    elements[el] = true;
+                }
+            });
+            return Object.keys(elements);
+        }
+        
+        function balanceEquation(reactants, products) {
+            var allCompounds = reactants.concat(products);
+            var elements = getAllElements(allCompounds);
+            var numVars = allCompounds.length;
+            var numReactants = reactants.length;
+            
+            var maxCoef = 12;
+            
+            function check(coeffs) {
+                return elements.every(function(el) {
+                    var reactantSum = 0;
+                    var productSum = 0;
+                    
+                    reactants.forEach(function(compound, i) {
+                        var parsed = parseFormula(compound);
+                        reactantSum += coeffs[i] * (parsed[el] || 0);
+                    });
+                    
+                    products.forEach(function(compound, i) {
+                        var parsed = parseFormula(compound);
+                        productSum += coeffs[numReactants + i] * (parsed[el] || 0);
+                    });
+                    
+                    return reactantSum === productSum;
+                });
+            }
+            
+            function search(coeffs, index) {
+                if (index === numVars) {
+                    return check(coeffs) ? coeffs.slice() : null;
+                }
+                
+                for (var c = 1; c <= maxCoef; c++) {
+                    coeffs[index] = c;
+                    var result = search(coeffs, index + 1);
+                    if (result) return result;
+                }
+                return null;
+            }
+            
+            var coeffs = [];
+            for (var i = 0; i < numVars; i++) coeffs.push(1);
+            return search(coeffs, 0);
+        }
+        
+        function formatFormula(formula) {
+            var subscripts = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'];
+            return formula.replace(/([A-Z][a-z]?)(\d+)/g, function(match, el, num) {
+                var subscript = num.split('').map(function(d) { return subscripts[parseInt(d)]; }).join('');
+                return el + subscript;
+            });
+        }
+        
+        function balance() {
+            var input = document.getElementById('equation').value.trim();
+            var resultCard = document.getElementById('resultCard');
+            var resultEquation = document.getElementById('resultEquation');
+            var elementCount = document.getElementById('elementCount');
+            var stepsDiv = document.getElementById('steps');
+            
+            if (!input) {
+                resultCard.style.display = 'none';
+                return;
+            }
+            
+            var parsed = parseEquation(input);
+            if (!parsed) {
+                resultCard.style.display = 'block';
+                var errorSpan = document.createElement('span');
+                errorSpan.className = 'error';
+                errorSpan.textContent = '无法解析方程式，请检查格式';
+                resultEquation.textContent = '';
+                resultEquation.appendChild(errorSpan);
+                elementCount.textContent = '';
+                stepsDiv.textContent = '';
+                return;
+            }
+            
+            var reactants = parsed.reactants;
+            var products = parsed.products;
+            var coefficients = balanceEquation(reactants, products);
+            
+            if (!coefficients) {
+                resultCard.style.display = 'block';
+                var errorSpan = document.createElement('span');
+                errorSpan.className = 'error';
+                errorSpan.textContent = '无法配平此方程式';
+                resultEquation.textContent = '';
+                resultEquation.appendChild(errorSpan);
+                elementCount.textContent = '';
+                stepsDiv.textContent = '';
+                return;
+            }
+            
+            resultCard.style.display = 'block';
+            
+            // 使用DOM API安全构建HTML
+            resultEquation.textContent = '';
+            reactants.forEach(function(compound, i) {
+                if (i > 0) {
+                    resultEquation.appendChild(document.createTextNode(' + '));
+                }
+                var coef = coefficients[i];
+                if (coef > 1) {
+                    var coefSpan = document.createElement('span');
+                    coefSpan.className = 'coef';
+                    coefSpan.textContent = coef;
+                    resultEquation.appendChild(coefSpan);
+                }
+                resultEquation.appendChild(document.createTextNode(formatFormula(compound)));
+            });
+            
+            var arrowSpan = document.createElement('span');
+            arrowSpan.className = 'arrow';
+            arrowSpan.textContent = ' → ';
+            resultEquation.appendChild(arrowSpan);
+            
+            products.forEach(function(compound, i) {
+                if (i > 0) {
+                    resultEquation.appendChild(document.createTextNode(' + '));
+                }
+                var coef = coefficients[reactants.length + i];
+                if (coef > 1) {
+                    var coefSpan = document.createElement('span');
+                    coefSpan.className = 'coef';
+                    coefSpan.textContent = coef;
+                    resultEquation.appendChild(coefSpan);
+                }
+                resultEquation.appendChild(document.createTextNode(formatFormula(compound)));
+            });
+            
+            var elements = getAllElements(reactants.concat(products));
+            elementCount.textContent = '';
+            
+            elements.forEach(function(el) {
+                var leftCount = 0;
+                var rightCount = 0;
+                
+                reactants.forEach(function(compound, i) {
+                    var parsed = parseFormula(compound);
+                    leftCount += coefficients[i] * (parsed[el] || 0);
+                });
+                
+                products.forEach(function(compound, i) {
+                    var parsed = parseFormula(compound);
+                    rightCount += coefficients[reactants.length + i] * (parsed[el] || 0);
+                });
+                
+                var badge = document.createElement('span');
+                badge.className = 'element-badge balanced';
+                badge.textContent = el + ': ' + leftCount + ' = ' + rightCount;
+                elementCount.appendChild(badge);
+            });
+            
+            stepsDiv.textContent = '';
+            
+            var step1 = document.createElement('div');
+            step1.className = 'step';
+            var step1Title = document.createElement('div');
+            step1Title.className = 'step-title';
+            step1Title.textContent = '步骤 1: 识别反应物和生成物';
+            step1.appendChild(step1Title);
+            var step1Reactants = document.createElement('div');
+            step1Reactants.textContent = '反应物: ' + reactants.map(formatFormula).join(', ');
+            step1.appendChild(step1Reactants);
+            var step1Products = document.createElement('div');
+            step1Products.textContent = '生成物: ' + products.map(formatFormula).join(', ');
+            step1.appendChild(step1Products);
+            stepsDiv.appendChild(step1);
+            
+            var step2 = document.createElement('div');
+            step2.className = 'step';
+            var step2Title = document.createElement('div');
+            step2Title.className = 'step-title';
+            step2Title.textContent = '步骤 2: 识别所有元素';
+            step2.appendChild(step2Title);
+            var step2Content = document.createElement('div');
+            step2Content.textContent = '元素: ' + elements.join(', ');
+            step2.appendChild(step2Content);
+            stepsDiv.appendChild(step2);
+            
+            var step3 = document.createElement('div');
+            step3.className = 'step';
+            var step3Title = document.createElement('div');
+            step3Title.className = 'step-title';
+            step3Title.textContent = '步骤 3: 确定配平系数';
+            step3.appendChild(step3Title);
+            var step3Content = document.createElement('div');
+            step3Content.textContent = '系数: ' + coefficients.join(', ');
+            step3.appendChild(step3Content);
+            stepsDiv.appendChild(step3);
+        }
+        
+        function setExample(eq) {
+            document.getElementById('equation').value = eq;
+            balance();
+        }
+        
+        function clearInput() {
+            document.getElementById('equation').value = '';
+            document.getElementById('resultCard').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

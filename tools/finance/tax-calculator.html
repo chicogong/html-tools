@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人所得税计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f59e0b; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--accent); }
+        .result-hero { background: linear-gradient(135deg, var(--accent), #ef4444); padding: 32px; border-radius: 12px; text-align: center; color: white; }
+        .result-hero .big { font-size: 2.5rem; font-weight: 700; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 8px; }
+        .result-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .result-row .label { color: var(--text2); }
+        .result-row .value { font-weight: 600; }
+        .tax-bracket { padding: 12px; border-left: 3px solid var(--accent); background: var(--bg); margin-bottom: 8px; border-radius: 0 8px 8px 0; }
+        .tax-bracket.active { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .tax-bracket .rate { font-weight: 600; }
+        .tax-bracket .range { font-size: 0.85rem; color: var(--text2); }
+        .note { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem; color: var(--text2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 个人所得税计算器</h1>
+        <p class="subtitle">计算中国个人所得税（2024年税率）</p>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">收入信息</div>
+                <div class="form-group">
+                    <label>税前月薪 (元)</label>
+                    <input type="number" id="salary" value="20000" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>五险一金 (元/月)</label>
+                    <input type="number" id="insurance" value="4000" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>专项附加扣除 (元/月)</label>
+                    <input type="number" id="deductions" value="2000" oninput="calculate()">
+                </div>
+                <div class="note">
+                    <strong>专项附加扣除包括：</strong><br>
+                    子女教育、继续教育、大病医疗、住房贷款利息、住房租金、赡养老人、3岁以下婴幼儿照护
+                </div>
+            </div>
+            
+            <div>
+                <div class="result-hero">
+                    <div class="label">应缴个税</div>
+                    <div class="big" id="taxAmount">¥0</div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">计算明细</div>
+                    <div class="result-row">
+                        <span class="label">税前月薪</span>
+                        <span class="value" id="grossSalary">¥0</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">起征点</span>
+                        <span class="value">¥5,000</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">五险一金</span>
+                        <span class="value" id="insuranceDisplay">¥0</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">专项附加扣除</span>
+                        <span class="value" id="deductionsDisplay">¥0</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">应纳税所得额</span>
+                        <span class="value" id="taxableIncome">¥0</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">适用税率</span>
+                        <span class="value" id="taxRate">0%</span>
+                    </div>
+                    <div class="result-row" style="background: rgba(245, 158, 11, 0.1);">
+                        <span class="label">税后月薪</span>
+                        <span class="value" style="color: var(--accent);" id="netSalary">¥0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">个税税率表（综合所得适用）</div>
+            <div id="taxBrackets"></div>
+        </div>
+    </div>
+    
+    <script>
+        // 2024年个税税率表（月度）
+        const taxBrackets = [
+            { min: 0, max: 3000, rate: 3, deduction: 0 },
+            { min: 3000, max: 12000, rate: 10, deduction: 210 },
+            { min: 12000, max: 25000, rate: 20, deduction: 1410 },
+            { min: 25000, max: 35000, rate: 25, deduction: 2660 },
+            { min: 35000, max: 55000, rate: 30, deduction: 4410 },
+            { min: 55000, max: 80000, rate: 35, deduction: 7160 },
+            { min: 80000, max: Infinity, rate: 45, deduction: 15160 }
+        ];
+        
+        const threshold = 5000; // 起征点
+        
+        function calculate() {
+            const salary = parseFloat(document.getElementById('salary').value) || 0;
+            const insurance = parseFloat(document.getElementById('insurance').value) || 0;
+            const deductions = parseFloat(document.getElementById('deductions').value) || 0;
+            
+            // 应纳税所得额 = 税前工资 - 起征点 - 五险一金 - 专项附加扣除
+            const taxableIncome = Math.max(0, salary - threshold - insurance - deductions);
+            
+            // 查找适用税率
+            let tax = 0;
+            let currentRate = 0;
+            let currentBracketIndex = 0;
+            
+            for (let i = 0; i < taxBrackets.length; i++) {
+                const bracket = taxBrackets[i];
+                if (taxableIncome > bracket.min) {
+                    currentRate = bracket.rate;
+                    currentBracketIndex = i;
+                    if (taxableIncome <= bracket.max) {
+                        tax = taxableIncome * bracket.rate / 100 - bracket.deduction;
+                        break;
+                    }
+                }
+            }
+            
+            tax = Math.max(0, tax);
+            const netSalary = salary - insurance - tax;
+            
+            const fmt = (n) => '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            
+            document.getElementById('taxAmount').textContent = fmt(tax);
+            document.getElementById('grossSalary').textContent = fmt(salary);
+            document.getElementById('insuranceDisplay').textContent = fmt(insurance);
+            document.getElementById('deductionsDisplay').textContent = fmt(deductions);
+            document.getElementById('taxableIncome').textContent = fmt(taxableIncome);
+            document.getElementById('taxRate').textContent = currentRate + '%';
+            document.getElementById('netSalary').textContent = fmt(netSalary);
+            
+            // 渲染税率表
+            renderTaxBrackets(currentBracketIndex);
+        }
+        
+        function renderTaxBrackets(activeIndex) {
+            const container = document.getElementById('taxBrackets');
+            container.textContent = '';
+            
+            taxBrackets.forEach((bracket, index) => {
+                const div = document.createElement('div');
+                div.className = 'tax-bracket' + (index === activeIndex ? ' active' : '');
+                
+                const rateDiv = document.createElement('div');
+                rateDiv.className = 'rate';
+                rateDiv.textContent = bracket.rate + '% 税率';
+                
+                const rangeDiv = document.createElement('div');
+                rangeDiv.className = 'range';
+                const maxText = bracket.max === Infinity ? '以上' : ' - ¥' + bracket.max.toLocaleString();
+                rangeDiv.textContent = '¥' + bracket.min.toLocaleString() + maxText + '，速算扣除数: ¥' + bracket.deduction;
+                
+                div.appendChild(rateDiv);
+                div.appendChild(rangeDiv);
+                container.appendChild(div);
+            });
+        }
+        
+        calculate();
+    </script>
+</body>
+</html>

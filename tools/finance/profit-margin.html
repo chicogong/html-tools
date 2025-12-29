@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利润率计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #10b981; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--accent); }
+        .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .result-item { background: var(--bg); padding: 16px; border-radius: 8px; text-align: center; }
+        .result-item .value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .result-item .label { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+        .result-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .formula { background: var(--bg); padding: 16px; border-radius: 8px; font-family: monospace; font-size: 0.9rem; margin-top: 16px; }
+        .formula-title { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💵 利润率计算器</h1>
+        <p class="subtitle">计算毛利率、净利率、成本加成率等</p>
+        
+        <div class="tabs">
+            <div class="tab active" data-mode="margin" onclick="setMode('margin')">利润率计算</div>
+            <div class="tab" data-mode="pricing" onclick="setMode('pricing')">定价计算</div>
+            <div class="tab" data-mode="breakeven" onclick="setMode('breakeven')">盈亏平衡</div>
+        </div>
+        
+        <div id="marginSection">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-title">输入数据</div>
+                    <div class="form-group">
+                        <label>销售收入 (元)</label>
+                        <input type="number" id="revenue" value="100000" oninput="calculateMargin()">
+                    </div>
+                    <div class="form-group">
+                        <label>成本 (元)</label>
+                        <input type="number" id="cost" value="60000" oninput="calculateMargin()">
+                    </div>
+                    <div class="form-group">
+                        <label>运营费用 (元，可选)</label>
+                        <input type="number" id="expenses" value="20000" oninput="calculateMargin()">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">计算结果</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="value" id="grossMargin">0%</div>
+                            <div class="label">毛利率</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="netMargin">0%</div>
+                            <div class="label">净利率</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="markup">0%</div>
+                            <div class="label">成本加成率</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="grossProfit">¥0</div>
+                            <div class="label">毛利润</div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-row" style="margin-top: 16px;">
+                        <span>净利润</span>
+                        <span id="netProfit">¥0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="formula-title">公式说明</div>
+                <div class="formula">
+                    毛利率 = (收入 - 成本) / 收入 × 100%<br>
+                    净利率 = (收入 - 成本 - 费用) / 收入 × 100%<br>
+                    成本加成率 = (收入 - 成本) / 成本 × 100%
+                </div>
+            </div>
+        </div>
+        
+        <div id="pricingSection" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-title">定价参数</div>
+                    <div class="form-group">
+                        <label>成本价 (元)</label>
+                        <input type="number" id="unitCost" value="100" oninput="calculatePricing()">
+                    </div>
+                    <div class="form-group">
+                        <label>目标利润率 (%)</label>
+                        <input type="number" id="targetMargin" value="30" oninput="calculatePricing()">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">建议售价</div>
+                    <div class="result-item" style="padding: 24px;">
+                        <div class="value" id="suggestedPrice" style="font-size: 2rem;">¥0</div>
+                        <div class="label">基于目标利润率的售价</div>
+                    </div>
+                    
+                    <div class="result-row" style="margin-top: 16px;">
+                        <span>单件利润</span>
+                        <span id="unitProfit">¥0</span>
+                    </div>
+                    <div class="result-row">
+                        <span>实际加成率</span>
+                        <span id="actualMarkup">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="breakevenSection" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-title">成本结构</div>
+                    <div class="form-group">
+                        <label>固定成本 (元/月)</label>
+                        <input type="number" id="fixedCost" value="50000" oninput="calculateBreakeven()">
+                    </div>
+                    <div class="form-group">
+                        <label>单位可变成本 (元)</label>
+                        <input type="number" id="variableCost" value="60" oninput="calculateBreakeven()">
+                    </div>
+                    <div class="form-group">
+                        <label>单位售价 (元)</label>
+                        <input type="number" id="sellingPrice" value="100" oninput="calculateBreakeven()">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">盈亏平衡分析</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="value" id="breakevenUnits">0</div>
+                            <div class="label">盈亏平衡销量</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="breakevenRevenue">¥0</div>
+                            <div class="label">盈亏平衡收入</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="contributionMargin">¥0</div>
+                            <div class="label">单位边际贡献</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="value" id="contributionRatio">0%</div>
+                            <div class="label">边际贡献率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="formula-title">公式说明</div>
+                <div class="formula">
+                    盈亏平衡点(销量) = 固定成本 / (售价 - 可变成本)<br>
+                    边际贡献 = 售价 - 可变成本<br>
+                    边际贡献率 = 边际贡献 / 售价 × 100%
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentMode = 'margin';
+        
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-mode="' + mode + '"]').classList.add('active');
+            
+            document.getElementById('marginSection').style.display = mode === 'margin' ? 'block' : 'none';
+            document.getElementById('pricingSection').style.display = mode === 'pricing' ? 'block' : 'none';
+            document.getElementById('breakevenSection').style.display = mode === 'breakeven' ? 'block' : 'none';
+        }
+        
+        function calculateMargin() {
+            const revenue = parseFloat(document.getElementById('revenue').value) || 0;
+            const cost = parseFloat(document.getElementById('cost').value) || 0;
+            const expenses = parseFloat(document.getElementById('expenses').value) || 0;
+            
+            const grossProfit = revenue - cost;
+            const netProfit = revenue - cost - expenses;
+            
+            const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+            const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+            const markup = cost > 0 ? (grossProfit / cost) * 100 : 0;
+            
+            const fmt = (n) => '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            
+            document.getElementById('grossMargin').textContent = grossMargin.toFixed(1) + '%';
+            document.getElementById('netMargin').textContent = netMargin.toFixed(1) + '%';
+            document.getElementById('markup').textContent = markup.toFixed(1) + '%';
+            document.getElementById('grossProfit').textContent = fmt(grossProfit);
+            document.getElementById('netProfit').textContent = fmt(netProfit);
+        }
+        
+        function calculatePricing() {
+            const unitCost = parseFloat(document.getElementById('unitCost').value) || 0;
+            const targetMargin = parseFloat(document.getElementById('targetMargin').value) / 100 || 0;
+            
+            // 售价 = 成本 / (1 - 目标利润率)
+            const suggestedPrice = targetMargin < 1 ? unitCost / (1 - targetMargin) : 0;
+            const unitProfit = suggestedPrice - unitCost;
+            const actualMarkup = unitCost > 0 ? (unitProfit / unitCost) * 100 : 0;
+            
+            const fmt = (n) => '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            document.getElementById('suggestedPrice').textContent = fmt(suggestedPrice);
+            document.getElementById('unitProfit').textContent = fmt(unitProfit);
+            document.getElementById('actualMarkup').textContent = actualMarkup.toFixed(1) + '%';
+        }
+        
+        function calculateBreakeven() {
+            const fixedCost = parseFloat(document.getElementById('fixedCost').value) || 0;
+            const variableCost = parseFloat(document.getElementById('variableCost').value) || 0;
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value) || 0;
+            
+            const contributionMargin = sellingPrice - variableCost;
+            const contributionRatio = sellingPrice > 0 ? (contributionMargin / sellingPrice) * 100 : 0;
+            
+            const breakevenUnits = contributionMargin > 0 ? Math.ceil(fixedCost / contributionMargin) : 0;
+            const breakevenRevenue = breakevenUnits * sellingPrice;
+            
+            const fmt = (n) => '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            
+            document.getElementById('breakevenUnits').textContent = breakevenUnits.toLocaleString() + ' 件';
+            document.getElementById('breakevenRevenue').textContent = fmt(breakevenRevenue);
+            document.getElementById('contributionMargin').textContent = fmt(contributionMargin);
+            document.getElementById('contributionRatio').textContent = contributionRatio.toFixed(1) + '%';
+        }
+        
+        calculateMargin();
+        calculatePricing();
+        calculateBreakeven();
+    </script>
+</body>
+</html>

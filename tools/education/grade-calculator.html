@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #f59e0b; --accent2: #ef4444; --success: #10b981; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 32px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero .big { font-size: 3rem; font-weight: 700; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 8px; }
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 20px; }
+        .stat { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; text-align: center; }
+        .stat .value { font-size: 1.2rem; font-weight: 600; }
+        .stat .label { font-size: 0.8rem; opacity: 0.8; }
+        .component-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 40px; gap: 10px; margin-bottom: 12px; align-items: center; }
+        @media (max-width: 600px) { .component-row { grid-template-columns: 1fr 1fr; } .component-row input:first-child { grid-column: 1 / -1; } }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-danger { background: var(--accent2); color: white; width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .progress-container { margin-top: 20px; }
+        .progress-bar { height: 24px; background: var(--bg); border-radius: 12px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); transition: width 0.3s; border-radius: 12px; }
+        .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.85rem; font-weight: 600; }
+        .weight-warning { color: var(--accent2); font-size: 0.85rem; margin-top: 8px; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 8px; }
+        .preset-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .preset-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text2); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .target-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .target-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .target-row label { color: var(--text2); white-space: nowrap; }
+        .target-row input { width: 100px; }
+        .target-result { margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 成绩计算器</h1>
+        <p class="subtitle">计算加权平均分，支持多种评分组件</p>
+        
+        <div class="result-hero">
+            <div class="label">当前成绩</div>
+            <div class="big" id="finalGrade">0.00</div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="value" id="letterGrade">-</div>
+                    <div class="label">等级</div>
+                </div>
+                <div class="stat">
+                    <div class="value" id="totalWeight">0%</div>
+                    <div class="label">已计算权重</div>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <span>成绩组件</span>
+                <div class="btn-group">
+                    <button class="btn btn-outline" onclick="clearAll()">清空</button>
+                    <button class="btn btn-primary" onclick="addComponent()">+ 添加组件</button>
+                </div>
+            </div>
+            
+            <div class="preset-btns">
+                <button class="preset-btn" onclick="loadPreset('exam')">期末考试制</button>
+                <button class="preset-btn" onclick="loadPreset('homework')">作业+考试制</button>
+                <button class="preset-btn" onclick="loadPreset('project')">项目制</button>
+            </div>
+            
+            <div id="componentList"></div>
+            <div class="weight-warning" id="weightWarning" style="display: none;"></div>
+            
+            <div class="target-section">
+                <div class="card-title">目标计算</div>
+                <div class="target-row">
+                    <label>目标分数：</label>
+                    <input type="number" id="targetGrade" value="90" min="0" max="100" oninput="calculateTarget()">
+                    <label>剩余权重：</label>
+                    <span id="remainingWeight">0%</span>
+                </div>
+                <div class="target-result" id="targetResult"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let components = [];
+        let componentId = 0;
+        
+        const presets = {
+            exam: [
+                { name: '平时成绩', weight: 30, score: 85 },
+                { name: '期中考试', weight: 20, score: 80 },
+                { name: '期末考试', weight: 50, score: 0 }
+            ],
+            homework: [
+                { name: '作业', weight: 20, score: 90 },
+                { name: '出勤', weight: 10, score: 100 },
+                { name: '期中考试', weight: 30, score: 75 },
+                { name: '期末考试', weight: 40, score: 0 }
+            ],
+            project: [
+                { name: '小组项目', weight: 40, score: 88 },
+                { name: '个人报告', weight: 25, score: 82 },
+                { name: '课堂展示', weight: 20, score: 90 },
+                { name: '参与度', weight: 15, score: 95 }
+            ]
+        };
+        
+        function init() {
+            const saved = localStorage.getItem('grade_calc_data');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    components = data.components || [];
+                    componentId = data.componentId || 0;
+                } catch (e) {
+                    components = [];
+                }
+            }
+            
+            if (components.length === 0) {
+                loadPreset('exam');
+            } else {
+                renderComponents();
+                calculate();
+            }
+        }
+        
+        function loadPreset(type) {
+            components = [];
+            componentId = 0;
+            presets[type].forEach(p => {
+                components.push({
+                    id: ++componentId,
+                    name: p.name,
+                    weight: p.weight,
+                    score: p.score
+                });
+            });
+            renderComponents();
+            calculate();
+            saveData();
+        }
+        
+        function addComponent() {
+            components.push({
+                id: ++componentId,
+                name: '',
+                weight: 10,
+                score: 0
+            });
+            renderComponents();
+            saveData();
+        }
+        
+        function removeComponent(id) {
+            components = components.filter(c => c.id !== id);
+            if (components.length === 0) {
+                addComponent();
+            } else {
+                renderComponents();
+                calculate();
+                saveData();
+            }
+        }
+        
+        function renderComponents() {
+            const container = document.getElementById('componentList');
+            container.textContent = '';
+            
+            components.forEach(comp => {
+                const row = document.createElement('div');
+                row.className = 'component-row';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = '组件名称';
+                nameInput.value = comp.name;
+                nameInput.oninput = function() {
+                    comp.name = this.value;
+                    saveData();
+                };
+                
+                const weightInput = document.createElement('input');
+                weightInput.type = 'number';
+                weightInput.placeholder = '权重%';
+                weightInput.min = '0';
+                weightInput.max = '100';
+                weightInput.value = comp.weight;
+                weightInput.oninput = function() {
+                    comp.weight = parseFloat(this.value) || 0;
+                    calculate();
+                    saveData();
+                };
+                
+                const scoreInput = document.createElement('input');
+                scoreInput.type = 'number';
+                scoreInput.placeholder = '分数';
+                scoreInput.min = '0';
+                scoreInput.max = '100';
+                scoreInput.value = comp.score;
+                scoreInput.oninput = function() {
+                    comp.score = parseFloat(this.value) || 0;
+                    calculate();
+                    saveData();
+                };
+                
+                const pointsSpan = document.createElement('span');
+                pointsSpan.style.cssText = 'text-align: center; color: var(--text2); font-size: 0.9rem;';
+                const points = (comp.weight * comp.score / 100).toFixed(1);
+                pointsSpan.textContent = points + '分';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '×';
+                deleteBtn.onclick = function() { removeComponent(comp.id); };
+                
+                row.appendChild(nameInput);
+                row.appendChild(weightInput);
+                row.appendChild(scoreInput);
+                row.appendChild(pointsSpan);
+                row.appendChild(deleteBtn);
+                container.appendChild(row);
+            });
+        }
+        
+        function calculate() {
+            let totalWeight = 0;
+            let weightedSum = 0;
+            let completedWeight = 0;
+            
+            components.forEach(comp => {
+                totalWeight += comp.weight;
+                if (comp.score > 0) {
+                    weightedSum += comp.weight * comp.score / 100;
+                    completedWeight += comp.weight;
+                }
+            });
+            
+            const finalGrade = completedWeight > 0 ? (weightedSum / completedWeight) * 100 : 0;
+            const currentPoints = weightedSum;
+            
+            document.getElementById('finalGrade').textContent = finalGrade.toFixed(2);
+            document.getElementById('totalWeight').textContent = completedWeight.toFixed(0) + '%';
+            
+            let letterGrade = '-';
+            if (completedWeight > 0) {
+                if (finalGrade >= 90) letterGrade = 'A';
+                else if (finalGrade >= 80) letterGrade = 'B';
+                else if (finalGrade >= 70) letterGrade = 'C';
+                else if (finalGrade >= 60) letterGrade = 'D';
+                else letterGrade = 'F';
+            }
+            document.getElementById('letterGrade').textContent = letterGrade;
+            
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressFill.style.width = Math.min(finalGrade, 100) + '%';
+            progressText.textContent = finalGrade.toFixed(1) + '%';
+            
+            const warning = document.getElementById('weightWarning');
+            if (totalWeight !== 100) {
+                warning.style.display = 'block';
+                warning.textContent = '⚠️ 权重总和为 ' + totalWeight + '%，建议调整为100%';
+            } else {
+                warning.style.display = 'none';
+            }
+            
+            document.getElementById('remainingWeight').textContent = (100 - completedWeight) + '%';
+            calculateTarget();
+            
+            renderComponents();
+        }
+        
+        function calculateTarget() {
+            const targetGrade = parseFloat(document.getElementById('targetGrade').value) || 0;
+            const resultDiv = document.getElementById('targetResult');
+            
+            let completedWeight = 0;
+            let currentPoints = 0;
+            
+            components.forEach(comp => {
+                if (comp.score > 0) {
+                    currentPoints += comp.weight * comp.score / 100;
+                    completedWeight += comp.weight;
+                }
+            });
+            
+            const remainingWeight = 100 - completedWeight;
+            
+            if (remainingWeight <= 0) {
+                resultDiv.textContent = '所有组件已完成评分';
+                return;
+            }
+            
+            const neededPoints = targetGrade - currentPoints;
+            const neededAverage = (neededPoints / remainingWeight) * 100;
+            
+            if (neededAverage > 100) {
+                resultDiv.textContent = '⚠️ 即使剩余部分全部得满分，也无法达到目标分数 ' + targetGrade;
+            } else if (neededAverage < 0) {
+                resultDiv.textContent = '✅ 已达成目标！当前已获得 ' + currentPoints.toFixed(1) + ' 分';
+            } else {
+                resultDiv.textContent = '📌 要达到 ' + targetGrade + ' 分，剩余 ' + remainingWeight + '% 权重需平均得 ' + neededAverage.toFixed(1) + ' 分';
+            }
+        }
+        
+        function clearAll() {
+            components = [];
+            componentId = 0;
+            addComponent();
+            calculate();
+            saveData();
+        }
+        
+        function saveData() {
+            localStorage.setItem('grade_calc_data', JSON.stringify({
+                components: components,
+                componentId: componentId
+            }));
+        }
+        
+        init();
+    </script>
+</body>
+</html>

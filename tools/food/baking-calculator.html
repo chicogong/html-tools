@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>烘焙比例计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #d97706; --accent2: #f59e0b; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .recipe-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.9rem; }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .tab-btn:hover { border-color: var(--accent); }
+        .ratio-display { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .ratio-item { padding: 16px; background: var(--bg); border-radius: 12px; text-align: center; }
+        .ratio-item .name { font-size: 0.9rem; color: var(--text2); margin-bottom: 6px; }
+        .ratio-item .percent { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .ratio-item .amount { font-size: 1.1rem; margin-top: 4px; }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 20px; border-radius: 12px; text-align: center; color: white; margin-bottom: 16px; }
+        .result-hero .label { opacity: 0.9; font-size: 0.9rem; }
+        .result-hero .big { font-size: 2rem; font-weight: 700; }
+        .ingredient-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .ingredient-row .name { color: var(--text2); }
+        .ingredient-row .value { font-weight: 600; }
+        .tips { font-size: 0.85rem; color: var(--text2); line-height: 1.8; padding: 16px; background: var(--bg); border-radius: 8px; }
+        .tips strong { color: var(--accent); }
+        @media (max-width: 500px) { .ratio-display { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>烘焙比例计算器</h1>
+        <p class="subtitle">专业面包师百分比配方计算</p>
+        
+        <div class="card">
+            <div class="recipe-tabs">
+                <button class="tab-btn active" data-recipe="bread" onclick="setRecipe('bread')">基础面包</button>
+                <button class="tab-btn" data-recipe="baguette" onclick="setRecipe('baguette')">法棍</button>
+                <button class="tab-btn" data-recipe="brioche" onclick="setRecipe('brioche')">布里欧修</button>
+                <button class="tab-btn" data-recipe="pizza" onclick="setRecipe('pizza')">披萨面团</button>
+                <button class="tab-btn" data-recipe="cake" onclick="setRecipe('cake')">海绵蛋糕</button>
+            </div>
+            
+            <div class="form-group">
+                <label>面粉用量 (克) - 作为100%基准</label>
+                <input type="number" id="flourAmount" value="500" oninput="calculate()">
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 16px;">烘焙师百分比</h3>
+            <div class="ratio-display" id="ratioDisplay"></div>
+        </div>
+        
+        <div class="card">
+            <div class="result-hero">
+                <div class="label">面团总重</div>
+                <div class="big" id="totalWeight">0g</div>
+            </div>
+            
+            <div id="ingredientList"></div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">烘焙小贴士</h3>
+            <div class="tips" id="tips"></div>
+        </div>
+    </div>
+    
+    <script>
+        const recipes = {
+            bread: {
+                name: '基础面包',
+                ratios: { flour: 100, water: 65, yeast: 1, salt: 2, sugar: 3, oil: 3 },
+                names: { flour: '高筋面粉', water: '水', yeast: '酵母', salt: '盐', sugar: '糖', oil: '油' },
+                tips: ['水温: 夏天用冷水，冬天用温水(35-40°C)', '发酵: 一发至2倍大，约60-90分钟', '烘烤: 180°C预热，烤25-30分钟']
+            },
+            baguette: {
+                name: '法棍',
+                ratios: { flour: 100, water: 70, yeast: 0.5, salt: 2 },
+                names: { flour: '高筋面粉', water: '水', yeast: '干酵母', salt: '盐' },
+                tips: ['特点: 高水量、长时间发酵', '发酵: 冷藏发酵12-24小时风味更佳', '烘烤: 230°C，蒸汽烘烤20-25分钟']
+            },
+            brioche: {
+                name: '布里欧修',
+                ratios: { flour: 100, water: 10, egg: 40, butter: 50, yeast: 2, salt: 2, sugar: 15 },
+                names: { flour: '高筋面粉', water: '牛奶', egg: '鸡蛋', butter: '黄油', yeast: '酵母', salt: '盐', sugar: '糖' },
+                tips: ['黄油: 软化至可塑状态再加入', '揉面: 需充分揉出手套膜', '烘烤: 170°C，烤20-25分钟']
+            },
+            pizza: {
+                name: '披萨面团',
+                ratios: { flour: 100, water: 60, yeast: 1, salt: 2, oil: 3 },
+                names: { flour: '高筋面粉', water: '水', yeast: '干酵母', salt: '盐', oil: '橄榄油' },
+                tips: ['面团: 可冷藏发酵1-3天增加风味', '厚度: 薄底约3mm，厚底约1cm', '烘烤: 最高温度，烤8-12分钟']
+            },
+            cake: {
+                name: '海绵蛋糕',
+                ratios: { flour: 100, egg: 150, sugar: 100, butter: 30 },
+                names: { flour: '低筋面粉', egg: '鸡蛋', sugar: '细砂糖', butter: '黄油' },
+                tips: ['打发: 全蛋隔水加热至38°C再打发', '混合: 用切拌手法，避免消泡', '烘烤: 170°C，烤30-35分钟']
+            }
+        };
+        
+        let currentRecipe = 'bread';
+        
+        function setRecipe(recipe) {
+            currentRecipe = recipe;
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.recipe === recipe);
+            });
+            calculate();
+        }
+        
+        function calculate() {
+            const flour = parseFloat(document.getElementById('flourAmount').value) || 0;
+            const recipe = recipes[currentRecipe];
+            
+            const ratioDisplay = document.getElementById('ratioDisplay');
+            const ingredientList = document.getElementById('ingredientList');
+            const tipsEl = document.getElementById('tips');
+            
+            while (ratioDisplay.firstChild) ratioDisplay.removeChild(ratioDisplay.firstChild);
+            while (ingredientList.firstChild) ingredientList.removeChild(ingredientList.firstChild);
+            while (tipsEl.firstChild) tipsEl.removeChild(tipsEl.firstChild);
+            
+            let total = 0;
+            
+            for (var key in recipe.ratios) {
+                if (recipe.ratios.hasOwnProperty(key)) {
+                    const percent = recipe.ratios[key];
+                    const amount = flour * percent / 100;
+                    total += amount;
+                    
+                    const ratioDiv = document.createElement('div');
+                    ratioDiv.className = 'ratio-item';
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'name';
+                    nameDiv.textContent = recipe.names[key];
+                    
+                    const percentDiv = document.createElement('div');
+                    percentDiv.className = 'percent';
+                    percentDiv.textContent = percent + '%';
+                    
+                    const amountDiv = document.createElement('div');
+                    amountDiv.className = 'amount';
+                    amountDiv.textContent = amount.toFixed(1) + 'g';
+                    
+                    ratioDiv.appendChild(nameDiv);
+                    ratioDiv.appendChild(percentDiv);
+                    ratioDiv.appendChild(amountDiv);
+                    ratioDisplay.appendChild(ratioDiv);
+                    
+                    const ingredientDiv = document.createElement('div');
+                    ingredientDiv.className = 'ingredient-row';
+                    
+                    const ingredientName = document.createElement('span');
+                    ingredientName.className = 'name';
+                    ingredientName.textContent = recipe.names[key];
+                    
+                    const ingredientValue = document.createElement('span');
+                    ingredientValue.className = 'value';
+                    ingredientValue.textContent = amount.toFixed(1) + 'g';
+                    
+                    ingredientDiv.appendChild(ingredientName);
+                    ingredientDiv.appendChild(ingredientValue);
+                    ingredientList.appendChild(ingredientDiv);
+                }
+            }
+            
+            document.getElementById('totalWeight').textContent = total.toFixed(0) + 'g';
+            
+            recipe.tips.forEach(function(tip) {
+                const tipLine = document.createElement('div');
+                const parts = tip.split(': ');
+                if (parts.length === 2) {
+                    const strong = document.createElement('strong');
+                    strong.textContent = parts[0] + ': ';
+                    tipLine.appendChild(strong);
+                    tipLine.appendChild(document.createTextNode(parts[1]));
+                } else {
+                    tipLine.textContent = tip;
+                }
+                tipsEl.appendChild(tipLine);
+            });
+        }
+        
+        calculate();
+    </script>
+</body>
+</html>

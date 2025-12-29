@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词卡片 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #8b5cf6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; transition: all 0.2s; }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .flashcard-container { perspective: 1000px; margin: 30px 0; }
+        .flashcard { width: 100%; height: 300px; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .flashcard-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .flashcard-front { background: linear-gradient(135deg, var(--accent), #a855f7); color: white; }
+        .flashcard-back { background: var(--card); border: 2px solid var(--accent); transform: rotateY(180deg); }
+        .flashcard-word { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; }
+        .flashcard-phonetic { font-size: 1.1rem; opacity: 0.9; }
+        .flashcard-meaning { font-size: 1.5rem; line-height: 1.6; }
+        .flashcard-example { font-size: 0.95rem; color: var(--text2); margin-top: 15px; font-style: italic; }
+        .flashcard-hint { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 20px; }
+        .controls { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.2s; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+        .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+        .progress-text { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text2); }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 500px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+        .stat-item { text-align: center; padding: 12px; background: var(--bg); border-radius: 8px; }
+        .stat-item .value { font-size: 1.5rem; font-weight: 700; }
+        .stat-item .label { font-size: 0.8rem; color: var(--text2); }
+        .stat-item.success .value { color: var(--success); }
+        .stat-item.warning .value { color: var(--warning); }
+        .stat-item.danger .value { color: var(--danger); }
+        textarea { width: 100%; height: 200px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 0.95rem; font-family: inherit; resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        .import-hint { font-size: 0.85rem; color: var(--text2); margin-top: 8px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+        .empty-state .icon { font-size: 4rem; margin-bottom: 16px; }
+        input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--accent); }
+        .deck-list { max-height: 300px; overflow-y: auto; }
+        .deck-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+        .deck-item:hover { border-color: var(--accent); }
+        .deck-item.active { border: 2px solid var(--accent); }
+        .deck-info .name { font-weight: 600; }
+        .deck-info .count { font-size: 0.85rem; color: var(--text2); }
+        .deck-actions { display: flex; gap: 8px; }
+        .deck-actions button { padding: 6px 12px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 单词卡片</h1>
+        <p class="subtitle">创建卡片组，高效记忆学习</p>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="study">学习</button>
+            <button class="tab" data-tab="manage">管理卡组</button>
+            <button class="tab" data-tab="import">导入</button>
+        </div>
+        
+        <div id="studyTab">
+            <div class="card" id="studyCard">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progressCurrent">0/0</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard" onclick="flipCard()">
+                        <div class="flashcard-face flashcard-front">
+                            <div class="flashcard-word" id="cardFront">-</div>
+                            <div class="flashcard-phonetic" id="cardPhonetic"></div>
+                            <div class="flashcard-hint">点击翻转</div>
+                        </div>
+                        <div class="flashcard-face flashcard-back">
+                            <div class="flashcard-meaning" id="cardBack">-</div>
+                            <div class="flashcard-example" id="cardExample"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn btn-danger" onclick="markCard('forgot')">😕 忘记</button>
+                    <button class="btn btn-warning" onclick="markCard('hard')">🤔 模糊</button>
+                    <button class="btn btn-success" onclick="markCard('easy')">😊 记住</button>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-item success">
+                        <div class="value" id="statEasy">0</div>
+                        <div class="label">已掌握</div>
+                    </div>
+                    <div class="stat-item warning">
+                        <div class="value" id="statHard">0</div>
+                        <div class="label">需复习</div>
+                    </div>
+                    <div class="stat-item danger">
+                        <div class="value" id="statForgot">0</div>
+                        <div class="label">未掌握</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value" id="statRemaining">0</div>
+                        <div class="label">剩余</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn btn-outline" onclick="restartStudy()">重新开始</button>
+                    <button class="btn btn-outline" onclick="shuffleCards()">打乱顺序</button>
+                </div>
+            </div>
+            
+            <div class="card" id="emptyState" style="display: none;">
+                <div class="empty-state">
+                    <div class="icon">📝</div>
+                    <p>还没有卡片</p>
+                    <p>请先导入或创建卡组</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="manageTab" style="display: none;">
+            <div class="card">
+                <div class="card-title">
+                    <span>卡组列表</span>
+                    <button class="btn btn-outline" onclick="createNewDeck()">+ 新建卡组</button>
+                </div>
+                <div class="deck-list" id="deckList"></div>
+            </div>
+            
+            <div class="card" id="deckEditor" style="display: none;">
+                <div class="card-title">编辑卡组</div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text2);">卡组名称</label>
+                    <input type="text" id="deckName" placeholder="输入卡组名称">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 6px; color: var(--text2);">卡片内容（每行一个：正面 | 背面 | 例句）</label>
+                    <textarea id="deckContent" placeholder="apple | 苹果 | I like apples.&#10;book | 书 | This is a book."></textarea>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline" onclick="cancelEdit()">取消</button>
+                    <button class="btn" style="background: var(--accent); color: white;" onclick="saveDeck()">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="importTab" style="display: none;">
+            <div class="card">
+                <div class="card-title">导入卡片</div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text2);">卡组名称</label>
+                    <input type="text" id="importDeckName" placeholder="例如：英语单词">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 6px; color: var(--text2);">卡片数据</label>
+                    <textarea id="importData" placeholder="每行一个卡片，格式：正面 | 背面 | 例句（可选）&#10;&#10;例如：&#10;apple | 苹果 | An apple a day keeps the doctor away.&#10;book | 书&#10;computer | 电脑 | I use a computer every day."></textarea>
+                </div>
+                <p class="import-hint">支持 CSV 格式，也可以使用制表符或逗号分隔</p>
+                <div class="btn-group">
+                    <button class="btn btn-outline" onclick="loadSampleData()">加载示例</button>
+                    <button class="btn" style="background: var(--accent); color: white;" onclick="importCards()">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let decks = [];
+        let currentDeckId = null;
+        let studyCards = [];
+        let currentIndex = 0;
+        let stats = { easy: 0, hard: 0, forgot: 0 };
+        let editingDeckId = null;
+        
+        function init() {
+            loadData();
+            renderDeckList();
+            updateStudyView();
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+        }
+        
+        function loadData() {
+            const saved = localStorage.getItem('flashcard_data');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    decks = data.decks || [];
+                    currentDeckId = data.currentDeckId;
+                } catch (e) {
+                    decks = [];
+                }
+            }
+            
+            if (decks.length === 0) {
+                decks.push({
+                    id: Date.now(),
+                    name: '示例单词',
+                    cards: [
+                        { front: 'Hello', back: '你好', example: 'Hello, how are you?' },
+                        { front: 'World', back: '世界', example: 'Welcome to the world!' },
+                        { front: 'Study', back: '学习', example: 'I study every day.' },
+                        { front: 'Card', back: '卡片', example: 'This is a flashcard.' },
+                        { front: 'Learn', back: '学习', example: 'Learn something new today.' }
+                    ]
+                });
+                currentDeckId = decks[0].id;
+                saveData();
+            }
+        }
+        
+        function saveData() {
+            localStorage.setItem('flashcard_data', JSON.stringify({
+                decks: decks,
+                currentDeckId: currentDeckId
+            }));
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="' + tabName + '"]').classList.add('active');
+            
+            document.getElementById('studyTab').style.display = tabName === 'study' ? 'block' : 'none';
+            document.getElementById('manageTab').style.display = tabName === 'manage' ? 'block' : 'none';
+            document.getElementById('importTab').style.display = tabName === 'import' ? 'block' : 'none';
+        }
+        
+        function updateStudyView() {
+            const deck = decks.find(d => d.id === currentDeckId);
+            
+            if (!deck || deck.cards.length === 0) {
+                document.getElementById('studyCard').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('studyCard').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            
+            if (studyCards.length === 0 || studyCards[0].front !== deck.cards[0].front) {
+                studyCards = [...deck.cards];
+                currentIndex = 0;
+                stats = { easy: 0, hard: 0, forgot: 0 };
+            }
+            
+            showCurrentCard();
+            updateStats();
+        }
+        
+        function showCurrentCard() {
+            const card = studyCards[currentIndex];
+            if (!card) {
+                document.getElementById('cardFront').textContent = '学习完成！';
+                document.getElementById('cardPhonetic').textContent = '';
+                document.getElementById('cardBack').textContent = '点击"重新开始"继续';
+                document.getElementById('cardExample').textContent = '';
+                return;
+            }
+            
+            document.getElementById('flashcard').classList.remove('flipped');
+            document.getElementById('cardFront').textContent = card.front;
+            document.getElementById('cardPhonetic').textContent = card.phonetic || '';
+            document.getElementById('cardBack').textContent = card.back;
+            document.getElementById('cardExample').textContent = card.example || '';
+            
+            updateProgress();
+        }
+        
+        function flipCard() {
+            document.getElementById('flashcard').classList.toggle('flipped');
+        }
+        
+        function markCard(result) {
+            stats[result]++;
+            
+            if (result === 'forgot') {
+                studyCards.push(studyCards[currentIndex]);
+            }
+            
+            currentIndex++;
+            showCurrentCard();
+            updateStats();
+        }
+        
+        function updateProgress() {
+            const total = studyCards.length;
+            const current = Math.min(currentIndex + 1, total);
+            const percent = total > 0 ? Math.round((currentIndex / total) * 100) : 0;
+            
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressCurrent').textContent = current + '/' + total;
+            document.getElementById('progressPercent').textContent = percent + '%';
+        }
+        
+        function updateStats() {
+            document.getElementById('statEasy').textContent = stats.easy;
+            document.getElementById('statHard').textContent = stats.hard;
+            document.getElementById('statForgot').textContent = stats.forgot;
+            document.getElementById('statRemaining').textContent = Math.max(0, studyCards.length - currentIndex);
+        }
+        
+        function restartStudy() {
+            const deck = decks.find(d => d.id === currentDeckId);
+            if (deck) {
+                studyCards = [...deck.cards];
+                currentIndex = 0;
+                stats = { easy: 0, hard: 0, forgot: 0 };
+                showCurrentCard();
+                updateStats();
+            }
+        }
+        
+        function shuffleCards() {
+            const deck = decks.find(d => d.id === currentDeckId);
+            if (deck) {
+                studyCards = [...deck.cards].sort(() => Math.random() - 0.5);
+                currentIndex = 0;
+                stats = { easy: 0, hard: 0, forgot: 0 };
+                showCurrentCard();
+                updateStats();
+            }
+        }
+        
+        function renderDeckList() {
+            const container = document.getElementById('deckList');
+            container.textContent = '';
+            
+            decks.forEach(deck => {
+                const item = document.createElement('div');
+                item.className = 'deck-item' + (deck.id === currentDeckId ? ' active' : '');
+                
+                const info = document.createElement('div');
+                info.className = 'deck-info';
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = deck.name;
+                
+                const count = document.createElement('div');
+                count.className = 'count';
+                count.textContent = deck.cards.length + ' 张卡片';
+                
+                info.appendChild(name);
+                info.appendChild(count);
+                
+                const actions = document.createElement('div');
+                actions.className = 'deck-actions';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn btn-outline';
+                editBtn.textContent = '编辑';
+                editBtn.onclick = (e) => { e.stopPropagation(); editDeck(deck.id); };
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-outline';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = (e) => { e.stopPropagation(); deleteDeck(deck.id); };
+                
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                
+                item.appendChild(info);
+                item.appendChild(actions);
+                item.onclick = () => selectDeck(deck.id);
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function selectDeck(id) {
+            currentDeckId = id;
+            studyCards = [];
+            saveData();
+            renderDeckList();
+            updateStudyView();
+        }
+        
+        function createNewDeck() {
+            editingDeckId = null;
+            document.getElementById('deckName').value = '';
+            document.getElementById('deckContent').value = '';
+            document.getElementById('deckEditor').style.display = 'block';
+        }
+        
+        function editDeck(id) {
+            const deck = decks.find(d => d.id === id);
+            if (!deck) return;
+            
+            editingDeckId = id;
+            document.getElementById('deckName').value = deck.name;
+            document.getElementById('deckContent').value = deck.cards.map(c => 
+                c.front + ' | ' + c.back + (c.example ? ' | ' + c.example : '')
+            ).join('\n');
+            document.getElementById('deckEditor').style.display = 'block';
+        }
+        
+        function cancelEdit() {
+            editingDeckId = null;
+            document.getElementById('deckEditor').style.display = 'none';
+        }
+        
+        function saveDeck() {
+            const name = document.getElementById('deckName').value.trim();
+            const content = document.getElementById('deckContent').value.trim();
+            
+            if (!name) {
+                alert('请输入卡组名称');
+                return;
+            }
+            
+            const cards = parseCards(content);
+            
+            if (editingDeckId) {
+                const deck = decks.find(d => d.id === editingDeckId);
+                if (deck) {
+                    deck.name = name;
+                    deck.cards = cards;
+                }
+            } else {
+                decks.push({
+                    id: Date.now(),
+                    name: name,
+                    cards: cards
+                });
+            }
+            
+            saveData();
+            renderDeckList();
+            cancelEdit();
+            updateStudyView();
+        }
+        
+        function deleteDeck(id) {
+            if (!confirm('确定要删除这个卡组吗？')) return;
+            
+            decks = decks.filter(d => d.id !== id);
+            if (currentDeckId === id) {
+                currentDeckId = decks.length > 0 ? decks[0].id : null;
+                studyCards = [];
+            }
+            
+            saveData();
+            renderDeckList();
+            updateStudyView();
+        }
+        
+        function parseCards(content) {
+            const lines = content.split('\n').filter(l => l.trim());
+            return lines.map(line => {
+                const parts = line.split(/[|,\t]/).map(p => p.trim());
+                return {
+                    front: parts[0] || '',
+                    back: parts[1] || '',
+                    example: parts[2] || ''
+                };
+            }).filter(c => c.front && c.back);
+        }
+        
+        function importCards() {
+            const name = document.getElementById('importDeckName').value.trim() || '导入卡组';
+            const content = document.getElementById('importData').value.trim();
+            
+            if (!content) {
+                alert('请输入卡片数据');
+                return;
+            }
+            
+            const cards = parseCards(content);
+            
+            if (cards.length === 0) {
+                alert('未能解析到有效卡片');
+                return;
+            }
+            
+            const newDeck = {
+                id: Date.now(),
+                name: name,
+                cards: cards
+            };
+            
+            decks.push(newDeck);
+            currentDeckId = newDeck.id;
+            studyCards = [];
+            
+            saveData();
+            renderDeckList();
+            updateStudyView();
+            
+            alert('成功导入 ' + cards.length + ' 张卡片');
+            switchTab('study');
+        }
+        
+        function loadSampleData() {
+            document.getElementById('importDeckName').value = 'CET4 高频词汇';
+            document.getElementById('importData').value = `abandon | 放弃，遗弃 | He abandoned his wife and children.
+ability | 能力，才能 | She has the ability to solve problems.
+abroad | 在国外，到国外 | He went abroad to study.
+absence | 缺席，不在 | His absence was noticed by everyone.
+absolute | 绝对的，完全的 | It's an absolute disaster.
+absorb | 吸收，吸引 | The sponge absorbs water.
+abstract | 抽象的；摘要 | The concept is too abstract.
+abundant | 丰富的，充裕的 | The country has abundant resources.
+academic | 学术的，学院的 | He has an academic career.
+accept | 接受，认可 | I accept your apology.`;
+        }
+        
+        init();
+    </script>
+</body>
+</html>

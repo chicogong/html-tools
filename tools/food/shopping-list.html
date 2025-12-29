@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>购物清单生成器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #8b5cf6; --accent2: #a78bfa; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .add-form { display: flex; gap: 12px; margin-bottom: 20px; }
+        .add-form input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        .add-form input:focus { outline: none; border-color: var(--accent); }
+        .add-form button { padding: 12px 20px; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-size: 1rem; }
+        .add-form button:hover { background: var(--accent2); }
+        .category-filter { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 14px; border: 1px solid var(--border); border-radius: 20px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
+        .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .filter-btn:hover { border-color: var(--accent); }
+        .shopping-list { margin: 0; }
+        .category-section { margin-bottom: 20px; }
+        .category-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+        .category-header h3 { font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .category-header .count { font-size: 0.8rem; color: var(--text2); background: var(--card); padding: 2px 8px; border-radius: 10px; }
+        .item-list { margin: 0; }
+        .shopping-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
+        .shopping-item:last-child { border-bottom: none; }
+        .shopping-item.checked { opacity: 0.5; }
+        .shopping-item.checked .item-name { text-decoration: line-through; }
+        .item-checkbox { width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .item-checkbox.checked { background: var(--accent); border-color: var(--accent); }
+        .item-checkbox.checked::after { content: '✓'; color: white; font-size: 0.9rem; }
+        .item-name { flex: 1; }
+        .item-qty { font-size: 0.9rem; color: var(--text2); }
+        .item-delete { width: 28px; height: 28px; border: none; background: transparent; color: #ef4444; cursor: pointer; font-size: 1.1rem; opacity: 0.5; }
+        .item-delete:hover { opacity: 1; }
+        .summary-bar { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 12px; color: white; }
+        .summary-bar .progress { flex: 1; }
+        .summary-bar .progress-text { font-size: 0.9rem; opacity: 0.9; }
+        .summary-bar .progress-bar { height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; margin-top: 6px; width: 150px; }
+        .summary-bar .progress-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.3s; }
+        .action-btns { display: flex; gap: 12px; }
+        .action-btn { padding: 8px 16px; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; background: transparent; color: white; cursor: pointer; font-size: 0.85rem; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .quick-add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+        .quick-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); color: var(--text2); cursor: pointer; font-size: 0.8rem; }
+        .quick-btn:hover { border-color: var(--accent); color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>购物清单</h1>
+        <p class="subtitle">轻松管理你的购物计划</p>
+        
+        <div class="card">
+            <div class="add-form">
+                <input type="text" id="itemInput" placeholder="添加物品..." onkeypress="handleKeyPress(event)">
+                <button onclick="addItem()">添加</button>
+            </div>
+            
+            <div class="quick-add">
+                <button class="quick-btn" onclick="quickAdd('牛奶', 'dairy')">牛奶</button>
+                <button class="quick-btn" onclick="quickAdd('鸡蛋', 'dairy')">鸡蛋</button>
+                <button class="quick-btn" onclick="quickAdd('面包', 'bakery')">面包</button>
+                <button class="quick-btn" onclick="quickAdd('苹果', 'produce')">苹果</button>
+                <button class="quick-btn" onclick="quickAdd('鸡胸肉', 'meat')">鸡胸肉</button>
+                <button class="quick-btn" onclick="quickAdd('米饭', 'pantry')">米饭</button>
+                <button class="quick-btn" onclick="quickAdd('酱油', 'pantry')">酱油</button>
+                <button class="quick-btn" onclick="quickAdd('洗洁精', 'household')">洗洁精</button>
+            </div>
+        </div>
+        
+        <div class="summary-bar">
+            <div class="progress">
+                <div class="progress-text" id="progressText">0 / 0 已完成</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="action-btns">
+                <button class="action-btn" onclick="copyList()">复制</button>
+                <button class="action-btn" onclick="clearChecked()">清除已购</button>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <div class="category-filter">
+                <button class="filter-btn active" data-cat="all" onclick="filterCategory('all')">全部</button>
+                <button class="filter-btn" data-cat="produce" onclick="filterCategory('produce')">蔬果</button>
+                <button class="filter-btn" data-cat="meat" onclick="filterCategory('meat')">肉类</button>
+                <button class="filter-btn" data-cat="dairy" onclick="filterCategory('dairy')">乳制品</button>
+                <button class="filter-btn" data-cat="bakery" onclick="filterCategory('bakery')">烘焙</button>
+                <button class="filter-btn" data-cat="pantry" onclick="filterCategory('pantry')">杂货</button>
+                <button class="filter-btn" data-cat="household" onclick="filterCategory('household')">日用品</button>
+            </div>
+            
+            <div class="shopping-list" id="shoppingList"></div>
+        </div>
+    </div>
+    
+    <script>
+        const categories = {
+            produce: { name: '蔬果', icon: '🥬' },
+            meat: { name: '肉类', icon: '🥩' },
+            dairy: { name: '乳制品', icon: '🥛' },
+            bakery: { name: '烘焙', icon: '🍞' },
+            pantry: { name: '杂货', icon: '🏪' },
+            household: { name: '日用品', icon: '🧹' }
+        };
+        
+        let items = JSON.parse(localStorage.getItem('shoppingList') || '[]');
+        let currentFilter = 'all';
+        
+        function saveItems() {
+            localStorage.setItem('shoppingList', JSON.stringify(items));
+        }
+        
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') addItem();
+        }
+        
+        function addItem() {
+            const input = document.getElementById('itemInput');
+            const name = input.value.trim();
+            if (!name) return;
+            
+            const category = guessCategory(name);
+            items.push({ id: Date.now(), name: name, category: category, checked: false });
+            input.value = '';
+            saveItems();
+            renderList();
+        }
+        
+        function quickAdd(name, category) {
+            items.push({ id: Date.now(), name: name, category: category, checked: false });
+            saveItems();
+            renderList();
+        }
+        
+        function guessCategory(name) {
+            const keywords = {
+                produce: ['菜', '果', '蔬', '瓜', '萝卜', '白菜', '青菜', '苹果', '香蕉', '橙', '葱', '姜', '蒜'],
+                meat: ['肉', '鸡', '鱼', '虾', '牛', '猪', '羊', '排骨', '鸭'],
+                dairy: ['奶', '蛋', '酸奶', '芝士', '黄油', '奶酪'],
+                bakery: ['面包', '蛋糕', '饼干', '糕点'],
+                pantry: ['米', '面', '油', '盐', '酱', '醋', '糖', '调料', '酱油', '醋'],
+                household: ['纸', '洗', '清洁', '垃圾袋', '保鲜', '洗衣', '牙']
+            };
+            
+            for (var cat in keywords) {
+                if (keywords.hasOwnProperty(cat)) {
+                    for (var i = 0; i < keywords[cat].length; i++) {
+                        if (name.includes(keywords[cat][i])) return cat;
+                    }
+                }
+            }
+            return 'pantry';
+        }
+        
+        function toggleItem(id) {
+            items = items.map(function(item) {
+                if (item.id === id) item.checked = !item.checked;
+                return item;
+            });
+            saveItems();
+            renderList();
+        }
+        
+        function deleteItem(id) {
+            items = items.filter(function(item) { return item.id !== id; });
+            saveItems();
+            renderList();
+        }
+        
+        function filterCategory(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.filter-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.cat === cat);
+            });
+            renderList();
+        }
+        
+        function clearChecked() {
+            items = items.filter(function(item) { return !item.checked; });
+            saveItems();
+            renderList();
+        }
+        
+        function copyList() {
+            const unchecked = items.filter(function(item) { return !item.checked; });
+            let text = '购物清单\n' + '='.repeat(20) + '\n';
+            
+            for (var cat in categories) {
+                if (categories.hasOwnProperty(cat)) {
+                    const catItems = unchecked.filter(function(item) { return item.category === cat; });
+                    if (catItems.length > 0) {
+                        text += '\n' + categories[cat].icon + ' ' + categories[cat].name + '\n';
+                        catItems.forEach(function(item) {
+                            text += '  - ' + item.name + '\n';
+                        });
+                    }
+                }
+            }
+            
+            navigator.clipboard.writeText(text).then(function() { alert('已复制到剪贴板'); });
+        }
+        
+        function renderList() {
+            const list = document.getElementById('shoppingList');
+            while (list.firstChild) list.removeChild(list.firstChild);
+            
+            const filtered = currentFilter === 'all' ? items : items.filter(function(item) { return item.category === currentFilter; });
+            
+            const grouped = {};
+            filtered.forEach(function(item) {
+                if (!grouped[item.category]) grouped[item.category] = [];
+                grouped[item.category].push(item);
+            });
+            
+            for (var cat in categories) {
+                if (categories.hasOwnProperty(cat) && grouped[cat] && grouped[cat].length > 0) {
+                    const section = document.createElement('div');
+                    section.className = 'category-section';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'category-header';
+                    const h3 = document.createElement('h3');
+                    h3.textContent = categories[cat].icon + ' ' + categories[cat].name;
+                    const count = document.createElement('span');
+                    count.className = 'count';
+                    count.textContent = grouped[cat].length;
+                    header.appendChild(h3);
+                    header.appendChild(count);
+                    
+                    const itemList = document.createElement('div');
+                    itemList.className = 'item-list';
+                    
+                    grouped[cat].forEach(function(item) {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'shopping-item' + (item.checked ? ' checked' : '');
+                        
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'item-checkbox' + (item.checked ? ' checked' : '');
+                        checkbox.addEventListener('click', function() { toggleItem(item.id); });
+                        
+                        const name = document.createElement('span');
+                        name.className = 'item-name';
+                        name.textContent = item.name;
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'item-delete';
+                        deleteBtn.textContent = '×';
+                        deleteBtn.addEventListener('click', function() { deleteItem(item.id); });
+                        
+                        itemEl.appendChild(checkbox);
+                        itemEl.appendChild(name);
+                        itemEl.appendChild(deleteBtn);
+                        itemList.appendChild(itemEl);
+                    });
+                    
+                    section.appendChild(header);
+                    section.appendChild(itemList);
+                    list.appendChild(section);
+                }
+            }
+            
+            const total = items.length;
+            const checked = items.filter(function(item) { return item.checked; }).length;
+            document.getElementById('progressText').textContent = checked + ' / ' + total + ' 已完成';
+            document.getElementById('progressFill').style.width = (total > 0 ? (checked / total * 100) : 0) + '%';
+        }
+        
+        renderList();
+    </script>
+</body>
+</html>

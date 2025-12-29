@@ -70,9 +70,12 @@ npm run lint:fix
 
 # 同步工具列表（将 tools.json 同步到 index.html）
 npm run sync:tools
+
+# 运行 tools.json 验证测试
+npm test
 ```
 
-**注意**: 这个项目没有 `npm run build`、`npm start` 或 `npm test` 命令。
+**注意**: 这个项目没有 `npm run build` 或 `npm start` 命令。`npm test` 用于验证 tools.json 的完整性（检查必需字段、文件存在、分类引用等）。
 
 ## 架构设计
 

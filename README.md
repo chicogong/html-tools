@@ -352,8 +352,11 @@
 | `sitemap.xml` | 站点地图，包含所有工具页面 (150 URLs) |
 | `robots.txt` | 搜索引擎爬虫规则 |
 | `llms.txt` | AI/LLM 友好的网站描述 |
+| `CLAUDE.md` | AI 辅助开发规范，项目架构和代码约定说明 |
 | `index.html` | 含 Schema.org 结构化数据 (WebApplication, FAQPage, WebSite) |
 | `manifest.json` | PWA 配置文件，支持应用安装 |
+| `sw.js` | Service Worker，离线缓存和请求拦截 |
+| `offline.html` | 离线回退页面，断网时显示已缓存工具列表 |
 | `favicon.svg` | 矢量品牌图标 (3×3 网格设计) |
 | `favicon-16x16.png` | 浏览器标签页图标 |
 | `favicon-32x32.png` | 高清浏览器图标 |

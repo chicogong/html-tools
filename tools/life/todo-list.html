@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办事项</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .add-form { display: flex; gap: 10px; margin-bottom: 20px; }
+        .add-form input { flex: 1; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        .add-form input:focus { outline: none; border-color: #667eea; }
+        .add-form button { padding: 15px 25px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; }
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; }
+        .filter-btn { flex: 1; padding: 10px; background: #f0f0f0; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .filter-btn.active { background: #667eea; color: white; }
+        .todo-list { min-height: 200px; }
+        .todo-item { display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 10px; margin-bottom: 10px; transition: all 0.3s; }
+        .todo-item:hover { transform: translateX(5px); }
+        .todo-item.completed { opacity: 0.6; }
+        .todo-item.completed .todo-text { text-decoration: line-through; color: #999; }
+        .todo-checkbox { width: 24px; height: 24px; border: 2px solid #667eea; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .todo-checkbox.checked { background: #667eea; }
+        .todo-checkbox.checked::after { content: '✓'; color: white; font-size: 14px; }
+        .todo-text { flex: 1; font-size: 16px; }
+        .todo-delete { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 20px; opacity: 0.5; }
+        .todo-delete:hover { opacity: 1; }
+        .stats { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #666; font-size: 14px; }
+        .clear-btn { background: none; border: none; color: #e74c3c; cursor: pointer; }
+        .empty { text-align: center; color: #999; padding: 40px; }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#life">生活工具</a><span>›</span>待办事项</nav>
+    <div class="container">
+        <h1>✅ 待办事项</h1>
+        <div class="card">
+            <div class="add-form">
+                <input type="text" id="newTodo" placeholder="添加新任务..." onkeypress="if(event.key==='Enter')addTodo()">
+                <button onclick="addTodo()">添加</button>
+            </div>
+            <div class="filters">
+                <button class="filter-btn active" onclick="setFilter('all')">全部</button>
+                <button class="filter-btn" onclick="setFilter('active')">未完成</button>
+                <button class="filter-btn" onclick="setFilter('completed')">已完成</button>
+            </div>
+            <div class="todo-list" id="todoList"></div>
+            <div class="stats">
+                <span id="remaining">0 项未完成</span>
+                <button class="clear-btn" onclick="clearCompleted()">清除已完成</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+        let filter = 'all';
+        
+        function save() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+        
+        function render() {
+            const filtered = todos.filter(t => {
+                if (filter === 'active') return !t.completed;
+                if (filter === 'completed') return t.completed;
+                return true;
+            });
+            
+            const list = document.getElementById('todoList');
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="empty">暂无任务</div>';
+            } else {
+                list.innerHTML = filtered.map(t => `
+                    <div class="todo-item ${t.completed ? 'completed' : ''}">
+                        <div class="todo-checkbox ${t.completed ? 'checked' : ''}" onclick="toggleTodo(${t.id})"></div>
+                        <span class="todo-text">${escapeHtml(t.text)}</span>
+                        <button class="todo-delete" onclick="deleteTodo(${t.id})">×</button>
+                    </div>
+                `).join('');
+            }
+            
+            const remaining = todos.filter(t => !t.completed).length;
+            document.getElementById('remaining').textContent = `${remaining} 项未完成`;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function addTodo() {
+            const input = document.getElementById('newTodo');
+            const text = input.value.trim();
+            if (!text) return;
+            todos.push({ id: Date.now(), text, completed: false });
+            input.value = '';
+            save();
+            render();
+        }
+        
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) todo.completed = !todo.completed;
+            save();
+            render();
+        }
+        
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            save();
+            render();
+        }
+        
+        function clearCompleted() {
+            todos = todos.filter(t => !t.completed);
+            save();
+            render();
+        }
+        
+        function setFilter(f) {
+            filter = f;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            render();
+        }
+        
+        render();
+    </script>
+</body>
+</html>

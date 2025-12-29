@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>书签管理器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; }
+        .toolbar { display: flex; gap: 15px; margin-bottom: 20px; }
+        .toolbar input { flex: 1; padding: 12px 20px; border: none; border-radius: 10px; font-size: 14px; }
+        .toolbar button { padding: 12px 25px; background: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .categories { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .category-btn { padding: 8px 16px; background: #f0f0f0; border: none; border-radius: 20px; cursor: pointer; font-size: 13px; }
+        .category-btn.active { background: #667eea; color: white; }
+        .bookmarks { display: grid; gap: 15px; }
+        .bookmark { display: flex; align-items: center; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 12px; transition: all 0.2s; }
+        .bookmark:hover { background: #f0f0f0; transform: translateX(5px); }
+        .bookmark-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; }
+        .bookmark-info { flex: 1; min-width: 0; }
+        .bookmark-title { font-weight: 600; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bookmark-url { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bookmark-actions { display: flex; gap: 10px; }
+        .bookmark-btn { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5; }
+        .bookmark-btn:hover { opacity: 1; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; }
+        .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+        .modal input, .modal select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+        .modal-btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; }
+        .modal-btn.primary { background: #667eea; color: white; }
+        .modal-btn.secondary { background: #f0f0f0; }
+        .empty { text-align: center; color: #999; padding: 40px; }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#life">生活工具</a><span>›</span>书签管理器</nav>
+    <div class="container">
+        <h1>🔖 书签管理器</h1>
+        <div class="toolbar">
+            <input type="text" id="search" placeholder="搜索书签..." oninput="render()">
+            <button onclick="openModal()">+ 添加书签</button>
+        </div>
+        <div class="card">
+            <div class="categories" id="categories"></div>
+            <div class="bookmarks" id="bookmarks"></div>
+        </div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">添加书签</div>
+            <input type="text" id="bmTitle" placeholder="标题">
+            <input type="url" id="bmUrl" placeholder="URL (https://...)">
+            <select id="bmCategory">
+                <option value="常用">常用</option>
+                <option value="工作">工作</option>
+                <option value="学习">学习</option>
+                <option value="娱乐">娱乐</option>
+                <option value="购物">购物</option>
+                <option value="其他">其他</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closeModal()">取消</button>
+                <button class="modal-btn primary" onclick="saveBookmark()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+        let editingId = null;
+        let activeCategory = '全部';
+        
+        function save() { localStorage.setItem('bookmarks', JSON.stringify(bookmarks)); }
+        
+        function getCategories() {
+            const cats = new Set(bookmarks.map(b => b.category));
+            return ['全部', ...cats];
+        }
+        
+        function getFavicon(url) {
+            try {
+                const domain = new URL(url).hostname;
+                return domain.charAt(0).toUpperCase();
+            } catch { return '🔗'; }
+        }
+        
+        function render() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const cats = getCategories();
+            
+            document.getElementById('categories').innerHTML = cats.map(c => 
+                `<button class="category-btn ${c === activeCategory ? 'active' : ''}" onclick="setCategory('${c}')">${c}</button>`
+            ).join('');
+            
+            const filtered = bookmarks.filter(b => 
+                (activeCategory === '全部' || b.category === activeCategory) &&
+                (b.title.toLowerCase().includes(search) || b.url.toLowerCase().includes(search))
+            );
+            
+            if (filtered.length === 0) {
+                document.getElementById('bookmarks').innerHTML = '<div class="empty">暂无书签</div>';
+            } else {
+                document.getElementById('bookmarks').innerHTML = filtered.map(b => `
+                    <div class="bookmark">
+                        <div class="bookmark-icon">${getFavicon(b.url)}</div>
+                        <div class="bookmark-info">
+                            <div class="bookmark-title">${escapeHtml(b.title)}</div>
+                            <div class="bookmark-url">${escapeHtml(b.url)}</div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <button class="bookmark-btn" onclick="window.open('${b.url}', '_blank')">🔗</button>
+                            <button class="bookmark-btn" onclick="editBookmark(${b.id})">✏️</button>
+                            <button class="bookmark-btn" onclick="deleteBookmark(${b.id})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function setCategory(cat) { activeCategory = cat; render(); }
+        
+        function openModal(id = null) {
+            editingId = id;
+            const bm = id ? bookmarks.find(b => b.id === id) : null;
+            document.getElementById('modalTitle').textContent = id ? '编辑书签' : '添加书签';
+            document.getElementById('bmTitle').value = bm ? bm.title : '';
+            document.getElementById('bmUrl').value = bm ? bm.url : '';
+            document.getElementById('bmCategory').value = bm ? bm.category : '常用';
+            document.getElementById('modal').classList.add('show');
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+            editingId = null;
+        }
+        
+        function saveBookmark() {
+            const title = document.getElementById('bmTitle').value.trim();
+            const url = document.getElementById('bmUrl').value.trim();
+            const category = document.getElementById('bmCategory').value;
+            if (!title || !url) return alert('请填写标题和URL');
+            
+            if (editingId) {
+                const bm = bookmarks.find(b => b.id === editingId);
+                if (bm) { bm.title = title; bm.url = url; bm.category = category; }
+            } else {
+                bookmarks.unshift({ id: Date.now(), title, url, category });
+            }
+            save();
+            render();
+            closeModal();
+        }
+        
+        function editBookmark(id) { openModal(id); }
+        
+        function deleteBookmark(id) {
+            if (confirm('确定删除这个书签？')) {
+                bookmarks = bookmarks.filter(b => b.id !== id);
+                save();
+                render();
+            }
+        }
+        
+        render();
+    </script>
+</body>
+</html>

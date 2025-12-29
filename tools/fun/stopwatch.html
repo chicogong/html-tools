@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>秒表计时器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { text-align: center; width: 100%; max-width: 500px; }
+        h1 { color: white; margin-bottom: 30px; font-size: 28px; }
+        .display { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; margin-bottom: 30px; }
+        .time { font-size: 64px; font-weight: 700; color: white; font-family: 'Courier New', monospace; letter-spacing: 5px; }
+        .time .ms { font-size: 36px; color: rgba(255,255,255,0.7); }
+        .buttons { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .btn { width: 80px; height: 80px; border-radius: 50%; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn:hover { transform: scale(1.1); }
+        .btn-start { background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; box-shadow: 0 5px 20px rgba(46,204,113,0.4); }
+        .btn-pause { background: linear-gradient(135deg, #f39c12, #d35400); color: white; box-shadow: 0 5px 20px rgba(243,156,18,0.4); }
+        .btn-lap { background: linear-gradient(135deg, #3498db, #2980b9); color: white; box-shadow: 0 5px 20px rgba(52,152,219,0.4); }
+        .btn-reset { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; box-shadow: 0 5px 20px rgba(231,76,60,0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .laps { background: rgba(255,255,255,0.1); border-radius: 15px; max-height: 250px; overflow-y: auto; }
+        .lap-item { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); color: white; }
+        .lap-item:last-child { border-bottom: none; }
+        .lap-number { color: rgba(255,255,255,0.6); }
+        .lap-time { font-family: monospace; }
+        .lap-diff { font-size: 12px; color: #2ecc71; }
+        .lap-best { background: rgba(46,204,113,0.2); }
+        .lap-worst { background: rgba(231,76,60,0.2); }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#fun">趣味工具</a><span>›</span>秒表计时器</nav>
+    <div class="container">
+        <h1>⏱️ 秒表计时器</h1>
+        <div class="display">
+            <div class="time"><span id="display">00:00:00</span><span class="ms" id="displayMs">.00</span></div>
+        </div>
+        <div class="buttons">
+            <button class="btn btn-start" id="startBtn" onclick="start()">开始</button>
+            <button class="btn btn-lap" id="lapBtn" onclick="lap()" disabled>计次</button>
+            <button class="btn btn-reset" id="resetBtn" onclick="reset()">重置</button>
+        </div>
+        <div class="laps" id="laps"></div>
+    </div>
+    <script>
+        let startTime = 0, elapsedTime = 0, interval = null, isRunning = false;
+        let laps = [], lapStartTime = 0;
+        
+        function formatTime(ms) {
+            const h = Math.floor(ms / 3600000);
+            const m = Math.floor((ms % 3600000) / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            const cs = Math.floor((ms % 1000) / 10);
+            return {
+                main: (h > 0 ? h.toString().padStart(2, '0') + ':' : '') + m.toString().padStart(2, '0') + ':' + s.toString().padStart(2, '0'),
+                ms: '.' + cs.toString().padStart(2, '0')
+            };
+        }
+        
+        function updateDisplay() {
+            const time = formatTime(elapsedTime);
+            document.getElementById('display').textContent = time.main;
+            document.getElementById('displayMs').textContent = time.ms;
+        }
+        
+        function start() {
+            if (!isRunning) {
+                isRunning = true;
+                startTime = Date.now() - elapsedTime;
+                if (lapStartTime === 0) lapStartTime = startTime;
+                interval = setInterval(() => {
+                    elapsedTime = Date.now() - startTime;
+                    updateDisplay();
+                }, 10);
+                document.getElementById('startBtn').textContent = '暂停';
+                document.getElementById('startBtn').className = 'btn btn-pause';
+                document.getElementById('lapBtn').disabled = false;
+            } else {
+                isRunning = false;
+                clearInterval(interval);
+                document.getElementById('startBtn').textContent = '继续';
+                document.getElementById('startBtn').className = 'btn btn-start';
+            }
+        }
+        
+        function lap() {
+            if (!isRunning) return;
+            const lapTime = elapsedTime;
+            const diff = lapTime - (laps.length > 0 ? laps[laps.length - 1].total : 0);
+            laps.push({ total: lapTime, diff: diff });
+            renderLaps();
+        }
+        
+        function reset() {
+            isRunning = false;
+            clearInterval(interval);
+            elapsedTime = 0;
+            lapStartTime = 0;
+            laps = [];
+            updateDisplay();
+            document.getElementById('laps').innerHTML = '';
+            document.getElementById('startBtn').textContent = '开始';
+            document.getElementById('startBtn').className = 'btn btn-start';
+            document.getElementById('lapBtn').disabled = true;
+        }
+        
+        function renderLaps() {
+            if (laps.length === 0) return;
+            const diffs = laps.map(l => l.diff);
+            const minDiff = Math.min(...diffs);
+            const maxDiff = Math.max(...diffs);
+            
+            document.getElementById('laps').innerHTML = laps.map((lap, i) => {
+                const time = formatTime(lap.total);
+                const diffTime = formatTime(lap.diff);
+                let cls = '';
+                if (laps.length > 2) {
+                    if (lap.diff === minDiff) cls = 'lap-best';
+                    else if (lap.diff === maxDiff) cls = 'lap-worst';
+                }
+                return `<div class="lap-item ${cls}">
+                    <span class="lap-number">计次 ${i + 1}</span>
+                    <span class="lap-diff">+${diffTime.main}${diffTime.ms}</span>
+                    <span class="lap-time">${time.main}${time.ms}</span>
+                </div>`;
+            }).reverse().join('');
+        }
+        
+        updateDisplay();
+    </script>
+</body>
+</html>

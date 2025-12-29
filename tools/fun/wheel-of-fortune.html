@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运转盘</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { text-align: center; }
+        h1 { color: white; margin-bottom: 30px; font-size: 28px; }
+        .wheel-container { position: relative; width: 320px; height: 320px; margin: 0 auto 30px; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); box-shadow: 0 0 30px rgba(0,0,0,0.3); }
+        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid #e74c3c; z-index: 10; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); }
+        .spin-btn { padding: 15px 50px; font-size: 20px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 20px rgba(231,76,60,0.4); transition: transform 0.2s; }
+        .spin-btn:hover { transform: scale(1.05); }
+        .spin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result { margin-top: 20px; padding: 20px; background: white; border-radius: 15px; font-size: 24px; font-weight: 600; color: #333; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+        .options { background: white; border-radius: 15px; padding: 20px; margin-top: 20px; max-width: 320px; margin-left: auto; margin-right: auto; }
+        .options-title { font-weight: 600; margin-bottom: 10px; }
+        .options textarea { width: 100%; height: 100px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: none; }
+        .options button { margin-top: 10px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#fun">趣味工具</a><span>›</span>幸运转盘</nav>
+    <div class="container">
+        <h1>🎡 幸运转盘</h1>
+        <div class="wheel-container">
+            <div class="pointer"></div>
+            <canvas id="wheel" width="320" height="320"></canvas>
+        </div>
+        <button class="spin-btn" onclick="spin()">开始旋转</button>
+        <div class="result" id="result">点击按钮开始抽奖</div>
+        <div class="options">
+            <div class="options-title">自定义选项 (每行一个)</div>
+            <textarea id="optionsInput">选项1
+选项2
+选项3
+选项4
+选项5
+选项6</textarea>
+            <button onclick="updateWheel()">更新转盘</button>
+        </div>
+    </div>
+    <script>
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+        let options = ['选项1', '选项2', '选项3', '选项4', '选项5', '选项6'];
+        let spinning = false;
+        let currentRotation = 0;
+        
+        function drawWheel() {
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            const cx = 160, cy = 160, r = 150;
+            const arc = (Math.PI * 2) / options.length;
+            
+            ctx.clearRect(0, 0, 320, 320);
+            
+            for (let i = 0; i < options.length; i++) {
+                const startAngle = i * arc - Math.PI / 2;
+                const endAngle = startAngle + arc;
+                
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startAngle, endAngle);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw text
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startAngle + arc / 2);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                const text = options[i].length > 8 ? options[i].slice(0, 8) + '...' : options[i];
+                ctx.fillText(text, r - 20, 0);
+                ctx.restore();
+            }
+            
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        
+        function spin() {
+            if (spinning || options.length < 2) return;
+            spinning = true;
+            document.querySelector('.spin-btn').disabled = true;
+            document.getElementById('result').textContent = '旋转中...';
+            
+            const wheel = document.getElementById('wheel');
+            const extraSpins = 5 + Math.random() * 5; // 5-10 full rotations
+            const targetIndex = Math.floor(Math.random() * options.length);
+            const arc = 360 / options.length;
+            const targetRotation = currentRotation + extraSpins * 360 + (360 - targetIndex * arc - arc / 2 + 90);
+            
+            wheel.style.transform = `rotate(${targetRotation}deg)`;
+            currentRotation = targetRotation % 360;
+            
+            setTimeout(() => {
+                document.getElementById('result').textContent = '🎉 ' + options[targetIndex];
+                spinning = false;
+                document.querySelector('.spin-btn').disabled = false;
+            }, 4000);
+        }
+        
+        function updateWheel() {
+            const input = document.getElementById('optionsInput').value;
+            options = input.split('\n').map(s => s.trim()).filter(s => s);
+            if (options.length < 2) {
+                alert('至少需要2个选项');
+                return;
+            }
+            drawWheel();
+            document.getElementById('result').textContent = '点击按钮开始抽奖';
+        }
+        
+        drawWheel();
+    </script>
+</body>
+</html>

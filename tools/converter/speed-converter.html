@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>速度换算器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 20px; }
+        .card { background: white; border-radius: 20px; padding: 28px; box-shadow: 0 15px 50px rgba(0,0,0,0.2); }
+        .input-row { display: flex; gap: 12px; margin-bottom: 20px; }
+        .input-row input { flex: 1; padding: 16px; font-size: 24px; font-weight: bold; border: 2px solid #e0e0e0; border-radius: 12px; text-align: center; }
+        .input-row input:focus { outline: none; border-color: #f5576c; }
+        .input-row select { padding: 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; font-weight: 600; }
+        .results { display: grid; gap: 8px; }
+        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #f8f8f8; border-radius: 10px; }
+        .result-row.highlight { background: linear-gradient(135deg, #f5576c, #f093fb); color: white; }
+        h3 { color: #333; margin: 20px 0 12px; font-size: 15px; }
+        .quick-values { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .quick-btn { padding: 8px 14px; background: #f5f5f5; border: none; border-radius: 20px; cursor: pointer; font-size: 12px; }
+        .quick-btn:hover { background: #f5576c; color: white; }
+        .speed-indicator { background: #f8f8f8; border-radius: 12px; padding: 16px; margin-top: 20px; text-align: center; }
+        .speed-emoji { font-size: 48px; margin-bottom: 8px; }
+        .speed-desc { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 速度换算器</h1>
+        <div class="card">
+            <div class="quick-values">
+                <button class="quick-btn" onclick="setQuick(100, 'kmh')">100km/h 汽车</button>
+                <button class="quick-btn" onclick="setQuick(343, 'ms')">343m/s 音速</button>
+                <button class="quick-btn" onclick="setQuick(5, 'ms')">5m/s 步行</button>
+                <button class="quick-btn" onclick="setQuick(40, 'knot')">40节 游艇</button>
+                <button class="quick-btn" onclick="setQuick(900, 'kmh')">900km/h 飞机</button>
+            </div>
+            <div class="input-row">
+                <input type="number" id="valueInput" value="100" oninput="convert()">
+                <select id="unitSelect" onchange="convert()">
+                    <option value="ms">米/秒 (m/s)</option>
+                    <option value="kmh" selected>千米/时 (km/h)</option>
+                    <option value="mph">英里/时 (mph)</option>
+                    <option value="fps">英尺/秒 (ft/s)</option>
+                    <option value="knot">节 (knot)</option>
+                    <option value="mach">马赫 (Mach)</option>
+                    <option value="c">光速 (c)</option>
+                </select>
+            </div>
+            <div class="results" id="results"></div>
+            <div class="speed-indicator" id="indicator">
+                <div class="speed-emoji">🚗</div>
+                <div class="speed-desc">相当于汽车高速行驶</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const units = {
+            ms: { name: '米/秒', factor: 1 },
+            kmh: { name: '千米/时', factor: 0.277778 },
+            mph: { name: '英里/时', factor: 0.44704 },
+            fps: { name: '英尺/秒', factor: 0.3048 },
+            knot: { name: '节', factor: 0.514444 },
+            mach: { name: '马赫', factor: 343 },
+            c: { name: '光速', factor: 299792458 }
+        };
+        
+        const speedLevels = [
+            { max: 2, emoji: '🚶', desc: '步行速度' },
+            { max: 10, emoji: '🏃', desc: '跑步速度' },
+            { max: 15, emoji: '🚲', desc: '自行车速度' },
+            { max: 30, emoji: '🛵', desc: '电动车速度' },
+            { max: 60, emoji: '🚗', desc: '城市道路行车' },
+            { max: 120, emoji: '🚄', desc: '高速公路/高铁' },
+            { max: 300, emoji: '✈️', desc: '螺旋桨飞机' },
+            { max: 343, emoji: '🔊', desc: '接近音速' },
+            { max: 1000, emoji: '🛩️', desc: '喷气式飞机' },
+            { max: 10000, emoji: '🚀', desc: '火箭速度' },
+            { max: 299792458, emoji: '⚡', desc: '接近光速' },
+            { max: Infinity, emoji: '🌟', desc: '超光速（理论）' }
+        ];
+        
+        function setQuick(val, unit) {
+            document.getElementById('valueInput').value = val;
+            document.getElementById('unitSelect').value = unit;
+            convert();
+        }
+        
+        function convert() {
+            const value = parseFloat(document.getElementById('valueInput').value) || 0;
+            const fromUnit = document.getElementById('unitSelect').value;
+            const ms = value * units[fromUnit].factor;
+            
+            document.getElementById('results').innerHTML = Object.entries(units).map(([key, unit]) => {
+                const result = ms / unit.factor;
+                return `<div class="result-row ${key === fromUnit ? 'highlight' : ''}">
+                    <span>${unit.name}</span>
+                    <span style="font-weight:bold;font-family:monospace">${formatNum(result)}</span>
+                </div>`;
+            }).join('');
+            
+            // Update indicator
+            const level = speedLevels.find(l => ms <= l.max) || speedLevels[speedLevels.length - 1];
+            document.getElementById('indicator').innerHTML = `
+                <div class="speed-emoji">${level.emoji}</div>
+                <div class="speed-desc">${level.desc}</div>
+            `;
+        }
+        
+        function formatNum(n) {
+            if (Math.abs(n) >= 1e9) return n.toExponential(4);
+            if (Math.abs(n) < 0.0001 && n !== 0) return n.toExponential(4);
+            return Number.isInteger(n) ? n : n.toFixed(4).replace(/\.?0+$/, '');
+        }
+        
+        convert();
+    </script>
+</body>
+</html>

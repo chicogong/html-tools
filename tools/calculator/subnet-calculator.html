@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>子网计算器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0c3483 0%, #a2b6df 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .input-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .input-group { flex: 1; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input, select { width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        input:focus, select:focus { outline: none; border-color: #0c3483; }
+        .results { margin-top: 25px; }
+        .result-item { display: flex; justify-content: space-between; padding: 15px; background: #f8f9fa; border-radius: 10px; margin-bottom: 10px; }
+        .result-label { color: #666; font-weight: 500; }
+        .result-value { color: #333; font-weight: 600; font-family: monospace; }
+        .binary { font-size: 12px; color: #999; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 子网计算器</h1>
+        <div class="card">
+            <div class="input-row">
+                <div class="input-group">
+                    <label>IP地址</label>
+                    <input type="text" id="ip" value="192.168.1.100" placeholder="192.168.1.100">
+                </div>
+                <div class="input-group">
+                    <label>CIDR / 子网掩码</label>
+                    <select id="cidr">
+                        <option value="8">/8 - 255.0.0.0</option>
+                        <option value="16">/16 - 255.255.0.0</option>
+                        <option value="20">/20 - 255.255.240.0</option>
+                        <option value="21">/21 - 255.255.248.0</option>
+                        <option value="22">/22 - 255.255.252.0</option>
+                        <option value="23">/23 - 255.255.254.0</option>
+                        <option value="24" selected>/24 - 255.255.255.0</option>
+                        <option value="25">/25 - 255.255.255.128</option>
+                        <option value="26">/26 - 255.255.255.192</option>
+                        <option value="27">/27 - 255.255.255.224</option>
+                        <option value="28">/28 - 255.255.255.240</option>
+                        <option value="29">/29 - 255.255.255.248</option>
+                        <option value="30">/30 - 255.255.255.252</option>
+                    </select>
+                </div>
+            </div>
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+    <script>
+        function ipToLong(ip) { return ip.split('.').reduce((acc, oct) => (acc << 8) + parseInt(oct), 0) >>> 0; }
+        function longToIp(long) { return [(long >>> 24) & 255, (long >>> 16) & 255, (long >>> 8) & 255, long & 255].join('.'); }
+        function toBinary(ip) { return ip.split('.').map(n => parseInt(n).toString(2).padStart(8, '0')).join('.'); }
+        function calculate() {
+            const ip = document.getElementById('ip').value.trim();
+            const cidr = parseInt(document.getElementById('cidr').value);
+            if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                document.getElementById('results').innerHTML = '<p style="color:red">请输入有效的IP地址</p>';
+                return;
+            }
+            const ipLong = ipToLong(ip);
+            const mask = (0xFFFFFFFF << (32 - cidr)) >>> 0;
+            const network = (ipLong & mask) >>> 0;
+            const broadcast = (network | (~mask >>> 0)) >>> 0;
+            const firstHost = network + 1;
+            const lastHost = broadcast - 1;
+            const totalHosts = Math.pow(2, 32 - cidr);
+            const usableHosts = totalHosts - 2;
+            const wildcardMask = (~mask >>> 0);
+            document.getElementById('results').innerHTML = `
+                <div class="result-item"><span class="result-label">IP地址</span><span class="result-value">${ip}<br><span class="binary">${toBinary(ip)}</span></span></div>
+                <div class="result-item"><span class="result-label">子网掩码</span><span class="result-value">${longToIp(mask)}<br><span class="binary">${toBinary(longToIp(mask))}</span></span></div>
+                <div class="result-item"><span class="result-label">通配符掩码</span><span class="result-value">${longToIp(wildcardMask)}</span></div>
+                <div class="result-item"><span class="result-label">网络地址</span><span class="result-value">${longToIp(network)}</span></div>
+                <div class="result-item"><span class="result-label">广播地址</span><span class="result-value">${longToIp(broadcast)}</span></div>
+                <div class="result-item"><span class="result-label">第一个可用IP</span><span class="result-value">${longToIp(firstHost)}</span></div>
+                <div class="result-item"><span class="result-label">最后一个可用IP</span><span class="result-value">${longToIp(lastHost)}</span></div>
+                <div class="result-item"><span class="result-label">可用主机数</span><span class="result-value">${usableHosts.toLocaleString()}</span></div>
+                <div class="result-item"><span class="result-label">CIDR表示</span><span class="result-value">${longToIp(network)}/${cidr}</span></div>
+            `;
+        }
+        document.getElementById('ip').addEventListener('input', calculate);
+        document.getElementById('cidr').addEventListener('change', calculate);
+        calculate();
+    </script>
+</body>
+</html>

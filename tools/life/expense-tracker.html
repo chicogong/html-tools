@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支出记录器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .balance { text-align: center; margin-bottom: 20px; }
+        .balance-label { color: #888; font-size: 14px; }
+        .balance-value { font-size: 42px; font-weight: 700; color: #333; }
+        .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .summary-item { padding: 15px; border-radius: 12px; text-align: center; }
+        .summary-item.income { background: #e8f5e9; }
+        .summary-item.expense { background: #ffebee; }
+        .summary-value { font-size: 24px; font-weight: 700; }
+        .summary-item.income .summary-value { color: #27ae60; }
+        .summary-item.expense .summary-value { color: #e74c3c; }
+        .summary-label { font-size: 12px; color: #666; margin-top: 5px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        input:focus, select:focus { outline: none; border-color: #11998e; }
+        .type-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
+        .type-btn { flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; background: white; cursor: pointer; font-size: 14px; }
+        .type-btn.active.income { border-color: #27ae60; background: #e8f5e9; color: #27ae60; }
+        .type-btn.active.expense { border-color: #e74c3c; background: #ffebee; color: #e74c3c; }
+        .btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .transactions { max-height: 300px; overflow-y: auto; }
+        .transaction { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; }
+        .transaction:last-child { border-bottom: none; }
+        .trans-info { flex: 1; }
+        .trans-desc { font-weight: 500; color: #333; }
+        .trans-category { font-size: 12px; color: #888; }
+        .trans-amount { font-weight: 700; }
+        .trans-amount.income { color: #27ae60; }
+        .trans-amount.expense { color: #e74c3c; }
+        .trans-delete { background: none; border: none; color: #ccc; cursor: pointer; padding: 5px; font-size: 18px; }
+        .trans-delete:hover { color: #e74c3c; }
+        .empty { text-align: center; color: #888; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 支出记录器</h1>
+        <div class="card">
+            <div class="balance">
+                <div class="balance-label">当前余额</div>
+                <div class="balance-value" id="balance">¥0.00</div>
+            </div>
+            <div class="summary">
+                <div class="summary-item income">
+                    <div class="summary-value" id="totalIncome">¥0</div>
+                    <div class="summary-label">总收入</div>
+                </div>
+                <div class="summary-item expense">
+                    <div class="summary-value" id="totalExpense">¥0</div>
+                    <div class="summary-label">总支出</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="type-toggle">
+                <button class="type-btn expense active" onclick="setType('expense')">支出</button>
+                <button class="type-btn income" onclick="setType('income')">收入</button>
+            </div>
+            <div class="input-group">
+                <label>描述</label>
+                <input type="text" id="description" placeholder="输入描述...">
+            </div>
+            <div class="input-group">
+                <label>金额</label>
+                <input type="number" id="amount" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="input-group">
+                <label>分类</label>
+                <select id="category">
+                    <option value="餐饮">餐饮</option>
+                    <option value="交通">交通</option>
+                    <option value="购物">购物</option>
+                    <option value="娱乐">娱乐</option>
+                    <option value="工资">工资</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+            <button class="btn" onclick="addTransaction()">添加记录</button>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom:15px;color:#333">交易记录</h3>
+            <div class="transactions" id="transactions">
+                <div class="empty">暂无记录</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let type = 'expense';
+        let transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+        function setType(t) {
+            type = t;
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(t)) btn.classList.add('active');
+            });
+        }
+        function addTransaction() {
+            const desc = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            if (!desc || !amount || amount <= 0) { alert('请填写完整信息'); return; }
+            transactions.unshift({
+                id: Date.now(),
+                type, desc, amount, category,
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            document.getElementById('description').value = '';
+            document.getElementById('amount').value = '';
+            render();
+        }
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            render();
+        }
+        function render() {
+            const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+            const balance = income - expense;
+            document.getElementById('balance').textContent = '¥' + balance.toFixed(2);
+            document.getElementById('balance').style.color = balance >= 0 ? '#27ae60' : '#e74c3c';
+            document.getElementById('totalIncome').textContent = '¥' + income.toFixed(2);
+            document.getElementById('totalExpense').textContent = '¥' + expense.toFixed(2);
+            const container = document.getElementById('transactions');
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="empty">暂无记录</div>';
+            } else {
+                container.innerHTML = transactions.map(t => `
+                    <div class="transaction">
+                        <div class="trans-info">
+                            <div class="trans-desc">${t.desc}</div>
+                            <div class="trans-category">${t.category} · ${t.date}</div>
+                        </div>
+                        <div class="trans-amount ${t.type}">${t.type === 'income' ? '+' : '-'}¥${t.amount.toFixed(2)}</div>
+                        <button class="trans-delete" onclick="deleteTransaction(${t.id})">×</button>
+                    </div>
+                `).join('');
+            }
+        }
+        render();
+    </script>
+</body>
+</html>

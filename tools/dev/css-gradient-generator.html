@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS渐变生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 20px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .card { background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .preview { height: 200px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #e0e0e0; }
+        .controls { display: grid; gap: 16px; }
+        .control-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+        label { font-weight: 600; color: #333; min-width: 80px; }
+        select, input[type="number"] { padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+        input[type="color"] { width: 60px; height: 40px; border: none; border-radius: 8px; cursor: pointer; }
+        input[type="range"] { flex: 1; min-width: 150px; }
+        .color-stops { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+        .color-stop { display: flex; align-items: center; gap: 8px; background: #f5f5f5; padding: 8px 12px; border-radius: 8px; }
+        .color-stop input[type="number"] { width: 60px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+        .btn-danger { background: #ff4757; color: white; }
+        .btn-danger:hover { background: #ff3344; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .output { background: #1e1e1e; color: #9cdcfe; padding: 16px; border-radius: 8px; font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+        .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .preset { width: 50px; height: 50px; border-radius: 8px; cursor: pointer; border: 3px solid transparent; transition: all 0.3s; }
+        .preset:hover { transform: scale(1.1); }
+        .preset.active { border-color: #667eea; }
+        .actions { display: flex; gap: 12px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 CSS渐变生成器</h1>
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">预设渐变</h3>
+            <div class="presets" id="presets"></div>
+        </div>
+        <div class="card">
+            <div class="preview" id="preview"></div>
+            <div class="controls">
+                <div class="control-row">
+                    <label>类型</label>
+                    <select id="gradientType">
+                        <option value="linear">线性渐变</option>
+                        <option value="radial">径向渐变</option>
+                        <option value="conic">锥形渐变</option>
+                    </select>
+                    <label>角度</label>
+                    <input type="range" id="angle" min="0" max="360" value="135">
+                    <span id="angleValue">135°</span>
+                </div>
+                <div class="control-row">
+                    <label>颜色节点</label>
+                    <button class="btn btn-primary btn-sm" onclick="addColorStop()">+ 添加颜色</button>
+                </div>
+                <div class="color-stops" id="colorStops"></div>
+            </div>
+            <div class="output" id="output"></div>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="copyCSS()">📋 复制CSS</button>
+                <button class="btn btn-primary" onclick="randomGradient()">🎲 随机生成</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const presets = [
+            ['#667eea', '#764ba2'], ['#f093fb', '#f5576c'], ['#4facfe', '#00f2fe'],
+            ['#43e97b', '#38f9d7'], ['#fa709a', '#fee140'], ['#a8edea', '#fed6e3'],
+            ['#ff9a9e', '#fecfef'], ['#ffecd2', '#fcb69f'], ['#667eea', '#764ba2'],
+            ['#11998e', '#38ef7d'], ['#fc466b', '#3f5efb'], ['#ee0979', '#ff6a00']
+        ];
+        
+        let colorStops = [
+            { color: '#667eea', position: 0 },
+            { color: '#764ba2', position: 100 }
+        ];
+        
+        function init() {
+            const presetsContainer = document.getElementById('presets');
+            presets.forEach((colors, i) => {
+                const div = document.createElement('div');
+                div.className = 'preset';
+                div.style.background = `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`;
+                div.onclick = () => applyPreset(colors);
+                presetsContainer.appendChild(div);
+            });
+            renderColorStops();
+            updateGradient();
+        }
+        
+        function applyPreset(colors) {
+            colorStops = colors.map((c, i) => ({ color: c, position: i * 100 / (colors.length - 1) }));
+            renderColorStops();
+            updateGradient();
+        }
+        
+        function renderColorStops() {
+            const container = document.getElementById('colorStops');
+            container.innerHTML = '';
+            colorStops.forEach((stop, i) => {
+                const div = document.createElement('div');
+                div.className = 'color-stop';
+                div.innerHTML = `
+                    <input type="color" value="${stop.color}" onchange="updateStop(${i}, 'color', this.value)">
+                    <input type="number" value="${stop.position}" min="0" max="100" onchange="updateStop(${i}, 'position', this.value)">%
+                    ${colorStops.length > 2 ? `<button class="btn btn-danger btn-sm" onclick="removeStop(${i})">×</button>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function updateStop(index, prop, value) {
+            colorStops[index][prop] = prop === 'position' ? parseInt(value) : value;
+            updateGradient();
+        }
+        
+        function addColorStop() {
+            const lastPos = colorStops[colorStops.length - 1].position;
+            colorStops.push({ color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'), position: Math.min(lastPos + 20, 100) });
+            renderColorStops();
+            updateGradient();
+        }
+        
+        function removeStop(index) {
+            if (colorStops.length > 2) {
+                colorStops.splice(index, 1);
+                renderColorStops();
+                updateGradient();
+            }
+        }
+        
+        function updateGradient() {
+            const type = document.getElementById('gradientType').value;
+            const angle = document.getElementById('angle').value;
+            document.getElementById('angleValue').textContent = angle + '°';
+            
+            const stops = colorStops.map(s => `${s.color} ${s.position}%`).join(', ');
+            let gradient;
+            
+            if (type === 'linear') {
+                gradient = `linear-gradient(${angle}deg, ${stops})`;
+            } else if (type === 'radial') {
+                gradient = `radial-gradient(circle, ${stops})`;
+            } else {
+                gradient = `conic-gradient(from ${angle}deg, ${stops})`;
+            }
+            
+            document.getElementById('preview').style.background = gradient;
+            document.getElementById('output').textContent = `background: ${gradient};`;
+        }
+        
+        function copyCSS() {
+            const css = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(css);
+            alert('已复制到剪贴板!');
+        }
+        
+        function randomGradient() {
+            const randomColor = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            colorStops = [
+                { color: randomColor(), position: 0 },
+                { color: randomColor(), position: 100 }
+            ];
+            if (Math.random() > 0.5) {
+                colorStops.splice(1, 0, { color: randomColor(), position: 50 });
+            }
+            document.getElementById('angle').value = Math.floor(Math.random() * 360);
+            renderColorStops();
+            updateGradient();
+        }
+        
+        document.getElementById('gradientType').addEventListener('change', updateGradient);
+        document.getElementById('angle').addEventListener('input', updateGradient);
+        
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 20px; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .card { background: white; border-radius: 20px; padding: 28px; box-shadow: 0 15px 50px rgba(0,0,0,0.2); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+        .tab { flex: 1; padding: 12px; text-align: center; background: #f5f5f5; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s; }
+        .tab.active { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .question { font-size: 18px; font-weight: 600; color: #333; text-align: center; margin-bottom: 24px; }
+        .options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+        .option-input { display: flex; gap: 8px; }
+        .option-input input { flex: 1; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px; }
+        .option-input input:focus { outline: none; border-color: #f093fb; }
+        .option-input button { padding: 14px; background: #f5f5f5; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; }
+        .option-input button:hover { background: #e0e0e0; }
+        .option-tag { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #f8f8f8; border-radius: 10px; }
+        .option-tag span { font-size: 15px; color: #333; }
+        .option-tag button { background: none; border: none; color: #999; cursor: pointer; font-size: 18px; }
+        .option-tag button:hover { color: #f5576c; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4); }
+        .btn-secondary { background: #f5f5f5; color: #333; margin-top: 12px; }
+        .result { text-align: center; padding: 40px 20px; }
+        .result-icon { font-size: 64px; margin-bottom: 16px; animation: bounce 0.6s ease; }
+        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .result-text { font-size: 28px; font-weight: bold; color: #333; margin-bottom: 12px; }
+        .result-sub { color: #666; font-size: 14px; }
+        .wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto 24px; }
+        .wheel { width: 100%; height: 100%; border-radius: 50%; border: 4px solid #f093fb; transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+        .wheel-pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 24px; }
+        .coin { width: 150px; height: 150px; margin: 0 auto 24px; perspective: 1000px; }
+        .coin-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+        .coin-inner.flipping { animation: flip 1s ease-in-out; }
+        @keyframes flip { 0% { transform: rotateY(0); } 100% { transform: rotateY(1800deg); } }
+        .coin-face { position: absolute; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; backface-visibility: hidden; }
+        .coin-front { background: linear-gradient(135deg, #ffd700, #ffb347); }
+        .coin-back { background: linear-gradient(135deg, #c0c0c0, #a8a8a8); transform: rotateY(180deg); }
+        .dice-container { display: flex; justify-content: center; gap: 16px; margin-bottom: 24px; }
+        .dice { width: 80px; height: 80px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 36px; }
+        .dice.rolling { animation: shake 0.5s infinite; }
+        @keyframes shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+        .history { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+        .history h4 { color: #666; font-size: 13px; margin-bottom: 12px; }
+        .history-item { padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 决策助手</h1>
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="showSection('wheel')">🎡 转盘</button>
+                <button class="tab" onclick="showSection('coin')">🪙 抛硬币</button>
+                <button class="tab" onclick="showSection('dice')">🎲 掷骰子</button>
+                <button class="tab" onclick="showSection('random')">🔀 随机</button>
+            </div>
+            
+            <div id="wheelSection" class="section active">
+                <div class="question">添加选项，让转盘帮你决定！</div>
+                <div class="options" id="wheelOptions"></div>
+                <div class="option-input">
+                    <input type="text" id="wheelInput" placeholder="输入一个选项" onkeypress="if(event.key==='Enter')addWheelOption()">
+                    <button onclick="addWheelOption()">➕</button>
+                </div>
+                <div class="wheel-container">
+                    <div class="wheel-pointer">📍</div>
+                    <canvas id="wheelCanvas" class="wheel" width="300" height="300"></canvas>
+                </div>
+                <button class="btn btn-primary" onclick="spinWheel()">🎡 开始转动</button>
+                <div id="wheelResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <div id="coinSection" class="section">
+                <div class="question">正面还是反面？</div>
+                <div class="coin">
+                    <div class="coin-inner" id="coinInner">
+                        <div class="coin-face coin-front">👑</div>
+                        <div class="coin-face coin-back">🌙</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="flipCoin()">🪙 抛硬币</button>
+                <div id="coinResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <div id="diceSection" class="section">
+                <div class="question">投几个骰子？</div>
+                <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 20px;">
+                    <button class="tab" onclick="setDiceCount(1)" id="dice1">1个</button>
+                    <button class="tab active" onclick="setDiceCount(2)" id="dice2">2个</button>
+                    <button class="tab" onclick="setDiceCount(3)" id="dice3">3个</button>
+                </div>
+                <div class="dice-container" id="diceContainer">
+                    <div class="dice">⚀</div>
+                    <div class="dice">⚀</div>
+                </div>
+                <button class="btn btn-primary" onclick="rollDice()">🎲 掷骰子</button>
+                <div id="diceResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <div id="randomSection" class="section">
+                <div class="question">从你的选项中随机选择</div>
+                <div class="options" id="randomOptions"></div>
+                <div class="option-input">
+                    <input type="text" id="randomInput" placeholder="输入一个选项" onkeypress="if(event.key==='Enter')addRandomOption()">
+                    <button onclick="addRandomOption()">➕</button>
+                </div>
+                <button class="btn btn-primary" onclick="pickRandom()">🔀 随机选择</button>
+                <div id="randomResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <div class="history" id="history">
+                <h4>历史记录</h4>
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let wheelOptions = ['选项1', '选项2', '选项3'];
+        let randomOptions = [];
+        let diceCount = 2;
+        let history = [];
+        const diceChars = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        const colors = ['#f093fb', '#f5576c', '#667eea', '#764ba2', '#43e97b', '#38f9d7', '#fa709a', '#fee140'];
+        
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(section + 'Section').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function renderWheelOptions() {
+            document.getElementById('wheelOptions').innerHTML = wheelOptions.map((opt, i) => `
+                <div class="option-tag">
+                    <span>${opt}</span>
+                    <button onclick="removeWheelOption(${i})">×</button>
+                </div>
+            `).join('');
+            drawWheel();
+        }
+        
+        function addWheelOption() {
+            const input = document.getElementById('wheelInput');
+            if (input.value.trim()) {
+                wheelOptions.push(input.value.trim());
+                input.value = '';
+                renderWheelOptions();
+            }
+        }
+        
+        function removeWheelOption(index) {
+            wheelOptions.splice(index, 1);
+            renderWheelOptions();
+        }
+        
+        function drawWheel() {
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            const centerX = 150, centerY = 150, radius = 145;
+            
+            ctx.clearRect(0, 0, 300, 300);
+            
+            if (wheelOptions.length === 0) return;
+            
+            const sliceAngle = (2 * Math.PI) / wheelOptions.length;
+            
+            wheelOptions.forEach((opt, i) => {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Text
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(i * sliceAngle + sliceAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(opt.length > 8 ? opt.substring(0, 8) + '...' : opt, radius - 10, 5);
+                ctx.restore();
+            });
+        }
+        
+        function spinWheel() {
+            if (wheelOptions.length < 2) { alert('至少需要2个选项！'); return; }
+            
+            const canvas = document.getElementById('wheelCanvas');
+            const spins = 5 + Math.random() * 5;
+            const extraAngle = Math.random() * 360;
+            const totalRotation = spins * 360 + extraAngle;
+            
+            canvas.style.transform = `rotate(${totalRotation}deg)`;
+            
+            setTimeout(() => {
+                const normalizedAngle = (360 - (totalRotation % 360)) % 360;
+                const sliceAngle = 360 / wheelOptions.length;
+                const winnerIndex = Math.floor(normalizedAngle / sliceAngle);
+                const winner = wheelOptions[winnerIndex];
+                
+                document.getElementById('wheelResult').style.display = 'block';
+                document.getElementById('wheelResult').innerHTML = `
+                    <div class="result-icon">🎉</div>
+                    <div class="result-text">${winner}</div>
+                    <div class="result-sub">这就是你的选择！</div>
+                `;
+                addHistory('转盘', winner);
+            }, 4000);
+        }
+        
+        function flipCoin() {
+            const coin = document.getElementById('coinInner');
+            coin.classList.add('flipping');
+            
+            setTimeout(() => {
+                coin.classList.remove('flipping');
+                const result = Math.random() < 0.5 ? '正面 👑' : '反面 🌙';
+                document.getElementById('coinResult').style.display = 'block';
+                document.getElementById('coinResult').innerHTML = `
+                    <div class="result-icon">${result.includes('正面') ? '👑' : '🌙'}</div>
+                    <div class="result-text">${result}</div>
+                `;
+                addHistory('硬币', result);
+            }, 1000);
+        }
+        
+        function setDiceCount(count) {
+            diceCount = count;
+            document.querySelectorAll('#diceSection .tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('dice' + count).classList.add('active');
+            renderDice();
+        }
+        
+        function renderDice(values = null) {
+            const container = document.getElementById('diceContainer');
+            container.innerHTML = '';
+            for (let i = 0; i < diceCount; i++) {
+                const val = values ? values[i] : 0;
+                container.innerHTML += `<div class="dice">${diceChars[val]}</div>`;
+            }
+        }
+        
+        function rollDice() {
+            const dices = document.querySelectorAll('.dice');
+            dices.forEach(d => d.classList.add('rolling'));
+            
+            setTimeout(() => {
+                const values = [];
+                for (let i = 0; i < diceCount; i++) {
+                    values.push(Math.floor(Math.random() * 6));
+                }
+                dices.forEach((d, i) => {
+                    d.classList.remove('rolling');
+                    d.textContent = diceChars[values[i]];
+                });
+                
+                const sum = values.reduce((a, b) => a + b + 1, 0);
+                document.getElementById('diceResult').style.display = 'block';
+                document.getElementById('diceResult').innerHTML = `
+                    <div class="result-text">总点数: ${sum}</div>
+                    <div class="result-sub">${values.map(v => v + 1).join(' + ')} = ${sum}</div>
+                `;
+                addHistory('骰子', `${sum}点`);
+            }, 500);
+        }
+        
+        function renderRandomOptions() {
+            document.getElementById('randomOptions').innerHTML = randomOptions.map((opt, i) => `
+                <div class="option-tag">
+                    <span>${opt}</span>
+                    <button onclick="removeRandomOption(${i})">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function addRandomOption() {
+            const input = document.getElementById('randomInput');
+            if (input.value.trim()) {
+                randomOptions.push(input.value.trim());
+                input.value = '';
+                renderRandomOptions();
+            }
+        }
+        
+        function removeRandomOption(index) {
+            randomOptions.splice(index, 1);
+            renderRandomOptions();
+        }
+        
+        function pickRandom() {
+            if (randomOptions.length < 2) { alert('至少需要2个选项！'); return; }
+            const winner = randomOptions[Math.floor(Math.random() * randomOptions.length)];
+            document.getElementById('randomResult').style.display = 'block';
+            document.getElementById('randomResult').innerHTML = `
+                <div class="result-icon">✨</div>
+                <div class="result-text">${winner}</div>
+                <div class="result-sub">随机选中！</div>
+            `;
+            addHistory('随机', winner);
+        }
+        
+        function addHistory(type, result) {
+            history.unshift({ type, result, time: new Date().toLocaleTimeString() });
+            if (history.length > 10) history.pop();
+            document.getElementById('historyList').innerHTML = history.map(h => `
+                <div class="history-item">${h.time} - ${h.type}: ${h.result}</div>
+            `).join('');
+        }
+        
+        renderWheelOptions();
+        renderDice();
+    </script>
+</body>
+</html>

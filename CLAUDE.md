@@ -18,19 +18,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 html-tools/
 ├── index.html              # 主页 (JSON 数据驱动的动态渲染)
 ├── tools.json              # 工具数据源 (Single Source of Truth)
-├── tools/                  # 所有工具按类别组织
+├── tools/                  # 所有工具按类别组织 (22 个分类)
 │   ├── dev/               # 开发工具 (JSON, JWT, Base64, URL, Regex 等)
 │   ├── text/              # 文本工具 (Diff, Markdown, 字数统计)
 │   ├── time/              # 时间工具 (时间戳, 时区, 日期计算)
 │   ├── generator/         # 生成器 (UUID, QRCode, 密码)
-│   ├── privacy/           # 隐私工具 (日志脱敏, 加密)
-│   ├── media/             # 媒体工具 (图片压缩, SVG, 摄像头)
+│   ├── media/             # 媒体工具 (图片压缩, SVG, 摄像头, GIF)
+│   ├── privacy/           # 隐私安全 (日志脱敏, 加密)
 │   ├── security/          # 安全工具 (AES, RSA, 密码强度)
 │   ├── network/           # 网络工具 (IP, 端口, MAC)
 │   ├── calculator/        # 计算器 (百分比, 进度, 宽高比)
 │   ├── converter/         # 转换器 (单位, 文件大小)
 │   ├── extractor/         # 提取器 (链接, 文本)
-│   └── ai/                # AI 工具 (Token 计数, Prompt 模板)
+│   ├── ai/                # AI 工具 (Token 计数, Prompt 模板)
+│   ├── ai-coding/         # AI 编程 (Cursor, Claude 指南)
+│   ├── seo/               # SEO 工具 (Meta 标签, OG 预览)
+│   ├── fun/               # 趣味工具 (记忆测试, 反应测试)
+│   ├── game/              # 小游戏 (贪吃蛇, 俄罗斯方块)
+│   ├── life/              # 生活工具 (剪贴板, 便签, 计数器)
+│   ├── finance/           # 财务工具 (房贷, 复利, 汇率)
+│   ├── health/            # 医疗健康 (BMI, BMR, 预产期)
+│   ├── education/         # 教育学习 (打字测试, 记忆训练)
+│   ├── food/              # 餐饮食品 (菜谱, 营养计算)
+│   └── chinese/           # 中文工具 (拼音, 繁简转换)
 ├── scripts/
 │   └── sync-tools.js      # 工具同步脚本 (tools.json → index.html)
 ├── package.json           # lint 和 sync 脚本依赖
@@ -140,7 +150,7 @@ const TOOLS = [
 **主页特性**：
 - **动态渲染**: 工具卡片通过 JavaScript 从 TOOLS 数组动态生成 (使用 document.createElement)
 - **主题切换**: 通过 `data-theme="light"` 属性切换明暗主题,状态保存在 localStorage
-- **分类筛选**: 按工具类别筛选 (dev/text/time/generator/privacy/media/security/network/calculator/converter/extractor/ai)
+- **分类筛选**: 按工具类别筛选 (共 22 个分类，见项目结构)
 - **搜索功能**: 基于工具名称、描述和 keywords 的实时搜索,显示结果数量
 - **收藏系统**:
   - 收藏的工具 URL 保存在 localStorage (`html_tools_favorites_v1`)

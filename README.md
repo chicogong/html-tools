@@ -3,7 +3,7 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tools](https://img.shields.io/badge/Tools-564+-blue.svg)](https://tools.realtime-ai.chat)
+[![Tools](https://img.shields.io/badge/Tools-571+-blue.svg)](https://tools.realtime-ai.chat)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
 [![Vercel](https://img.shields.io/badge/Vercel-deployed-black?logo=vercel)](https://html-tools-jade.vercel.app)
@@ -14,7 +14,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
 
-### 🚀 564+ 纯前端在线工具集
+### 571+ 纯前端在线工具集
 
 **单文件 · 零构建 · 可离线 · 隐私优先 · 数据不上传**
 
@@ -106,12 +106,13 @@
 | Surge | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
-## 工具列表 (564 个)
+## 工具列表 (571 个)
 
-### 开发工具 (61 个)
+### 开发工具 (62 个)
 
 | 工具 | 描述 |
 |------|------|
+| [代码截图美化](tools/dev/code-screenshot.html) | 将代码片段生成精美截图，支持多种主题和字体 |
 | [代码对比工具](tools/dev/code-diff.html) | 并排对比两段代码的差异，高亮显示变更 |
 | [剪贴板查看器](tools/dev/clipboard-viewer.html) | 查看剪贴板中的各种格式数据 |
 | [进制转换器](tools/dev/number-base.html) | 二进制、八进制、十进制、十六进制互转 |
@@ -216,10 +217,13 @@
 | [Cron 表达式解析](tools/time/cron-parser.html) | 解析 Cron 表达式，展示可读描述和下次执行时间 |
 | [秒表计时器](tools/time/stopwatch.html) | 在线秒表，支持计次、暂停、毫秒精度显示 |
 
-### 生成器 (14 个)
+### 生成器 (17 个)
 
 | 工具 | 描述 |
 |------|------|
+| [在线图表生成器](tools/generator/chart-generator.html) | 在线生成柱状图、折线图、饼图等，支持CSV导入和PNG/SVG导出 |
+| [推特截图生成器](tools/generator/tweet-generator.html) | 生成逼真的推特帖子截图，支持自定义头像、内容和互动数据 |
+| [社交媒体尺寸指南](tools/generator/social-size-guide.html) | 查询各社交平台图片尺寸规范，一键复制或生成模板 |
 | [二维码生成器](tools/generator/qrcode-generator.html) | 生成自定义颜色和大小的二维码 |
 | [假数据生成器](tools/generator/fake-data.html) | 生成测试用的假数据：姓名、邮箱、地址、电话等 |
 | [密码生成器](tools/generator/password-generator.html) | 生成安全随机密码，支持自定义长度和字符类型 |
@@ -235,10 +239,12 @@
 | [WiFi 二维码生成器](tools/generator/wifi-qrcode.html) | WiFi 二维码生成 |
 | [二维码扫描器](tools/generator/qrcode-scanner.html) | 在线二维码扫描器，支持摄像头扫描和图片上传 |
 
-### 媒体工具 (16 个)
+### 媒体工具 (18 个)
 
 | 工具 | 描述 |
 |------|------|
+| [PDF合并工具](tools/media/pdf-merge.html) | 在线合并多个PDF文件，支持拖拽排序和预览 |
+| [PDF拆分工具](tools/media/pdf-split.html) | 将PDF按页码范围拆分为多个文件 |
 | [摄像头拍照](tools/media/camera-demo.html) | 调用摄像头拍照并保存到本地 |
 | [图片裁剪](tools/media/image-crop.html) | 在线裁剪图片，支持自由裁剪和预设比例 |
 | [图片格式批量转换](tools/media/image-format-converter.html) | 批量转换图片格式，支持 PNG/JPG/WebP/AVIF |
@@ -275,10 +281,11 @@
 |------|------|
 | [URL安全化](tools/security/url-defang.html) | URL 脱敏处理 |
 
-### 网络工具 (7 个)
+### 网络工具 (8 个)
 
 | 工具 | 描述 |
 |------|------|
+| [HTTP客户端](tools/network/http-client.html) | 在线HTTP请求工具，支持多种方法、请求头和认证方式 |
 | [端口查询器](tools/network/port-lookup.html) | 常用端口号速查，包含服务名称和协议说明 |
 | [HTTP 头解析器](tools/network/http-header-parser.html) | HTTP 请求头解析 |
 | [IP 地址工具](tools/network/ip-tools.html) | IP 地址工具集 |

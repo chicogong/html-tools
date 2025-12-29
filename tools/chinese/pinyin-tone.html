@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拼音声调标注 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #6366f1; --accent2: #8b5cf6; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; font-weight: 500; }
+        textarea { width: 100%; height: 120px; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1.1rem; resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        .btn-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+        .btn-secondary:hover { border-color: var(--accent); }
+        .result-box { background: var(--bg); border-radius: 12px; padding: 24px; margin-top: 16px; min-height: 80px; }
+        .result-pinyin { font-size: 1.3rem; line-height: 2; letter-spacing: 1px; }
+        .result-pinyin ruby { margin: 0 2px; }
+        .result-pinyin rt { font-size: 0.7em; color: var(--accent); }
+        .tone-guide { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+        @media (max-width: 500px) { .tone-guide { grid-template-columns: repeat(2, 1fr); } }
+        .tone-item { background: var(--bg); border-radius: 8px; padding: 16px; text-align: center; }
+        .tone-item .symbol { font-size: 2rem; color: var(--accent); margin-bottom: 8px; }
+        .tone-item .name { font-size: 0.9rem; color: var(--text); margin-bottom: 4px; }
+        .tone-item .desc { font-size: 0.8rem; color: var(--text2); }
+        .quick-input { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .quick-item { padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .quick-item:hover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .mode-switch { display: flex; gap: 8px; margin-bottom: 16px; }
+        .mode-btn { flex: 1; padding: 12px; text-align: center; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .mode-btn.active { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); color: var(--accent); }
+        .mode-btn:hover { border-color: var(--accent); }
+        .vowel-keyboard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+        .vowel-btn { padding: 12px; text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 1.1rem; transition: all 0.2s; }
+        .vowel-btn:hover { border-color: var(--accent); background: rgba(99, 102, 241, 0.1); }
+        .vowel-group { margin-bottom: 16px; }
+        .vowel-group-title { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .copy-notice { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 12px 24px; border-radius: 8px; opacity: 0; transition: opacity 0.3s; }
+        .copy-notice.show { opacity: 1; }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>拼音声调标注</h1>
+        <p class="subtitle">为汉字添加拼音注音，支持声调转换</p>
+        
+        <div class="card">
+            <div class="mode-switch">
+                <div class="mode-btn active" data-mode="text" onclick="setMode('text')">汉字转拼音</div>
+                <div class="mode-btn" data-mode="number" onclick="setMode('number')">数字声调转换</div>
+                <div class="mode-btn" data-mode="keyboard" onclick="setMode('keyboard')">拼音键盘</div>
+            </div>
+            
+            <div id="textMode">
+                <div class="card-title">输入汉字</div>
+                <textarea id="textInput" placeholder="输入汉字，自动标注拼音..."></textarea>
+                
+                <div class="quick-input">
+                    <span style="color: var(--text2); font-size: 0.9rem; line-height: 32px;">示例：</span>
+                    <span class="quick-item" onclick="setExample('中华人民共和国')">中华人民共和国</span>
+                    <span class="quick-item" onclick="setExample('床前明月光')">床前明月光</span>
+                    <span class="quick-item" onclick="setExample('学而时习之')">学而时习之</span>
+                </div>
+                
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="convertText()">转换拼音</button>
+                    <button class="btn btn-secondary" onclick="copyResult()">复制结果</button>
+                    <button class="btn btn-secondary" onclick="clearInput()">清空</button>
+                </div>
+            </div>
+            
+            <div id="numberMode" style="display: none;">
+                <div class="card-title">输入数字声调拼音</div>
+                <textarea id="numberInput" placeholder="输入数字声调拼音，如：zhong1 guo2"></textarea>
+                
+                <div class="quick-input">
+                    <span style="color: var(--text2); font-size: 0.9rem; line-height: 32px;">示例：</span>
+                    <span class="quick-item" onclick="setNumberExample('ni3 hao3')">ni3 hao3</span>
+                    <span class="quick-item" onclick="setNumberExample('zhong1 guo2')">zhong1 guo2</span>
+                    <span class="quick-item" onclick="setNumberExample('pin1 yin1')">pin1 yin1</span>
+                </div>
+                
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="convertNumber()">转换声调</button>
+                    <button class="btn btn-secondary" onclick="copyNumberResult()">复制结果</button>
+                </div>
+            </div>
+            
+            <div id="keyboardMode" style="display: none;">
+                <div class="card-title">点击输入带声调的拼音字母</div>
+                <div id="pinyinOutput" style="min-height: 60px; background: var(--bg); border-radius: 8px; padding: 16px; font-size: 1.3rem; margin-bottom: 16px;"></div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">a 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ā')">ā</div>
+                        <div class="vowel-btn" onclick="insertVowel('á')">á</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǎ')">ǎ</div>
+                        <div class="vowel-btn" onclick="insertVowel('à')">à</div>
+                        <div class="vowel-btn" onclick="insertVowel('a')">a</div>
+                    </div>
+                </div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">o 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ō')">ō</div>
+                        <div class="vowel-btn" onclick="insertVowel('ó')">ó</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǒ')">ǒ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ò')">ò</div>
+                        <div class="vowel-btn" onclick="insertVowel('o')">o</div>
+                    </div>
+                </div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">e 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ē')">ē</div>
+                        <div class="vowel-btn" onclick="insertVowel('é')">é</div>
+                        <div class="vowel-btn" onclick="insertVowel('ě')">ě</div>
+                        <div class="vowel-btn" onclick="insertVowel('è')">è</div>
+                        <div class="vowel-btn" onclick="insertVowel('e')">e</div>
+                    </div>
+                </div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">i 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ī')">ī</div>
+                        <div class="vowel-btn" onclick="insertVowel('í')">í</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǐ')">ǐ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ì')">ì</div>
+                        <div class="vowel-btn" onclick="insertVowel('i')">i</div>
+                    </div>
+                </div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">u 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ū')">ū</div>
+                        <div class="vowel-btn" onclick="insertVowel('ú')">ú</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǔ')">ǔ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ù')">ù</div>
+                        <div class="vowel-btn" onclick="insertVowel('u')">u</div>
+                    </div>
+                </div>
+                
+                <div class="vowel-group">
+                    <div class="vowel-group-title">ü 系列</div>
+                    <div class="vowel-keyboard" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="vowel-btn" onclick="insertVowel('ǖ')">ǖ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǘ')">ǘ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǚ')">ǚ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ǜ')">ǜ</div>
+                        <div class="vowel-btn" onclick="insertVowel('ü')">ü</div>
+                    </div>
+                </div>
+                
+                <div class="btn-row">
+                    <button class="btn btn-secondary" onclick="insertVowel(' ')">空格</button>
+                    <button class="btn btn-secondary" onclick="backspace()">退格</button>
+                    <button class="btn btn-secondary" onclick="copyKeyboardResult()">复制</button>
+                    <button class="btn btn-secondary" onclick="clearKeyboard()">清空</button>
+                </div>
+            </div>
+            
+            <div class="result-box" id="resultBox">
+                <div class="result-pinyin" id="resultPinyin">转换结果将显示在这里</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">声调说明</div>
+            <div class="tone-guide">
+                <div class="tone-item">
+                    <div class="symbol">ā</div>
+                    <div class="name">第一声（阴平）</div>
+                    <div class="desc">高平调 ˉ</div>
+                </div>
+                <div class="tone-item">
+                    <div class="symbol">á</div>
+                    <div class="name">第二声（阳平）</div>
+                    <div class="desc">升调 ˊ</div>
+                </div>
+                <div class="tone-item">
+                    <div class="symbol">ǎ</div>
+                    <div class="name">第三声（上声）</div>
+                    <div class="desc">降升调 ˇ</div>
+                </div>
+                <div class="tone-item">
+                    <div class="symbol">à</div>
+                    <div class="name">第四声（去声）</div>
+                    <div class="desc">降调 ˋ</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="copy-notice" id="copyNotice">已复制到剪贴板</div>
+    
+    <script>
+        // 汉字拼音映射（部分常用字）
+        const pinyinMap = {
+            '中': 'zhōng', '华': 'huá', '人': 'rén', '民': 'mín', '共': 'gòng', '和': 'hé', '国': 'guó',
+            '你': 'nǐ', '好': 'hǎo', '我': 'wǒ', '他': 'tā', '她': 'tā', '它': 'tā',
+            '是': 'shì', '的': 'de', '了': 'le', '在': 'zài', '有': 'yǒu', '个': 'gè',
+            '上': 'shàng', '下': 'xià', '左': 'zuǒ', '右': 'yòu', '前': 'qián', '后': 'hòu',
+            '大': 'dà', '小': 'xiǎo', '多': 'duō', '少': 'shǎo', '长': 'cháng', '短': 'duǎn',
+            '学': 'xué', '习': 'xí', '生': 'shēng', '老': 'lǎo', '师': 'shī', '书': 'shū',
+            '一': 'yī', '二': 'èr', '三': 'sān', '四': 'sì', '五': 'wǔ', '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí',
+            '百': 'bǎi', '千': 'qiān', '万': 'wàn', '亿': 'yì',
+            '天': 'tiān', '地': 'dì', '日': 'rì', '月': 'yuè', '年': 'nián', '时': 'shí',
+            '山': 'shān', '水': 'shuǐ', '火': 'huǒ', '木': 'mù', '金': 'jīn', '土': 'tǔ',
+            '东': 'dōng', '西': 'xī', '南': 'nán', '北': 'běi',
+            '春': 'chūn', '夏': 'xià', '秋': 'qiū', '冬': 'dōng',
+            '爱': 'ài', '心': 'xīn', '情': 'qíng', '意': 'yì',
+            '床': 'chuáng', '明': 'míng', '光': 'guāng', '疑': 'yí', '霜': 'shuāng',
+            '举': 'jǔ', '头': 'tóu', '望': 'wàng', '低': 'dī', '思': 'sī', '故': 'gù', '乡': 'xiāng',
+            '而': 'ér', '之': 'zhī', '不': 'bù', '亦': 'yì', '乐': 'lè', '乎': 'hū',
+            '拼': 'pīn', '音': 'yīn', '声': 'shēng', '调': 'diào'
+        };
+        
+        // 数字声调到带声调字母的映射
+        const toneMarks = {
+            'a': ['ā', 'á', 'ǎ', 'à', 'a'],
+            'o': ['ō', 'ó', 'ǒ', 'ò', 'o'],
+            'e': ['ē', 'é', 'ě', 'è', 'e'],
+            'i': ['ī', 'í', 'ǐ', 'ì', 'i'],
+            'u': ['ū', 'ú', 'ǔ', 'ù', 'u'],
+            'v': ['ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü'],
+            'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü']
+        };
+        
+        let currentMode = 'text';
+        let keyboardOutput = '';
+        
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            document.getElementById('textMode').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('numberMode').style.display = mode === 'number' ? 'block' : 'none';
+            document.getElementById('keyboardMode').style.display = mode === 'keyboard' ? 'block' : 'none';
+        }
+        
+        function setExample(text) {
+            document.getElementById('textInput').value = text;
+            convertText();
+        }
+        
+        function setNumberExample(text) {
+            document.getElementById('numberInput').value = text;
+            convertNumber();
+        }
+        
+        function convertText() {
+            const text = document.getElementById('textInput').value;
+            const resultPinyin = document.getElementById('resultPinyin');
+            
+            if (!text.trim()) {
+                resultPinyin.textContent = '请输入汉字';
+                return;
+            }
+            
+            resultPinyin.textContent = '';
+            
+            for (let char of text) {
+                if (pinyinMap[char]) {
+                    const ruby = document.createElement('ruby');
+                    ruby.textContent = char;
+                    const rt = document.createElement('rt');
+                    rt.textContent = pinyinMap[char];
+                    ruby.appendChild(rt);
+                    resultPinyin.appendChild(ruby);
+                } else if (/[\u4e00-\u9fa5]/.test(char)) {
+                    // 未知汉字
+                    const ruby = document.createElement('ruby');
+                    ruby.textContent = char;
+                    const rt = document.createElement('rt');
+                    rt.textContent = '?';
+                    rt.style.color = '#f43f5e';
+                    ruby.appendChild(rt);
+                    resultPinyin.appendChild(ruby);
+                } else {
+                    resultPinyin.appendChild(document.createTextNode(char));
+                }
+            }
+        }
+        
+        function convertNumber() {
+            const input = document.getElementById('numberInput').value;
+            const resultPinyin = document.getElementById('resultPinyin');
+            
+            if (!input.trim()) {
+                resultPinyin.textContent = '请输入数字声调拼音';
+                return;
+            }
+            
+            // 将数字声调转换为带声调字母
+            let result = input.replace(/([aoeiu]|ü|v)([1-4])/gi, (match, vowel, tone) => {
+                const toneIndex = parseInt(tone) - 1;
+                const v = vowel.toLowerCase();
+                if (toneMarks[v]) {
+                    return toneMarks[v][toneIndex];
+                }
+                return match;
+            });
+            
+            // 处理轻声（5或无声调）
+            result = result.replace(/([aoeiu]|ü|v)5/gi, (match, vowel) => {
+                const v = vowel.toLowerCase();
+                if (toneMarks[v]) {
+                    return toneMarks[v][4];
+                }
+                return vowel;
+            });
+            
+            resultPinyin.textContent = result;
+        }
+        
+        function insertVowel(char) {
+            keyboardOutput += char;
+            document.getElementById('pinyinOutput').textContent = keyboardOutput;
+        }
+        
+        function backspace() {
+            keyboardOutput = keyboardOutput.slice(0, -1);
+            document.getElementById('pinyinOutput').textContent = keyboardOutput;
+        }
+        
+        function clearKeyboard() {
+            keyboardOutput = '';
+            document.getElementById('pinyinOutput').textContent = '';
+        }
+        
+        function copyResult() {
+            const text = document.getElementById('resultPinyin').textContent;
+            if (text && text !== '请输入汉字' && text !== '转换结果将显示在这里') {
+                navigator.clipboard.writeText(text);
+                showCopyNotice();
+            }
+        }
+        
+        function copyNumberResult() {
+            const text = document.getElementById('resultPinyin').textContent;
+            if (text && text !== '请输入数字声调拼音') {
+                navigator.clipboard.writeText(text);
+                showCopyNotice();
+            }
+        }
+        
+        function copyKeyboardResult() {
+            if (keyboardOutput) {
+                navigator.clipboard.writeText(keyboardOutput);
+                showCopyNotice();
+            }
+        }
+        
+        function showCopyNotice() {
+            const notice = document.getElementById('copyNotice');
+            notice.classList.add('show');
+            setTimeout(() => notice.classList.remove('show'), 2000);
+        }
+        
+        function clearInput() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('resultPinyin').textContent = '转换结果将显示在这里';
+        }
+        
+        // 输入时实时转换
+        document.getElementById('textInput').addEventListener('input', convertText);
+        document.getElementById('numberInput').addEventListener('input', convertNumber);
+    </script>
+</body>
+</html>

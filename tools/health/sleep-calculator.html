@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>睡眠时间计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #8b5cf6; --accent2: #6366f1; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .time-input { display: flex; gap: 8px; align-items: center; }
+        .time-input input { text-align: center; }
+        .time-input span { color: var(--text2); }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 28px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 8px; }
+        .result-hero .big { font-size: 1.8rem; font-weight: 700; }
+        .result-hero .sub { margin-top: 12px; font-size: 0.9rem; opacity: 0.9; }
+        .wake-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media (max-width: 768px) { .wake-times { grid-template-columns: repeat(2, 1fr); } }
+        .wake-time { padding: 16px; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .wake-time:hover { transform: translateY(-2px); }
+        .wake-time.optimal { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .wake-time.good { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .wake-time.fair { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
+        .wake-time .time { font-size: 1.5rem; font-weight: 700; }
+        .wake-time .cycles { font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+        .wake-time .hours { font-size: 0.75rem; opacity: 0.8; }
+        .cycle-visual { display: flex; gap: 8px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+        .cycle { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: white; }
+        .cycle.rem { background: var(--accent); }
+        .cycle.deep { background: #3b82f6; }
+        .cycle.light { background: #64748b; }
+        .result-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .result-row .label { color: var(--text2); }
+        .result-row .value { font-weight: 600; }
+        .age-recommendation { margin-top: 16px; }
+        .age-item { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--bg); border-radius: 8px; margin-bottom: 6px; font-size: 0.9rem; }
+        .tips { margin-top: 16px; }
+        .tip { padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; }
+        .tip-title { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+        .note { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem; color: var(--text2); }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>睡眠时间计算器</h1>
+        <p class="subtitle">基于睡眠周期计算最佳起床/入睡时间</p>
+        
+        <div class="tabs">
+            <div class="tab active" data-mode="wake" onclick="setMode('wake')">我想几点起床</div>
+            <div class="tab" data-mode="sleep" onclick="setMode('sleep')">我想几点睡觉</div>
+            <div class="tab" data-mode="now" onclick="setMode('now')">我现在就睡</div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title" id="inputTitle">设置起床时间</div>
+                <div class="form-group" id="timeInputGroup">
+                    <label id="timeLabel">起床时间</label>
+                    <div class="time-input">
+                        <input type="number" id="hour" value="7" min="0" max="23" oninput="calculate()">
+                        <span>:</span>
+                        <input type="number" id="minute" value="0" min="0" max="59" oninput="calculate()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>入睡所需时间（分钟）</label>
+                    <input type="number" id="fallAsleepTime" value="14" min="1" max="60" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label>睡眠周期长度（分钟）</label>
+                    <input type="number" id="cycleLength" value="90" min="60" max="120" oninput="calculate()">
+                </div>
+                
+                <div class="card-title" style="margin-top: 24px;">睡眠周期说明</div>
+                <div class="cycle-visual">
+                    <div class="cycle light">浅睡</div>
+                    <div class="cycle deep">深睡</div>
+                    <div class="cycle rem">REM</div>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text2); text-align: center;">
+                    每个睡眠周期约90分钟，包含浅睡眠、深睡眠和REM快速眼动期。在周期结束时醒来最清醒。
+                </p>
+            </div>
+            
+            <div>
+                <div class="result-hero">
+                    <div class="label" id="resultLabel">建议入睡时间</div>
+                    <div class="big" id="resultTime">-</div>
+                    <div class="sub" id="resultNote">完成完整的睡眠周期</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title" id="timesTitle">建议入睡时间</div>
+                    <div class="wake-times" id="suggestedTimes"></div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">睡眠信息</div>
+                    <div class="result-row">
+                        <span class="label">推荐睡眠时长</span>
+                        <span class="value">7-9 小时</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">最佳睡眠周期</span>
+                        <span class="value">5-6 个周期</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">单个周期时长</span>
+                        <span class="value" id="cycleLengthDisplay">90 分钟</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">各年龄段推荐睡眠时长</div>
+                <div class="age-recommendation">
+                    <div class="age-item"><span>新生儿 (0-3月)</span><span>14-17 小时</span></div>
+                    <div class="age-item"><span>婴儿 (4-11月)</span><span>12-15 小时</span></div>
+                    <div class="age-item"><span>幼儿 (1-2岁)</span><span>11-14 小时</span></div>
+                    <div class="age-item"><span>学龄前 (3-5岁)</span><span>10-13 小时</span></div>
+                    <div class="age-item"><span>学龄期 (6-13岁)</span><span>9-11 小时</span></div>
+                    <div class="age-item"><span>青少年 (14-17岁)</span><span>8-10 小时</span></div>
+                    <div class="age-item"><span>成人 (18-64岁)</span><span>7-9 小时</span></div>
+                    <div class="age-item"><span>老年人 (65+岁)</span><span>7-8 小时</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">睡眠小贴士</div>
+                <div class="tips">
+                    <div class="tip">
+                        <div class="tip-title">固定作息</div>
+                        <div>每天同一时间睡觉和起床，包括周末，有助于调节生物钟</div>
+                    </div>
+                    <div class="tip">
+                        <div class="tip-title">睡前放松</div>
+                        <div>睡前1小时避免使用电子设备，可以阅读、冥想或泡澡</div>
+                    </div>
+                    <div class="tip">
+                        <div class="tip-title">环境优化</div>
+                        <div>保持卧室安静、黑暗、凉爽（18-22°C），使用舒适的床品</div>
+                    </div>
+                    <div class="tip">
+                        <div class="tip-title">避免刺激</div>
+                        <div>下午避免咖啡因，睡前避免大餐和酒精</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="note">
+            睡眠周期因人而异，标准周期约90分钟。本计算器假设平均入睡时间为14分钟。如果您经常感到疲劳或睡眠问题持续，建议咨询医生。
+        </div>
+    </div>
+    
+    <script>
+        let mode = 'wake';
+        
+        function setMode(m) {
+            mode = m;
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+            
+            const timeInputGroup = document.getElementById('timeInputGroup');
+            
+            if (m === 'now') {
+                timeInputGroup.style.display = 'none';
+                document.getElementById('inputTitle').textContent = '从现在开始计算';
+            } else {
+                timeInputGroup.style.display = 'block';
+                if (m === 'wake') {
+                    document.getElementById('inputTitle').textContent = '设置起床时间';
+                    document.getElementById('timeLabel').textContent = '起床时间';
+                } else {
+                    document.getElementById('inputTitle').textContent = '设置入睡时间';
+                    document.getElementById('timeLabel').textContent = '入睡时间';
+                }
+            }
+            
+            calculate();
+        }
+        
+        function formatTime(date) {
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return hours + ':' + minutes;
+        }
+        
+        function calculate() {
+            const fallAsleepTime = parseInt(document.getElementById('fallAsleepTime').value) || 14;
+            const cycleLength = parseInt(document.getElementById('cycleLength').value) || 90;
+            
+            document.getElementById('cycleLengthDisplay').textContent = cycleLength + ' 分钟';
+            
+            let targetTime;
+            
+            if (mode === 'now') {
+                targetTime = new Date();
+            } else {
+                const hour = parseInt(document.getElementById('hour').value) || 0;
+                const minute = parseInt(document.getElementById('minute').value) || 0;
+                targetTime = new Date();
+                targetTime.setHours(hour, minute, 0, 0);
+            }
+            
+            const times = [];
+            
+            if (mode === 'wake' || mode === 'now') {
+                // 计算入睡时间
+                document.getElementById('resultLabel').textContent = '建议入睡时间';
+                document.getElementById('timesTitle').textContent = '建议入睡时间';
+                
+                if (mode === 'now') {
+                    // 从现在开始，计算最佳起床时间
+                    document.getElementById('resultLabel').textContent = '建议起床时间';
+                    document.getElementById('timesTitle').textContent = '建议起床时间';
+                    
+                    const sleepStart = new Date(targetTime.getTime() + fallAsleepTime * 60 * 1000);
+                    
+                    for (let cycles = 6; cycles >= 3; cycles--) {
+                        const wakeTime = new Date(sleepStart.getTime() + cycles * cycleLength * 60 * 1000);
+                        const sleepHours = (cycles * cycleLength / 60).toFixed(1);
+                        times.push({
+                            time: wakeTime,
+                            cycles: cycles,
+                            hours: sleepHours,
+                            quality: cycles >= 5 ? 'optimal' : cycles >= 4 ? 'good' : 'fair'
+                        });
+                    }
+                } else {
+                    // 根据起床时间计算入睡时间
+                    for (let cycles = 6; cycles >= 3; cycles--) {
+                        const sleepTime = new Date(targetTime.getTime() - (cycles * cycleLength + fallAsleepTime) * 60 * 1000);
+                        const sleepHours = (cycles * cycleLength / 60).toFixed(1);
+                        times.push({
+                            time: sleepTime,
+                            cycles: cycles,
+                            hours: sleepHours,
+                            quality: cycles >= 5 ? 'optimal' : cycles >= 4 ? 'good' : 'fair'
+                        });
+                    }
+                }
+            } else {
+                // 根据入睡时间计算起床时间
+                document.getElementById('resultLabel').textContent = '建议起床时间';
+                document.getElementById('timesTitle').textContent = '建议起床时间';
+                
+                const sleepStart = new Date(targetTime.getTime() + fallAsleepTime * 60 * 1000);
+                
+                for (let cycles = 6; cycles >= 3; cycles--) {
+                    const wakeTime = new Date(sleepStart.getTime() + cycles * cycleLength * 60 * 1000);
+                    const sleepHours = (cycles * cycleLength / 60).toFixed(1);
+                    times.push({
+                        time: wakeTime,
+                        cycles: cycles,
+                        hours: sleepHours,
+                        quality: cycles >= 5 ? 'optimal' : cycles >= 4 ? 'good' : 'fair'
+                    });
+                }
+            }
+            
+            // 显示最佳时间
+            if (times.length > 0) {
+                const best = times.find(t => t.quality === 'optimal') || times[0];
+                document.getElementById('resultTime').textContent = formatTime(best.time);
+                document.getElementById('resultNote').textContent = best.cycles + '个睡眠周期，约' + best.hours + '小时';
+            }
+            
+            // 渲染所有建议时间
+            renderSuggestedTimes(times);
+        }
+        
+        function renderSuggestedTimes(times) {
+            const container = document.getElementById('suggestedTimes');
+            container.textContent = '';
+            
+            times.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'wake-time ' + item.quality;
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'time';
+                timeDiv.textContent = formatTime(item.time);
+                
+                const cyclesDiv = document.createElement('div');
+                cyclesDiv.className = 'cycles';
+                cyclesDiv.textContent = item.cycles + '个周期';
+                
+                const hoursDiv = document.createElement('div');
+                hoursDiv.className = 'hours';
+                hoursDiv.textContent = item.hours + '小时睡眠';
+                
+                div.appendChild(timeDiv);
+                div.appendChild(cyclesDiv);
+                div.appendChild(hoursDiv);
+                container.appendChild(div);
+            });
+        }
+        
+        calculate();
+    </script>
+</body>
+</html>

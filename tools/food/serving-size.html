@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食物份量计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #0ea5e9; --accent2: #38bdf8; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .event-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.9rem; }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .tab-btn:hover { border-color: var(--accent); }
+        .guest-control { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; }
+        .guest-btn { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1.5rem; cursor: pointer; }
+        .guest-btn:hover { border-color: var(--accent); background: var(--accent); color: white; }
+        .guest-count { text-align: center; }
+        .guest-count .number { font-size: 3rem; font-weight: 700; color: var(--accent); }
+        .guest-count .label { font-size: 0.9rem; color: var(--text2); }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 24px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero h3 { font-size: 1.1rem; margin-bottom: 8px; opacity: 0.9; }
+        .category-section { margin-bottom: 24px; }
+        .category-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .category-title .icon { font-size: 1.2rem; }
+        .food-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .food-item { padding: 16px; background: var(--bg); border-radius: 12px; }
+        .food-item .name { font-weight: 500; margin-bottom: 4px; }
+        .food-item .amount { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+        .food-item .unit { font-size: 0.85rem; color: var(--text2); }
+        .adjustment { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .adjustment h4 { font-size: 0.95rem; margin-bottom: 12px; }
+        .check-group { display: flex; flex-wrap: wrap; gap: 12px; }
+        .check-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .check-item.active { border-color: var(--accent); background: rgba(14, 165, 233, 0.1); }
+        .check-item input { display: none; }
+        .tips-section { font-size: 0.85rem; color: var(--text2); line-height: 1.8; }
+        @media (max-width: 500px) { .food-grid { grid-template-columns: 1fr; } }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>食物份量计算器</h1>
+        <p class="subtitle">宴会和聚餐的食材估算</p>
+        
+        <div class="card">
+            <div class="event-tabs">
+                <button class="tab-btn active" data-event="casual" onclick="setEvent('casual')">休闲聚餐</button>
+                <button class="tab-btn" data-event="dinner" onclick="setEvent('dinner')">正式晚宴</button>
+                <button class="tab-btn" data-event="bbq" onclick="setEvent('bbq')">烧烤派对</button>
+                <button class="tab-btn" data-event="buffet" onclick="setEvent('buffet')">自助餐</button>
+            </div>
+            
+            <div class="guest-control">
+                <button class="guest-btn" onclick="changeGuests(-1)">−</button>
+                <div class="guest-count">
+                    <div class="number" id="guestCount">10</div>
+                    <div class="label">位客人</div>
+                </div>
+                <button class="guest-btn" onclick="changeGuests(1)">+</button>
+            </div>
+            
+            <div class="form-group">
+                <label>用餐时长</label>
+                <select id="duration" onchange="calculate()">
+                    <option value="1">1小时 (简单聚会)</option>
+                    <option value="2" selected>2小时 (标准聚餐)</option>
+                    <option value="3">3小时 (长时间活动)</option>
+                    <option value="4">4小时+ (全天活动)</option>
+                </select>
+            </div>
+            
+            <div class="adjustment">
+                <h4>调整因素</h4>
+                <div class="check-group" id="adjustments">
+                    <label class="check-item" data-factor="appetite">
+                        <input type="checkbox" onchange="calculate()">
+                        大食量人群
+                    </label>
+                    <label class="check-item" data-factor="kids">
+                        <input type="checkbox" onchange="calculate()">
+                        有小孩
+                    </label>
+                    <label class="check-item" data-factor="elderly">
+                        <input type="checkbox" onchange="calculate()">
+                        有老人
+                    </label>
+                    <label class="check-item" data-factor="alcohol">
+                        <input type="checkbox" onchange="calculate()">
+                        提供酒水
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-hero">
+            <h3>预计总食材量</h3>
+            <div id="totalEstimate" style="font-size: 1.2rem;">基于10位客人，2小时聚餐</div>
+        </div>
+        
+        <div class="card">
+            <div class="category-section">
+                <div class="category-title"><span class="icon">🥩</span>主菜/蛋白质</div>
+                <div class="food-grid" id="proteinGrid"></div>
+            </div>
+            
+            <div class="category-section">
+                <div class="category-title"><span class="icon">🥬</span>配菜/蔬菜</div>
+                <div class="food-grid" id="sidesGrid"></div>
+            </div>
+            
+            <div class="category-section">
+                <div class="category-title"><span class="icon">🍚</span>主食</div>
+                <div class="food-grid" id="starchGrid"></div>
+            </div>
+            
+            <div class="category-section">
+                <div class="category-title"><span class="icon">🥤</span>饮品</div>
+                <div class="food-grid" id="drinksGrid"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">估算小贴士</h3>
+            <div class="tips-section">
+                <p>1. 自助餐比正式晚宴需要多准备约20%的食物</p>
+                <p>2. 烧烤派对的肉类需求量通常更大</p>
+                <p>3. 如果有酒水，可以减少约10%的食物量</p>
+                <p>4. 建议多准备10-15%作为缓冲</p>
+                <p>5. 考虑素食客人的需求，准备多样化选择</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const baseAmounts = {
+            casual: {
+                protein: [
+                    { name: '肉类', base: 150, unit: '克/人' },
+                    { name: '鱼/海鲜', base: 120, unit: '克/人' }
+                ],
+                sides: [
+                    { name: '沙拉', base: 80, unit: '克/人' },
+                    { name: '熟蔬菜', base: 100, unit: '克/人' }
+                ],
+                starch: [
+                    { name: '米饭', base: 80, unit: '克/人' },
+                    { name: '面包', base: 60, unit: '克/人' }
+                ],
+                drinks: [
+                    { name: '饮料', base: 300, unit: '毫升/人' },
+                    { name: '水', base: 200, unit: '毫升/人' }
+                ]
+            },
+            dinner: {
+                protein: [
+                    { name: '主菜肉类', base: 200, unit: '克/人' },
+                    { name: '前菜', base: 80, unit: '克/人' }
+                ],
+                sides: [
+                    { name: '配菜', base: 120, unit: '克/人' },
+                    { name: '沙拉', base: 60, unit: '克/人' }
+                ],
+                starch: [
+                    { name: '主食', base: 100, unit: '克/人' },
+                    { name: '面包', base: 40, unit: '克/人' }
+                ],
+                drinks: [
+                    { name: '葡萄酒', base: 250, unit: '毫升/人' },
+                    { name: '水/饮料', base: 300, unit: '毫升/人' }
+                ]
+            },
+            bbq: {
+                protein: [
+                    { name: '牛肉', base: 200, unit: '克/人' },
+                    { name: '鸡肉', base: 150, unit: '克/人' },
+                    { name: '香肠', base: 100, unit: '克/人' }
+                ],
+                sides: [
+                    { name: '沙拉', base: 100, unit: '克/人' },
+                    { name: '烤蔬菜', base: 80, unit: '克/人' }
+                ],
+                starch: [
+                    { name: '面包/馒头', base: 80, unit: '克/人' },
+                    { name: '玉米', base: 1, unit: '根/人' }
+                ],
+                drinks: [
+                    { name: '啤酒', base: 500, unit: '毫升/人' },
+                    { name: '软饮/水', base: 400, unit: '毫升/人' }
+                ]
+            },
+            buffet: {
+                protein: [
+                    { name: '荤菜(多种)', base: 180, unit: '克/人' },
+                    { name: '海鲜', base: 100, unit: '克/人' }
+                ],
+                sides: [
+                    { name: '蔬菜/沙拉', base: 150, unit: '克/人' },
+                    { name: '凉菜', base: 80, unit: '克/人' }
+                ],
+                starch: [
+                    { name: '主食(多种)', base: 120, unit: '克/人' },
+                    { name: '点心', base: 60, unit: '克/人' }
+                ],
+                drinks: [
+                    { name: '各类饮品', base: 400, unit: '毫升/人' },
+                    { name: '茶/咖啡', base: 200, unit: '毫升/人' }
+                ]
+            }
+        };
+        
+        let guests = 10;
+        let currentEvent = 'casual';
+        
+        function setEvent(event) {
+            currentEvent = event;
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.event === event);
+            });
+            calculate();
+        }
+        
+        function changeGuests(delta) {
+            guests = Math.max(1, guests + delta);
+            document.getElementById('guestCount').textContent = guests;
+            calculate();
+        }
+        
+        function calculate() {
+            const duration = parseInt(document.getElementById('duration').value);
+            const data = baseAmounts[currentEvent];
+            
+            let multiplier = 1;
+            const durationMultiplier = 1 + (duration - 2) * 0.15;
+            
+            document.querySelectorAll('.check-item').forEach(function(item) {
+                const checkbox = item.querySelector('input');
+                item.classList.toggle('active', checkbox.checked);
+                
+                if (checkbox.checked) {
+                    const factor = item.dataset.factor;
+                    if (factor === 'appetite') multiplier *= 1.2;
+                    if (factor === 'kids') multiplier *= 0.85;
+                    if (factor === 'elderly') multiplier *= 0.9;
+                    if (factor === 'alcohol') multiplier *= 0.9;
+                }
+            });
+            
+            multiplier *= durationMultiplier;
+            
+            renderGrid('proteinGrid', data.protein, multiplier);
+            renderGrid('sidesGrid', data.sides, multiplier);
+            renderGrid('starchGrid', data.starch, multiplier);
+            renderGrid('drinksGrid', data.drinks, multiplier);
+            
+            document.getElementById('totalEstimate').textContent = '基于' + guests + '位客人，' + duration + '小时聚餐';
+        }
+        
+        function renderGrid(gridId, items, multiplier) {
+            const grid = document.getElementById(gridId);
+            while (grid.firstChild) grid.removeChild(grid.firstChild);
+            
+            items.forEach(function(item) {
+                const div = document.createElement('div');
+                div.className = 'food-item';
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = item.name;
+                
+                const total = Math.round(item.base * guests * multiplier);
+                const amount = document.createElement('div');
+                amount.className = 'amount';
+                
+                if (item.unit.includes('毫升')) {
+                    if (total >= 1000) {
+                        amount.textContent = (total / 1000).toFixed(1) + ' 升';
+                    } else {
+                        amount.textContent = total + ' 毫升';
+                    }
+                } else if (item.unit.includes('克')) {
+                    if (total >= 1000) {
+                        amount.textContent = (total / 1000).toFixed(1) + ' 公斤';
+                    } else {
+                        amount.textContent = total + ' 克';
+                    }
+                } else {
+                    amount.textContent = total + ' ' + item.unit.split('/')[0];
+                }
+                
+                const unit = document.createElement('div');
+                unit.className = 'unit';
+                unit.textContent = '约 ' + item.base + ' ' + item.unit;
+                
+                div.appendChild(name);
+                div.appendChild(amount);
+                div.appendChild(unit);
+                grid.appendChild(div);
+            });
+        }
+        
+        calculate();
+    </script>
+</body>
+</html>

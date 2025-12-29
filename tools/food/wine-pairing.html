@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>葡萄酒配餐指南 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #7c2d12; --accent2: #991b1b; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .search-box { position: relative; margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 14px 14px 14px 44px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        .search-box input:focus { outline: none; border-color: var(--accent); }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text2); }
+        .category-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.9rem; }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .tab-btn:hover { border-color: var(--accent); }
+        .food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .food-item { padding: 16px; background: var(--bg); border-radius: 12px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+        .food-item:hover { border-color: var(--accent); }
+        .food-item.selected { border-color: var(--accent); background: rgba(124, 45, 18, 0.1); }
+        .food-item .name { font-weight: 600; margin-bottom: 4px; }
+        .food-item .desc { font-size: 0.85rem; color: var(--text2); }
+        .pairing-result { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 12px; padding: 24px; color: white; }
+        .pairing-result h3 { margin-bottom: 16px; font-size: 1.1rem; }
+        .wine-list { display: grid; gap: 12px; }
+        .wine-item { background: rgba(255,255,255,0.1); padding: 16px; border-radius: 8px; }
+        .wine-item .wine-name { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
+        .wine-item .wine-type { font-size: 0.85rem; opacity: 0.9; margin-bottom: 8px; }
+        .wine-item .wine-reason { font-size: 0.9rem; opacity: 0.85; }
+        .match-score { display: flex; gap: 4px; margin-top: 8px; }
+        .match-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); }
+        .match-dot.filled { background: #fbbf24; }
+        .tips-section { margin-top: 20px; }
+        .tip-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .tip-item:last-child { border-bottom: none; }
+        .tip-icon { font-size: 1.2rem; }
+        .tip-text { font-size: 0.9rem; color: var(--text2); }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>葡萄酒配餐指南</h1>
+        <p class="subtitle">找到完美的美食与美酒搭配</p>
+        
+        <div class="card">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="搜索食物..." oninput="filterFoods()">
+            </div>
+            
+            <div class="category-tabs">
+                <button class="tab-btn active" data-cat="all" onclick="setCategory('all')">全部</button>
+                <button class="tab-btn" data-cat="meat" onclick="setCategory('meat')">肉类</button>
+                <button class="tab-btn" data-cat="seafood" onclick="setCategory('seafood')">海鲜</button>
+                <button class="tab-btn" data-cat="cheese" onclick="setCategory('cheese')">奶酪</button>
+                <button class="tab-btn" data-cat="asian" onclick="setCategory('asian')">亚洲菜</button>
+                <button class="tab-btn" data-cat="dessert" onclick="setCategory('dessert')">甜点</button>
+            </div>
+            
+            <div class="food-grid" id="foodGrid"></div>
+        </div>
+        
+        <div class="card pairing-result" id="pairingResult" style="display: none;">
+            <h3 id="selectedFood">推荐搭配</h3>
+            <div class="wine-list" id="wineList"></div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 16px;">配餐基本原则</h3>
+            <div class="tips-section">
+                <div class="tip-item">
+                    <span class="tip-icon">🍷</span>
+                    <span class="tip-text">红肉配红酒，白肉和海鲜配白酒是经典搭配</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">⚖️</span>
+                    <span class="tip-text">食物越浓郁，酒体也要越饱满；清淡食物配轻盈的酒</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🧀</span>
+                    <span class="tip-text">高脂肪食物适合高酸度或单宁强的酒来平衡</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🌍</span>
+                    <span class="tip-text">地域搭配：当地美食配当地美酒通常很和谐</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const foods = [
+            { id: 'steak', name: '牛排', cat: 'meat', desc: '西冷/肋眼', wines: [
+                { name: '赤霞珠', type: '红葡萄酒 - 饱满', reason: '强单宁平衡牛肉油脂', score: 5 },
+                { name: '马尔贝克', type: '红葡萄酒 - 饱满', reason: '果味浓郁，与烤肉完美搭配', score: 5 },
+                { name: '西拉', type: '红葡萄酒 - 饱满', reason: '辛香料风味增添层次', score: 4 }
+            ]},
+            { id: 'lamb', name: '羊肉', cat: 'meat', desc: '烤羊排/羊腿', wines: [
+                { name: '波尔多混酿', type: '红葡萄酒 - 饱满', reason: '经典搭配，单宁柔和', score: 5 },
+                { name: '巴罗洛', type: '红葡萄酒 - 饱满', reason: '高酸度平衡羊肉膻味', score: 4 },
+                { name: '歌海娜', type: '红葡萄酒 - 中等', reason: '果味丰富，香料感强', score: 4 }
+            ]},
+            { id: 'pork', name: '猪肉', cat: 'meat', desc: '烤猪/猪排', wines: [
+                { name: '黑皮诺', type: '红葡萄酒 - 轻盈', reason: '轻盈酒体不会掩盖猪肉风味', score: 5 },
+                { name: '雷司令', type: '白葡萄酒 - 芳香', reason: '甜度平衡猪肉的咸香', score: 4 },
+                { name: '仙粉黛', type: '红葡萄酒 - 饱满', reason: '果酱风味与烤肉很配', score: 4 }
+            ]},
+            { id: 'chicken', name: '鸡肉', cat: 'meat', desc: '烤鸡/白切鸡', wines: [
+                { name: '霞多丽', type: '白葡萄酒 - 饱满', reason: '奶油质感与鸡肉很搭', score: 5 },
+                { name: '黑皮诺', type: '红葡萄酒 - 轻盈', reason: '轻盈红酒的好选择', score: 4 },
+                { name: '长相思', type: '白葡萄酒 - 清爽', reason: '草本香气增添清新感', score: 4 }
+            ]},
+            { id: 'salmon', name: '三文鱼', cat: 'seafood', desc: '煎/烤/刺身', wines: [
+                { name: '黑皮诺', type: '红葡萄酒 - 轻盈', reason: '三文鱼是少数能配红酒的鱼', score: 5 },
+                { name: '霞多丽', type: '白葡萄酒 - 饱满', reason: '橡木桶陈酿版本更佳', score: 4 },
+                { name: '桃红', type: '桃红葡萄酒', reason: '清爽又有足够结构', score: 4 }
+            ]},
+            { id: 'lobster', name: '龙虾', cat: 'seafood', desc: '清蒸/芝士焗', wines: [
+                { name: '勃艮第白', type: '白葡萄酒 - 饱满', reason: '顶级霞多丽配顶级海鲜', score: 5 },
+                { name: '香槟', type: '起泡酒', reason: '气泡清爽，矿物感强', score: 5 },
+                { name: '阿尔萨斯灰皮诺', type: '白葡萄酒 - 饱满', reason: '丰富油润的口感', score: 4 }
+            ]},
+            { id: 'oyster', name: '生蚝', cat: 'seafood', desc: '新鲜生吃', wines: [
+                { name: '夏布利', type: '白葡萄酒 - 清爽', reason: '矿物感与海水味完美契合', score: 5 },
+                { name: '香槟', type: '起泡酒', reason: '经典奢华搭配', score: 5 },
+                { name: '慕斯卡岱', type: '白葡萄酒 - 清爽', reason: '海边产区，天然搭配', score: 4 }
+            ]},
+            { id: 'brie', name: '布里奶酪', cat: 'cheese', desc: '软质白霉奶酪', wines: [
+                { name: '香槟', type: '起泡酒', reason: '气泡切割奶油质感', score: 5 },
+                { name: '霞多丽', type: '白葡萄酒 - 饱满', reason: '同样的奶油风味', score: 4 },
+                { name: '博若莱', type: '红葡萄酒 - 轻盈', reason: '果味清新不冲突', score: 4 }
+            ]},
+            { id: 'parmesan', name: '帕玛森', cat: 'cheese', desc: '硬质陈年奶酪', wines: [
+                { name: '基安蒂', type: '红葡萄酒 - 中等', reason: '意大利经典搭配', score: 5 },
+                { name: '巴罗洛', type: '红葡萄酒 - 饱满', reason: '同样浓郁陈年', score: 4 },
+                { name: '普罗塞克', type: '起泡酒', reason: '清爽对比浓郁', score: 4 }
+            ]},
+            { id: 'sushi', name: '寿司', cat: 'asian', desc: '日式生鱼片', wines: [
+                { name: '香槟', type: '起泡酒', reason: '矿物感与海鲜很搭', score: 5 },
+                { name: '雷司令', type: '白葡萄酒 - 芳香', reason: '微甜平衡酱油的咸', score: 4 },
+                { name: '桃红', type: '桃红葡萄酒', reason: '清爽多变', score: 4 }
+            ]},
+            { id: 'dimsum', name: '点心', cat: 'asian', desc: '港式点心', wines: [
+                { name: '雷司令', type: '白葡萄酒 - 芳香', reason: '微甜配各种点心', score: 5 },
+                { name: '灰皮诺', type: '白葡萄酒 - 清爽', reason: '清爽不抢戏', score: 4 },
+                { name: '普罗塞克', type: '起泡酒', reason: '节日氛围感', score: 4 }
+            ]},
+            { id: 'curry', name: '咖喱', cat: 'asian', desc: '印度/泰式咖喱', wines: [
+                { name: '琼瑶浆', type: '白葡萄酒 - 芳香', reason: '香料对香料，荔枝香', score: 5 },
+                { name: '雷司令', type: '白葡萄酒 - 芳香', reason: '甜度平衡辣度', score: 5 },
+                { name: '歌海娜桃红', type: '桃红葡萄酒', reason: '果味丰富清爽', score: 4 }
+            ]},
+            { id: 'chocolate', name: '巧克力', cat: 'dessert', desc: '黑巧克力', wines: [
+                { name: '波特酒', type: '加强酒 - 甜', reason: '浓郁甜美的经典搭配', score: 5 },
+                { name: '巴纽尔斯', type: '加强酒 - 甜', reason: '法国巧克力酒的别称', score: 5 },
+                { name: '仙粉黛晚收', type: '甜红葡萄酒', reason: '浆果配可可', score: 4 }
+            ]},
+            { id: 'fruitcake', name: '水果蛋糕', cat: 'dessert', desc: '新鲜水果', wines: [
+                { name: '莫斯卡托', type: '甜白葡萄酒', reason: '清甜花香很配', score: 5 },
+                { name: '苏玳', type: '贵腐甜酒', reason: '顶级甜点配顶级甜酒', score: 5 },
+                { name: '冰酒', type: '甜酒', reason: '浓缩果味', score: 4 }
+            ]}
+        ];
+        
+        let currentCategory = 'all';
+        let selectedFood = null;
+        
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.cat === cat);
+            });
+            renderFoods();
+        }
+        
+        function filterFoods() {
+            renderFoods();
+        }
+        
+        function renderFoods() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const grid = document.getElementById('foodGrid');
+            while (grid.firstChild) grid.removeChild(grid.firstChild);
+            
+            foods.filter(function(food) {
+                const matchCat = currentCategory === 'all' || food.cat === currentCategory;
+                const matchSearch = food.name.toLowerCase().includes(search) || food.desc.toLowerCase().includes(search);
+                return matchCat && matchSearch;
+            }).forEach(function(food) {
+                const item = document.createElement('div');
+                item.className = 'food-item';
+                if (selectedFood && selectedFood.id === food.id) item.className += ' selected';
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = food.name;
+                
+                const desc = document.createElement('div');
+                desc.className = 'desc';
+                desc.textContent = food.desc;
+                
+                item.appendChild(name);
+                item.appendChild(desc);
+                item.addEventListener('click', function() { selectFood(food); });
+                grid.appendChild(item);
+            });
+        }
+        
+        function selectFood(food) {
+            selectedFood = food;
+            renderFoods();
+            
+            const result = document.getElementById('pairingResult');
+            result.style.display = 'block';
+            document.getElementById('selectedFood').textContent = food.name + ' 的推荐配酒';
+            
+            const wineList = document.getElementById('wineList');
+            while (wineList.firstChild) wineList.removeChild(wineList.firstChild);
+            
+            food.wines.forEach(function(wine) {
+                const item = document.createElement('div');
+                item.className = 'wine-item';
+                
+                const name = document.createElement('div');
+                name.className = 'wine-name';
+                name.textContent = wine.name;
+                
+                const type = document.createElement('div');
+                type.className = 'wine-type';
+                type.textContent = wine.type;
+                
+                const reason = document.createElement('div');
+                reason.className = 'wine-reason';
+                reason.textContent = wine.reason;
+                
+                const score = document.createElement('div');
+                score.className = 'match-score';
+                for (var i = 0; i < 5; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'match-dot';
+                    if (i < wine.score) dot.className += ' filled';
+                    score.appendChild(dot);
+                }
+                
+                item.appendChild(name);
+                item.appendChild(type);
+                item.appendChild(reason);
+                item.appendChild(score);
+                wineList.appendChild(item);
+            });
+            
+            result.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        renderFoods();
+    </script>
+</body>
+</html>

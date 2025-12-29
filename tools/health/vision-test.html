@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视力测试工具 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #3b82f6; --accent2: #06b6d4; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { flex: 1; min-width: 100px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .test-area { min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border-radius: 12px; padding: 40px; margin-bottom: 20px; }
+        .e-chart { font-family: 'Arial Black', sans-serif; color: #000; text-align: center; }
+        .e-char { display: inline-block; transition: transform 0.3s; }
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+        .controls button { padding: 12px 24px; border: none; border-radius: 8px; background: var(--accent); color: white; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
+        .controls button:hover { opacity: 0.9; }
+        .controls button.secondary { background: var(--border); color: var(--text); }
+        .direction-pad { display: grid; grid-template-columns: repeat(3, 60px); gap: 8px; margin: 20px auto; }
+        .direction-btn { width: 60px; height: 60px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font-size: 1.5rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .direction-btn:hover { border-color: var(--accent); background: var(--accent); color: white; }
+        .direction-btn.center { visibility: hidden; }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 28px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 8px; }
+        .result-hero .big { font-size: 2.5rem; font-weight: 700; }
+        .result-hero .sub { margin-top: 8px; font-size: 0.9rem; opacity: 0.9; }
+        .progress { display: flex; gap: 4px; margin-bottom: 20px; }
+        .progress-dot { flex: 1; height: 6px; background: var(--border); border-radius: 3px; }
+        .progress-dot.done { background: var(--accent); }
+        .progress-dot.current { background: var(--accent); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        @media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-item { padding: 16px; background: var(--bg); border-radius: 8px; }
+        .info-title { font-weight: 600; margin-bottom: 8px; }
+        .info-text { font-size: 0.9rem; color: var(--text2); }
+        .color-test { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 400px; }
+        .astigmatism-chart { width: 300px; height: 300px; margin: 20px auto; }
+        .contrast-test { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+        .contrast-row { display: flex; gap: 12px; }
+        .contrast-letter { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; background: white; border-radius: 8px; }
+        .note { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem; color: var(--text2); }
+        .instructions { padding: 20px; background: var(--bg); border-radius: 12px; margin-bottom: 20px; }
+        .instructions h3 { margin-bottom: 12px; }
+        .instructions ol { padding-left: 20px; }
+        .instructions li { margin-bottom: 8px; color: var(--text2); }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>视力测试工具</h1>
+        <p class="subtitle">在线视力自测（仅供参考，不能替代专业检查）</p>
+        
+        <div class="tabs">
+            <div class="tab active" data-test="snellen" onclick="setTest('snellen')">视力表测试</div>
+            <div class="tab" data-test="astigmatism" onclick="setTest('astigmatism')">散光测试</div>
+            <div class="tab" data-test="contrast" onclick="setTest('contrast')">对比敏感度</div>
+        </div>
+        
+        <div id="testContent"></div>
+        
+        <div class="card">
+            <div class="card-title">视力知识</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-title">什么是视力</div>
+                    <div class="info-text">视力指眼睛分辨物体细节的能力。标准视力1.0表示在5米距离能分辨1.45mm高度的细节。</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-title">护眼建议</div>
+                    <div class="info-text">遵循20-20-20法则：每20分钟，看20英尺（6米）外，持续20秒。保持充足照明，避免用眼疲劳。</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-title">何时就医</div>
+                    <div class="info-text">如出现视力模糊、重影、眼痛、闪光感或视野缺损，应及时就医检查。</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-title">检查频率</div>
+                    <div class="info-text">儿童每年检查一次，成人每2年一次，40岁以上或有眼病史者每年检查。</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="note">
+            本工具仅供日常自测参考，不能替代专业眼科检查。屏幕测试结果可能因设备、环境光线等因素产生偏差。如有视力问题，请及时到医院进行专业检查。
+        </div>
+    </div>
+    
+    <script>
+        let currentTest = 'snellen';
+        let testState = {
+            level: 0,
+            correct: 0,
+            total: 0,
+            currentDirection: 0,
+            results: []
+        };
+        
+        const snellenLevels = [
+            { size: 80, vision: '0.1', equiv: '20/200' },
+            { size: 60, vision: '0.15', equiv: '20/133' },
+            { size: 48, vision: '0.2', equiv: '20/100' },
+            { size: 40, vision: '0.25', equiv: '20/80' },
+            { size: 32, vision: '0.3', equiv: '20/67' },
+            { size: 28, vision: '0.4', equiv: '20/50' },
+            { size: 24, vision: '0.5', equiv: '20/40' },
+            { size: 20, vision: '0.6', equiv: '20/33' },
+            { size: 16, vision: '0.8', equiv: '20/25' },
+            { size: 12, vision: '1.0', equiv: '20/20' },
+            { size: 10, vision: '1.2', equiv: '20/17' },
+            { size: 8, vision: '1.5', equiv: '20/13' }
+        ];
+        
+        const directions = [
+            { angle: 0, arrow: '→', name: '右' },
+            { angle: 90, arrow: '↓', name: '下' },
+            { angle: 180, arrow: '←', name: '左' },
+            { angle: 270, arrow: '↑', name: '上' }
+        ];
+        
+        function setTest(test) {
+            currentTest = test;
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.test === test));
+            resetTest();
+            renderTest();
+        }
+        
+        function resetTest() {
+            testState = { level: 0, correct: 0, total: 0, currentDirection: 0, results: [] };
+        }
+        
+        function renderTest() {
+            const container = document.getElementById('testContent');
+            container.textContent = '';
+            
+            if (currentTest === 'snellen') {
+                renderSnellenTest(container);
+            } else if (currentTest === 'astigmatism') {
+                renderAstigmatismTest(container);
+            } else if (currentTest === 'contrast') {
+                renderContrastTest(container);
+            }
+        }
+        
+        function renderSnellenTest(container) {
+            // 说明
+            const instructions = document.createElement('div');
+            instructions.className = 'instructions';
+            const h3 = document.createElement('h3');
+            h3.textContent = '测试说明';
+            instructions.appendChild(h3);
+            const ol = document.createElement('ol');
+            ['与屏幕保持约50-60cm距离', '可选择测试左眼或右眼（遮住另一只眼）', '观察屏幕上的"E"字开口方向', '点击对应方向的箭头或使用键盘方向键'].forEach(text => {
+                const li = document.createElement('li');
+                li.textContent = text;
+                ol.appendChild(li);
+            });
+            instructions.appendChild(ol);
+            container.appendChild(instructions);
+            
+            // 进度条
+            const progress = document.createElement('div');
+            progress.className = 'progress';
+            for (let i = 0; i < snellenLevels.length; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                if (i < testState.level) dot.classList.add('done');
+                if (i === testState.level) dot.classList.add('current');
+                progress.appendChild(dot);
+            }
+            container.appendChild(progress);
+            
+            // 测试区域
+            const testArea = document.createElement('div');
+            testArea.className = 'test-area';
+            
+            if (testState.level >= snellenLevels.length || testState.results.length >= 12) {
+                // 显示结果
+                const bestLevel = Math.max(0, testState.level - 1);
+                const result = snellenLevels[Math.min(bestLevel, snellenLevels.length - 1)];
+                
+                const resultDiv = document.createElement('div');
+                resultDiv.style.cssText = 'text-align: center; color: #333;';
+                
+                const completeText = document.createElement('div');
+                completeText.style.cssText = 'font-size: 1.2rem; margin-bottom: 16px;';
+                completeText.textContent = '测试完成';
+                
+                const visionText = document.createElement('div');
+                visionText.style.cssText = 'font-size: 3rem; font-weight: 700; color: #3b82f6;';
+                visionText.textContent = result.vision;
+                
+                const equivText = document.createElement('div');
+                equivText.style.cssText = 'font-size: 1rem; color: #666; margin-top: 8px;';
+                equivText.textContent = result.equiv;
+                
+                resultDiv.appendChild(completeText);
+                resultDiv.appendChild(visionText);
+                resultDiv.appendChild(equivText);
+                testArea.appendChild(resultDiv);
+                
+                container.appendChild(testArea);
+                
+                const hero = document.createElement('div');
+                hero.className = 'result-hero';
+                
+                const heroLabel = document.createElement('div');
+                heroLabel.className = 'label';
+                heroLabel.textContent = '您的视力约为';
+                
+                const heroBig = document.createElement('div');
+                heroBig.className = 'big';
+                heroBig.textContent = result.vision;
+                
+                const heroSub = document.createElement('div');
+                heroSub.className = 'sub';
+                heroSub.textContent = '正确率: ' + Math.round(testState.correct / testState.total * 100) + '%';
+                
+                hero.appendChild(heroLabel);
+                hero.appendChild(heroBig);
+                hero.appendChild(heroSub);
+                container.appendChild(hero);
+            } else {
+                // 显示E字
+                testState.currentDirection = Math.floor(Math.random() * 4);
+                const level = snellenLevels[testState.level];
+                const dir = directions[testState.currentDirection];
+                
+                const eChart = document.createElement('div');
+                eChart.className = 'e-chart';
+                const eChar = document.createElement('div');
+                eChar.className = 'e-char';
+                eChar.style.cssText = 'font-size: ' + level.size + 'px; transform: rotate(' + dir.angle + 'deg);';
+                eChar.textContent = 'E';
+                eChart.appendChild(eChar);
+                testArea.appendChild(eChart);
+                
+                const levelInfo = document.createElement('div');
+                levelInfo.style.cssText = 'margin-top: 20px; color: #666; font-size: 0.9rem;';
+                levelInfo.textContent = '当前测试: ' + level.vision + ' (' + level.equiv + ')';
+                testArea.appendChild(levelInfo);
+                
+                container.appendChild(testArea);
+                
+                // 方向按钮
+                const dirPad = document.createElement('div');
+                dirPad.className = 'direction-pad';
+                
+                const layout = [null, 3, null, 2, null, 0, null, 1, null];
+                layout.forEach((dirIndex, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'direction-btn';
+                    if (dirIndex === null) {
+                        btn.classList.add('center');
+                    } else {
+                        btn.textContent = directions[dirIndex].arrow;
+                        btn.onclick = () => checkAnswer(dirIndex);
+                    }
+                    dirPad.appendChild(btn);
+                });
+                container.appendChild(dirPad);
+            }
+            
+            // 控制按钮
+            const controls = document.createElement('div');
+            controls.className = 'controls';
+            
+            const restartBtn = document.createElement('button');
+            restartBtn.className = 'secondary';
+            restartBtn.textContent = '重新开始';
+            restartBtn.onclick = () => { resetTest(); renderTest(); };
+            controls.appendChild(restartBtn);
+            
+            container.appendChild(controls);
+        }
+        
+        function checkAnswer(selected) {
+            testState.total++;
+            testState.results.push({
+                level: testState.level,
+                correct: selected === testState.currentDirection
+            });
+            
+            if (selected === testState.currentDirection) {
+                testState.correct++;
+                const recentResults = testState.results.slice(-3);
+                if (recentResults.length === 3 && recentResults.every(r => r.correct && r.level === testState.level)) {
+                    testState.level++;
+                }
+            } else {
+                const recentResults = testState.results.slice(-2);
+                if (recentResults.length === 2 && recentResults.every(r => !r.correct)) {
+                    testState.level = snellenLevels.length;
+                }
+            }
+            
+            renderTest();
+        }
+        
+        function renderAstigmatismTest(container) {
+            const instructions = document.createElement('div');
+            instructions.className = 'instructions';
+            const h3 = document.createElement('h3');
+            h3.textContent = '散光测试说明';
+            instructions.appendChild(h3);
+            const ol = document.createElement('ol');
+            ['与屏幕保持正常阅读距离', '分别遮住左眼和右眼测试', '观察下方的放射线图', '如果某些方向的线条比其他方向更清晰或更黑，可能存在散光'].forEach(text => {
+                const li = document.createElement('li');
+                li.textContent = text;
+                ol.appendChild(li);
+            });
+            instructions.appendChild(ol);
+            container.appendChild(instructions);
+            
+            const testArea = document.createElement('div');
+            testArea.className = 'test-area';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            canvas.className = 'astigmatism-chart';
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = 150;
+            const centerY = 150;
+            const radius = 140;
+            
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < 24; i++) {
+                const angle = (i * 15) * Math.PI / 180;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + radius * Math.cos(angle), centerY + radius * Math.sin(angle));
+                ctx.stroke();
+            }
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 10, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            testArea.appendChild(canvas);
+            
+            const resultText = document.createElement('div');
+            resultText.style.cssText = 'text-align: center; color: #333; margin-top: 20px; max-width: 400px;';
+            
+            const p1 = document.createElement('p');
+            const strong = document.createElement('strong');
+            strong.textContent = '如何判断：';
+            p1.appendChild(strong);
+            
+            const p2 = document.createElement('p');
+            p2.style.marginTop = '8px';
+            p2.textContent = '正常视力：所有线条清晰度相同';
+            
+            const p3 = document.createElement('p');
+            p3.textContent = '散光迹象：某些方向的线条比其他方向更清晰、更黑或更粗';
+            
+            resultText.appendChild(p1);
+            resultText.appendChild(p2);
+            resultText.appendChild(p3);
+            testArea.appendChild(resultText);
+            
+            container.appendChild(testArea);
+        }
+        
+        function renderContrastTest(container) {
+            const instructions = document.createElement('div');
+            instructions.className = 'instructions';
+            const h3 = document.createElement('h3');
+            h3.textContent = '对比敏感度测试说明';
+            instructions.appendChild(h3);
+            const ol = document.createElement('ol');
+            ['与屏幕保持正常阅读距离', '观察下方的字母', '从左到右，字母的对比度逐渐降低', '记录您能清晰辨认的最后一个字母'].forEach(text => {
+                const li = document.createElement('li');
+                li.textContent = text;
+                ol.appendChild(li);
+            });
+            instructions.appendChild(ol);
+            container.appendChild(instructions);
+            
+            const testArea = document.createElement('div');
+            testArea.className = 'test-area';
+            
+            const contrastTest = document.createElement('div');
+            contrastTest.className = 'contrast-test';
+            
+            const letters = ['C', 'D', 'H', 'K', 'N', 'O', 'R', 'S', 'V', 'Z'];
+            const contrastLevels = [100, 80, 60, 45, 30, 20, 15, 10, 7, 5];
+            
+            for (let row = 0; row < 3; row++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'contrast-row';
+                
+                for (let col = 0; col < 4; col++) {
+                    const index = row * 4 + col;
+                    if (index < 10) {
+                        const letterDiv = document.createElement('div');
+                        letterDiv.className = 'contrast-letter';
+                        letterDiv.textContent = letters[index];
+                        const gray = 255 - Math.round(255 * contrastLevels[index] / 100);
+                        letterDiv.style.color = 'rgb(' + gray + ',' + gray + ',' + gray + ')';
+                        rowDiv.appendChild(letterDiv);
+                    }
+                }
+                
+                contrastTest.appendChild(rowDiv);
+            }
+            
+            testArea.appendChild(contrastTest);
+            
+            const resultText = document.createElement('div');
+            resultText.style.cssText = 'text-align: center; color: #333; margin-top: 20px;';
+            
+            const p1 = document.createElement('p');
+            p1.textContent = '对比度从左到右递减：100% → 5%';
+            
+            const p2 = document.createElement('p');
+            p2.style.marginTop = '8px';
+            p2.textContent = '正常视力应能识别到约15%-20%对比度的字母';
+            
+            resultText.appendChild(p1);
+            resultText.appendChild(p2);
+            testArea.appendChild(resultText);
+            
+            container.appendChild(testArea);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (currentTest === 'snellen' && testState.level < snellenLevels.length) {
+                const keyMap = { 'ArrowRight': 0, 'ArrowDown': 1, 'ArrowLeft': 2, 'ArrowUp': 3 };
+                if (keyMap.hasOwnProperty(e.key)) {
+                    e.preventDefault();
+                    checkAnswer(keyMap[e.key]);
+                }
+            }
+        });
+        
+        renderTest();
+    </script>
+</body>
+</html>

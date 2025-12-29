@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预产期计算器 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #ec4899; --accent2: #8b5cf6; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text2); }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .result-hero { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 32px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px; }
+        .result-hero .label { opacity: 0.9; margin-bottom: 8px; font-size: 0.9rem; }
+        .result-hero .big { font-size: 2rem; font-weight: 700; }
+        .result-hero .sub { margin-top: 8px; opacity: 0.8; font-size: 0.9rem; }
+        .progress-section { margin-top: 20px; }
+        .progress-bar { height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; }
+        .progress-fill { height: 100%; background: white; border-radius: 6px; transition: width 0.3s; }
+        .progress-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.8rem; opacity: 0.8; }
+        .result-row { display: flex; justify-content: space-between; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+        .result-row .label { color: var(--text2); }
+        .result-row .value { font-weight: 600; }
+        .milestone { padding: 12px; border-left: 3px solid var(--accent); margin-bottom: 12px; background: var(--bg); border-radius: 0 8px 8px 0; }
+        .milestone .week { font-weight: 600; color: var(--accent); }
+        .milestone .date { font-size: 0.85rem; color: var(--text2); margin-top: 4px; }
+        .milestone .desc { font-size: 0.85rem; margin-top: 4px; }
+        .trimester { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+        .trimester-item { padding: 12px; text-align: center; border-radius: 8px; background: var(--bg); }
+        .trimester-item.current { background: var(--accent); color: white; }
+        .trimester-item .name { font-size: 0.8rem; opacity: 0.8; }
+        .trimester-item .weeks { font-weight: 600; margin-top: 4px; }
+        .note { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.85rem; color: var(--text2); }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>预产期计算器</h1>
+        <p class="subtitle">计算预产期和孕期重要时间节点</p>
+        
+        <div class="tabs">
+            <div class="tab active" data-method="lmp" onclick="setMethod('lmp')">末次月经</div>
+            <div class="tab" data-method="conception" onclick="setMethod('conception')">受孕日期</div>
+            <div class="tab" data-method="ultrasound" onclick="setMethod('ultrasound')">B超推算</div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">输入信息</div>
+                <div id="lmpInput">
+                    <div class="form-group">
+                        <label>末次月经第一天</label>
+                        <input type="date" id="lmpDate" onchange="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>月经周期（天）</label>
+                        <input type="number" id="cycleLength" value="28" min="21" max="35" oninput="calculate()">
+                    </div>
+                </div>
+                <div id="conceptionInput" style="display: none;">
+                    <div class="form-group">
+                        <label>受孕日期</label>
+                        <input type="date" id="conceptionDate" onchange="calculate()">
+                    </div>
+                </div>
+                <div id="ultrasoundInput" style="display: none;">
+                    <div class="form-group">
+                        <label>B超检查日期</label>
+                        <input type="date" id="ultrasoundDate" onchange="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>B超显示孕周</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="ultrasoundWeeks" value="12" min="4" max="40" placeholder="周" oninput="calculate()">
+                            <input type="number" id="ultrasoundDays" value="0" min="0" max="6" placeholder="天" oninput="calculate()">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-title" style="margin-top: 24px;">孕期阶段</div>
+                <div class="trimester">
+                    <div class="trimester-item" id="t1">
+                        <div class="name">孕早期</div>
+                        <div class="weeks">1-12周</div>
+                    </div>
+                    <div class="trimester-item" id="t2">
+                        <div class="name">孕中期</div>
+                        <div class="weeks">13-27周</div>
+                    </div>
+                    <div class="trimester-item" id="t3">
+                        <div class="name">孕晚期</div>
+                        <div class="weeks">28-40周</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="result-hero">
+                    <div class="label">预产期</div>
+                    <div class="big" id="dueDate">-</div>
+                    <div class="sub" id="countdown">请输入日期</div>
+                    <div class="progress-section">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>0周</span>
+                            <span id="currentWeek">当前: -</span>
+                            <span>40周</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">孕期信息</div>
+                    <div class="result-row">
+                        <span class="label">当前孕周</span>
+                        <span class="value" id="weeksPregnant">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">已怀孕天数</span>
+                        <span class="value" id="daysPregnant">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">距预产期</span>
+                        <span class="value" id="daysRemaining">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="label">足月日期（37周）</span>
+                        <span class="value" id="fullTermDate">-</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">重要时间节点</div>
+                    <div id="milestones"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="note">
+            预产期计算基于平均40周（280天）孕期。实际分娩可能在预产期前后两周内发生，属于正常范围。本计算器仅供参考，请以医生诊断为准。
+        </div>
+    </div>
+    
+    <script>
+        let method = 'lmp';
+        
+        const milestones = [
+            { week: 8, name: '第一次产检', desc: '确认宫内孕，听胎心' },
+            { week: 12, name: 'NT检查', desc: '唐氏筛查，测量颈项透明层' },
+            { week: 16, name: '唐筛/无创DNA', desc: '染色体异常筛查' },
+            { week: 20, name: '大排畸', desc: '系统性超声检查胎儿结构' },
+            { week: 24, name: '糖耐量测试', desc: '筛查妊娠期糖尿病' },
+            { week: 28, name: '孕晚期开始', desc: '每两周产检一次' },
+            { week: 32, name: '胎位检查', desc: '确认胎位，评估分娩方式' },
+            { week: 36, name: '每周产检', desc: '胎心监护，准备待产' },
+            { week: 37, name: '足月', desc: '随时可能分娩' },
+            { week: 40, name: '预产期', desc: '如超期需密切监测' }
+        ];
+        
+        function setMethod(m) {
+            method = m;
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.method === m));
+            document.getElementById('lmpInput').style.display = m === 'lmp' ? 'block' : 'none';
+            document.getElementById('conceptionInput').style.display = m === 'conception' ? 'block' : 'none';
+            document.getElementById('ultrasoundInput').style.display = m === 'ultrasound' ? 'block' : 'none';
+            calculate();
+        }
+        
+        function formatDate(date) {
+            return date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日';
+        }
+        
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+        
+        function calculate() {
+            let lmpDateValue;
+            
+            if (method === 'lmp') {
+                const lmpInput = document.getElementById('lmpDate').value;
+                if (!lmpInput) return resetDisplay();
+                lmpDateValue = new Date(lmpInput);
+                const cycleLength = parseInt(document.getElementById('cycleLength').value) || 28;
+                const adjustment = cycleLength - 28;
+                lmpDateValue = addDays(lmpDateValue, adjustment);
+            } else if (method === 'conception') {
+                const conceptionInput = document.getElementById('conceptionDate').value;
+                if (!conceptionInput) return resetDisplay();
+                const conceptionDate = new Date(conceptionInput);
+                lmpDateValue = addDays(conceptionDate, -14);
+            } else if (method === 'ultrasound') {
+                const ultrasoundInput = document.getElementById('ultrasoundDate').value;
+                if (!ultrasoundInput) return resetDisplay();
+                const ultrasoundDate = new Date(ultrasoundInput);
+                const weeks = parseInt(document.getElementById('ultrasoundWeeks').value) || 0;
+                const days = parseInt(document.getElementById('ultrasoundDays').value) || 0;
+                const totalDays = weeks * 7 + days;
+                lmpDateValue = addDays(ultrasoundDate, -totalDays);
+            }
+            
+            const dueDate = addDays(lmpDateValue, 280);
+            const fullTermDate = addDays(lmpDateValue, 259);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const daysPregnant = Math.floor((today - lmpDateValue) / (1000 * 60 * 60 * 24));
+            const weeksPregnant = Math.floor(daysPregnant / 7);
+            const daysInWeek = daysPregnant % 7;
+            const daysRemaining = Math.floor((dueDate - today) / (1000 * 60 * 60 * 24));
+            const progressPercent = Math.min(100, Math.max(0, (daysPregnant / 280) * 100));
+            
+            document.getElementById('dueDate').textContent = formatDate(dueDate);
+            document.getElementById('countdown').textContent = daysRemaining > 0 
+                ? '距预产期还有 ' + daysRemaining + ' 天' 
+                : (daysRemaining === 0 ? '今天是预产期！' : '已超过预产期 ' + Math.abs(daysRemaining) + ' 天');
+            document.getElementById('weeksPregnant').textContent = weeksPregnant + '周' + daysInWeek + '天';
+            document.getElementById('daysPregnant').textContent = daysPregnant + ' 天';
+            document.getElementById('daysRemaining').textContent = daysRemaining > 0 ? daysRemaining + ' 天' : '已到期';
+            document.getElementById('fullTermDate').textContent = formatDate(fullTermDate);
+            document.getElementById('progressFill').style.width = progressPercent + '%';
+            document.getElementById('currentWeek').textContent = '当前: ' + weeksPregnant + '周';
+            
+            // 更新孕期阶段
+            document.getElementById('t1').classList.toggle('current', weeksPregnant >= 0 && weeksPregnant <= 12);
+            document.getElementById('t2').classList.toggle('current', weeksPregnant >= 13 && weeksPregnant <= 27);
+            document.getElementById('t3').classList.toggle('current', weeksPregnant >= 28);
+            
+            // 渲染里程碑
+            const container = document.getElementById('milestones');
+            container.textContent = '';
+            milestones.forEach(m => {
+                if (m.week > weeksPregnant - 2) {
+                    const date = addDays(lmpDateValue, m.week * 7);
+                    const div = document.createElement('div');
+                    div.className = 'milestone';
+                    if (m.week <= weeksPregnant) {
+                        div.style.opacity = '0.5';
+                        div.style.borderLeftColor = 'var(--text2)';
+                    }
+                    
+                    const weekSpan = document.createElement('div');
+                    weekSpan.className = 'week';
+                    weekSpan.textContent = '第' + m.week + '周 - ' + m.name;
+                    
+                    const dateSpan = document.createElement('div');
+                    dateSpan.className = 'date';
+                    dateSpan.textContent = formatDate(date);
+                    
+                    const descSpan = document.createElement('div');
+                    descSpan.className = 'desc';
+                    descSpan.textContent = m.desc;
+                    
+                    div.appendChild(weekSpan);
+                    div.appendChild(dateSpan);
+                    div.appendChild(descSpan);
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function resetDisplay() {
+            document.getElementById('dueDate').textContent = '-';
+            document.getElementById('countdown').textContent = '请输入日期';
+            document.getElementById('weeksPregnant').textContent = '-';
+            document.getElementById('daysPregnant').textContent = '-';
+            document.getElementById('daysRemaining').textContent = '-';
+            document.getElementById('fullTermDate').textContent = '-';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('currentWeek').textContent = '当前: -';
+            document.getElementById('milestones').textContent = '';
+        }
+        
+        // 设置默认日期为10周前
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() - 70);
+        document.getElementById('lmpDate').value = defaultDate.toISOString().split('T')[0];
+        document.getElementById('conceptionDate').value = defaultDate.toISOString().split('T')[0];
+        document.getElementById('ultrasoundDate').value = new Date().toISOString().split('T')[0];
+        
+        calculate();
+    </script>
+</body>
+</html>

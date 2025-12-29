@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>车牌号归属地查询 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0f; --card: #12121a; --border: #2a2a3a; --text: #fff; --text2: #888; --accent: #3b82f6; --accent2: #06b6d4; }
+        @media (prefers-color-scheme: light) { :root { --bg: #f5f5f5; --card: #fff; --border: #e0e0e0; --text: #333; --text2: #666; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card-title { font-size: 1rem; color: var(--text2); margin-bottom: 16px; font-weight: 500; }
+        .input-group { display: flex; gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 500px) { .input-group { flex-direction: column; } }
+        .input-group input { flex: 1; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 1.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+        .input-group input:focus { outline: none; border-color: var(--accent); }
+        .btn { padding: 16px 28px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s; white-space: nowrap; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .result-box { background: var(--bg); border-radius: 12px; padding: 24px; }
+        .plate-display { display: flex; justify-content: center; margin-bottom: 24px; }
+        .plate { background: linear-gradient(135deg, #1e40af, #1e3a8a); padding: 16px 32px; border-radius: 8px; border: 3px solid #fff; font-size: 2rem; font-weight: 700; color: #fff; letter-spacing: 4px; font-family: 'Arial Black', sans-serif; }
+        .plate.new-energy { background: linear-gradient(135deg, #15803d, #166534); }
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        @media (max-width: 500px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-item { background: var(--card); border-radius: 8px; padding: 16px; }
+        .info-item .label { font-size: 0.85rem; color: var(--text2); margin-bottom: 6px; }
+        .info-item .value { font-size: 1.1rem; font-weight: 500; }
+        .info-item .value.highlight { color: var(--accent); }
+        .province-list { margin-top: 24px; }
+        .province-list h3 { font-size: 1rem; color: var(--text2); margin-bottom: 16px; }
+        .province-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+        .province-item { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .province-item:hover { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        .province-item .code { font-size: 1.1rem; font-weight: 600; color: var(--accent); }
+        .province-item .name { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
+        .hidden { display: none; }
+        .no-result { text-align: center; padding: 40px; color: var(--text2); }
+            .back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>车牌号归属地查询</h1>
+        <p class="subtitle">输入车牌号查询归属地信息</p>
+        
+        <div class="card">
+            <div class="card-title">输入车牌号</div>
+            <div class="input-group">
+                <input type="text" id="plateInput" placeholder="如：京A12345" maxlength="8" oninput="formatInput()">
+                <button class="btn btn-primary" onclick="query()">查询</button>
+            </div>
+        </div>
+        
+        <div class="card hidden" id="resultCard">
+            <div class="result-box">
+                <div class="plate-display">
+                    <div class="plate" id="plateDisplay">京A12345</div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="label">省份/直辖市</div>
+                        <div class="value highlight" id="province">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">城市/区域</div>
+                        <div class="value" id="city">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">车牌类型</div>
+                        <div class="value" id="plateType">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">车辆类型</div>
+                        <div class="value" id="vehicleType">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="province-list">
+                <h3>省份简称对照表</h3>
+                <div class="province-grid" id="provinceGrid"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 省份简称数据
+        const provinceData = {
+            '京': { name: '北京市', cities: { 'A': '城区', 'B': '出租车', 'C': '城区', 'D': '城区', 'E': '城区', 'F': '城区', 'G': '远郊', 'H': '远郊', 'J': '远郊', 'K': '远郊', 'L': '远郊', 'M': '远郊', 'N': '城区', 'P': '城区', 'Q': '城区', 'Y': '远郊' } },
+            '津': { name: '天津市', cities: { 'A': '市区', 'B': '市区', 'C': '市区', 'D': '市区', 'E': '市区', 'F': '市区', 'G': '市区', 'H': '市区', 'J': '市区', 'K': '市区', 'L': '市区', 'M': '市区', 'N': '市区', 'Q': '市区', 'R': '市区' } },
+            '沪': { name: '上海市', cities: { 'A': '黄浦区/卢湾区/静安区/徐汇区/长宁区', 'B': '浦东新区', 'C': '嘉定区', 'D': '普陀区/闵行区', 'E': '宝山区', 'F': '青浦区', 'G': '奉贤区', 'H': '松江区', 'J': '金山区', 'K': '崇明区', 'L': '市区', 'M': '市区', 'N': '市区' } },
+            '渝': { name: '重庆市', cities: { 'A': '渝中区/江北区/南岸区', 'B': '沙坪坝区/九龙坡区/大渡口区', 'C': '渝北区/北碚区', 'D': '万州区', 'F': '涪陵区', 'G': '黔江区', 'H': '长寿区' } },
+            '冀': { name: '河北省', cities: { 'A': '石家庄市', 'B': '唐山市', 'C': '秦皇岛市', 'D': '邯郸市', 'E': '邢台市', 'F': '保定市', 'G': '张家口市', 'H': '承德市', 'J': '沧州市', 'R': '廊坊市', 'T': '衡水市' } },
+            '豫': { name: '河南省', cities: { 'A': '郑州市', 'B': '开封市', 'C': '洛阳市', 'D': '平顶山市', 'E': '安阳市', 'F': '鹤壁市', 'G': '新乡市', 'H': '焦作市', 'J': '濮阳市', 'K': '许昌市', 'L': '漯河市', 'M': '三门峡市', 'N': '商丘市', 'P': '周口市', 'Q': '驻马店市', 'R': '南阳市', 'S': '信阳市', 'U': '济源市' } },
+            '云': { name: '云南省', cities: { 'A': '昆明市', 'C': '昭通市', 'D': '曲靖市', 'E': '楚雄州', 'F': '玉溪市', 'G': '红河州', 'H': '文山州', 'J': '普洱市', 'K': '西双版纳州', 'L': '大理州', 'M': '保山市', 'N': '德宏州', 'P': '丽江市', 'Q': '怒江州', 'R': '迪庆州', 'S': '临沧市' } },
+            '辽': { name: '辽宁省', cities: { 'A': '沈阳市', 'B': '大连市', 'C': '鞍山市', 'D': '抚顺市', 'E': '本溪市', 'F': '丹东市', 'G': '锦州市', 'H': '营口市', 'J': '阜新市', 'K': '辽阳市', 'L': '盘锦市', 'M': '铁岭市', 'N': '朝阳市', 'P': '葫芦岛市' } },
+            '黑': { name: '黑龙江省', cities: { 'A': '哈尔滨市', 'B': '齐齐哈尔市', 'C': '牡丹江市', 'D': '佳木斯市', 'E': '大庆市', 'F': '伊春市', 'G': '鸡西市', 'H': '鹤岗市', 'J': '双鸭山市', 'K': '七台河市', 'L': '松花江地区', 'M': '绥化市', 'N': '黑河市', 'P': '大兴安岭地区', 'R': '农垦系统' } },
+            '湘': { name: '湖南省', cities: { 'A': '长沙市', 'B': '株洲市', 'C': '湘潭市', 'D': '衡阳市', 'E': '邵阳市', 'F': '岳阳市', 'G': '张家界市', 'H': '益阳市', 'J': '常德市', 'K': '娄底市', 'L': '郴州市', 'M': '永州市', 'N': '怀化市', 'U': '湘西州' } },
+            '皖': { name: '安徽省', cities: { 'A': '合肥市', 'B': '芜湖市', 'C': '蚌埠市', 'D': '淮南市', 'E': '马鞍山市', 'F': '淮北市', 'G': '铜陵市', 'H': '安庆市', 'J': '黄山市', 'K': '阜阳市', 'L': '宿州市', 'M': '滁州市', 'N': '六安市', 'P': '宣城市', 'Q': '巢湖市', 'R': '池州市', 'S': '亳州市' } },
+            '鲁': { name: '山东省', cities: { 'A': '济南市', 'B': '青岛市', 'C': '淄博市', 'D': '枣庄市', 'E': '东营市', 'F': '烟台市', 'G': '潍坊市', 'H': '济宁市', 'J': '泰安市', 'K': '威海市', 'L': '日照市', 'M': '滨州市', 'N': '德州市', 'P': '聊城市', 'Q': '临沂市', 'R': '菏泽市', 'S': '莱芜市', 'U': '青岛开发区', 'Y': '烟台开发区' } },
+            '苏': { name: '江苏省', cities: { 'A': '南京市', 'B': '无锡市', 'C': '徐州市', 'D': '常州市', 'E': '苏州市', 'F': '南通市', 'G': '连云港市', 'H': '淮安市', 'J': '盐城市', 'K': '扬州市', 'L': '镇江市', 'M': '泰州市', 'N': '宿迁市' } },
+            '浙': { name: '浙江省', cities: { 'A': '杭州市', 'B': '宁波市', 'C': '温州市', 'D': '绍兴市', 'E': '湖州市', 'F': '嘉兴市', 'G': '金华市', 'H': '衢州市', 'J': '台州市', 'K': '丽水市', 'L': '舟山市' } },
+            '赣': { name: '江西省', cities: { 'A': '南昌市', 'B': '赣州市', 'C': '宜春市', 'D': '吉安市', 'E': '上饶市', 'F': '抚州市', 'G': '九江市', 'H': '景德镇市', 'J': '萍乡市', 'K': '新余市', 'L': '鹰潭市' } },
+            '鄂': { name: '湖北省', cities: { 'A': '武汉市', 'B': '黄石市', 'C': '十堰市', 'D': '荆州市', 'E': '宜昌市', 'F': '襄阳市', 'G': '鄂州市', 'H': '荆门市', 'J': '黄冈市', 'K': '孝感市', 'L': '咸宁市', 'M': '仙桃市', 'N': '潜江市', 'P': '神农架林区', 'Q': '恩施州', 'R': '天门市', 'S': '随州市' } },
+            '桂': { name: '广西壮族自治区', cities: { 'A': '南宁市', 'B': '柳州市', 'C': '桂林市', 'D': '梧州市', 'E': '北海市', 'F': '崇左市', 'G': '来宾市', 'H': '桂林市', 'J': '贺州市', 'K': '玉林市', 'L': '百色市', 'M': '河池市', 'N': '钦州市', 'P': '防城港市', 'R': '贵港市' } },
+            '甘': { name: '甘肃省', cities: { 'A': '兰州市', 'B': '嘉峪关市', 'C': '金昌市', 'D': '白银市', 'E': '天水市', 'F': '酒泉市', 'G': '张掖市', 'H': '武威市', 'J': '定西市', 'K': '陇南市', 'L': '平凉市', 'M': '庆阳市', 'N': '临夏州', 'P': '甘南州' } },
+            '晋': { name: '山西省', cities: { 'A': '太原市', 'B': '大同市', 'C': '阳泉市', 'D': '长治市', 'E': '晋城市', 'F': '朔州市', 'H': '忻州市', 'J': '吕梁市', 'K': '晋中市', 'L': '临汾市', 'M': '运城市' } },
+            '陕': { name: '陕西省', cities: { 'A': '西安市', 'B': '铜川市', 'C': '宝鸡市', 'D': '咸阳市', 'E': '渭南市', 'F': '汉中市', 'G': '安康市', 'H': '商洛市', 'J': '延安市', 'K': '榆林市', 'V': '杨凌高新区' } },
+            '吉': { name: '吉林省', cities: { 'A': '长春市', 'B': '吉林市', 'C': '四平市', 'D': '辽源市', 'E': '通化市', 'F': '白山市', 'G': '白城市', 'H': '延边州', 'J': '松原市' } },
+            '闽': { name: '福建省', cities: { 'A': '福州市', 'B': '莆田市', 'C': '泉州市', 'D': '厦门市', 'E': '漳州市', 'F': '龙岩市', 'G': '三明市', 'H': '南平市', 'J': '宁德市', 'K': '省直系统' } },
+            '贵': { name: '贵州省', cities: { 'A': '贵阳市', 'B': '六盘水市', 'C': '遵义市', 'D': '铜仁市', 'E': '黔西南州', 'F': '毕节市', 'G': '安顺市', 'H': '黔东南州', 'J': '黔南州' } },
+            '粤': { name: '广东省', cities: { 'A': '广州市', 'B': '深圳市', 'C': '珠海市', 'D': '汕头市', 'E': '佛山市', 'F': '韶关市', 'G': '湛江市', 'H': '肇庆市', 'J': '江门市', 'K': '茂名市', 'L': '惠州市', 'M': '梅州市', 'N': '汕尾市', 'P': '河源市', 'Q': '阳江市', 'R': '清远市', 'S': '东莞市', 'T': '中山市', 'U': '潮州市', 'V': '揭阳市', 'W': '云浮市', 'X': '顺德区', 'Y': '南海区', 'Z': '港澳入境车' } },
+            '川': { name: '四川省', cities: { 'A': '成都市', 'B': '绵阳市', 'C': '自贡市', 'D': '攀枝花市', 'E': '泸州市', 'F': '德阳市', 'H': '广元市', 'J': '遂宁市', 'K': '内江市', 'L': '乐山市', 'M': '资阳市', 'Q': '宜宾市', 'R': '南充市', 'S': '达州市', 'T': '雅安市', 'U': '阿坝州', 'V': '甘孜州', 'W': '凉山州', 'X': '广安市', 'Y': '巴中市', 'Z': '眉山市' } },
+            '青': { name: '青海省', cities: { 'A': '西宁市', 'B': '海东市', 'C': '海北州', 'D': '黄南州', 'E': '海南州', 'F': '果洛州', 'G': '玉树州', 'H': '海西州' } },
+            '藏': { name: '西藏自治区', cities: { 'A': '拉萨市', 'B': '昌都市', 'C': '山南市', 'D': '日喀则市', 'E': '那曲市', 'F': '阿里地区', 'G': '林芝市' } },
+            '琼': { name: '海南省', cities: { 'A': '海口市', 'B': '三亚市', 'C': '琼海市', 'D': '五指山市', 'E': '洋浦开发区', 'F': '儋州市' } },
+            '宁': { name: '宁夏回族自治区', cities: { 'A': '银川市', 'B': '石嘴山市', 'C': '吴忠市', 'D': '固原市', 'E': '中卫市' } },
+            '蒙': { name: '内蒙古自治区', cities: { 'A': '呼和浩特市', 'B': '包头市', 'C': '乌海市', 'D': '赤峰市', 'E': '呼伦贝尔市', 'F': '兴安盟', 'G': '通辽市', 'H': '锡林郭勒盟', 'J': '乌兰察布市', 'K': '鄂尔多斯市', 'L': '巴彦淖尔市', 'M': '阿拉善盟' } },
+            '新': { name: '新疆维吾尔自治区', cities: { 'A': '乌鲁木齐市', 'B': '昌吉州', 'C': '石河子市', 'D': '奎屯市', 'E': '博尔塔拉州', 'F': '伊犁州', 'G': '塔城地区', 'H': '阿勒泰地区', 'J': '克拉玛依市', 'K': '吐鲁番市', 'L': '哈密市', 'M': '巴音郭楞州', 'N': '阿克苏地区', 'P': '克孜勒苏州', 'Q': '喀什地区', 'R': '和田地区' } },
+            '港': { name: '香港特别行政区', cities: {} },
+            '澳': { name: '澳门特别行政区', cities: {} },
+            '台': { name: '台湾省', cities: {} }
+        };
+        
+        // 初始化省份列表
+        function initProvinceList() {
+            const grid = document.getElementById('provinceGrid');
+            Object.keys(provinceData).forEach(code => {
+                const item = document.createElement('div');
+                item.className = 'province-item';
+                item.onclick = () => {
+                    document.getElementById('plateInput').value = code;
+                    document.getElementById('plateInput').focus();
+                };
+                
+                const codeDiv = document.createElement('div');
+                codeDiv.className = 'code';
+                codeDiv.textContent = code;
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'name';
+                nameDiv.textContent = provinceData[code].name.replace(/省|市|自治区|特别行政区|壮族|回族|维吾尔/g, '');
+                
+                item.appendChild(codeDiv);
+                item.appendChild(nameDiv);
+                grid.appendChild(item);
+            });
+        }
+        
+        function formatInput() {
+            const input = document.getElementById('plateInput');
+            input.value = input.value.toUpperCase();
+        }
+        
+        function query() {
+            const plate = document.getElementById('plateInput').value.trim();
+            const resultCard = document.getElementById('resultCard');
+            
+            if (plate.length < 2) {
+                resultCard.classList.add('hidden');
+                return;
+            }
+            
+            const provinceCode = plate[0];
+            const cityCode = plate[1];
+            
+            if (!provinceData[provinceCode]) {
+                resultCard.classList.add('hidden');
+                alert('未知的省份简称');
+                return;
+            }
+            
+            const province = provinceData[provinceCode];
+            const city = province.cities[cityCode] || '未知区域';
+            
+            // 显示结果
+            resultCard.classList.remove('hidden');
+            
+            // 车牌显示
+            const plateDisplay = document.getElementById('plateDisplay');
+            plateDisplay.textContent = plate;
+            
+            // 判断是否为新能源车牌
+            const isNewEnergy = plate.length >= 7 && /[DF]/.test(plate[2]);
+            plateDisplay.className = 'plate' + (isNewEnergy ? ' new-energy' : '');
+            
+            // 省份
+            document.getElementById('province').textContent = province.name;
+            
+            // 城市
+            document.getElementById('city').textContent = city;
+            
+            // 车牌类型
+            let plateType = '普通车牌';
+            if (isNewEnergy) {
+                plateType = plate[2] === 'D' ? '新能源纯电动车牌' : '新能源混合动力车牌';
+            } else if (plate.length === 7 && /[A-Z]$/.test(plate)) {
+                plateType = '普通车牌';
+            } else if (cityCode === 'O') {
+                plateType = '警用车牌';
+            }
+            document.getElementById('plateType').textContent = plateType;
+            
+            // 车辆类型
+            let vehicleType = '小型汽车';
+            if (isNewEnergy) {
+                vehicleType = '新能源汽车';
+            }
+            document.getElementById('vehicleType').textContent = vehicleType;
+        }
+        
+        // 回车键触发查询
+        document.getElementById('plateInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') query();
+        });
+        
+        // 初始化
+        initProvinceList();
+    </script>
+</body>
+</html>

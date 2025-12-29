@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字游戏 - HTML Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --text-primary: #fff;
+            --text-secondary: #a0a0a0;
+            --accent: #00f5d4;
+            --border: #2a2a3a;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #fff;
+            --bg-tertiary: #e5e5e5;
+            --text-primary: #1a1a2e;
+            --text-secondary: #666;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #00f5d4, #00d4aa);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 3px; }
+        .header p { font-size: 12px; opacity: 0.8; color: #1a1a2e; }
+        .back-link {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #1a1a2e;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .theme-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        .game-area {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .text-display {
+            font-size: 20px;
+            line-height: 1.8;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 20px;
+            min-height: 120px;
+            overflow-wrap: break-word;
+        }
+        .text-display .correct { color: var(--success); }
+        .text-display .incorrect { color: var(--error); background: rgba(239, 68, 68, 0.2); }
+        .text-display .current { 
+            background: var(--accent); 
+            color: #1a1a2e;
+            animation: blink 1s infinite;
+        }
+        .text-display .pending { color: var(--text-secondary); }
+        @keyframes blink {
+            50% { opacity: 0.7; }
+        }
+        .input-area {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .input-area:focus {
+            border-color: var(--accent);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--accent);
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .btn.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .difficulty {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .difficulty label {
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .difficulty input { display: none; }
+        .difficulty input:checked + span {
+            background: var(--accent);
+            color: #1a1a2e;
+        }
+        .difficulty label span {
+            display: block;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: -8px -16px;
+        }
+        .message {
+            text-align: center;
+            font-size: 24px;
+            padding: 30px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message .result { color: var(--accent); font-size: 48px; font-weight: bold; }
+        @media (max-width: 600px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .stat-value { font-size: 22px; }
+            .text-display { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="../../index.html" class="back-link">← 返回</a>
+        <h1>打字游戏</h1>
+        <p>测试你的打字速度</p>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="wpm">0</div>
+                <div class="stat-label">WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="accuracy">100%</div>
+                <div class="stat-label">准确率</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="time">60</div>
+                <div class="stat-label">剩余时间</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="errors">0</div>
+                <div class="stat-label">错误数</div>
+            </div>
+        </div>
+
+        <div class="difficulty">
+            <label><input type="radio" name="diff" value="easy" checked><span>简单</span></label>
+            <label><input type="radio" name="diff" value="medium"><span>中等</span></label>
+            <label><input type="radio" name="diff" value="hard"><span>困难</span></label>
+        </div>
+
+        <div class="game-area">
+            <div class="text-display" id="textDisplay"></div>
+            <input type="text" class="input-area" id="inputArea" placeholder="点击开始游戏后在此输入..." disabled>
+        </div>
+
+        <div class="message" id="message">
+            <div class="result" id="finalWpm"></div>
+            <p style="margin-top: 15px; color: var(--text-secondary);">准确率: <span id="finalAccuracy"></span></p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="startGame()">开始游戏</button>
+            <button class="btn secondary" onclick="resetGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        const texts = {
+            easy: [
+                "the quick brown fox jumps over the lazy dog",
+                "hello world this is a typing test game",
+                "practice makes perfect keep going",
+                "coding is fun and learning is great",
+                "simple words are easy to type fast"
+            ],
+            medium: [
+                "JavaScript is a versatile programming language used for web development",
+                "The algorithm efficiently processes large amounts of data in real time",
+                "Cloud computing has transformed how businesses operate globally",
+                "Artificial intelligence is revolutionizing various industries worldwide",
+                "Software engineering requires both technical skills and creativity"
+            ],
+            hard: [
+                "Asynchronous programming with Promises and async/await simplifies complex callback patterns significantly",
+                "The microservices architecture enables independent deployment and scaling of application components",
+                "Quantum computing leverages quantum mechanical phenomena to perform calculations exponentially faster",
+                "Cryptographic hash functions provide integrity verification through deterministic fixed-length outputs",
+                "Distributed systems require careful consideration of consistency, availability, and partition tolerance"
+            ]
+        };
+
+        let currentText = '';
+        let currentIndex = 0;
+        let errors = 0;
+        let totalChars = 0;
+        let correctChars = 0;
+        let timer = null;
+        let timeLeft = 60;
+        let gameStarted = false;
+        let startTime = null;
+        let typedChars = [];
+
+        const textDisplay = document.getElementById('textDisplay');
+        const inputArea = document.getElementById('inputArea');
+
+        function getDifficulty() {
+            return document.querySelector('input[name="diff"]:checked').value;
+        }
+
+        function getRandomText() {
+            const difficulty = getDifficulty();
+            const textArray = texts[difficulty];
+            return textArray[Math.floor(Math.random() * textArray.length)];
+        }
+
+        function renderText() {
+            textDisplay.textContent = '';
+            for (let i = 0; i < currentText.length; i++) {
+                const span = document.createElement('span');
+                span.textContent = currentText[i];
+                
+                if (i < currentIndex) {
+                    span.className = typedChars[i] === currentText[i] ? 'correct' : 'incorrect';
+                } else if (i === currentIndex) {
+                    span.className = 'current';
+                } else {
+                    span.className = 'pending';
+                }
+                textDisplay.appendChild(span);
+            }
+        }
+
+        function startGame() {
+            if (gameStarted) return;
+            
+            gameStarted = true;
+            currentText = getRandomText();
+            currentIndex = 0;
+            errors = 0;
+            totalChars = 0;
+            correctChars = 0;
+            timeLeft = 60;
+            startTime = Date.now();
+            typedChars = [];
+            
+            inputArea.disabled = false;
+            inputArea.value = '';
+            inputArea.focus();
+            
+            document.getElementById('message').classList.remove('show');
+            
+            renderText();
+            updateStats();
+            
+            timer = setInterval(function() {
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timer);
+            gameStarted = false;
+            inputArea.disabled = true;
+            
+            const wpm = calculateWPM();
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            
+            document.getElementById('finalWpm').textContent = wpm + ' WPM';
+            document.getElementById('finalAccuracy').textContent = accuracy + '%';
+            document.getElementById('message').classList.add('show');
+        }
+
+        function resetGame() {
+            clearInterval(timer);
+            gameStarted = false;
+            currentText = '';
+            currentIndex = 0;
+            errors = 0;
+            totalChars = 0;
+            correctChars = 0;
+            timeLeft = 60;
+            typedChars = [];
+            
+            inputArea.disabled = true;
+            inputArea.value = '';
+            textDisplay.textContent = '点击"开始游戏"按钮开始...';
+            
+            document.getElementById('wpm').textContent = '0';
+            document.getElementById('accuracy').textContent = '100%';
+            document.getElementById('time').textContent = '60';
+            document.getElementById('errors').textContent = '0';
+            document.getElementById('message').classList.remove('show');
+        }
+
+        function calculateWPM() {
+            const timeElapsed = (60 - timeLeft) / 60;
+            if (timeElapsed === 0) return 0;
+            const words = correctChars / 5;
+            return Math.round(words / timeElapsed);
+        }
+
+        function updateStats() {
+            const wpm = calculateWPM();
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            
+            document.getElementById('wpm').textContent = wpm;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            document.getElementById('errors').textContent = errors;
+        }
+
+        inputArea.addEventListener('input', function(e) {
+            if (!gameStarted) return;
+            
+            const inputValue = e.target.value;
+            const inputLength = inputValue.length;
+            
+            if (inputLength > currentIndex) {
+                totalChars++;
+                const typedChar = inputValue[inputLength - 1];
+                const expectedChar = currentText[currentIndex];
+                typedChars[currentIndex] = typedChar;
+                
+                if (typedChar === expectedChar) {
+                    correctChars++;
+                } else {
+                    errors++;
+                }
+                currentIndex++;
+            }
+            
+            renderText();
+            updateStats();
+            
+            if (currentIndex >= currentText.length) {
+                currentText = getRandomText();
+                currentIndex = 0;
+                typedChars = [];
+                inputArea.value = '';
+                renderText();
+            }
+        });
+
+        inputArea.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace') {
+                e.preventDefault();
+            }
+        });
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+
+        document.body.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+        resetGame();
+    </script>
+</body>
+</html>

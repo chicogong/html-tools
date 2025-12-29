@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Path 提取器 - WebUtils</title>
+  <meta name="description" content="使用 JSONPath 表达式从 JSON 数据中提取特定字段" />
+  <meta name="keywords" content="JSONPath,JSON提取,数据提取,JSON查询" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-elevated: #1a1a24;
+      --border-subtle: #2a2a3a;
+      --text-primary: #e8e8ed;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --accent-cyan: #00f5d4;
+      --accent-purple: #bf5af2;
+      --accent-green: #30d158;
+      --accent-red: #ff453a;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--accent-cyan); }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .panel-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .btn {
+      padding: 6px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .btn.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    .btn.primary:hover {
+      background: #00d9b8;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 16px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .path-input-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .path-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+    }
+
+    .path-input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    .result-count {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .result-count span {
+      color: var(--accent-green);
+      font-weight: 600;
+    }
+
+    .examples {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+    }
+
+    .examples-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .example-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-item:hover {
+      background: rgba(0, 245, 212, 0.1);
+    }
+
+    .example-item:last-child { margin-bottom: 0; }
+
+    .example-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+    }
+
+    .example-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .error-msg {
+      padding: 12px;
+      background: rgba(255, 69, 58, 0.1);
+      border: 1px solid rgba(255, 69, 58, 0.3);
+      border-radius: var(--radius-sm);
+      color: var(--accent-red);
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      返回首页
+    </a>
+
+    <div class="header">
+      <h1>🔍 JSON Path 提取器</h1>
+      <p>使用 JSONPath 表达式从 JSON 数据中提取特定字段</p>
+    </div>
+
+    <div class="main-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">📥 输入 JSON</span>
+          <div>
+            <button class="btn" onclick="loadSample()">示例</button>
+            <button class="btn" onclick="formatJson()">格式化</button>
+          </div>
+        </div>
+        <textarea id="jsonInput" placeholder="{&quot;users&quot;: [{&quot;name&quot;: &quot;张三&quot;, &quot;age&quot;: 25}]}"></textarea>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">📤 提取结果</span>
+          <button class="btn" onclick="copyResult()">复制</button>
+        </div>
+        
+        <div class="path-input-row">
+          <input type="text" class="path-input" id="pathInput" placeholder="$.users[*].name" oninput="extract()">
+          <button class="btn primary" onclick="extract()">提取</button>
+        </div>
+
+        <div id="errorMsg" class="error-msg" style="display:none"></div>
+        <div class="result-count" id="resultCount"></div>
+        <textarea id="resultOutput" readonly placeholder="提取结果将显示在这里"></textarea>
+
+        <div class="examples">
+          <div class="examples-title">常用表达式：</div>
+          <div class="example-item" onclick="usePath('$.*')">
+            <span class="example-path">$.*</span>
+            <span class="example-desc">所有顶级属性</span>
+          </div>
+          <div class="example-item" onclick="usePath('$.users[*].name')">
+            <span class="example-path">$.users[*].name</span>
+            <span class="example-desc">所有用户名</span>
+          </div>
+          <div class="example-item" onclick="usePath('$.users[0]')">
+            <span class="example-path">$.users[0]</span>
+            <span class="example-desc">第一个用户</span>
+          </div>
+          <div class="example-item" onclick="usePath('$..name')">
+            <span class="example-path">$..name</span>
+            <span class="example-desc">递归查找 name</span>
+          </div>
+          <div class="example-item" onclick="usePath('$.users[?(@.age>20)]')">
+            <span class="example-path">$.users[?(@.age&gt;20)]</span>
+            <span class="example-desc">年龄大于20的用户</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const jsonInput = document.getElementById('jsonInput');
+    const pathInput = document.getElementById('pathInput');
+    const resultOutput = document.getElementById('resultOutput');
+    const resultCount = document.getElementById('resultCount');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // JSONPath 简易实现
+    function jsonPath(obj, path) {
+      if (!path || path === '$') return [obj];
+      
+      const results = [];
+      const normalized = path.replace(/\[(\d+)\]/g, '.$1').replace(/^\$\.?/, '');
+      
+      function traverse(current, pathParts, idx) {
+        if (idx >= pathParts.length) {
+          results.push(current);
+          return;
+        }
+        
+        const part = pathParts[idx];
+        
+        if (part === '*') {
+          if (Array.isArray(current)) {
+            current.forEach(item => traverse(item, pathParts, idx + 1));
+          } else if (typeof current === 'object' && current !== null) {
+            Object.values(current).forEach(val => traverse(val, pathParts, idx + 1));
+          }
+        } else if (part === '..') {
+          // 递归下降
+          traverse(current, pathParts, idx + 1);
+          if (typeof current === 'object' && current !== null) {
+            Object.values(current).forEach(val => {
+              if (typeof val === 'object') traverse(val, pathParts, idx);
+            });
+          }
+        } else if (part.startsWith('?(@.')) {
+          // 简单过滤器支持
+          const match = part.match(/\?\(@\.(\w+)(>|<|=)(\d+)\)/);
+          if (match && Array.isArray(current)) {
+            const [, prop, op, val] = match;
+            current.forEach(item => {
+              if (item && typeof item === 'object') {
+                const itemVal = item[prop];
+                let pass = false;
+                if (op === '>' && itemVal > Number(val)) pass = true;
+                if (op === '<' && itemVal < Number(val)) pass = true;
+                if (op === '=' && itemVal === Number(val)) pass = true;
+                if (pass) traverse(item, pathParts, idx + 1);
+              }
+            });
+          }
+        } else if (current && typeof current === 'object') {
+          const key = part.replace(/[[\]]/g, '');
+          if (key in current || (Array.isArray(current) && !isNaN(key))) {
+            traverse(current[key], pathParts, idx + 1);
+          }
+        }
+      }
+      
+      // 处理 .. 递归
+      const parts = normalized.split(/\.(?![^[]*\])/).filter(Boolean);
+      traverse(obj, parts, 0);
+      
+      return results;
+    }
+
+    function extract() {
+      const jsonStr = jsonInput.value.trim();
+      const path = pathInput.value.trim();
+      
+      errorMsg.style.display = 'none';
+      
+      if (!jsonStr) {
+        resultOutput.value = '';
+        resultCount.innerHTML = '';
+        return;
+      }
+      
+      try {
+        const data = JSON.parse(jsonStr);
+        const results = jsonPath(data, path || '$');
+        
+        resultCount.innerHTML = `找到 <span>${results.length}</span> 个结果`;
+        
+        if (results.length === 1) {
+          resultOutput.value = JSON.stringify(results[0], null, 2);
+        } else {
+          resultOutput.value = JSON.stringify(results, null, 2);
+        }
+      } catch (e) {
+        errorMsg.textContent = '错误: ' + e.message;
+        errorMsg.style.display = 'block';
+        resultOutput.value = '';
+        resultCount.innerHTML = '';
+      }
+    }
+
+    function usePath(path) {
+      pathInput.value = path;
+      extract();
+    }
+
+    function formatJson() {
+      try {
+        const data = JSON.parse(jsonInput.value);
+        jsonInput.value = JSON.stringify(data, null, 2);
+      } catch (e) {
+        errorMsg.textContent = 'JSON 格式错误: ' + e.message;
+        errorMsg.style.display = 'block';
+      }
+    }
+
+    function loadSample() {
+      jsonInput.value = JSON.stringify({
+        "users": [
+          {"name": "张三", "age": 25, "city": "北京"},
+          {"name": "李四", "age": 30, "city": "上海"},
+          {"name": "王五", "age": 18, "city": "广州"}
+        ],
+        "total": 3,
+        "meta": {"version": "1.0"}
+      }, null, 2);
+      pathInput.value = '$.users[*].name';
+      extract();
+    }
+
+    function copyResult() {
+      resultOutput.select();
+      document.execCommand('copy');
+    }
+
+    // 初始化
+    loadSample();
+  </script>
+</body>
+</html>

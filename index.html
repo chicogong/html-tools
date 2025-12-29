@@ -546,6 +546,9 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 20px;
+      /* 性能优化 */
+      will-change: contents;
+      contain: layout style;
     }
 
     .tool-card {
@@ -562,6 +565,11 @@
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
       animation: fade-in-up 0.5s ease backwards;
+      /* 性能优化 */
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      will-change: transform;
+      contain: layout paint;
     }
 
     .tool-card::before {
@@ -768,6 +776,13 @@
     @keyframes fade-in-up {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 加载指示器（隐藏但用于触发懒加载） */
+    #load-trigger {
+      height: 1px;
+      margin: 0;
+      visibility: hidden;
     }
 
     @media (width <= 640px) {
@@ -1742,9 +1757,12 @@
       });
     }
 
-    // ==================== 渲染工具卡片 (分批渲染优化) ====================
-    const BATCH_SIZE = 50;  // 每批渲染数量
+    // ==================== 渲染工具卡片 (优化版：懒加载 + 分批渲染) ====================
+    const BATCH_SIZE = 30;  // 每批渲染数量（减少以提升性能）
+    const INITIAL_LOAD = 60;  // 首屏加载数量
     let renderedCount = 0;
+    let isRendering = false;
+    let lazyLoadObserver = null;
 
     function createToolCard(tool, index) {
       const card = document.createElement('a');
@@ -1815,7 +1833,25 @@
       return card;
     }
 
+    // 创建懒加载观察器
+    function setupLazyLoading() {
+      if ('IntersectionObserver' in window) {
+        lazyLoadObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && renderedCount < TOOLS.length && !isRendering) {
+              renderBatch();
+            }
+          });
+        }, {
+          rootMargin: '200px'  // 提前 200px 开始加载
+        });
+      }
+    }
+
     function renderBatch() {
+      if (isRendering) return;
+      isRendering = true;
+      
       const fragment = document.createDocumentFragment();
       const end = Math.min(renderedCount + BATCH_SIZE, TOOLS.length);
       
@@ -1826,22 +1862,66 @@
       toolsGrid.appendChild(fragment);
       renderedCount = end;
       
+      // 如果还有更多内容，创建一个加载触发器
       if (renderedCount < TOOLS.length) {
-        // 使用 requestIdleCallback 或 setTimeout 继续渲染
-        if ('requestIdleCallback' in window) {
-          requestIdleCallback(renderBatch, { timeout: 100 });
-        } else {
-          setTimeout(renderBatch, 0);
+        let loadTrigger = document.getElementById('load-trigger');
+        if (!loadTrigger) {
+          loadTrigger = document.createElement('div');
+          loadTrigger.id = 'load-trigger';
+          loadTrigger.style.height = '1px';
+          loadTrigger.style.margin = '0';
+          toolsGrid.appendChild(loadTrigger);
+        }
+        
+        if (lazyLoadObserver) {
+          lazyLoadObserver.observe(loadTrigger);
         }
       } else {
-        // 渲染完成，更新卡片引用
+        // 渲染完成，清理触发器
+        const loadTrigger = document.getElementById('load-trigger');
+        if (loadTrigger) {
+          loadTrigger.remove();
+        }
+        // 更新卡片引用
         toolCards = document.querySelectorAll('.tool-card');
       }
+      
+      isRendering = false;
     }
 
     function renderTools() {
       renderedCount = 0;
-      renderBatch();
+      toolsGrid.innerHTML = '';  // 清空现有内容
+      
+      // 首屏快速加载
+      const fragment = document.createDocumentFragment();
+      const initialEnd = Math.min(INITIAL_LOAD, TOOLS.length);
+      
+      for (let i = 0; i < initialEnd; i++) {
+        fragment.appendChild(createToolCard(TOOLS[i], i));
+      }
+      
+      toolsGrid.appendChild(fragment);
+      renderedCount = initialEnd;
+      
+      // 如果还有更多，设置懒加载
+      if (renderedCount < TOOLS.length) {
+        let loadTrigger = document.getElementById('load-trigger');
+        if (!loadTrigger) {
+          loadTrigger = document.createElement('div');
+          loadTrigger.id = 'load-trigger';
+          loadTrigger.style.height = '1px';
+          loadTrigger.style.margin = '0';
+          toolsGrid.appendChild(loadTrigger);
+        }
+        
+        if (lazyLoadObserver) {
+          lazyLoadObserver.observe(loadTrigger);
+        }
+      }
+      
+      // 立即更新卡片引用（用于过滤）
+      toolCards = document.querySelectorAll('.tool-card');
     }
 
     // ==================== 过滤工具 ====================
@@ -1910,6 +1990,7 @@
     });
 
     // ==================== 初始化 ====================
+    setupLazyLoading();
     renderCategories();
     renderTools();
   </script>

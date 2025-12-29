@@ -460,12 +460,20 @@
       margin: 0 2px;
     }
 
+    /* 桌面端 categories-wrapper 透明 */
+    .categories-wrapper {
+      margin-bottom: 32px;
+    }
+    
+    .categories-wrapper::after {
+      display: none;
+    }
+
     .categories {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       justify-content: center;
-      margin-bottom: 32px;
     }
 
     .category-btn {
@@ -838,55 +846,116 @@
       header h1 { font-size: 1rem; }
       .theme-toggle { width: 28px; height: 28px; font-size: 0.85rem; border-radius: 6px; }
       
-      /* 搜索框 - 固定顶部优化 */
+      /* 搜索框 - 减少空白 */
       .search-wrapper {
         position: sticky;
         top: 0;
         z-index: 100;
-        margin: 0 -12px 16px;
-        padding: 12px 12px 8px;
+        margin: 0 -12px 10px;
+        padding: 8px 12px 6px;
         background: var(--bg-deep);
         backdrop-filter: blur(10px);
         border-bottom: 1px solid var(--border-subtle);
       }
       
       .search-box input {
-        padding: 12px 14px 12px 38px;
+        padding: 10px 14px 10px 36px;
         font-size: 16px; /* 防止 iOS 自动缩放 */
-        border-radius: 18px;
+        border-radius: 16px;
         -webkit-appearance: none;
       }
       
-      .search-box::before { left: 14px; font-size: 0.95rem; }
-      .search-hint { font-size: 0.65rem; margin-top: 6px; }
-      .search-hint kbd { padding: 2px 5px; font-size: 0.6rem; }
+      .search-box::before { left: 12px; font-size: 0.9rem; }
+      .search-hint { display: none; }
+      .search-results-count { display: none; }  /* Hide on mobile */
       
-      /* 分类横向滚动 - 优化 */
-      .categories {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        justify-content: flex-start;
-        gap: 8px;
-        margin: 0 -12px 20px;
-        padding: 0 12px 12px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        scroll-snap-type: x proximity;
-        will-change: scroll-position;
-        overscroll-behavior-x: contain;
+      /* 分类区域 - 限制3行 + 展开按钮 */
+      .categories-wrapper {
+        margin: 0 0 12px;
+        position: relative;
       }
       
-      .categories::-webkit-scrollbar { display: none; }
+      .categories-wrapper::after {
+        display: none;
+      }
+      
+      .categories {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        max-height: 102px; /* 约3行 */
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      
+      .categories-wrapper.expanded .categories {
+        max-height: 500px;
+      }
+      
+      .categories-expand-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        width: 100%;
+        margin-top: 8px;
+        padding: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        background: transparent;
+        border: 1px dashed var(--border-subtle);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .categories-expand-btn:hover {
+        color: var(--text-secondary);
+        border-color: var(--border-strong);
+      }
+      
+      .categories-expand-btn:focus-visible {
+        color: var(--text-secondary);
+        border-color: var(--accent-cyan);
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-cyan);
+      }
+      
+      .categories-expand-btn .expand-icon {
+        transition: transform 0.3s ease;
+      }
+      
+      .categories-wrapper.expanded .categories-expand-btn .expand-icon {
+        transform: rotate(180deg);
+      }
       
       .category-btn {
-        padding: 10px 16px;
-        font-size: 0.8rem;
+        padding: 5px 8px;
+        font-size: 0.65rem;
         white-space: nowrap;
         flex-shrink: 0;
-        scroll-snap-align: start;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
+        border-radius: 12px;
+        box-shadow: none;
+        border-width: 1px;
+        gap: 4px;
+      }
+      
+      .category-btn .cat-icon {
+        font-size: 0.8rem;
+      }
+      
+      .category-btn .cat-count {
+        display: none;
+      }
+      
+      .category-btn.active {
+        box-shadow: 0 0 0 1.5px var(--accent-cyan);
+        transform: none;
       }
       
       /* 工具卡片紧凑 - 优化 */
@@ -983,7 +1052,13 @@
       <div class="search-hint">按 <kbd>/</kbd> 聚焦搜索 · <kbd>Esc</kbd> 取消</div>
     </div>
 
-    <div class="categories" id="categories"></div>
+    <div class="categories-wrapper" id="categories-wrapper">
+      <div class="categories" id="categories"></div>
+      <button class="categories-expand-btn" id="categories-expand-btn" style="display: none;">
+        <span class="expand-icon">▼</span>
+        <span class="expand-text">更多分类</span>
+      </button>
+    </div>
 
     <div class="tools-grid" id="tools-grid"></div>
 
@@ -2011,10 +2086,48 @@
       }
     });
 
+    // ==================== 分类展开/收起（移动端） ====================
+    function setupCategoriesExpand() {
+      const wrapper = document.getElementById('categories-wrapper');
+      const categories = document.getElementById('categories');
+      const expandBtn = document.getElementById('categories-expand-btn');
+      if (!wrapper || !categories || !expandBtn) return;
+      
+      const checkOverflow = () => {
+        // 只在移动端检查
+        if (window.innerWidth > 640) {
+          expandBtn.style.display = 'none';
+          wrapper.classList.remove('expanded');
+          return;
+        }
+        
+        // 如果已展开，保持按钮显示
+        const isExpanded = wrapper.classList.contains('expanded');
+        if (isExpanded) {
+          expandBtn.style.display = 'flex';
+          return;
+        }
+        
+        // 检查是否溢出
+        const isOverflowing = categories.scrollHeight > categories.clientHeight + 5;
+        expandBtn.style.display = isOverflowing ? 'flex' : 'none';
+      };
+      
+      expandBtn.addEventListener('click', () => {
+        const isExpanded = wrapper.classList.toggle('expanded');
+        expandBtn.querySelector('.expand-text').textContent = isExpanded ? '收起' : '更多分类';
+      });
+      
+      // 初始检查 + resize 监听
+      setTimeout(checkOverflow, 100);
+      window.addEventListener('resize', checkOverflow);
+    }
+
     // ==================== 初始化 ====================
     setupLazyLoading();
     renderCategories();
     renderTools();
+    setupCategoriesExpand();
   </script>
 </body>
 </html>

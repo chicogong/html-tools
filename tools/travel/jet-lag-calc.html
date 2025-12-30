@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>时差计算器 - WebUtils</title>
+  <meta name="description" content="计算两地时差，提供时差调整建议，帮助减轻时差反应" />
+  <meta name="keywords" content="时差 jet lag 时区 飞行 旅行 timezone" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/travel/jet-lag-calc.html" />
+
+  <meta property="og:title" content="时差计算器 - WebUtils" />
+  <meta property="og:description" content="计算两地时差，提供时差调整建议" />
+  <meta property="og:type" content="website" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem}
+    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .card-title{font-size:1rem;font-weight:500;color:var(--text-secondary);margin-bottom:1rem}
+    .location-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:end}
+    .location-box{display:flex;flex-direction:column;gap:.5rem}
+    .location-box label{font-size:.9rem;color:var(--text-secondary)}
+    .location-box select{padding:.75rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit;font-size:1rem}
+    .location-box select:focus{outline:none;border-color:var(--accent-blue)}
+    .swap-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-surface);cursor:pointer;font-size:1.2rem;transition:all .2s;margin-bottom:.5rem}
+    .swap-btn:hover{border-color:var(--accent-cyan);transform:rotate(180deg)}
+    .time-display{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+    .time-box{text-align:center;padding:1.5rem;background:var(--bg-surface);border-radius:var(--radius-md)}
+    .time-box .city{font-size:.9rem;color:var(--text-secondary);margin-bottom:.5rem}
+    .time-box .time{font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:600;color:var(--accent-cyan)}
+    .time-box .date{font-size:.85rem;color:var(--text-muted);margin-top:.5rem}
+    .diff-display{text-align:center;padding:2rem;background:linear-gradient(135deg,rgba(77,159,255,.1),rgba(0,245,212,.1));border-radius:var(--radius-md);margin-top:1.5rem}
+    .diff-label{font-size:.9rem;color:var(--text-secondary)}
+    .diff-value{font-family:'JetBrains Mono',monospace;font-size:3rem;font-weight:600;color:var(--accent-cyan);margin:.5rem 0}
+    .diff-direction{font-size:1rem;color:var(--text-primary)}
+    .tips-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-top:1.5rem}
+    .tips-title{font-size:1rem;font-weight:500;color:var(--accent-cyan);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+    .tips-list{display:flex;flex-direction:column;gap:.75rem}
+    .tip-item{display:flex;gap:.75rem;padding:.75rem;background:var(--bg-surface);border-radius:var(--radius-sm)}
+    .tip-icon{font-size:1.25rem}
+    .tip-text{flex:1;font-size:.9rem;color:var(--text-secondary)}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:600px){.location-grid{grid-template-columns:1fr}.swap-btn{justify-self:center;transform:rotate(90deg)}.swap-btn:hover{transform:rotate(270deg)}.time-display{grid-template-columns:1fr}.time-box .time{font-size:2rem}.diff-value{font-size:2rem}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#travel">旅行工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">时差计算器</span>
+    </nav>
+
+    <h1>时差计算器</h1>
+    <p class="subtitle">计算两地时差，获取调整建议</p>
+
+    <div class="card">
+      <div class="card-title">🌍 选择城市</div>
+      <div class="location-grid">
+        <div class="location-box">
+          <label>出发地</label>
+          <select id="fromCity">
+            <option value="Asia/Shanghai" data-name="北京/上海">北京/上海 (UTC+8)</option>
+            <option value="Asia/Tokyo" data-name="东京">东京 (UTC+9)</option>
+            <option value="Asia/Seoul" data-name="首尔">首尔 (UTC+9)</option>
+            <option value="Asia/Singapore" data-name="新加坡">新加坡 (UTC+8)</option>
+            <option value="Asia/Hong_Kong" data-name="香港">香港 (UTC+8)</option>
+            <option value="Asia/Bangkok" data-name="曼谷">曼谷 (UTC+7)</option>
+            <option value="Asia/Dubai" data-name="迪拜">迪拜 (UTC+4)</option>
+            <option value="Europe/London" data-name="伦敦">伦敦 (UTC+0/+1)</option>
+            <option value="Europe/Paris" data-name="巴黎">巴黎 (UTC+1/+2)</option>
+            <option value="Europe/Berlin" data-name="柏林">柏林 (UTC+1/+2)</option>
+            <option value="America/New_York" data-name="纽约">纽约 (UTC-5/-4)</option>
+            <option value="America/Los_Angeles" data-name="洛杉矶">洛杉矶 (UTC-8/-7)</option>
+            <option value="America/Chicago" data-name="芝加哥">芝加哥 (UTC-6/-5)</option>
+            <option value="Australia/Sydney" data-name="悉尼">悉尼 (UTC+10/+11)</option>
+            <option value="Pacific/Auckland" data-name="奥克兰">奥克兰 (UTC+12/+13)</option>
+          </select>
+        </div>
+        <button class="swap-btn" onclick="swapCities()" title="交换">⇄</button>
+        <div class="location-box">
+          <label>目的地</label>
+          <select id="toCity">
+            <option value="America/New_York" data-name="纽约">纽约 (UTC-5/-4)</option>
+            <option value="America/Los_Angeles" data-name="洛杉矶">洛杉矶 (UTC-8/-7)</option>
+            <option value="America/Chicago" data-name="芝加哥">芝加哥 (UTC-6/-5)</option>
+            <option value="Europe/London" data-name="伦敦">伦敦 (UTC+0/+1)</option>
+            <option value="Europe/Paris" data-name="巴黎">巴黎 (UTC+1/+2)</option>
+            <option value="Europe/Berlin" data-name="柏林">柏林 (UTC+1/+2)</option>
+            <option value="Asia/Shanghai" data-name="北京/上海">北京/上海 (UTC+8)</option>
+            <option value="Asia/Tokyo" data-name="东京">东京 (UTC+9)</option>
+            <option value="Asia/Seoul" data-name="首尔">首尔 (UTC+9)</option>
+            <option value="Asia/Singapore" data-name="新加坡">新加坡 (UTC+8)</option>
+            <option value="Asia/Hong_Kong" data-name="香港">香港 (UTC+8)</option>
+            <option value="Asia/Bangkok" data-name="曼谷">曼谷 (UTC+7)</option>
+            <option value="Asia/Dubai" data-name="迪拜">迪拜 (UTC+4)</option>
+            <option value="Australia/Sydney" data-name="悉尼">悉尼 (UTC+10/+11)</option>
+            <option value="Pacific/Auckland" data-name="奥克兰">奥克兰 (UTC+12/+13)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="time-display">
+        <div class="time-box">
+          <div class="city" id="fromCityName">北京/上海</div>
+          <div class="time" id="fromTime">--:--</div>
+          <div class="date" id="fromDate">--</div>
+        </div>
+        <div class="time-box">
+          <div class="city" id="toCityName">纽约</div>
+          <div class="time" id="toTime">--:--</div>
+          <div class="date" id="toDate">--</div>
+        </div>
+      </div>
+
+      <div class="diff-display">
+        <div class="diff-label">时差</div>
+        <div class="diff-value" id="timeDiff">--</div>
+        <div class="diff-direction" id="diffDirection">--</div>
+      </div>
+    </div>
+
+    <div class="tips-card" id="tipsCard">
+      <div class="tips-title">💡 时差调整建议</div>
+      <div class="tips-list" id="tipsList">
+        <!-- Tips will be generated dynamically -->
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function getTimezoneOffset(timezone) {
+      const now = new Date();
+      const utc = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tz = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+      return (tz - utc) / (1000 * 60 * 60);
+    }
+
+    function formatTime(date, timezone) {
+      return date.toLocaleTimeString('zh-CN', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+
+    function formatDate(date, timezone) {
+      return date.toLocaleDateString('zh-CN', {
+        timeZone: timezone,
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    function calculate() {
+      const fromSelect = document.getElementById('fromCity');
+      const toSelect = document.getElementById('toCity');
+      const fromTz = fromSelect.value;
+      const toTz = toSelect.value;
+      const fromName = fromSelect.options[fromSelect.selectedIndex].dataset.name;
+      const toName = toSelect.options[toSelect.selectedIndex].dataset.name;
+
+      const now = new Date();
+
+      // Update city names
+      document.getElementById('fromCityName').textContent = fromName;
+      document.getElementById('toCityName').textContent = toName;
+
+      // Update times
+      document.getElementById('fromTime').textContent = formatTime(now, fromTz);
+      document.getElementById('fromDate').textContent = formatDate(now, fromTz);
+      document.getElementById('toTime').textContent = formatTime(now, toTz);
+      document.getElementById('toDate').textContent = formatDate(now, toTz);
+
+      // Calculate difference
+      const fromOffset = getTimezoneOffset(fromTz);
+      const toOffset = getTimezoneOffset(toTz);
+      const diff = toOffset - fromOffset;
+      const absDiff = Math.abs(diff);
+
+      document.getElementById('timeDiff').textContent = `${absDiff} 小时`;
+
+      if (diff > 0) {
+        document.getElementById('diffDirection').textContent = `${toName} 比 ${fromName} 快 ${absDiff} 小时`;
+      } else if (diff < 0) {
+        document.getElementById('diffDirection').textContent = `${toName} 比 ${fromName} 慢 ${absDiff} 小时`;
+      } else {
+        document.getElementById('diffDirection').textContent = '两地时间相同';
+      }
+
+      // Generate tips
+      generateTips(absDiff, diff);
+    }
+
+    function generateTips(hours, direction) {
+      const tipsList = document.getElementById('tipsList');
+      const tips = [];
+
+      if (hours === 0) {
+        tips.push({ icon: '✨', text: '两地没有时差，不需要调整！' });
+      } else {
+        // Adjustment days
+        const adjustDays = Math.ceil(hours / 1.5);
+        tips.push({
+          icon: '📅',
+          text: `预计需要 ${adjustDays} 天来完全适应时差`
+        });
+
+        // Sleep advice
+        if (direction > 0) {
+          tips.push({
+            icon: '😴',
+            text: '向东飞行：提前几天每晚早睡1-2小时，帮助身体提前适应'
+          });
+        } else {
+          tips.push({
+            icon: '😴',
+            text: '向西飞行：提前几天每晚晚睡1-2小时，帮助身体提前适应'
+          });
+        }
+
+        // Flight advice
+        if (hours > 6) {
+          tips.push({
+            icon: '✈️',
+            text: '长途飞行建议选择夜间航班，在飞机上睡觉以减轻时差反应'
+          });
+        }
+
+        // Light exposure
+        tips.push({
+          icon: '☀️',
+          text: '到达后多接触自然光，有助于调整生物钟'
+        });
+
+        // Hydration
+        tips.push({
+          icon: '💧',
+          text: '多喝水，避免咖啡因和酒精，保持身体水分充足'
+        });
+
+        // Meal timing
+        tips.push({
+          icon: '🍽️',
+          text: '尽快按照当地时间用餐，帮助身体适应新的作息'
+        });
+
+        if (hours > 8) {
+          tips.push({
+            icon: '⏰',
+            text: '考虑在出发前几天开始逐步调整作息时间'
+          });
+        }
+      }
+
+      tipsList.innerHTML = tips.map(tip => `
+        <div class="tip-item">
+          <span class="tip-icon">${tip.icon}</span>
+          <span class="tip-text">${tip.text}</span>
+        </div>
+      `).join('');
+    }
+
+    function swapCities() {
+      const fromSelect = document.getElementById('fromCity');
+      const toSelect = document.getElementById('toCity');
+      const fromValue = fromSelect.value;
+      fromSelect.value = toSelect.value;
+      toSelect.value = fromValue;
+      calculate();
+    }
+
+    document.getElementById('fromCity').addEventListener('change', calculate);
+    document.getElementById('toCity').addEventListener('change', calculate);
+
+    // Update time every second
+    setInterval(calculate, 1000);
+
+    // Initial calculation
+    calculate();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>骰子模拟器 - WebUtils</title>
+  <meta name="description" content="在线骰子模拟器，支持多种骰子类型和数量，适合桌游、RPG游戏" />
+  <meta name="keywords" content="骰子 模拟器 桌游 RPG D&D dice roller tabletop game" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/gaming/dice-roller.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-red:#ff6b6b;--accent-orange:#ff9f43;--accent-yellow:#ffd93d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .dice-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:1rem;margin-bottom:2rem}
+    .dice-btn{padding:1.5rem .5rem;border:2px solid var(--border-subtle);border-radius:var(--radius-md);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;transition:all .2s;text-align:center;font-family:inherit}
+    .dice-btn:hover{border-color:var(--accent-cyan);transform:translateY(-2px)}
+    .dice-btn.active{background:linear-gradient(135deg,rgba(0,245,212,.2),transparent);border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .dice-icon{font-size:2rem;margin-bottom:.5rem}
+    .dice-label{font-size:.85rem;font-weight:600}
+    .controls{display:flex;gap:1rem;margin-bottom:2rem;align-items:center;flex-wrap:wrap}
+    .controls input{flex:1;min-width:150px;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:1rem}
+    .controls input:focus{outline:none;border-color:var(--accent-blue)}
+    .roll-btn{padding:1rem 2rem;border:none;border-radius:var(--radius-md);background:var(--accent-green);color:#000;font-family:inherit;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .roll-btn:hover{background:var(--accent-cyan);transform:scale(1.05)}
+    .results{background:linear-gradient(135deg,rgba(0,245,212,.1),rgba(77,159,255,.1));border:2px solid var(--accent-cyan);border-radius:var(--radius-lg);padding:2rem;text-align:center;margin-bottom:2rem;min-height:200px;display:flex;flex-direction:column;justify-content:center}
+    .dice-display{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+    .die{width:80px;height:80px;background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:700;color:#000;box-shadow:0 4px 20px rgba(0,245,212,.3);animation:roll .5s ease-out}
+    @keyframes roll{0%{transform:rotate(0deg) scale(0.5);opacity:0}50%{transform:rotate(180deg) scale(1.2)}100%{transform:rotate(360deg) scale(1)}}
+    .total{font-family:'JetBrains Mono',monospace;font-size:3rem;font-weight:700;color:var(--accent-cyan);margin-bottom:.5rem}
+    .total-label{font-size:1rem;color:var(--text-secondary)}
+    .history{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
+    .history-title{font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--accent-cyan);display:flex;justify-content:space-between;align-items:center}
+    .clear-btn{background:none;border:1px solid var(--border-subtle);color:var(--text-muted);padding:.5rem 1rem;border-radius:var(--radius-sm);cursor:pointer;font-size:.85rem;transition:all .2s}
+    .clear-btn:hover{border-color:var(--accent-red);color:var(--accent-red)}
+    .history-list{display:flex;flex-direction:column;gap:.75rem;max-height:300px;overflow-y:auto}
+    .history-item{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;display:flex;justify-content:space-between;align-items:center}
+    .history-details{flex:1}
+    .history-formula{font-family:'JetBrains Mono',monospace;font-size:.9rem;color:var(--text-secondary)}
+    .history-result{font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--accent-cyan)}
+    .empty-state{color:var(--text-muted);text-align:center;padding:2rem}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:600px){.dice-types{grid-template-columns:repeat(3,1fr)}.controls{flex-direction:column}.die{width:60px;height:60px;font-size:2rem}.total{font-size:2rem}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#gaming">游戏工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">骰子模拟器</span>
+    </nav>
+
+    <h1>🎲 骰子模拟器</h1>
+    <p class="subtitle">在线投骰子，支持多种骰子类型</p>
+
+    <div class="dice-types">
+      <button class="dice-btn active" onclick="selectDice(6)">
+        <div class="dice-icon">🎲</div>
+        <div class="dice-label">D6</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(4)">
+        <div class="dice-icon">🔷</div>
+        <div class="dice-label">D4</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(8)">
+        <div class="dice-icon">🔶</div>
+        <div class="dice-label">D8</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(10)">
+        <div class="dice-icon">🔸</div>
+        <div class="dice-label">D10</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(12)">
+        <div class="dice-icon">🔹</div>
+        <div class="dice-label">D12</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(20)">
+        <div class="dice-icon">⬣</div>
+        <div class="dice-label">D20</div>
+      </button>
+      <button class="dice-btn" onclick="selectDice(100)">
+        <div class="dice-icon">💯</div>
+        <div class="dice-label">D100</div>
+      </button>
+    </div>
+
+    <div class="controls">
+      <input type="number" id="diceCount" value="2" min="1" max="20" placeholder="骰子数量">
+      <button class="roll-btn" onclick="rollDice()">🎲 投骰子</button>
+    </div>
+
+    <div class="results" id="results">
+      <div class="empty-state">点击"投骰子"开始</div>
+    </div>
+
+    <div class="history">
+      <div class="history-title">
+        <span>📜 投骰记录</span>
+        <button class="clear-btn" onclick="clearHistory()">清空</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty-state">暂无记录</div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'html_tools_dice_history_v1';
+    let currentDiceType = 6;
+    let history = [];
+
+    function loadHistory() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        history = saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        history = [];
+      }
+      renderHistory();
+    }
+
+    function saveHistory() {
+      // Keep only last 20 rolls
+      if (history.length > 20) {
+        history = history.slice(-20);
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    }
+
+    function selectDice(sides) {
+      currentDiceType = sides;
+      document.querySelectorAll('.dice-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.closest('.dice-btn').classList.add('active');
+    }
+
+    function rollDice() {
+      const count = parseInt(document.getElementById('diceCount').value) || 1;
+      const validCount = Math.max(1, Math.min(20, count));
+
+      const results = [];
+      for (let i = 0; i < validCount; i++) {
+        results.push(Math.floor(Math.random() * currentDiceType) + 1);
+      }
+
+      const total = results.reduce((sum, val) => sum + val, 0);
+
+      displayResults(results, total);
+      addToHistory(validCount, currentDiceType, results, total);
+
+      // Play sound effect
+      playSound();
+    }
+
+    function displayResults(results, total) {
+      const container = document.getElementById('results');
+
+      const diceHTML = results.map(result =>
+        `<div class="die">${result}</div>`
+      ).join('');
+
+      container.innerHTML = `
+        <div class="dice-display">${diceHTML}</div>
+        <div class="total">${total}</div>
+        <div class="total-label">总点数</div>
+      `;
+    }
+
+    function addToHistory(count, sides, results, total) {
+      const formula = `${count}D${sides}`;
+      const resultStr = results.join(' + ');
+
+      history.unshift({
+        timestamp: new Date().toLocaleTimeString('zh-CN'),
+        formula,
+        resultStr,
+        total
+      });
+
+      saveHistory();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+
+      if (history.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无记录</div>';
+        return;
+      }
+
+      container.innerHTML = history.map(item => `
+        <div class="history-item">
+          <div class="history-details">
+            <div class="history-formula">${item.timestamp} - ${item.formula}: ${item.resultStr}</div>
+          </div>
+          <div class="history-result">${item.total}</div>
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      if (!confirm('确定要清空所有记录吗？')) return;
+      history = [];
+      saveHistory();
+      renderHistory();
+    }
+
+    function playSound() {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 400;
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        rollDice();
+      }
+    });
+
+    // Initialize
+    loadHistory();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

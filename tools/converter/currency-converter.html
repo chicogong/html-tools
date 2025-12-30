@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汇率换算器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; }
+        .card { background: white; border-radius: 24px; padding: 32px; max-width: 450px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        h1 { color: #333; text-align: center; margin-bottom: 24px; font-size: 24px; }
+        .currency-box { background: #f8f8f8; border-radius: 16px; padding: 20px; margin-bottom: 16px; position: relative; }
+        .currency-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .currency-select { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: white; border-radius: 8px; }
+        .currency-flag { font-size: 24px; }
+        .currency-code { font-weight: 600; color: #333; }
+        .currency-input { width: 100%; padding: 16px; border: none; background: white; border-radius: 12px; font-size: 28px; font-weight: bold; color: #333; text-align: right; }
+        .currency-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.2); }
+        .swap-btn { display: flex; justify-content: center; margin: -8px 0; position: relative; z-index: 1; }
+        .swap-btn button { width: 48px; height: 48px; border-radius: 50%; border: none; background: linear-gradient(135deg, #11998e, #38ef7d); color: white; font-size: 20px; cursor: pointer; transition: transform 0.3s; }
+        .swap-btn button:hover { transform: rotate(180deg); }
+        .rate-info { text-align: center; color: #666; font-size: 14px; margin-top: 16px; }
+        .popular-currencies { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .currency-tag { padding: 6px 12px; background: #f0f0f0; border-radius: 20px; font-size: 13px; cursor: pointer; }
+        .currency-tag:hover { background: #e0e0e0; }
+        .dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; z-index: 100; display: none; }
+        .dropdown.show { display: block; }
+        .dropdown-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; }
+        .dropdown-item:hover { background: #f5f5f5; }
+        .dropdown-search { padding: 12px; border-bottom: 1px solid #eee; }
+        .dropdown-search input { width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; }
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#converter">转换器</a><span>›</span>汇率换算器</nav>
+    <div class="card">
+        <h1>💱 汇率换算器</h1>
+        <div class="currency-box" id="fromBox">
+            <div class="currency-header">
+                <div class="currency-select" onclick="showDropdown('from')">
+                    <span class="currency-flag" id="fromFlag">🇨🇳</span>
+                    <span class="currency-code" id="fromCode">CNY</span>
+                    <span>▼</span>
+                </div>
+                <span style="color: #999; font-size: 13px;">从</span>
+            </div>
+            <input type="number" class="currency-input" id="fromAmount" value="100" oninput="convert('from')">
+            <div class="dropdown" id="fromDropdown"></div>
+        </div>
+        <div class="swap-btn">
+            <button onclick="swapCurrencies()">⇅</button>
+        </div>
+        <div class="currency-box" id="toBox">
+            <div class="currency-header">
+                <div class="currency-select" onclick="showDropdown('to')">
+                    <span class="currency-flag" id="toFlag">🇺🇸</span>
+                    <span class="currency-code" id="toCode">USD</span>
+                    <span>▼</span>
+                </div>
+                <span style="color: #999; font-size: 13px;">到</span>
+            </div>
+            <input type="number" class="currency-input" id="toAmount" readonly>
+            <div class="dropdown" id="toDropdown"></div>
+        </div>
+        <div class="rate-info" id="rateInfo">1 CNY = 0.1389 USD</div>
+        <div class="popular-currencies">
+            <span class="currency-tag" onclick="setQuick('USD')">🇺🇸 USD</span>
+            <span class="currency-tag" onclick="setQuick('EUR')">🇪🇺 EUR</span>
+            <span class="currency-tag" onclick="setQuick('GBP')">🇬🇧 GBP</span>
+            <span class="currency-tag" onclick="setQuick('JPY')">🇯🇵 JPY</span>
+            <span class="currency-tag" onclick="setQuick('KRW')">🇰🇷 KRW</span>
+            <span class="currency-tag" onclick="setQuick('HKD')">🇭🇰 HKD</span>
+        </div>
+    </div>
+    <script>
+        const currencies = [
+            { code: 'CNY', name: '人民币', flag: '🇨🇳', rate: 1 },
+            { code: 'USD', name: '美元', flag: '🇺🇸', rate: 0.1389 },
+            { code: 'EUR', name: '欧元', flag: '🇪🇺', rate: 0.1278 },
+            { code: 'GBP', name: '英镑', flag: '🇬🇧', rate: 0.1096 },
+            { code: 'JPY', name: '日元', flag: '🇯🇵', rate: 20.83 },
+            { code: 'KRW', name: '韩元', flag: '🇰🇷', rate: 184.5 },
+            { code: 'HKD', name: '港币', flag: '🇭🇰', rate: 1.086 },
+            { code: 'TWD', name: '台币', flag: '🇹🇼', rate: 4.48 },
+            { code: 'SGD', name: '新加坡元', flag: '🇸🇬', rate: 0.186 },
+            { code: 'AUD', name: '澳元', flag: '🇦🇺', rate: 0.212 },
+            { code: 'CAD', name: '加元', flag: '🇨🇦', rate: 0.189 },
+            { code: 'CHF', name: '瑞士法郎', flag: '🇨🇭', rate: 0.122 },
+            { code: 'THB', name: '泰铢', flag: '🇹🇭', rate: 4.86 },
+            { code: 'MYR', name: '马来西亚林吉特', flag: '🇲🇾', rate: 0.655 },
+            { code: 'RUB', name: '俄罗斯卢布', flag: '🇷🇺', rate: 12.6 },
+            { code: 'INR', name: '印度卢比', flag: '🇮🇳', rate: 11.56 }
+        ];
+        
+        let fromCurrency = currencies[0];
+        let toCurrency = currencies[1];
+        
+        function renderDropdown(type) {
+            const dropdown = document.getElementById(type + 'Dropdown');
+            dropdown.innerHTML = `
+                <div class="dropdown-search">
+                    <input type="text" placeholder="搜索货币..." oninput="filterCurrencies('${type}', this.value)">
+                </div>
+                <div class="dropdown-list" id="${type}List">
+                    ${currencies.map(c => `
+                        <div class="dropdown-item" onclick="selectCurrency('${type}', '${c.code}')">
+                            <span style="font-size: 24px;">${c.flag}</span>
+                            <div>
+                                <div style="font-weight: 600;">${c.code}</div>
+                                <div style="font-size: 12px; color: #666;">${c.name}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function showDropdown(type) {
+            const dropdown = document.getElementById(type + 'Dropdown');
+            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+            dropdown.classList.toggle('show');
+        }
+        
+        function filterCurrencies(type, query) {
+            const list = document.getElementById(type + 'List');
+            const filtered = currencies.filter(c => 
+                c.code.toLowerCase().includes(query.toLowerCase()) || 
+                c.name.includes(query)
+            );
+            list.innerHTML = filtered.map(c => `
+                <div class="dropdown-item" onclick="selectCurrency('${type}', '${c.code}')">
+                    <span style="font-size: 24px;">${c.flag}</span>
+                    <div>
+                        <div style="font-weight: 600;">${c.code}</div>
+                        <div style="font-size: 12px; color: #666;">${c.name}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function selectCurrency(type, code) {
+            const currency = currencies.find(c => c.code === code);
+            if (type === 'from') {
+                fromCurrency = currency;
+                document.getElementById('fromFlag').textContent = currency.flag;
+                document.getElementById('fromCode').textContent = currency.code;
+            } else {
+                toCurrency = currency;
+                document.getElementById('toFlag').textContent = currency.flag;
+                document.getElementById('toCode').textContent = currency.code;
+            }
+            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+            convert('from');
+        }
+        
+        function convert(from) {
+            const amount = parseFloat(document.getElementById('fromAmount').value) || 0;
+            // Convert through CNY as base
+            const inCNY = amount / fromCurrency.rate;
+            const result = inCNY * toCurrency.rate;
+            
+            document.getElementById('toAmount').value = result.toFixed(2);
+            
+            const rate = (toCurrency.rate / fromCurrency.rate).toFixed(4);
+            document.getElementById('rateInfo').textContent = `1 ${fromCurrency.code} = ${rate} ${toCurrency.code}`;
+        }
+        
+        function swapCurrencies() {
+            const temp = fromCurrency;
+            fromCurrency = toCurrency;
+            toCurrency = temp;
+            
+            document.getElementById('fromFlag').textContent = fromCurrency.flag;
+            document.getElementById('fromCode').textContent = fromCurrency.code;
+            document.getElementById('toFlag').textContent = toCurrency.flag;
+            document.getElementById('toCode').textContent = toCurrency.code;
+            
+            const tempVal = document.getElementById('fromAmount').value;
+            document.getElementById('fromAmount').value = document.getElementById('toAmount').value;
+            convert('from');
+        }
+        
+        function setQuick(code) {
+            selectCurrency('to', code);
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.currency-select') && !e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+            }
+        });
+        
+        renderDropdown('from');
+        renderDropdown('to');
+        convert('from');
+    </script>
+</body>
+</html>

@@ -60,24 +60,29 @@ export default [
       }
     },
     rules: {
-      // HTML 内联 JS 的函数通过 onclick 等属性调用，ESLint 无法识别
-      // 直接关掉这些规则，避免大量误报
+      // ========== HTML 内联 JS 特殊处理 ==========
+      // 本项目的函数定义在 <script> 中，通过 onclick/onchange 等 HTML 属性调用
+      // ESLint 只分析 JS 代码，无法追踪 HTML 属性中的函数调用，导致大量误报
+      // 例如：function copyResult() {} 会被报 "defined but never used"
+      //       但实际通过 <button onclick="copyResult()"> 调用
       'no-unused-vars': 'off',
       'no-undef': 'off',
       
-      // 其他宽松规则
-      'no-dupe-keys': 'off',
-      'no-empty': ['warn', { allowEmptyCatch: true }],
-      'no-case-declarations': 'off',
-      'no-redeclare': 'off',
-      'no-useless-escape': 'off',
-      'no-control-regex': 'off',
+      // ========== 项目特性相关 ==========
+      'no-dupe-keys': 'off',              // 工具数据中可能有重复键
+      'no-empty': ['warn', { allowEmptyCatch: true }],  // 允许空 catch 块
+      'no-case-declarations': 'off',       // switch case 中声明变量是常见模式
+      'no-redeclare': 'off',               // 某些工具需要条件性重声明
+      'no-useless-escape': 'off',          // 正则表达式工具需要各种转义
+      'no-control-regex': 'off',           // 文本处理工具需要匹配控制字符
       'no-misleading-character-class': 'off',
-      'no-prototype-builtins': 'off',
-      'no-console': 'off',
-      'semi': 'off',
-      'quotes': 'off',
-      'indent': 'off'
+      'no-prototype-builtins': 'off',      // hasOwnProperty 等直接调用
+      
+      // ========== 代码风格（不强制）==========
+      'no-console': 'off',                 // 允许 console 调试
+      'semi': 'off',                       // 分号风格不限
+      'quotes': 'off',                     // 引号风格不限
+      'indent': 'off'                      // HTML 内嵌 JS 缩进特殊，不检查
     }
   }
 ];

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>番茄钟 - WebUtils</title>
+  <meta name="description" content="番茄工作法计时器，提高专注力和效率" />
+  <meta name="keywords" content="番茄钟 pomodoro 计时器 专注 时间管理" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #dc3545; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #ef4444; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); margin-bottom: 20px; text-align: center; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .mode-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 30px; }
+    .mode-tab { padding: 10px 20px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-weight: 500; transition: all 0.2s; }
+    .mode-tab:hover { border-color: var(--primary); }
+    .mode-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .timer-display { margin: 40px 0; }
+    .timer-display .time { font-size: 5rem; font-weight: 700; font-family: ui-monospace, monospace; line-height: 1; }
+    .timer-display .label { font-size: 1rem; color: var(--text-muted); margin-top: 12px; }
+    .progress-ring { width: 250px; height: 250px; margin: 0 auto 30px; }
+    .progress-ring circle { fill: none; stroke-width: 8; }
+    .progress-ring .bg { stroke: var(--border); }
+    .progress-ring .progress { stroke: var(--primary); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 0.5s; }
+    .controls { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; }
+    .btn { padding: 14px 28px; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.2s; }
+    .btn.primary { background: var(--primary); color: #fff; }
+    .btn.secondary { background: var(--border); color: var(--text); }
+    .btn:hover { transform: scale(1.05); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+    .stat { text-align: center; }
+    .stat .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .stat .label { font-size: 0.8rem; color: var(--text-muted); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>🍅 番茄钟</h1>
+    <p class="desc">专注工作，高效休息</p>
+
+    <div class="card">
+      <div class="mode-tabs">
+        <button class="mode-tab active" onclick="setMode('work')">工作 25分钟</button>
+        <button class="mode-tab" onclick="setMode('shortBreak')">短休息 5分钟</button>
+        <button class="mode-tab" onclick="setMode('longBreak')">长休息 15分钟</button>
+      </div>
+
+      <svg class="progress-ring" viewBox="0 0 250 250">
+        <circle class="bg" cx="125" cy="125" r="110"></circle>
+        <circle class="progress" id="progressCircle" cx="125" cy="125" r="110"></circle>
+      </svg>
+
+      <div class="timer-display">
+        <div class="time" id="timerDisplay">25:00</div>
+        <div class="label" id="modeLabel">工作时间</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn primary" id="startBtn" onclick="toggleTimer()">开始</button>
+        <button class="btn secondary" onclick="resetTimer()">重置</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="value" id="completedCount">0</div>
+          <div class="label">完成番茄</div>
+        </div>
+        <div class="stat">
+          <div class="value" id="totalTime">0</div>
+          <div class="label">总专注(分)</div>
+        </div>
+        <div class="stat">
+          <div class="value" id="todayCount">0</div>
+          <div class="label">今日番茄</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const modes = {
+      work: { duration: 25 * 60, label: '工作时间', color: '#dc3545' },
+      shortBreak: { duration: 5 * 60, label: '短休息', color: '#198754' },
+      longBreak: { duration: 15 * 60, label: '长休息', color: '#0d6efd' }
+    };
+
+    let currentMode = 'work';
+    let timeLeft = modes.work.duration;
+    let isRunning = false;
+    let intervalId = null;
+    let completedPomodoros = 0;
+    let totalFocusTime = 0;
+
+    const circumference = 2 * Math.PI * 110;
+    const progressCircle = document.getElementById('progressCircle');
+    progressCircle.style.strokeDasharray = circumference;
+
+    function updateDisplay() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      document.getElementById('timerDisplay').textContent =
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      // 更新进度环
+      const progress = timeLeft / modes[currentMode].duration;
+      const offset = circumference * (1 - progress);
+      progressCircle.style.strokeDashoffset = offset;
+
+      // 更新页面标题
+      document.title = `${minutes}:${seconds.toString().padStart(2, '0')} - 番茄钟`;
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      timeLeft = modes[mode].duration;
+      isRunning = false;
+      clearInterval(intervalId);
+      document.getElementById('startBtn').textContent = '开始';
+      document.getElementById('modeLabel').textContent = modes[mode].label;
+      progressCircle.style.stroke = modes[mode].color;
+
+      document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+
+      updateDisplay();
+    }
+
+    function toggleTimer() {
+      if (isRunning) {
+        clearInterval(intervalId);
+        document.getElementById('startBtn').textContent = '继续';
+      } else {
+        intervalId = setInterval(() => {
+          timeLeft--;
+          updateDisplay();
+
+          if (timeLeft <= 0) {
+            clearInterval(intervalId);
+            isRunning = false;
+            onTimerComplete();
+          }
+        }, 1000);
+        document.getElementById('startBtn').textContent = '暂停';
+      }
+      isRunning = !isRunning;
+    }
+
+    function resetTimer() {
+      clearInterval(intervalId);
+      isRunning = false;
+      timeLeft = modes[currentMode].duration;
+      document.getElementById('startBtn').textContent = '开始';
+      updateDisplay();
+    }
+
+    function onTimerComplete() {
+      // 播放提示音
+      try {
+        const audio = new AudioContext();
+        const oscillator = audio.createOscillator();
+        oscillator.connect(audio.destination);
+        oscillator.frequency.value = 800;
+        oscillator.start();
+        setTimeout(() => oscillator.stop(), 200);
+      } catch (e) {}
+
+      if (currentMode === 'work') {
+        completedPomodoros++;
+        totalFocusTime += 25;
+        document.getElementById('completedCount').textContent = completedPomodoros;
+        document.getElementById('totalTime').textContent = totalFocusTime;
+        document.getElementById('todayCount').textContent = completedPomodoros;
+
+        // 每4个番茄后长休息
+        if (completedPomodoros % 4 === 0) {
+          alert('🎉 完成4个番茄！建议进行15分钟长休息');
+        } else {
+          alert('✅ 番茄完成！建议休息5分钟');
+        }
+      } else {
+        alert('☕ 休息结束！准备开始新的番茄');
+      }
+
+      document.getElementById('startBtn').textContent = '开始';
+    }
+
+    updateDisplay();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

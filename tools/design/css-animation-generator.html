@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSS 动画生成器 - WebUtils</title>
+  <meta name="description" content="可视化创建 CSS keyframe 动画效果" />
+  <meta name="keywords" content="css animation keyframe 动画 过渡 生成器" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .preset { padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 0.85rem; background: var(--card-bg); transition: all 0.2s; }
+    .preset:hover { border-color: var(--primary); color: var(--primary); }
+    .preset.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .preview-area { display: flex; justify-content: center; align-items: center; height: 200px; background: var(--bg); border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
+    .preview-box { width: 80px; height: 80px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; }
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .control-group label { display: block; font-weight: 500; font-size: 0.85rem; margin-bottom: 6px; }
+    .control-group select, .control-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); font-size: 0.9rem; }
+    .output textarea { width: 100%; height: 180px; padding: 12px; font-family: ui-monospace, monospace; font-size: 0.8rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); resize: none; }
+    .btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-row { display: flex; gap: 12px; margin-top: 12px; }
+    .status { font-size: 0.85rem; color: var(--success); margin-top: 8px; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>CSS 动画生成器</h1>
+    <p class="desc">选择预设动画或自定义参数，生成 CSS 动画代码</p>
+
+    <div class="card">
+      <div class="presets" id="presets"></div>
+
+      <div class="preview-area">
+        <div class="preview-box" id="previewBox"></div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>动画名称</label>
+          <input type="text" id="animName" value="myAnimation" oninput="updateAnimation()" />
+        </div>
+        <div class="control-group">
+          <label>持续时间</label>
+          <select id="duration" onchange="updateAnimation()">
+            <option value="0.3s">0.3s</option>
+            <option value="0.5s">0.5s</option>
+            <option value="1s" selected>1s</option>
+            <option value="1.5s">1.5s</option>
+            <option value="2s">2s</option>
+            <option value="3s">3s</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>缓动函数</label>
+          <select id="easing" onchange="updateAnimation()">
+            <option value="ease">ease</option>
+            <option value="ease-in">ease-in</option>
+            <option value="ease-out">ease-out</option>
+            <option value="ease-in-out" selected>ease-in-out</option>
+            <option value="linear">linear</option>
+            <option value="cubic-bezier(0.68,-0.55,0.265,1.55)">弹性</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>循环次数</label>
+          <select id="iteration" onchange="updateAnimation()">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="infinite" selected>无限</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>方向</label>
+          <select id="direction" onchange="updateAnimation()">
+            <option value="normal">normal</option>
+            <option value="reverse">reverse</option>
+            <option value="alternate" selected>alternate</option>
+            <option value="alternate-reverse">alternate-reverse</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>填充模式</label>
+          <select id="fillMode" onchange="updateAnimation()">
+            <option value="none">none</option>
+            <option value="forwards">forwards</option>
+            <option value="backwards">backwards</option>
+            <option value="both" selected>both</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="output">
+        <textarea id="cssOutput" readonly></textarea>
+        <div class="btn-row">
+          <button class="btn primary" onclick="copyCSS()">复制 CSS</button>
+          <button class="btn" onclick="playAnimation()">重播动画</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const previewBox = document.getElementById('previewBox');
+    const outputEl = document.getElementById('cssOutput');
+    const statusEl = document.getElementById('status');
+    const presetsEl = document.getElementById('presets');
+
+    const animations = {
+      bounce: { name: 'bounce', keyframes: `@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-30px); }
+  60% { transform: translateY(-15px); }
+}` },
+      pulse: { name: 'pulse', keyframes: `@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}` },
+      shake: { name: 'shake', keyframes: `@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+  20%, 40%, 60%, 80% { transform: translateX(10px); }
+}` },
+      spin: { name: 'spin', keyframes: `@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}` },
+      fade: { name: 'fade', keyframes: `@keyframes fade {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}` },
+      slideIn: { name: 'slideIn', keyframes: `@keyframes slideIn {
+  from { transform: translateX(-100px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}` },
+      swing: { name: 'swing', keyframes: `@keyframes swing {
+  20% { transform: rotate(15deg); }
+  40% { transform: rotate(-10deg); }
+  60% { transform: rotate(5deg); }
+  80% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}` },
+      flip: { name: 'flip', keyframes: `@keyframes flip {
+  0% { transform: perspective(400px) rotateY(0); }
+  100% { transform: perspective(400px) rotateY(360deg); }
+}` }
+    };
+
+    let currentAnim = 'bounce';
+
+    function renderPresets() {
+      Object.keys(animations).forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = 'preset' + (key === currentAnim ? ' active' : '');
+        btn.textContent = key;
+        btn.onclick = () => selectPreset(key);
+        presetsEl.appendChild(btn);
+      });
+    }
+
+    function selectPreset(key) {
+      currentAnim = key;
+      document.querySelectorAll('.preset').forEach(el => el.classList.remove('active'));
+      document.querySelector(`.preset:nth-child(${Object.keys(animations).indexOf(key) + 1})`).classList.add('active');
+      document.getElementById('animName').value = key;
+      updateAnimation();
+    }
+
+    function updateAnimation() {
+      const name = document.getElementById('animName').value || 'myAnimation';
+      const duration = document.getElementById('duration').value;
+      const easing = document.getElementById('easing').value;
+      const iteration = document.getElementById('iteration').value;
+      const direction = document.getElementById('direction').value;
+      const fillMode = document.getElementById('fillMode').value;
+
+      const anim = animations[currentAnim];
+      const animationValue = `${anim.name} ${duration} ${easing} ${iteration} ${direction} ${fillMode}`;
+
+      // 更新预览
+      previewBox.style.animation = 'none';
+      previewBox.offsetHeight; // 触发重绘
+      previewBox.style.animation = animationValue;
+
+      // 生成 CSS
+      const css = `${anim.keyframes}
+
+.element {
+  animation: ${animationValue};
+}`;
+      outputEl.value = css;
+    }
+
+    function playAnimation() {
+      previewBox.style.animation = 'none';
+      previewBox.offsetHeight;
+      updateAnimation();
+    }
+
+    function copyCSS() {
+      navigator.clipboard.writeText(outputEl.value).then(() => {
+        statusEl.textContent = '已复制到剪贴板';
+        setTimeout(() => statusEl.textContent = '', 2000);
+      });
+    }
+
+    renderPresets();
+    updateAnimation();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

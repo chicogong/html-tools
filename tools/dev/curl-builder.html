@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>cURL 命令生成器 - WebUtils</title>
+  <meta name="description" content="可视化生成 cURL 命令" />
+  <meta name="keywords" content="curl builder 命令 HTTP 请求 API" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: 500; margin-bottom: 8px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-family: inherit; }
+    .form-group textarea { height: 100px; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    .form-row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; }
+    .method-url { display: flex; gap: 12px; }
+    .method-url select { width: 120px; flex-shrink: 0; }
+    .method-url input { flex: 1; }
+    .headers-list { margin-bottom: 12px; }
+    .header-row { display: grid; grid-template-columns: 1fr 1fr 40px; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .header-row input { padding: 8px; font-size: 0.9rem; }
+    .delete-btn { padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text-muted); cursor: pointer; }
+    .delete-btn:hover { color: #dc3545; border-color: #dc3545; }
+    .add-btn { padding: 8px 16px; border: 1px dashed var(--border); border-radius: var(--radius); background: transparent; color: var(--text-muted); cursor: pointer; width: 100%; }
+    .add-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .checkbox-group { display: flex; gap: 16px; flex-wrap: wrap; }
+    .checkbox-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal; }
+    .result { padding: 16px; background: var(--bg); border-radius: var(--radius); margin-top: 20px; }
+    .result .label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .result .command { font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--primary); word-break: break-all; line-height: 1.6; white-space: pre-wrap; }
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+    .btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>cURL 命令生成器</h1>
+    <p class="desc">可视化生成 cURL HTTP 请求命令</p>
+
+    <div class="card">
+      <div class="form-group">
+        <label>请求方法和 URL</label>
+        <div class="method-url">
+          <select id="method" onchange="buildCurl()">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+            <option value="HEAD">HEAD</option>
+            <option value="OPTIONS">OPTIONS</option>
+          </select>
+          <input type="text" id="url" placeholder="https://api.example.com/endpoint" oninput="buildCurl()" value="https://api.example.com/users" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>请求头</label>
+        <div class="headers-list" id="headersList">
+          <div class="header-row">
+            <input type="text" placeholder="Header 名称" value="Content-Type" oninput="buildCurl()" />
+            <input type="text" placeholder="Header 值" value="application/json" oninput="buildCurl()" />
+            <button class="delete-btn" onclick="removeHeader(this)">×</button>
+          </div>
+          <div class="header-row">
+            <input type="text" placeholder="Header 名称" value="Authorization" oninput="buildCurl()" />
+            <input type="text" placeholder="Header 值" value="Bearer YOUR_TOKEN" oninput="buildCurl()" />
+            <button class="delete-btn" onclick="removeHeader(this)">×</button>
+          </div>
+        </div>
+        <button class="add-btn" onclick="addHeader()">+ 添加请求头</button>
+      </div>
+
+      <div class="form-group">
+        <label>请求体 (JSON)</label>
+        <textarea id="body" placeholder='{"key": "value"}' oninput="buildCurl()">{"name": "John", "email": "john@example.com"}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>认证</label>
+        <div class="form-row">
+          <select id="authType" onchange="buildCurl()">
+            <option value="none">无</option>
+            <option value="basic">Basic Auth</option>
+            <option value="bearer">Bearer Token</option>
+          </select>
+          <input type="text" id="authValue" placeholder="用户名:密码 或 Token" oninput="buildCurl()" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>选项</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="optVerbose" onchange="buildCurl()" /> 详细输出 (-v)</label>
+          <label><input type="checkbox" id="optInsecure" onchange="buildCurl()" /> 忽略 SSL (-k)</label>
+          <label><input type="checkbox" id="optLocation" checked onchange="buildCurl()" /> 跟随重定向 (-L)</label>
+          <label><input type="checkbox" id="optSilent" onchange="buildCurl()" /> 静默模式 (-s)</label>
+          <label><input type="checkbox" id="optOutput" onchange="buildCurl()" /> 输出到文件</label>
+        </div>
+      </div>
+
+      <div class="form-group" id="outputFileGroup" style="display:none;">
+        <label>输出文件名</label>
+        <input type="text" id="outputFile" placeholder="response.json" oninput="buildCurl()" />
+      </div>
+
+      <div class="form-group">
+        <label>超时设置 (秒)</label>
+        <input type="number" id="timeout" placeholder="不限制" oninput="buildCurl()" style="width:150px;" />
+      </div>
+
+      <div class="result">
+        <div class="label">生成的 cURL 命令</div>
+        <div class="command" id="command">curl -X GET "https://api.example.com/users"</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="copyCommand()">复制命令</button>
+        <button class="btn" onclick="resetForm()">重置</button>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    function getHeaders() {
+      const rows = document.querySelectorAll('#headersList .header-row');
+      const headers = [];
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const name = inputs[0].value.trim();
+        const value = inputs[1].value.trim();
+        if (name && value) {
+          headers.push({ name, value });
+        }
+      });
+      return headers;
+    }
+
+    function addHeader() {
+      const list = document.getElementById('headersList');
+      const row = document.createElement('div');
+      row.className = 'header-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Header 名称" oninput="buildCurl()" />
+        <input type="text" placeholder="Header 值" oninput="buildCurl()" />
+        <button class="delete-btn" onclick="removeHeader(this)">×</button>
+      `;
+      list.appendChild(row);
+    }
+
+    function removeHeader(btn) {
+      btn.parentElement.remove();
+      buildCurl();
+    }
+
+    function buildCurl() {
+      const method = document.getElementById('method').value;
+      const url = document.getElementById('url').value.trim();
+      const body = document.getElementById('body').value.trim();
+      const authType = document.getElementById('authType').value;
+      const authValue = document.getElementById('authValue').value.trim();
+      const headers = getHeaders();
+
+      const verbose = document.getElementById('optVerbose').checked;
+      const insecure = document.getElementById('optInsecure').checked;
+      const location = document.getElementById('optLocation').checked;
+      const silent = document.getElementById('optSilent').checked;
+      const outputEnabled = document.getElementById('optOutput').checked;
+      const outputFile = document.getElementById('outputFile').value.trim();
+      const timeout = document.getElementById('timeout').value.trim();
+
+      document.getElementById('outputFileGroup').style.display = outputEnabled ? 'block' : 'none';
+
+      let parts = ['curl'];
+
+      // Method (skip for GET)
+      if (method !== 'GET') {
+        parts.push(`-X ${method}`);
+      }
+
+      // Options
+      if (verbose) parts.push('-v');
+      if (insecure) parts.push('-k');
+      if (location) parts.push('-L');
+      if (silent) parts.push('-s');
+
+      // Timeout
+      if (timeout) {
+        parts.push(`--max-time ${timeout}`);
+      }
+
+      // Auth
+      if (authType === 'basic' && authValue) {
+        parts.push(`-u "${authValue}"`);
+      } else if (authType === 'bearer' && authValue) {
+        parts.push(`-H "Authorization: Bearer ${authValue}"`);
+      }
+
+      // Headers
+      headers.forEach(h => {
+        parts.push(`-H "${h.name}: ${h.value}"`);
+      });
+
+      // Body
+      if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+        const escapedBody = body.replace(/"/g, '\\"');
+        parts.push(`-d "${escapedBody}"`);
+      }
+
+      // Output file
+      if (outputEnabled && outputFile) {
+        parts.push(`-o ${outputFile}`);
+      }
+
+      // URL
+      parts.push(`"${url || 'https://example.com'}"`);
+
+      document.getElementById('command').textContent = parts.join(' \\\n  ');
+    }
+
+    function copyCommand() {
+      const cmd = document.getElementById('command').textContent.replace(/\\\n\s+/g, ' ');
+      navigator.clipboard.writeText(cmd);
+    }
+
+    function resetForm() {
+      document.getElementById('method').value = 'GET';
+      document.getElementById('url').value = '';
+      document.getElementById('body').value = '';
+      document.getElementById('authType').value = 'none';
+      document.getElementById('authValue').value = '';
+      document.getElementById('headersList').innerHTML = `
+        <div class="header-row">
+          <input type="text" placeholder="Header 名称" oninput="buildCurl()" />
+          <input type="text" placeholder="Header 值" oninput="buildCurl()" />
+          <button class="delete-btn" onclick="removeHeader(this)">×</button>
+        </div>
+      `;
+      document.querySelectorAll('.checkbox-group input').forEach(cb => cb.checked = false);
+      document.getElementById('optLocation').checked = true;
+      document.getElementById('timeout').value = '';
+      buildCurl();
+    }
+
+    buildCurl();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

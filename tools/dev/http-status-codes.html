@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTTP 状态码查询 - WebUtils</title>
+  <meta name="description" content="查询和了解 HTTP 状态码的含义" />
+  <meta name="keywords" content="http status code 状态码 200 404 500" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --warning: #ffc107; --danger: #dc3545; --info: #0dcaf0; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --info: #22d3ee; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .search-box { display: flex; gap: 12px; margin-bottom: 20px; }
+    .search-box input { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1rem; background: var(--bg); color: var(--text); }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filter-btn { padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
+    .filter-btn:hover, .filter-btn.active { border-color: var(--primary); color: var(--primary); }
+    .status-list { display: grid; gap: 12px; }
+    .status-item { display: flex; gap: 16px; padding: 16px; background: var(--bg); border-radius: var(--radius); align-items: flex-start; cursor: pointer; transition: all 0.2s; }
+    .status-item:hover { transform: translateX(4px); }
+    .status-code { font-size: 1.5rem; font-weight: 700; font-family: ui-monospace, monospace; min-width: 60px; }
+    .status-1xx .status-code { color: var(--info); }
+    .status-2xx .status-code { color: var(--success); }
+    .status-3xx .status-code { color: var(--primary); }
+    .status-4xx .status-code { color: var(--warning); }
+    .status-5xx .status-code { color: var(--danger); }
+    .status-info h4 { margin: 0 0 4px; font-size: 1rem; }
+    .status-info p { margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>HTTP 状态码查询</h1>
+    <p class="desc">查询和了解 HTTP 状态码的含义</p>
+
+    <div class="card">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="搜索状态码或描述..." oninput="filterCodes()" />
+      </div>
+
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterByCategory('all')">全部</button>
+        <button class="filter-btn" onclick="filterByCategory('1xx')">1xx 信息</button>
+        <button class="filter-btn" onclick="filterByCategory('2xx')">2xx 成功</button>
+        <button class="filter-btn" onclick="filterByCategory('3xx')">3xx 重定向</button>
+        <button class="filter-btn" onclick="filterByCategory('4xx')">4xx 客户端错误</button>
+        <button class="filter-btn" onclick="filterByCategory('5xx')">5xx 服务器错误</button>
+      </div>
+
+      <div class="status-list" id="statusList"></div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const statusCodes = [
+      { code: 100, name: 'Continue', desc: '服务器已收到请求头，客户端应继续发送请求体', category: '1xx' },
+      { code: 101, name: 'Switching Protocols', desc: '服务器同意切换协议', category: '1xx' },
+      { code: 200, name: 'OK', desc: '请求成功，返回请求的数据', category: '2xx' },
+      { code: 201, name: 'Created', desc: '请求成功，已创建新资源', category: '2xx' },
+      { code: 202, name: 'Accepted', desc: '请求已接受，但尚未处理', category: '2xx' },
+      { code: 204, name: 'No Content', desc: '请求成功，但无内容返回', category: '2xx' },
+      { code: 206, name: 'Partial Content', desc: '服务器返回部分内容（范围请求）', category: '2xx' },
+      { code: 301, name: 'Moved Permanently', desc: '资源已永久移动到新 URL', category: '3xx' },
+      { code: 302, name: 'Found', desc: '资源临时移动到新 URL', category: '3xx' },
+      { code: 303, name: 'See Other', desc: '应使用 GET 请求另一个 URL', category: '3xx' },
+      { code: 304, name: 'Not Modified', desc: '资源未修改，使用缓存版本', category: '3xx' },
+      { code: 307, name: 'Temporary Redirect', desc: '临时重定向，保持原请求方法', category: '3xx' },
+      { code: 308, name: 'Permanent Redirect', desc: '永久重定向，保持原请求方法', category: '3xx' },
+      { code: 400, name: 'Bad Request', desc: '请求语法错误，服务器无法理解', category: '4xx' },
+      { code: 401, name: 'Unauthorized', desc: '未授权，需要身份验证', category: '4xx' },
+      { code: 403, name: 'Forbidden', desc: '服务器拒绝请求', category: '4xx' },
+      { code: 404, name: 'Not Found', desc: '请求的资源不存在', category: '4xx' },
+      { code: 405, name: 'Method Not Allowed', desc: '请求方法不被允许', category: '4xx' },
+      { code: 408, name: 'Request Timeout', desc: '请求超时', category: '4xx' },
+      { code: 409, name: 'Conflict', desc: '请求与当前资源状态冲突', category: '4xx' },
+      { code: 410, name: 'Gone', desc: '资源已被永久删除', category: '4xx' },
+      { code: 413, name: 'Payload Too Large', desc: '请求体过大', category: '4xx' },
+      { code: 414, name: 'URI Too Long', desc: 'URL 过长', category: '4xx' },
+      { code: 415, name: 'Unsupported Media Type', desc: '不支持的媒体类型', category: '4xx' },
+      { code: 429, name: 'Too Many Requests', desc: '请求过于频繁（限流）', category: '4xx' },
+      { code: 500, name: 'Internal Server Error', desc: '服务器内部错误', category: '5xx' },
+      { code: 501, name: 'Not Implemented', desc: '服务器不支持该功能', category: '5xx' },
+      { code: 502, name: 'Bad Gateway', desc: '网关或代理收到无效响应', category: '5xx' },
+      { code: 503, name: 'Service Unavailable', desc: '服务暂时不可用', category: '5xx' },
+      { code: 504, name: 'Gateway Timeout', desc: '网关或代理超时', category: '5xx' },
+    ];
+
+    let currentFilter = 'all';
+
+    function renderCodes(codes) {
+      const list = document.getElementById('statusList');
+      list.innerHTML = codes.map(s => `
+        <div class="status-item status-${s.category}" onclick="copyCode(${s.code})">
+          <div class="status-code">${s.code}</div>
+          <div class="status-info">
+            <h4>${s.name}</h4>
+            <p>${s.desc}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterCodes() {
+      const search = document.getElementById('search').value.toLowerCase();
+      let filtered = statusCodes;
+
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(s => s.category === currentFilter);
+      }
+
+      if (search) {
+        filtered = filtered.filter(s =>
+          s.code.toString().includes(search) ||
+          s.name.toLowerCase().includes(search) ||
+          s.desc.toLowerCase().includes(search)
+        );
+      }
+
+      renderCodes(filtered);
+    }
+
+    function filterByCategory(category) {
+      currentFilter = category;
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      filterCodes();
+    }
+
+    function copyCode(code) {
+      navigator.clipboard.writeText(code.toString());
+    }
+
+    renderCodes(statusCodes);
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

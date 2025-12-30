@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>习惯打卡 - WebUtils</title>
+  <meta name="description" content="追踪和管理每日习惯" />
+  <meta name="keywords" content="习惯打卡 habit tracker 日历 追踪" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .add-habit { display: flex; gap: 12px; margin-bottom: 20px; }
+    .add-habit input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1rem; background: var(--card-bg); color: var(--text); }
+    .btn { padding: 12px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .habits { display: grid; gap: 16px; }
+    .habit-item { background: var(--bg); border-radius: var(--radius); padding: 16px; }
+    .habit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .habit-name { font-weight: 600; font-size: 1.1rem; }
+    .habit-streak { font-size: 0.85rem; color: var(--success); }
+    .habit-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; background: var(--card-bg); border: 1px solid var(--border); }
+    .day:hover { border-color: var(--primary); }
+    .day.checked { background: var(--success); border-color: var(--success); color: #fff; }
+    .day.today { border-color: var(--primary); border-width: 2px; }
+    .delete-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; padding: 4px 8px; }
+    .delete-btn:hover { color: #dc3545; }
+    .week-labels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; text-align: center; font-size: 0.7rem; color: var(--text-muted); }
+    .stats { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
+    .stat { text-align: center; padding: 12px 20px; background: var(--bg); border-radius: var(--radius); }
+    .stat .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .stat .label { font-size: 0.8rem; color: var(--text-muted); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>习惯打卡</h1>
+    <p class="desc">追踪和管理每日习惯</p>
+
+    <div class="card">
+      <div class="add-habit">
+        <input type="text" id="habitInput" placeholder="输入新习惯..." onkeypress="if(event.key==='Enter')addHabit()" />
+        <button class="btn primary" onclick="addHabit()">添加习惯</button>
+      </div>
+
+      <div class="habits" id="habitsList"></div>
+
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'habit_tracker_data';
+
+    function loadData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : { habits: [] };
+    }
+
+    function saveData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getDateKey(date) {
+      return date.toISOString().split('T')[0];
+    }
+
+    function getLast7Days() {
+      const days = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        days.push(d);
+      }
+      return days;
+    }
+
+    function calculateStreak(habit) {
+      const today = new Date();
+      let streak = 0;
+      const checked = habit.checked || {};
+
+      for (let i = 0; i < 365; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = getDateKey(d);
+
+        if (checked[key]) {
+          streak++;
+        } else if (i > 0) {
+          break;
+        }
+      }
+
+      return streak;
+    }
+
+    function addHabit() {
+      const input = document.getElementById('habitInput');
+      const name = input.value.trim();
+      if (!name) return;
+
+      const data = loadData();
+      data.habits.push({
+        id: Date.now(),
+        name: name,
+        checked: {},
+        createdAt: new Date().toISOString()
+      });
+
+      saveData(data);
+      input.value = '';
+      render();
+    }
+
+    function deleteHabit(id) {
+      if (!confirm('确定删除这个习惯吗？')) return;
+
+      const data = loadData();
+      data.habits = data.habits.filter(h => h.id !== id);
+      saveData(data);
+      render();
+    }
+
+    function toggleDay(habitId, dateKey) {
+      const data = loadData();
+      const habit = data.habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      if (!habit.checked) habit.checked = {};
+
+      if (habit.checked[dateKey]) {
+        delete habit.checked[dateKey];
+      } else {
+        habit.checked[dateKey] = true;
+      }
+
+      saveData(data);
+      render();
+    }
+
+    function render() {
+      const data = loadData();
+      const days = getLast7Days();
+      const today = getDateKey(new Date());
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+      const habitsHtml = data.habits.map(habit => {
+        const streak = calculateStreak(habit);
+        const checked = habit.checked || {};
+
+        const daysHtml = days.map(d => {
+          const key = getDateKey(d);
+          const isChecked = checked[key];
+          const isToday = key === today;
+          return `
+            <div class="day ${isChecked ? 'checked' : ''} ${isToday ? 'today' : ''}"
+                 onclick="toggleDay(${habit.id}, '${key}')">
+              ${d.getDate()}
+            </div>
+          `;
+        }).join('');
+
+        const weekLabelsHtml = days.map(d =>
+          `<span>${weekDays[d.getDay()]}</span>`
+        ).join('');
+
+        return `
+          <div class="habit-item">
+            <div class="habit-header">
+              <span class="habit-name">${habit.name}</span>
+              <div>
+                <span class="habit-streak">🔥 ${streak}天</span>
+                <button class="delete-btn" onclick="deleteHabit(${habit.id})">×</button>
+              </div>
+            </div>
+            <div class="week-labels">${weekLabelsHtml}</div>
+            <div class="habit-days">${daysHtml}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('habitsList').innerHTML = habitsHtml || '<p style="text-align:center;color:var(--text-muted)">还没有习惯，添加一个开始吧！</p>';
+
+      // Stats
+      let totalChecks = 0;
+      let longestStreak = 0;
+
+      data.habits.forEach(habit => {
+        const checked = habit.checked || {};
+        totalChecks += Object.keys(checked).length;
+        longestStreak = Math.max(longestStreak, calculateStreak(habit));
+      });
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat">
+          <div class="value">${data.habits.length}</div>
+          <div class="label">习惯数</div>
+        </div>
+        <div class="stat">
+          <div class="value">${totalChecks}</div>
+          <div class="label">总打卡</div>
+        </div>
+        <div class="stat">
+          <div class="value">${longestStreak}</div>
+          <div class="label">最长连续</div>
+        </div>
+      `;
+    }
+
+    render();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

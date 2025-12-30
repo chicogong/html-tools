@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSS Grid 生成器 - WebUtils</title>
+  <meta name="description" content="可视化创建 CSS Grid 网格布局" />
+  <meta name="keywords" content="css grid 网格布局 grid-template 生成器" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .preview-container { background: var(--bg); border: 2px dashed var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+    .grid-container { min-height: 300px; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px); border-radius: var(--radius); }
+    .grid-item { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-radius: 6px; font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .controls-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .control-item { display: flex; align-items: center; gap: 8px; }
+    .control-item label { font-weight: 500; font-size: 0.9rem; }
+    .control-item input, .control-item select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); width: 80px; }
+    .output textarea { width: 100%; height: 140px; padding: 12px; font-family: ui-monospace, monospace; font-size: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); resize: none; }
+    .btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-row { display: flex; gap: 12px; margin-top: 12px; }
+    .status { font-size: 0.85rem; color: var(--success); margin-top: 8px; }
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .preset { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 0.85rem; background: var(--card-bg); }
+    .preset:hover { border-color: var(--primary); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>CSS Grid 生成器</h1>
+    <p class="desc">可视化创建 CSS Grid 网格布局</p>
+
+    <div class="card">
+      <div class="presets">
+        <button class="preset" onclick="applyPreset('equal3')">3等分</button>
+        <button class="preset" onclick="applyPreset('equal4')">4等分</button>
+        <button class="preset" onclick="applyPreset('sidebar')">侧边栏</button>
+        <button class="preset" onclick="applyPreset('holy')">圣杯布局</button>
+        <button class="preset" onclick="applyPreset('masonry')">瀑布流</button>
+      </div>
+
+      <div class="controls-row">
+        <div class="control-item">
+          <label>列数:</label>
+          <input type="number" id="columns" value="3" min="1" max="12" onchange="updateGrid()" />
+        </div>
+        <div class="control-item">
+          <label>行数:</label>
+          <input type="number" id="rows" value="3" min="1" max="12" onchange="updateGrid()" />
+        </div>
+        <div class="control-item">
+          <label>列间距:</label>
+          <input type="number" id="colGap" value="16" min="0" max="50" onchange="updateGrid()" />px
+        </div>
+        <div class="control-item">
+          <label>行间距:</label>
+          <input type="number" id="rowGap" value="16" min="0" max="50" onchange="updateGrid()" />px
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="control-item">
+          <label>列模板:</label>
+          <select id="colTemplate" onchange="updateGrid()" style="width:150px">
+            <option value="equal">等分 (1fr)</option>
+            <option value="auto">自动 (auto)</option>
+            <option value="minmax">响应式 (minmax)</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="control-item">
+          <label>行模板:</label>
+          <select id="rowTemplate" onchange="updateGrid()" style="width:150px">
+            <option value="equal">等分 (1fr)</option>
+            <option value="auto">自动 (auto)</option>
+            <option value="minmax">响应式 (minmax)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="preview-container">
+        <div class="grid-container" id="gridContainer"></div>
+      </div>
+
+      <div class="output">
+        <textarea id="cssOutput" readonly></textarea>
+        <div class="btn-row">
+          <button class="btn primary" onclick="copyCSS()">复制 CSS</button>
+          <button class="btn" onclick="resetGrid()">重置</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const containerEl = document.getElementById('gridContainer');
+    const outputEl = document.getElementById('cssOutput');
+    const statusEl = document.getElementById('status');
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#a8edea', '#ff9a9e', '#ffecd2', '#fcb69f'];
+
+    function getTemplateValue(type, count) {
+      switch(type) {
+        case 'equal': return `repeat(${count}, 1fr)`;
+        case 'auto': return `repeat(${count}, auto)`;
+        case 'minmax': return `repeat(auto-fit, minmax(150px, 1fr))`;
+        case 'custom': return `repeat(${count}, 1fr)`;
+        default: return `repeat(${count}, 1fr)`;
+      }
+    }
+
+    function updateGrid() {
+      const cols = parseInt(document.getElementById('columns').value) || 3;
+      const rows = parseInt(document.getElementById('rows').value) || 3;
+      const colGap = document.getElementById('colGap').value;
+      const rowGap = document.getElementById('rowGap').value;
+      const colType = document.getElementById('colTemplate').value;
+      const rowType = document.getElementById('rowTemplate').value;
+
+      const colTemplate = getTemplateValue(colType, cols);
+      const rowTemplate = getTemplateValue(rowType, rows);
+
+      containerEl.style.display = 'grid';
+      containerEl.style.gridTemplateColumns = colTemplate;
+      containerEl.style.gridTemplateRows = rowTemplate;
+      containerEl.style.columnGap = colGap + 'px';
+      containerEl.style.rowGap = rowGap + 'px';
+
+      const itemCount = cols * rows;
+      containerEl.innerHTML = '';
+      for (let i = 0; i < itemCount; i++) {
+        const item = document.createElement('div');
+        item.className = 'grid-item';
+        item.style.background = colors[i % colors.length];
+        item.textContent = i + 1;
+        item.style.minHeight = '80px';
+        containerEl.appendChild(item);
+      }
+
+      const css = `.container {
+  display: grid;
+  grid-template-columns: ${colTemplate};
+  grid-template-rows: ${rowTemplate};
+  column-gap: ${colGap}px;
+  row-gap: ${rowGap}px;
+}`;
+      outputEl.value = css;
+    }
+
+    function applyPreset(name) {
+      switch(name) {
+        case 'equal3':
+          document.getElementById('columns').value = 3;
+          document.getElementById('rows').value = 2;
+          document.getElementById('colTemplate').value = 'equal';
+          break;
+        case 'equal4':
+          document.getElementById('columns').value = 4;
+          document.getElementById('rows').value = 2;
+          document.getElementById('colTemplate').value = 'equal';
+          break;
+        case 'sidebar':
+          document.getElementById('columns').value = 2;
+          document.getElementById('rows').value = 1;
+          document.getElementById('colTemplate').value = 'custom';
+          break;
+        case 'holy':
+          document.getElementById('columns').value = 3;
+          document.getElementById('rows').value = 3;
+          document.getElementById('colTemplate').value = 'custom';
+          break;
+        case 'masonry':
+          document.getElementById('columns').value = 4;
+          document.getElementById('rows').value = 3;
+          document.getElementById('colTemplate').value = 'minmax';
+          break;
+      }
+      updateGrid();
+    }
+
+    function resetGrid() {
+      document.getElementById('columns').value = 3;
+      document.getElementById('rows').value = 3;
+      document.getElementById('colGap').value = 16;
+      document.getElementById('rowGap').value = 16;
+      document.getElementById('colTemplate').value = 'equal';
+      document.getElementById('rowTemplate').value = 'equal';
+      updateGrid();
+    }
+
+    function copyCSS() {
+      navigator.clipboard.writeText(outputEl.value).then(() => {
+        statusEl.textContent = '已复制到剪贴板';
+        setTimeout(() => statusEl.textContent = '', 2000);
+      });
+    }
+
+    updateGrid();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

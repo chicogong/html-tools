@@ -325,9 +325,8 @@ function updateManifest(toolCount) {
     let manifest = fs.readFileSync(MANIFEST_JSON, 'utf8');
     const original = manifest;
     
-    // 更新描述中的工具数量
-    manifest = manifest.replace(/\d+\+?\s*个.*工具/g, `${toolCount}+ 个纯前端工具`);
-    manifest = manifest.replace(/\d+\+\s*纯前端/g, `${toolCount}+ 纯前端`);
+    // 更新描述中的工具数量 (只替换数字部分，保留后续描述)
+    manifest = manifest.replace(/\d+\+?\s*个纯前端/g, `${toolCount}+ 个纯前端`);
     
     if (manifest !== original) {
       fs.writeFileSync(MANIFEST_JSON, manifest);

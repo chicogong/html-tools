@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>活动倒计时 - WebUtils</title>
+  <meta name="description" content="创建活动倒计时，支持多个事件，显示天数、小时、分钟、秒数" />
+  <meta name="keywords" content="倒计时 活动 事件 countdown event timer" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/social/event-countdown.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-pink:#ff6b9d;--accent-purple:#a55eea;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .add-form{display:none;margin-bottom:1.5rem;padding:1.5rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)}
+    .add-form.show{display:block}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-size:.85rem;color:var(--text-secondary);margin-bottom:.5rem}
+    .form-group input{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
+    .form-group input:focus{outline:none;border-color:var(--accent-blue)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .form-btns{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
+    .btn{padding:.5rem 1rem;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:.85rem;transition:all .2s}
+    .btn-primary{background:var(--accent-pink);color:#fff}
+    .btn-secondary{background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle)}
+    .events-list{display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem}
+    .event-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;position:relative;overflow:hidden}
+    .event-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent-pink),var(--accent-purple))}
+    .event-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+    .event-title{font-size:1.1rem;font-weight:600}
+    .event-date{font-size:.85rem;color:var(--text-muted)}
+    .event-delete{background:none;border:none;color:var(--text-muted);cursor:pointer;opacity:.5;transition:all .2s}
+    .event-delete:hover{opacity:1;color:var(--accent-pink)}
+    .countdown{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
+    .countdown-item{text-align:center;padding:.75rem;background:var(--bg-surface);border-radius:var(--radius-sm)}
+    .countdown-value{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:var(--accent-cyan)}
+    .countdown-label{font-size:.75rem;color:var(--text-muted);margin-top:.25rem}
+    .event-card.past{opacity:.6}
+    .event-card.past::before{background:var(--text-muted)}
+    .event-card.past .countdown-value{color:var(--text-muted)}
+    .event-status{text-align:center;font-size:.9rem;color:var(--accent-pink);margin-top:.75rem}
+    .add-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:1rem;border:2px dashed var(--border-subtle);border-radius:var(--radius-lg);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.9rem;transition:all .2s}
+    .add-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .empty-state{text-align:center;padding:3rem;color:var(--text-muted)}
+    .empty-icon{font-size:3rem;margin-bottom:.5rem}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:400px){.countdown{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#social">社交娱乐</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">活动倒计时</span>
+    </nav>
+
+    <h1>⏰ 活动倒计时</h1>
+    <p class="subtitle">记录重要时刻，期待美好到来</p>
+
+    <div class="add-form" id="addForm">
+      <div class="form-group">
+        <label>活动名称</label>
+        <input type="text" id="eventName" placeholder="如：生日、纪念日、考试...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>目标日期</label>
+          <input type="date" id="eventDate">
+        </div>
+        <div class="form-group">
+          <label>目标时间 (可选)</label>
+          <input type="time" id="eventTime" value="00:00">
+        </div>
+      </div>
+      <div class="form-btns">
+        <button class="btn btn-secondary" onclick="hideForm()">取消</button>
+        <button class="btn btn-primary" onclick="addEvent()">添加</button>
+      </div>
+    </div>
+
+    <div class="events-list" id="eventsList">
+      <!-- Events will be rendered here -->
+    </div>
+
+    <button class="add-btn" onclick="showForm()">
+      <span>+</span> 添加倒计时
+    </button>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    let events = JSON.parse(localStorage.getItem('countdown_events') || '[]');
+
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('eventDate').value = tomorrow.toISOString().split('T')[0];
+
+    function showForm() {
+      document.getElementById('addForm').classList.add('show');
+      document.getElementById('eventName').focus();
+    }
+
+    function hideForm() {
+      document.getElementById('addForm').classList.remove('show');
+      document.getElementById('eventName').value = '';
+    }
+
+    function addEvent() {
+      const name = document.getElementById('eventName').value.trim();
+      const date = document.getElementById('eventDate').value;
+      const time = document.getElementById('eventTime').value || '00:00';
+
+      if (!name || !date) {
+        alert('请填写活动名称和日期');
+        return;
+      }
+
+      events.push({
+        id: Date.now(),
+        name,
+        datetime: `${date}T${time}:00`
+      });
+
+      // Sort by date
+      events.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+      localStorage.setItem('countdown_events', JSON.stringify(events));
+      hideForm();
+      render();
+    }
+
+    function deleteEvent(id) {
+      if (confirm('确定要删除这个倒计时吗？')) {
+        events = events.filter(e => e.id !== id);
+        localStorage.setItem('countdown_events', JSON.stringify(events));
+        render();
+      }
+    }
+
+    function formatDate(datetime) {
+      const date = new Date(datetime);
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+      });
+    }
+
+    function getCountdown(datetime) {
+      const now = new Date();
+      const target = new Date(datetime);
+      const diff = target - now;
+
+      if (diff <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, past: true };
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      return { days, hours, minutes, seconds, past: false };
+    }
+
+    function render() {
+      const list = document.getElementById('eventsList');
+
+      if (events.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📅</div>
+            <div>还没有倒计时</div>
+            <div style="font-size:.85rem;margin-top:.25rem">点击下方按钮添加一个吧</div>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = events.map(e => {
+        const cd = getCountdown(e.datetime);
+        return `
+          <div class="event-card ${cd.past ? 'past' : ''}" data-id="${e.id}">
+            <div class="event-header">
+              <div>
+                <div class="event-title">${e.name}</div>
+                <div class="event-date">${formatDate(e.datetime)}</div>
+              </div>
+              <button class="event-delete" onclick="deleteEvent(${e.id})">🗑️</button>
+            </div>
+            <div class="countdown">
+              <div class="countdown-item">
+                <div class="countdown-value" data-type="days">${cd.days}</div>
+                <div class="countdown-label">天</div>
+              </div>
+              <div class="countdown-item">
+                <div class="countdown-value" data-type="hours">${String(cd.hours).padStart(2, '0')}</div>
+                <div class="countdown-label">时</div>
+              </div>
+              <div class="countdown-item">
+                <div class="countdown-value" data-type="minutes">${String(cd.minutes).padStart(2, '0')}</div>
+                <div class="countdown-label">分</div>
+              </div>
+              <div class="countdown-item">
+                <div class="countdown-value" data-type="seconds">${String(cd.seconds).padStart(2, '0')}</div>
+                <div class="countdown-label">秒</div>
+              </div>
+            </div>
+            ${cd.past ? '<div class="event-status">已经过去啦 🎉</div>' : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateCountdowns() {
+      events.forEach(e => {
+        const card = document.querySelector(`.event-card[data-id="${e.id}"]`);
+        if (!card) return;
+
+        const cd = getCountdown(e.datetime);
+
+        card.querySelector('[data-type="days"]').textContent = cd.days;
+        card.querySelector('[data-type="hours"]').textContent = String(cd.hours).padStart(2, '0');
+        card.querySelector('[data-type="minutes"]').textContent = String(cd.minutes).padStart(2, '0');
+        card.querySelector('[data-type="seconds"]').textContent = String(cd.seconds).padStart(2, '0');
+
+        if (cd.past && !card.classList.contains('past')) {
+          card.classList.add('past');
+          const countdown = card.querySelector('.countdown');
+          if (!card.querySelector('.event-status')) {
+            countdown.insertAdjacentHTML('afterend', '<div class="event-status">已经过去啦 🎉</div>');
+          }
+        }
+      });
+    }
+
+    // Initialize
+    render();
+    setInterval(updateCountdowns, 1000);
+
+    // Handle Enter key
+    document.getElementById('eventName').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addEvent();
+    });
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

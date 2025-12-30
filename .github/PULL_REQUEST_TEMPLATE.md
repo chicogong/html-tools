@@ -40,6 +40,7 @@ Closes #
 - [ ] 在 Firefox 中测试通过
 - [ ] 在移动端测试通过（响应式）
 - [ ] `npm run lint` 通过
+- [ ] `npm run format:check` 通过
 - [ ] `npm run sync:tools` 已运行（如添加新工具）
 
 ## 截图（如适用）

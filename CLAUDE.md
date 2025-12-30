@@ -73,6 +73,10 @@ npm run lint:js      # ESLint - 检查内联 JavaScript
 # 自动修复 CSS 问题
 npm run lint:fix
 
+# 代码格式化 (Prettier)
+npm run format        # 格式化所有文件
+npm run format:check  # 检查格式（不修改文件）
+
 # 同步工具列表（将 tools.json 同步到 index.html）
 npm run sync:tools
 
@@ -615,9 +619,35 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 ## CI/CD 和部署
 
 - **Lint CI**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint
+- **Format Check**: CI 检查代码格式是否符合 Prettier 规范
 - **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
 - **Deploy CI**: 推送到 master 自动部署到 GitHub Pages
 - **多平台部署**: 同时部署到 GitHub Pages, Vercel, Netlify, Cloudflare Pages
+
+## 提交前检查
+
+在提交代码或创建 PR 前，务必运行以下检查：
+
+```bash
+# 1. 运行所有 lint 检查
+npm run lint
+
+# 2. 检查代码格式
+npm run format:check
+
+# 3. 如果格式检查失败，运行格式化
+npm run format
+
+# 4. 同步工具列表（如添加新工具）
+npm run sync:tools
+```
+
+**快速检查命令**:
+
+```bash
+# 一键运行所有检查
+npm run lint && npm run format:check
+```
 
 ## 开发注意事项
 

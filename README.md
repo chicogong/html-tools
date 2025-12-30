@@ -488,6 +488,10 @@ npm run lint
 npm run lint:html  # HTMLHint
 npm run lint:css   # Stylelint
 npm run lint:js    # ESLint
+
+# 代码格式化
+npm run format        # 格式化所有文件
+npm run format:check  # 检查格式
 ```
 
 ### 工具同步
@@ -592,8 +596,9 @@ git checkout -b feature/new-tool
 # 开发并测试
 # ...
 
-# 运行 lint 检查
-npm run lint
+# 运行检查
+npm run lint          # Lint 检查
+npm run format:check  # 格式检查
 
 # 提交代码
 git add .

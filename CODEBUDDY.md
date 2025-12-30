@@ -25,6 +25,10 @@ npm run lint:js      # ESLint (JS in HTML files)
 # Auto-fix CSS issues
 npm run lint:fix
 
+# Code formatting (Prettier)
+npm run format        # Format all files
+npm run format:check  # Check formatting without changes
+
 # Sync tools list (tools.json → index.html)
 npm run sync:tools
 

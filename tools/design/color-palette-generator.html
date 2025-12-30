@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配色方案生成器 - WebUtils</title>
+  <meta name="description" content="生成协调的配色方案，支持多种配色规则" />
+  <meta name="keywords" content="配色 色板 调色板 设计 color palette scheme generator design" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/design/color-palette-generator.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-purple:#9d4edd;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .controls{display:flex;gap:1rem;margin-bottom:2rem;flex-wrap:wrap;align-items:center}
+    .color-picker-wrapper{display:flex;align-items:center;gap:.5rem}
+    .color-picker{width:60px;height:40px;border:2px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer}
+    .scheme-select{padding:.75rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit;cursor:pointer}
+    .scheme-select:focus{outline:none;border-color:var(--accent-blue)}
+    .btn{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);background:var(--accent-purple);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn:hover{background:var(--accent-cyan);transform:translateY(-2px)}
+    .palette{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem}
+    .color-card{aspect-ratio:1;border-radius:var(--radius-lg);position:relative;cursor:pointer;transition:all .2s;overflow:hidden}
+    .color-card:hover{transform:scale(1.05);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+    .color-info{position:absolute;bottom:0;left:0;right:0;padding:1rem;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);color:#fff;text-align:center;opacity:0;transition:opacity .2s}
+    .color-card:hover .color-info{opacity:1}
+    .color-hex{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:1rem;margin-bottom:.25rem}
+    .color-rgb{font-family:'JetBrains Mono',monospace;font-size:.75rem;opacity:.8}
+    .export-section{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
+    .export-title{font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
+    .export-formats{display:flex;gap:1rem;flex-wrap:wrap}
+    .export-btn{padding:.75rem 1.5rem;border:2px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit;cursor:pointer;transition:all .2s}
+    .export-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:768px){.palette{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#art">艺术工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">配色生成器</span>
+    </nav>
+
+    <h1>🎨 配色方案生成器</h1>
+    <p class="subtitle">基于色彩理论生成协调的配色方案</p>
+
+    <div class="controls">
+      <div class="color-picker-wrapper">
+        <label>基础色</label>
+        <input type="color" class="color-picker" id="baseColor" value="#4d9fff" onchange="generate()">
+      </div>
+      <select class="scheme-select" id="schemeType" onchange="generate()">
+        <option value="analogous">类似色</option>
+        <option value="complementary">互补色</option>
+        <option value="triadic">三色组</option>
+        <option value="tetradic">四色组</option>
+        <option value="monochromatic">单色</option>
+      </select>
+      <button class="btn" onclick="randomColor()">🎲 随机颜色</button>
+    </div>
+
+    <div class="palette" id="palette">
+      <!-- Colors will be rendered here -->
+    </div>
+
+    <div class="export-section">
+      <div class="export-title">📤 导出配色</div>
+      <div class="export-formats">
+        <button class="export-btn" onclick="exportCSS()">CSS</button>
+        <button class="export-btn" onclick="exportJSON()">JSON</button>
+        <button class="export-btn" onclick="exportSCSS()">SCSS</button>
+        <button class="export-btn" onclick="exportTailwind()">Tailwind</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function hexToHSL(hex) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+
+      return [h * 360, s * 100, l * 100];
+    }
+
+    function HSLToHex(h, s, l) {
+      s /= 100;
+      l /= 100;
+
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+
+      let r = 0, g = 0, b = 0;
+
+      if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+      else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+      else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+      else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+      else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+      else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+
+      r = Math.round((r + m) * 255);
+      g = Math.round((g + m) * 255);
+      b = Math.round((b + m) * 255);
+
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    function hexToRGB(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function generateScheme(baseColor, type) {
+      const [h, s, l] = hexToHSL(baseColor);
+      const colors = [baseColor];
+
+      switch (type) {
+        case 'analogous':
+          colors.push(HSLToHex((h + 30) % 360, s, l));
+          colors.push(HSLToHex((h + 60) % 360, s, l));
+          colors.push(HSLToHex((h - 30 + 360) % 360, s, l));
+          colors.push(HSLToHex((h - 60 + 360) % 360, s, l));
+          break;
+
+        case 'complementary':
+          colors.push(HSLToHex((h + 180) % 360, s, l));
+          colors.push(HSLToHex(h, s * 0.7, l * 1.2));
+          colors.push(HSLToHex((h + 180) % 360, s * 0.7, l * 1.2));
+          colors.push(HSLToHex(h, s * 0.5, l * 0.8));
+          break;
+
+        case 'triadic':
+          colors.push(HSLToHex((h + 120) % 360, s, l));
+          colors.push(HSLToHex((h + 240) % 360, s, l));
+          colors.push(HSLToHex(h, s * 0.6, l * 1.1));
+          colors.push(HSLToHex((h + 120) % 360, s * 0.6, l * 1.1));
+          break;
+
+        case 'tetradic':
+          colors.push(HSLToHex((h + 90) % 360, s, l));
+          colors.push(HSLToHex((h + 180) % 360, s, l));
+          colors.push(HSLToHex((h + 270) % 360, s, l));
+          colors.push(HSLToHex(h, s * 0.5, l * 1.2));
+          break;
+
+        case 'monochromatic':
+          colors.push(HSLToHex(h, s, l * 1.3));
+          colors.push(HSLToHex(h, s, l * 1.15));
+          colors.push(HSLToHex(h, s, l * 0.85));
+          colors.push(HSLToHex(h, s, l * 0.7));
+          break;
+      }
+
+      return colors;
+    }
+
+    function generate() {
+      const baseColor = document.getElementById('baseColor').value;
+      const schemeType = document.getElementById('schemeType').value;
+      const colors = generateScheme(baseColor, schemeType);
+
+      const container = document.getElementById('palette');
+      container.innerHTML = colors.map(color => `
+        <div class="color-card" style="background:${color}" onclick="copyColor('${color}')">
+          <div class="color-info">
+            <div class="color-hex">${color.toUpperCase()}</div>
+            <div class="color-rgb">${hexToRGB(color)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function copyColor(color) {
+      navigator.clipboard.writeText(color);
+      alert(`已复制: ${color}`);
+    }
+
+    function randomColor() {
+      const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+      document.getElementById('baseColor').value = randomHex;
+      generate();
+    }
+
+    function exportCSS() {
+      const baseColor = document.getElementById('baseColor').value;
+      const schemeType = document.getElementById('schemeType').value;
+      const colors = generateScheme(baseColor, schemeType);
+
+      const css = `:root {\n${colors.map((c, i) => `  --color-${i + 1}: ${c};`).join('\n')}\n}`;
+      navigator.clipboard.writeText(css);
+      alert('CSS 变量已复制到剪贴板！');
+    }
+
+    function exportJSON() {
+      const baseColor = document.getElementById('baseColor').value;
+      const schemeType = document.getElementById('schemeType').value;
+      const colors = generateScheme(baseColor, schemeType);
+
+      const json = JSON.stringify({ colors }, null, 2);
+      navigator.clipboard.writeText(json);
+      alert('JSON 已复制到剪贴板！');
+    }
+
+    function exportSCSS() {
+      const baseColor = document.getElementById('baseColor').value;
+      const schemeType = document.getElementById('schemeType').value;
+      const colors = generateScheme(baseColor, schemeType);
+
+      const scss = colors.map((c, i) => `$color-${i + 1}: ${c};`).join('\n');
+      navigator.clipboard.writeText(scss);
+      alert('SCSS 变量已复制到剪贴板！');
+    }
+
+    function exportTailwind() {
+      const baseColor = document.getElementById('baseColor').value;
+      const schemeType = document.getElementById('schemeType').value;
+      const colors = generateScheme(baseColor, schemeType);
+
+      const tw = `theme: {\n  extend: {\n    colors: {\n${colors.map((c, i) => `      'brand-${i + 1}': '${c}',`).join('\n')}\n    }\n  }\n}`;
+      navigator.clipboard.writeText(tw);
+      alert('Tailwind 配置已复制到剪贴板！');
+    }
+
+    // Initialize
+    generate();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

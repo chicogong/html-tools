@@ -1127,6 +1127,8 @@
     </footer>
   </div>
 
+  <!-- 拼音转换库 (用于增强搜索，必须在主脚本之前加载) -->
+  <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3/dist/index.js"></script>
   <script>
     // ==================== 数据定义 ====================
     const CATEGORIES = [
@@ -2516,6 +2518,303 @@
       toolCards = document.querySelectorAll('.tool-card');
     }
 
+    // ==================== 增强搜索功能 ====================
+    // 使用 pinyin-pro 库替代手写 PINYIN_MAP (从 CDN 加载)
+
+    // 同义词/翻译对照表
+    const SYNONYMS = {
+      // 格式化相关
+      'format': ['格式化', '格式', '美化', 'beautify', 'pretty'],
+      'formatter': ['格式化', '格式化器'],
+      '格式化': ['format', 'formatter', 'beautify', 'pretty', '美化'],
+      'beautify': ['美化', '格式化', 'format', 'pretty'],
+      'pretty': ['美化', '格式化', 'beautify'],
+      '美化': ['beautify', 'pretty', '格式化', 'format'],
+      
+      // 压缩相关
+      'compress': ['压缩', 'minify', 'zip'],
+      'minify': ['压缩', '最小化', 'compress', 'min'],
+      '压缩': ['compress', 'minify', 'zip', 'pack'],
+      'zip': ['压缩', 'compress', '打包'],
+      'unzip': ['解压', 'decompress', '解压缩'],
+      '解压': ['unzip', 'decompress', 'extract'],
+      
+      // 转换相关
+      'convert': ['转换', 'transform', '转化'],
+      'converter': ['转换器', '转换'],
+      '转换': ['convert', 'transform', 'converter'],
+      'transform': ['转换', '变换', 'convert'],
+      
+      // 编码相关
+      'encode': ['编码', 'encrypt', '加密'],
+      'decode': ['解码', 'decrypt', '解密'],
+      '编码': ['encode', 'encoding'],
+      '解码': ['decode', 'decoding'],
+      'encrypt': ['加密', 'encode', '编码'],
+      'decrypt': ['解密', 'decode', '解码'],
+      '加密': ['encrypt', 'encode', 'cipher'],
+      '解密': ['decrypt', 'decode', 'decipher'],
+      
+      // 生成相关
+      'generate': ['生成', 'create', '创建', 'gen'],
+      'generator': ['生成器', '生成'],
+      '生成': ['generate', 'create', 'gen'],
+      '生成器': ['generator', '生成'],
+      'create': ['创建', '生成', 'generate', 'new'],
+      '创建': ['create', 'generate', 'new'],
+      
+      // 编辑相关
+      'edit': ['编辑', 'modify', '修改'],
+      'editor': ['编辑器', '编辑'],
+      '编辑': ['edit', 'editor', 'modify'],
+      '编辑器': ['editor', '编辑'],
+      
+      // 验证相关
+      'validate': ['验证', 'check', '校验', 'verify'],
+      'validator': ['验证器', '验证'],
+      '验证': ['validate', 'verify', 'check'],
+      '校验': ['validate', 'check', 'verify'],
+      
+      // 解析相关
+      'parse': ['解析', 'analyze', '分析'],
+      'parser': ['解析器', '解析'],
+      '解析': ['parse', 'analyze'],
+      '分析': ['analyze', 'parse', 'analysis'],
+      
+      // 查看相关
+      'view': ['查看', '预览', 'preview'],
+      'viewer': ['查看器', '阅读器'],
+      '查看': ['view', 'preview', 'see'],
+      '预览': ['preview', 'view'],
+      
+      // 比较相关
+      'compare': ['比较', 'diff', '对比'],
+      'diff': ['差异', '对比', 'compare', '比较'],
+      '比较': ['compare', 'diff'],
+      '对比': ['compare', 'diff', 'contrast'],
+      
+      // 计算相关
+      'calculate': ['计算', 'calc', 'compute'],
+      'calculator': ['计算器', '计算'],
+      '计算': ['calculate', 'compute', 'calc'],
+      '计算器': ['calculator'],
+      
+      // 颜色相关
+      'color': ['颜色', 'colour', '色彩'],
+      'colour': ['颜色', 'color', '色彩'],
+      '颜色': ['color', 'colour'],
+      '色彩': ['color', 'colour', '颜色'],
+      
+      // 图片相关
+      'image': ['图片', '图像', 'picture', 'photo', 'img'],
+      'img': ['图片', 'image', '图像'],
+      '图片': ['image', 'picture', 'photo', 'img'],
+      '图像': ['image', 'picture', '图片'],
+      'photo': ['照片', '图片', 'image', 'picture'],
+      '照片': ['photo', 'picture', '图片'],
+      
+      // 文本相关
+      'text': ['文本', '文字', 'txt'],
+      '文本': ['text', 'txt', '文字'],
+      '文字': ['text', '文本'],
+      'string': ['字符串', '文本', 'str'],
+      '字符串': ['string', 'str'],
+      
+      // 时间相关
+      'time': ['时间', 'datetime', 'date'],
+      'date': ['日期', '时间', 'datetime'],
+      '时间': ['time', 'datetime'],
+      '日期': ['date', 'time'],
+      'timestamp': ['时间戳', 'unix', 'epoch'],
+      '时间戳': ['timestamp', 'unix'],
+      
+      // 随机相关
+      'random': ['随机', 'rand'],
+      '随机': ['random', 'rand'],
+      
+      // 哈希相关
+      'hash': ['哈希', '散列', 'digest'],
+      '哈希': ['hash', '散列'],
+      'md5': ['md5', '哈希'],
+      'sha': ['sha', '哈希'],
+      
+      // 网络相关
+      'url': ['链接', '网址', 'link'],
+      '链接': ['url', 'link', '网址'],
+      '网址': ['url', 'link', '链接'],
+      'ip': ['ip', 'ip地址'],
+      
+      // 数据格式
+      'json': ['json'],
+      'xml': ['xml'],
+      'yaml': ['yaml', 'yml'],
+      'csv': ['csv', '表格'],
+      'html': ['html', '网页'],
+      'css': ['css', '样式'],
+      'js': ['javascript', 'js'],
+      'javascript': ['js', 'javascript'],
+      'sql': ['sql', '数据库'],
+      'regex': ['正则', '正则表达式', 'regexp'],
+      '正则': ['regex', 'regexp', '正则表达式'],
+      
+      // 单位相关
+      'unit': ['单位', '度量'],
+      '单位': ['unit', '度量'],
+      '长度': ['length', 'distance'],
+      '重量': ['weight', 'mass'],
+      '温度': ['temperature', 'temp'],
+      
+      // 二维码
+      'qr': ['二维码', 'qrcode'],
+      'qrcode': ['二维码', 'qr'],
+      '二维码': ['qr', 'qrcode'],
+      
+      // 条形码
+      'barcode': ['条形码', '条码'],
+      '条形码': ['barcode', '条码'],
+      '条码': ['barcode', '条形码'],
+      
+      // 密码
+      'password': ['密码', 'pwd', 'pass'],
+      '密码': ['password', 'pwd'],
+      
+      // 查找/搜索
+      'search': ['搜索', '查找', 'find'],
+      '搜索': ['search', 'find', '查找'],
+      '查找': ['find', 'search', '搜索'],
+      'find': ['查找', '搜索', 'search'],
+      
+      // 排序
+      'sort': ['排序', 'order'],
+      '排序': ['sort', 'order'],
+      
+      // 去重
+      'unique': ['去重', 'distinct', 'dedupe'],
+      '去重': ['unique', 'distinct', 'dedupe'],
+      'dedupe': ['去重', 'unique'],
+      
+      // 大小写
+      'case': ['大小写', 'uppercase', 'lowercase'],
+      '大小写': ['case'],
+      '大写': ['uppercase', 'upper'],
+      '小写': ['lowercase', 'lower'],
+      
+      // Base64
+      'base64': ['base64', 'b64'],
+      'b64': ['base64'],
+      
+      // UUID
+      'uuid': ['uuid', 'guid'],
+      'guid': ['uuid', 'guid']
+    };
+
+    // 获取中文拼音 - 使用 pinyin-pro 库
+    function getPinyin(str) {
+      // 检查 pinyin-pro 是否已加载
+      if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+        return pinyinPro.pinyin(str, { toneType: 'none' }).replace(/\s+/g, '').toLowerCase();
+      }
+      // 降级：直接返回原字符串
+      return str.toLowerCase();
+    }
+
+    // 获取首字母 - 使用 pinyin-pro 库
+    function getInitials(str) {
+      let initials = '';
+      const words = str.split(/[\s\-_]+/);
+      
+      for (const word of words) {
+        if (!word) continue;
+        
+        // 检查是否是纯英文单词
+        const isAllEnglish = /^[a-zA-Z]+$/.test(word);
+        // 检查是否是全大写的英文缩写（如 JSON、CSS、HTML）
+        const isAllUpperCase = isAllEnglish && word === word.toUpperCase();
+        
+        if (isAllUpperCase) {
+          // 全大写英文缩写只取第一个字母
+          initials += word[0].toLowerCase();
+        } else if (isAllEnglish) {
+          // 普通英文单词：取首字母，驼峰命名取每个大写字母
+          for (let i = 0; i < word.length; i++) {
+            const char = word[i];
+            if (i === 0 || char === char.toUpperCase()) {
+              initials += char.toLowerCase();
+            }
+          }
+        } else {
+          // 包含中文的混合内容：使用 pinyin-pro 获取首字母
+          if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+            initials += pinyinPro.pinyin(word, { pattern: 'first', toneType: 'none' }).replace(/\s+/g, '').toLowerCase();
+          } else {
+            // 降级：只取英文字母
+            for (const char of word) {
+              if (/[a-zA-Z]/.test(char)) {
+                initials += char.toLowerCase();
+              }
+            }
+          }
+        }
+      }
+      return initials;
+    }
+
+    // 扩展查询词（同义词）
+    function expandQuery(query) {
+      const q = query.toLowerCase();
+      const expanded = new Set([q]);
+      
+      // 直接同义词
+      if (SYNONYMS[q]) {
+        SYNONYMS[q].forEach(s => expanded.add(s.toLowerCase()));
+      }
+      
+      // 检查是否是同义词的一部分
+      for (const [key, values] of Object.entries(SYNONYMS)) {
+        if (key.toLowerCase().includes(q) || q.includes(key.toLowerCase())) {
+          expanded.add(key.toLowerCase());
+          values.forEach(v => expanded.add(v.toLowerCase()));
+        }
+      }
+      
+      return Array.from(expanded);
+    }
+
+    // 容错匹配（允许跳过字符或忽略重复）
+    function fuzzyMatchWithTolerance(text, query) {
+      text = text.toLowerCase();
+      query = query.toLowerCase();
+      
+      // 去除连续重复字符 (jsoon -> json)
+      const normalizedQuery = query.replace(/(.)\1+/g, '$1');
+      
+      if (text.includes(normalizedQuery)) {
+        return { matched: true, score: 15 };
+      }
+      
+      // 允许跳过1个字符的模糊匹配
+      let ti = 0, qi = 0, skipped = 0;
+      while (ti < text.length && qi < query.length) {
+        if (text[ti] === query[qi]) {
+          ti++;
+          qi++;
+        } else {
+          ti++;
+          // 只有在还没匹配到第一个字符时才允许跳过
+          if (qi > 0) {
+            skipped++;
+            if (skipped > 1) break;
+          }
+        }
+      }
+      
+      if (qi === query.length) {
+        return { matched: true, score: 10 - skipped * 2 };
+      }
+      
+      return { matched: false, score: 0 };
+    }
+
     // ==================== 搜索匹配评分函数 ====================
     function getSearchScore(tool, query) {
       const name = tool.name.toLowerCase();
@@ -2523,8 +2822,15 @@
       const keywords = tool.keywords.toLowerCase();
       const q = query.toLowerCase();
       
+      // 预计算拼音和首字母（用于拼音搜索和首字母搜索）
+      // 去掉空格便于匹配
+      const namePinyin = getPinyin(tool.name).replace(/\s+/g, '');
+      const nameInitials = getInitials(tool.name);
+      const keywordsPinyin = getPinyin(tool.keywords).replace(/\s+/g, '');
+      
       let score = 0;
       
+      // ===== 1. 原始查询匹配 =====
       // 完全匹配名称 - 最高分
       if (name === q) return 1000;
       
@@ -2540,7 +2846,64 @@
       // 描述匹配
       if (desc.includes(q)) score += 20;
       
-      // 模糊匹配：查询词中的每个字符按顺序出现
+      // ===== 2. 拼音搜索 =====
+      if (score === 0) {
+        // 拼音完全匹配
+        if (namePinyin === q) score += 80;
+        // 拼音开头匹配
+        else if (namePinyin.startsWith(q)) score += 60;
+        // 拼音包含
+        else if (namePinyin.includes(q)) score += 40;
+        // 关键词拼音匹配
+        else if (keywordsPinyin.includes(q)) score += 25;
+      }
+      
+      // ===== 3. 首字母搜索 =====
+      if (score === 0) {
+        // 首字母完全匹配
+        if (nameInitials === q) score += 70;
+        // 首字母开头匹配
+        else if (nameInitials.startsWith(q)) score += 55;
+        // 首字母包含
+        else if (nameInitials.includes(q)) score += 35;
+      }
+      
+      // ===== 4. 同义词搜索 =====
+      if (score === 0) {
+        const expandedQueries = expandQuery(q);
+        for (const eq of expandedQueries) {
+          if (eq === q) continue; // 跳过原始查询
+          if (name.includes(eq)) {
+            score += 45;
+            break;
+          }
+          if (keywords.includes(eq)) {
+            score += 28;
+            break;
+          }
+          if (desc.includes(eq)) {
+            score += 18;
+            break;
+          }
+        }
+      }
+      
+      // ===== 5. 容错匹配 =====
+      if (score === 0) {
+        // 在名称中容错匹配
+        const nameResult = fuzzyMatchWithTolerance(name, q);
+        if (nameResult.matched) {
+          score += nameResult.score;
+        } else {
+          // 在拼音中容错匹配
+          const pinyinResult = fuzzyMatchWithTolerance(namePinyin, q);
+          if (pinyinResult.matched) {
+            score += pinyinResult.score - 2;
+          }
+        }
+      }
+      
+      // ===== 6. 原有模糊匹配：查询词中的每个字符按顺序出现 =====
       if (score === 0) {
         let fuzzyScore = 0;
         let nameIdx = -1;

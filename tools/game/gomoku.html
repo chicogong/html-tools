@@ -1,272 +1,541 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>五子棋 - WebUtils</title>
-  <meta name="description" content="经典五子棋游戏，支持双人对战" />
-  <meta name="keywords" content="五子棋 gomoku 游戏 game 双人 棋类" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/game/gomoku.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>五子棋 - WebUtils</title>
+    <meta name="description" content="经典五子棋游戏，支持双人对战" />
+    <meta name="keywords" content="五子棋 gomoku 游戏 game 双人 棋类" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/game/gomoku.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .game-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
-    .status{text-align:center;margin-bottom:1rem;font-size:1.1rem}
-    .status .black{color:#333}
-    .status .white{color:#ddd}
-    [data-theme="light"] .status .black{color:#000}
-    [data-theme="light"] .status .white{color:#666}
-    .board-container{display:flex;justify-content:center;margin-bottom:1rem}
-    .board{background:#dcb35c;border-radius:4px;padding:10px;position:relative}
-    .grid{display:grid;grid-template-columns:repeat(15,24px);grid-template-rows:repeat(15,24px);gap:0}
-    .cell{width:24px;height:24px;position:relative;cursor:pointer}
-    .cell::before,.cell::after{content:'';position:absolute;background:#8b6914}
-    .cell::before{width:1px;height:100%;left:50%;top:0}
-    .cell::after{height:1px;width:100%;top:50%;left:0}
-    .cell:first-child::after,.cell:nth-child(15n+1)::after{width:50%;left:50%}
-    .cell:nth-child(-n+15)::before{height:50%;top:50%}
-    .cell:nth-child(15n)::after{width:50%}
-    .cell:nth-last-child(-n+15)::before{height:50%}
-    .stone{position:absolute;width:22px;height:22px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;box-shadow:2px 2px 4px rgba(0,0,0,.3)}
-    .stone.black{background:radial-gradient(circle at 30% 30%,#666,#000)}
-    .stone.white{background:radial-gradient(circle at 30% 30%,#fff,#ccc)}
-    .stone.last::after{content:'';position:absolute;width:6px;height:6px;background:red;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
-    .stone.win{animation:pulse .5s ease-in-out infinite alternate}
-    @keyframes pulse{from{transform:translate(-50%,-50%) scale(1)}to{transform:translate(-50%,-50%) scale(1.1)}}
-    .star{position:absolute;width:6px;height:6px;background:#8b6914;border-radius:50%;transform:translate(-50%,-50%);z-index:0}
-    .controls{display:flex;justify-content:center;gap:1rem;margin-top:1rem}
-    .btn{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:500;transition:all .2s}
-    .btn-primary{background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));color:#000}
-    .btn-primary:hover{transform:translateY(-2px)}
-    .btn-secondary{background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle)}
-    .btn-secondary:hover{border-color:var(--accent-cyan)}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+      }
+      [data-theme='light'] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .game-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+      }
+      .status {
+        text-align: center;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+      }
+      .status .black {
+        color: #333;
+      }
+      .status .white {
+        color: #ddd;
+      }
+      [data-theme='light'] .status .black {
+        color: #000;
+      }
+      [data-theme='light'] .status .white {
+        color: #666;
+      }
+      .board-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+      .board {
+        background: #dcb35c;
+        border-radius: 4px;
+        padding: 10px;
+        position: relative;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(15, 24px);
+        grid-template-rows: repeat(15, 24px);
+        gap: 0;
+      }
+      .cell {
+        width: 24px;
+        height: 24px;
+        position: relative;
+        cursor: pointer;
+      }
+      .cell::before,
+      .cell::after {
+        content: '';
+        position: absolute;
+        background: #8b6914;
+      }
+      .cell::before {
+        width: 1px;
+        height: 100%;
+        left: 50%;
+        top: 0;
+      }
+      .cell::after {
+        height: 1px;
+        width: 100%;
+        top: 50%;
+        left: 0;
+      }
+      .cell:first-child::after,
+      .cell:nth-child(15n + 1)::after {
+        width: 50%;
+        left: 50%;
+      }
+      .cell:nth-child(-n + 15)::before {
+        height: 50%;
+        top: 50%;
+      }
+      .cell:nth-child(15n)::after {
+        width: 50%;
+      }
+      .cell:nth-last-child(-n + 15)::before {
+        height: 50%;
+      }
+      .stone {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .stone.black {
+        background: radial-gradient(circle at 30% 30%, #666, #000);
+      }
+      .stone.white {
+        background: radial-gradient(circle at 30% 30%, #fff, #ccc);
+      }
+      .stone.last::after {
+        content: '';
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: red;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .stone.win {
+        animation: pulse 0.5s ease-in-out infinite alternate;
+      }
+      @keyframes pulse {
+        from {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        to {
+          transform: translate(-50%, -50%) scale(1.1);
+        }
+      }
+      .star {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #8b6914;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 0;
+      }
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+        color: #000;
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+      }
+      .btn-secondary {
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+      }
+      .btn-secondary:hover {
+        border-color: var(--accent-cyan);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">五子棋</span>
-    </nav>
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">五子棋</span>
+      </nav>
 
-    <h1>五子棋</h1>
-    <p class="subtitle">先连成五子者获胜</p>
+      <h1>五子棋</h1>
+      <p class="subtitle">先连成五子者获胜</p>
 
-    <div class="game-card">
-      <div class="status" id="status">
-        <span class="black">●</span> 黑棋先行
-      </div>
+      <div class="game-card">
+        <div class="status" id="status">
+          <span class="black">●</span>
+          黑棋先行
+        </div>
 
-      <div class="board-container">
-        <div class="board">
-          <div class="grid" id="board"></div>
+        <div class="board-container">
+          <div class="board">
+            <div class="grid" id="board"></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" onclick="resetGame()">新游戏</button>
+          <button class="btn btn-secondary" onclick="undoMove()">悔棋</button>
         </div>
       </div>
 
-      <div class="controls">
-        <button class="btn btn-primary" onclick="resetGame()">新游戏</button>
-        <button class="btn btn-secondary" onclick="undoMove()">悔棋</button>
-      </div>
+      <footer>
+        <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+      </footer>
     </div>
 
-    <footer>
-      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
+    <script>
+      const BOARD_SIZE = 15;
+      let board = [];
+      let currentPlayer = 'black';
+      let gameOver = false;
+      let history = [];
+      let lastMove = null;
 
-  <script>
-    const BOARD_SIZE = 15;
-    let board = [];
-    let currentPlayer = 'black';
-    let gameOver = false;
-    let history = [];
-    let lastMove = null;
-
-    // Star points (天元和星位)
-    const starPoints = [
-      [3, 3], [3, 7], [3, 11],
-      [7, 3], [7, 7], [7, 11],
-      [11, 3], [11, 7], [11, 11]
-    ];
-
-    function initBoard() {
-      const boardEl = document.getElementById('board');
-      boardEl.innerHTML = '';
-      board = [];
-
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        board[i] = [];
-        for (let j = 0; j < BOARD_SIZE; j++) {
-          board[i][j] = null;
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.dataset.row = i;
-          cell.dataset.col = j;
-          cell.onclick = () => makeMove(i, j);
-          boardEl.appendChild(cell);
-
-          // Add star points
-          if (starPoints.some(([r, c]) => r === i && c === j)) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            star.style.top = '50%';
-            star.style.left = '50%';
-            cell.appendChild(star);
-          }
-        }
-      }
-    }
-
-    function makeMove(row, col) {
-      if (gameOver || board[row][col]) return;
-
-      board[row][col] = currentPlayer;
-      history.push({ row, col, player: currentPlayer });
-
-      // Remove last marker
-      if (lastMove) {
-        const lastCell = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"] .stone`);
-        if (lastCell) lastCell.classList.remove('last');
-      }
-
-      // Add stone
-      const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      const stone = document.createElement('div');
-      stone.className = `stone ${currentPlayer} last`;
-      cell.appendChild(stone);
-
-      lastMove = { row, col };
-
-      // Check win
-      const winCells = checkWin(row, col);
-      if (winCells) {
-        gameOver = true;
-        winCells.forEach(([r, c]) => {
-          const winStone = document.querySelector(`[data-row="${r}"][data-col="${c}"] .stone`);
-          if (winStone) winStone.classList.add('win');
-        });
-        updateStatus(`<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}获胜!`);
-        return;
-      }
-
-      // Check draw
-      if (history.length === BOARD_SIZE * BOARD_SIZE) {
-        gameOver = true;
-        updateStatus('平局!');
-        return;
-      }
-
-      // Switch player
-      currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
-      updateStatus(`<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}回合`);
-    }
-
-    function checkWin(row, col) {
-      const player = board[row][col];
-      const directions = [
-        [[0, 1], [0, -1]],  // horizontal
-        [[1, 0], [-1, 0]],  // vertical
-        [[1, 1], [-1, -1]], // diagonal
-        [[1, -1], [-1, 1]]  // anti-diagonal
+      // Star points (天元和星位)
+      const starPoints = [
+        [3, 3],
+        [3, 7],
+        [3, 11],
+        [7, 3],
+        [7, 7],
+        [7, 11],
+        [11, 3],
+        [11, 7],
+        [11, 11]
       ];
 
-      for (let [dir1, dir2] of directions) {
-        let cells = [[row, col]];
+      function initBoard() {
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        board = [];
 
-        for (let [dr, dc] of [dir1, dir2]) {
-          let r = row + dr, c = col + dc;
-          while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
-            cells.push([r, c]);
-            r += dr;
-            c += dc;
+        for (let i = 0; i < BOARD_SIZE; i++) {
+          board[i] = [];
+          for (let j = 0; j < BOARD_SIZE; j++) {
+            board[i][j] = null;
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            cell.onclick = () => makeMove(i, j);
+            boardEl.appendChild(cell);
+
+            // Add star points
+            if (starPoints.some(([r, c]) => r === i && c === j)) {
+              const star = document.createElement('div');
+              star.className = 'star';
+              star.style.top = '50%';
+              star.style.left = '50%';
+              cell.appendChild(star);
+            }
           }
         }
-
-        if (cells.length >= 5) return cells;
       }
-      return null;
-    }
 
-    function undoMove() {
-      if (history.length === 0 || gameOver) return;
+      function makeMove(row, col) {
+        if (gameOver || board[row][col]) return;
 
-      const last = history.pop();
-      board[last.row][last.col] = null;
+        board[row][col] = currentPlayer;
+        history.push({ row, col, player: currentPlayer });
 
-      const cell = document.querySelector(`[data-row="${last.row}"][data-col="${last.col}"]`);
-      const stone = cell.querySelector('.stone');
-      if (stone) stone.remove();
+        // Remove last marker
+        if (lastMove) {
+          const lastCell = document.querySelector(
+            `[data-row="${lastMove.row}"][data-col="${lastMove.col}"] .stone`
+          );
+          if (lastCell) lastCell.classList.remove('last');
+        }
 
-      currentPlayer = last.player;
+        // Add stone
+        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        const stone = document.createElement('div');
+        stone.className = `stone ${currentPlayer} last`;
+        cell.appendChild(stone);
 
-      // Update last marker
-      if (history.length > 0) {
-        const prev = history[history.length - 1];
-        const prevStone = document.querySelector(`[data-row="${prev.row}"][data-col="${prev.col}"] .stone`);
-        if (prevStone) prevStone.classList.add('last');
-        lastMove = prev;
-      } else {
+        lastMove = { row, col };
+
+        // Check win
+        const winCells = checkWin(row, col);
+        if (winCells) {
+          gameOver = true;
+          winCells.forEach(([r, c]) => {
+            const winStone = document.querySelector(`[data-row="${r}"][data-col="${c}"] .stone`);
+            if (winStone) winStone.classList.add('win');
+          });
+          updateStatus(
+            `<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}获胜!`
+          );
+          return;
+        }
+
+        // Check draw
+        if (history.length === BOARD_SIZE * BOARD_SIZE) {
+          gameOver = true;
+          updateStatus('平局!');
+          return;
+        }
+
+        // Switch player
+        currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+        updateStatus(
+          `<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}回合`
+        );
+      }
+
+      function checkWin(row, col) {
+        const player = board[row][col];
+        const directions = [
+          [
+            [0, 1],
+            [0, -1]
+          ], // horizontal
+          [
+            [1, 0],
+            [-1, 0]
+          ], // vertical
+          [
+            [1, 1],
+            [-1, -1]
+          ], // diagonal
+          [
+            [1, -1],
+            [-1, 1]
+          ] // anti-diagonal
+        ];
+
+        for (let [dir1, dir2] of directions) {
+          let cells = [[row, col]];
+
+          for (let [dr, dc] of [dir1, dir2]) {
+            let r = row + dr,
+              c = col + dc;
+            while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+              cells.push([r, c]);
+              r += dr;
+              c += dc;
+            }
+          }
+
+          if (cells.length >= 5) return cells;
+        }
+        return null;
+      }
+
+      function undoMove() {
+        if (history.length === 0 || gameOver) return;
+
+        const last = history.pop();
+        board[last.row][last.col] = null;
+
+        const cell = document.querySelector(`[data-row="${last.row}"][data-col="${last.col}"]`);
+        const stone = cell.querySelector('.stone');
+        if (stone) stone.remove();
+
+        currentPlayer = last.player;
+
+        // Update last marker
+        if (history.length > 0) {
+          const prev = history[history.length - 1];
+          const prevStone = document.querySelector(
+            `[data-row="${prev.row}"][data-col="${prev.col}"] .stone`
+          );
+          if (prevStone) prevStone.classList.add('last');
+          lastMove = prev;
+        } else {
+          lastMove = null;
+        }
+
+        updateStatus(
+          `<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}回合`
+        );
+      }
+
+      function resetGame() {
+        gameOver = false;
+        currentPlayer = 'black';
+        history = [];
         lastMove = null;
+        initBoard();
+        updateStatus('<span class="black">●</span> 黑棋先行');
       }
 
-      updateStatus(`<span class="${currentPlayer}">${currentPlayer === 'black' ? '●' : '○'}</span> ${currentPlayer === 'black' ? '黑棋' : '白棋'}回合`);
-    }
+      function updateStatus(html) {
+        document.getElementById('status').innerHTML = html;
+      }
 
-    function resetGame() {
-      gameOver = false;
-      currentPlayer = 'black';
-      history = [];
-      lastMove = null;
+      // Initialize
       initBoard();
-      updateStatus('<span class="black">●</span> 黑棋先行');
-    }
 
-    function updateStatus(html) {
-      document.getElementById('status').innerHTML = html;
-    }
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector('.theme-toggle');
+        const current = html.getAttribute('data-theme');
+        const next = current === 'light' ? 'dark' : 'light';
+        html.setAttribute('data-theme', next);
+        btn.textContent = next === 'light' ? '☀️' : '🌙';
+        localStorage.setItem('theme', next);
+      };
 
-    // Initialize
-    initBoard();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
-      }
-    })();
-  </script>
-</body>
+      (function () {
+        const saved = localStorage.getItem('theme');
+        if (saved) {
+          document.documentElement.setAttribute('data-theme', saved);
+          document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+        }
+      })();
+    </script>
+  </body>
 </html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>专注力计时器 - WebUtils</title>
+  <meta name="description" content="极简专注计时器，帮助保持专注，提升工作效率" />
+  <meta name="keywords" content="专注 计时器 番茄钟 效率 focus timer productivity pomodoro" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/productivity/focus-timer.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-purple:#9d4edd;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6;display:flex;align-items:center;justify-content:center}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:600px;width:100%;padding:2rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .timer-container{text-align:center}
+    h1{font-size:1.5rem;font-weight:600;margin-bottom:3rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .timer-display{font-family:'JetBrains Mono',monospace;font-size:8rem;font-weight:700;color:var(--accent-purple);margin:2rem 0;line-height:1;user-select:none}
+    .timer-display.running{animation:pulse 2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.8}}
+    .presets{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
+    .preset-btn{padding:.75rem 1.5rem;border:2px solid var(--border-subtle);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-family:inherit;cursor:pointer;transition:all .2s}
+    .preset-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .preset-btn.active{background:var(--accent-purple);border-color:var(--accent-purple);color:#fff}
+    .controls{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem}
+    .control-btn{padding:1rem 2rem;border:none;border-radius:var(--radius-md);font-family:inherit;font-size:1.1rem;font-weight:600;cursor:pointer;transition:all .2s;min-width:120px}
+    .control-btn.primary{background:var(--accent-purple);color:#fff}
+    .control-btn.primary:hover{background:var(--accent-cyan)}
+    .control-btn.secondary{background:transparent;border:2px solid var(--border-subtle);color:var(--text-primary)}
+    .control-btn.secondary:hover{border-color:var(--accent-cyan)}
+    .progress-ring{position:relative;width:400px;height:400px;margin:0 auto 2rem}
+    .progress-ring-circle{transform:rotate(-90deg);transform-origin:50% 50%}
+    .progress-ring-bg{stroke:var(--border-subtle)}
+    .progress-ring-fill{stroke:var(--accent-purple);stroke-linecap:round;transition:stroke-dashoffset .3s}
+    footer{position:fixed;bottom:1rem;left:0;right:0;text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:600px){.timer-display{font-size:5rem}.progress-ring{width:300px;height:300px}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+  <div class="container">
+    <div class="timer-container">
+      <h1>⏱️ 专注力计时器</h1>
+
+      <div class="progress-ring" style="display:none" id="progressRing">
+        <svg width="100%" height="100%" viewBox="0 0 200 200">
+          <circle class="progress-ring-bg progress-ring-circle" cx="100" cy="100" r="90" fill="none" stroke-width="8"></circle>
+          <circle class="progress-ring-fill progress-ring-circle" id="progressCircle" cx="100" cy="100" r="90" fill="none" stroke-width="8" stroke-dasharray="565.5" stroke-dashoffset="0"></circle>
+        </svg>
+      </div>
+
+      <div class="timer-display" id="timerDisplay">25:00</div>
+
+      <div class="presets">
+        <button class="preset-btn active" onclick="setDuration(25, this)">25 分钟</button>
+        <button class="preset-btn" onclick="setDuration(15, this)">15 分钟</button>
+        <button class="preset-btn" onclick="setDuration(45, this)">45 分钟</button>
+        <button class="preset-btn" onclick="setDuration(60, this)">60 分钟</button>
+      </div>
+
+      <div class="controls">
+        <button class="control-btn primary" id="startBtn" onclick="start()">开始</button>
+        <button class="control-btn secondary" onclick="reset()">重置</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../../index.html">← 返回首页</a>
+  </footer>
+
+  <script>
+    let duration = 25 * 60; // seconds
+    let remaining = duration;
+    let timer = null;
+    let isRunning = false;
+
+    function setDuration(minutes, btn) {
+      if (isRunning) return;
+
+      duration = minutes * 60;
+      remaining = duration;
+
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      updateDisplay();
+    }
+
+    function start() {
+      if (isRunning) {
+        pause();
+        return;
+      }
+
+      isRunning = true;
+      document.getElementById('startBtn').textContent = '暂停';
+      document.getElementById('timerDisplay').classList.add('running');
+
+      timer = setInterval(() => {
+        remaining--;
+
+        if (remaining <= 0) {
+          complete();
+        }
+
+        updateDisplay();
+      }, 1000);
+    }
+
+    function pause() {
+      isRunning = false;
+      clearInterval(timer);
+      document.getElementById('startBtn').textContent = '继续';
+      document.getElementById('timerDisplay').classList.remove('running');
+    }
+
+    function reset() {
+      pause();
+      remaining = duration;
+      updateDisplay();
+      document.getElementById('startBtn').textContent = '开始';
+    }
+
+    function complete() {
+      pause();
+      playNotification();
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('专注时间结束！', {
+          body: '休息一下吧 ☕',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">⏱️</text></svg>'
+        });
+      }
+
+      document.getElementById('startBtn').textContent = '开始';
+    }
+
+    function updateDisplay() {
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+
+      document.getElementById('timerDisplay').textContent =
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+      // Update page title
+      document.title = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} - 专注力计时器`;
+
+      // Update progress ring
+      const progress = (duration - remaining) / duration;
+      const circumference = 2 * Math.PI * 90;
+      const offset = circumference * (1 - progress);
+      document.getElementById('progressCircle').style.strokeDashoffset = offset;
+    }
+
+    function playNotification() {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Play a pleasant sound
+      [0, 0.2, 0.4].forEach((time, i) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800 - (i * 100);
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime + time);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + time + 0.5);
+
+        oscillator.start(audioContext.currentTime + time);
+        oscillator.stop(audioContext.currentTime + time + 0.5);
+      });
+    }
+
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        start();
+      } else if (e.code === 'KeyR') {
+        reset();
+      }
+    });
+
+    // Initialize
+    updateDisplay();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

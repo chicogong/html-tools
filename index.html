@@ -1127,6 +1127,8 @@
     </footer>
   </div>
 
+  <!-- 拼音转换库 (用于增强搜索，必须在主脚本之前加载) -->
+  <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3/dist/index.js"></script>
   <script>
     // ==================== 数据定义 ====================
     const CATEGORIES = [
@@ -2516,6 +2518,154 @@
       toolCards = document.querySelectorAll('.tool-card');
     }
 
+    // ==================== 增强搜索功能 ====================
+
+    // 同义词/翻译对照表 (精简版，只保留最常用的映射)
+    const SYNONYMS = {
+      // 格式化
+      'format': ['格式化', 'beautify', 'pretty'],
+      '格式化': ['format', 'beautify', 'pretty'],
+      // 压缩
+      'compress': ['压缩', 'minify'],
+      '压缩': ['compress', 'minify'],
+      // 转换
+      'convert': ['转换', 'transform'],
+      '转换': ['convert', 'transform'],
+      // 编码/解码
+      'encode': ['编码', '加密'],
+      'decode': ['解码', '解密'],
+      '编码': ['encode'],
+      '解码': ['decode'],
+      // 生成
+      'generate': ['生成', 'create'],
+      '生成': ['generate', 'create'],
+      // 计算
+      'calc': ['计算', 'calculate'],
+      '计算': ['calc', 'calculate'],
+      // 颜色
+      'color': ['颜色', 'colour'],
+      '颜色': ['color', 'colour'],
+      // 图片
+      'image': ['图片', 'img'],
+      '图片': ['image', 'img'],
+      // 时间
+      'time': ['时间', 'timestamp'],
+      '时间': ['time', 'timestamp'],
+      // 正则
+      'regex': ['正则', 'regexp'],
+      '正则': ['regex', 'regexp'],
+      // 二维码
+      'qr': ['二维码', 'qrcode'],
+      '二维码': ['qr', 'qrcode']
+    };
+
+    // 获取中文拼音 - 使用 pinyin-pro 库
+    function getPinyin(str) {
+      // 检查 pinyin-pro 是否已加载
+      if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+        return pinyinPro.pinyin(str, { toneType: 'none' }).replace(/\s+/g, '').toLowerCase();
+      }
+      // 降级：直接返回原字符串
+      return str.toLowerCase();
+    }
+
+    // 获取首字母 - 使用 pinyin-pro 库
+    function getInitials(str) {
+      let initials = '';
+      const words = str.split(/[\s\-_]+/);
+      
+      for (const word of words) {
+        if (!word) continue;
+        
+        // 检查是否是纯英文单词
+        const isAllEnglish = /^[a-zA-Z]+$/.test(word);
+        // 检查是否是全大写的英文缩写（如 JSON、CSS、HTML）
+        const isAllUpperCase = isAllEnglish && word === word.toUpperCase();
+        
+        if (isAllUpperCase) {
+          // 全大写英文缩写只取第一个字母
+          initials += word[0].toLowerCase();
+        } else if (isAllEnglish) {
+          // 普通英文单词：取首字母，驼峰命名取每个大写字母
+          for (let i = 0; i < word.length; i++) {
+            const char = word[i];
+            if (i === 0 || char === char.toUpperCase()) {
+              initials += char.toLowerCase();
+            }
+          }
+        } else {
+          // 包含中文的混合内容：使用 pinyin-pro 获取首字母
+          if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+            initials += pinyinPro.pinyin(word, { pattern: 'first', toneType: 'none' }).replace(/\s+/g, '').toLowerCase();
+          } else {
+            // 降级：只取英文字母
+            for (const char of word) {
+              if (/[a-zA-Z]/.test(char)) {
+                initials += char.toLowerCase();
+              }
+            }
+          }
+        }
+      }
+      return initials;
+    }
+
+    // 扩展查询词（同义词）
+    function expandQuery(query) {
+      const q = query.toLowerCase();
+      const expanded = new Set([q]);
+      
+      // 直接同义词
+      if (SYNONYMS[q]) {
+        SYNONYMS[q].forEach(s => expanded.add(s.toLowerCase()));
+      }
+      
+      // 检查是否是同义词的一部分
+      for (const [key, values] of Object.entries(SYNONYMS)) {
+        if (key.toLowerCase().includes(q) || q.includes(key.toLowerCase())) {
+          expanded.add(key.toLowerCase());
+          values.forEach(v => expanded.add(v.toLowerCase()));
+        }
+      }
+      
+      return Array.from(expanded);
+    }
+
+    // 容错匹配（允许跳过字符或忽略重复）
+    function fuzzyMatchWithTolerance(text, query) {
+      text = text.toLowerCase();
+      query = query.toLowerCase();
+      
+      // 去除连续重复字符 (jsoon -> json)
+      const normalizedQuery = query.replace(/(.)\1+/g, '$1');
+      
+      if (text.includes(normalizedQuery)) {
+        return { matched: true, score: 15 };
+      }
+      
+      // 允许跳过1个字符的模糊匹配
+      let ti = 0, qi = 0, skipped = 0;
+      while (ti < text.length && qi < query.length) {
+        if (text[ti] === query[qi]) {
+          ti++;
+          qi++;
+        } else {
+          ti++;
+          // 只有在还没匹配到第一个字符时才允许跳过
+          if (qi > 0) {
+            skipped++;
+            if (skipped > 1) break;
+          }
+        }
+      }
+      
+      if (qi === query.length) {
+        return { matched: true, score: 10 - skipped * 2 };
+      }
+      
+      return { matched: false, score: 0 };
+    }
+
     // ==================== 搜索匹配评分函数 ====================
     function getSearchScore(tool, query) {
       const name = tool.name.toLowerCase();
@@ -2523,8 +2673,15 @@
       const keywords = tool.keywords.toLowerCase();
       const q = query.toLowerCase();
       
+      // 预计算拼音和首字母（用于拼音搜索和首字母搜索）
+      // 去掉空格便于匹配
+      const namePinyin = getPinyin(tool.name).replace(/\s+/g, '');
+      const nameInitials = getInitials(tool.name);
+      const keywordsPinyin = getPinyin(tool.keywords).replace(/\s+/g, '');
+      
       let score = 0;
       
+      // ===== 1. 原始查询匹配 =====
       // 完全匹配名称 - 最高分
       if (name === q) return 1000;
       
@@ -2540,7 +2697,64 @@
       // 描述匹配
       if (desc.includes(q)) score += 20;
       
-      // 模糊匹配：查询词中的每个字符按顺序出现
+      // ===== 2. 拼音搜索 =====
+      if (score === 0) {
+        // 拼音完全匹配
+        if (namePinyin === q) score += 80;
+        // 拼音开头匹配
+        else if (namePinyin.startsWith(q)) score += 60;
+        // 拼音包含
+        else if (namePinyin.includes(q)) score += 40;
+        // 关键词拼音匹配
+        else if (keywordsPinyin.includes(q)) score += 25;
+      }
+      
+      // ===== 3. 首字母搜索 =====
+      if (score === 0) {
+        // 首字母完全匹配
+        if (nameInitials === q) score += 70;
+        // 首字母开头匹配
+        else if (nameInitials.startsWith(q)) score += 55;
+        // 首字母包含
+        else if (nameInitials.includes(q)) score += 35;
+      }
+      
+      // ===== 4. 同义词搜索 =====
+      if (score === 0) {
+        const expandedQueries = expandQuery(q);
+        for (const eq of expandedQueries) {
+          if (eq === q) continue; // 跳过原始查询
+          if (name.includes(eq)) {
+            score += 45;
+            break;
+          }
+          if (keywords.includes(eq)) {
+            score += 28;
+            break;
+          }
+          if (desc.includes(eq)) {
+            score += 18;
+            break;
+          }
+        }
+      }
+      
+      // ===== 5. 容错匹配 =====
+      if (score === 0) {
+        // 在名称中容错匹配
+        const nameResult = fuzzyMatchWithTolerance(name, q);
+        if (nameResult.matched) {
+          score += nameResult.score;
+        } else {
+          // 在拼音中容错匹配
+          const pinyinResult = fuzzyMatchWithTolerance(namePinyin, q);
+          if (pinyinResult.matched) {
+            score += pinyinResult.score - 2;
+          }
+        }
+      }
+      
+      // ===== 6. 原有模糊匹配：查询词中的每个字符按顺序出现 =====
       if (score === 0) {
         let fuzzyScore = 0;
         let nameIdx = -1;

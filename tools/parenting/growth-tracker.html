@@ -1,239 +1,508 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>儿童生长曲线 - WebUtils</title>
-  <meta name="description" content="记录孩子身高体重，对照WHO生长曲线，监测生长发育" />
-  <meta name="keywords" content="儿童 生长 身高 体重 百分位 生长曲线 WHO growth percentile" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/parenting/growth-tracker.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>儿童生长曲线 - WebUtils</title>
+    <meta name="description" content="记录孩子身高体重，对照WHO生长曲线，监测生长发育" />
+    <meta name="keywords" content="儿童 生长 身高 体重 百分位 生长曲线 WHO growth percentile" />
+    <meta name="author" content="WebUtils" />
+    <link
+      rel="canonical"
+      href="https://tools.realtime-ai.chat/tools/parenting/growth-tracker.html"
+    />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-orange:#ff9f43;--accent-pink:#ff6b9d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .input-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
-    .form-group{margin-bottom:1rem}
-    .form-group label{display:block;margin-bottom:.5rem;color:var(--text-secondary);font-size:.9rem}
-    .form-group input,.form-group select{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
-    .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent-blue)}
-    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem}
-    .add-btn{width:100%;padding:.75rem;margin-top:.5rem;border:none;border-radius:var(--radius-sm);background:var(--accent-cyan);color:#000;font-family:inherit;font-weight:600;cursor:pointer;transition:all .2s}
-    .add-btn:hover{background:var(--accent-blue)}
-    .result-card{background:linear-gradient(135deg,rgba(255,107,157,.1),rgba(255,159,67,.1));border:2px solid var(--accent-pink);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem;display:none}
-    .result-card.show{display:block}
-    .result-title{font-weight:600;color:var(--accent-pink);margin-bottom:1rem;font-size:1.1rem}
-    .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem}
-    .result-item{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;text-align:center}
-    .result-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--accent-cyan);margin-bottom:.25rem}
-    .result-label{font-size:.85rem;color:var(--text-muted)}
-    .percentile-bar{height:30px;background:var(--bg-surface);border-radius:var(--radius-sm);position:relative;overflow:hidden;margin:1rem 0}
-    .percentile-fill{height:100%;background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));border-radius:var(--radius-sm);transition:width .3s ease}
-    .percentile-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--text-primary)}
-    .info-box{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;margin-top:1rem;font-size:.9rem;line-height:1.8}
-    .info-box strong{color:var(--accent-cyan)}
-    .history-list{display:grid;gap:.75rem}
-    .history-item{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;display:flex;justify-content:space-between;align-items:center}
-    .history-date{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text-muted)}
-    .history-data{flex:1;margin-left:1rem}
-    .history-delete{padding:.5rem;border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;transition:all .2s}
-    .history-delete:hover{color:var(--accent-pink)}
-    .empty-state{text-align:center;padding:2rem 1rem;color:var(--text-muted)}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-green: #00d26a;
+        --accent-orange: #ff9f43;
+        --accent-pink: #ff6b9d;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-pink));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .input-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+      }
+      .add-btn {
+        width: 100%;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: var(--accent-cyan);
+        color: #000;
+        font-family: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .add-btn:hover {
+        background: var(--accent-blue);
+      }
+      .result-card {
+        background: linear-gradient(135deg, rgba(255, 107, 157, 0.1), rgba(255, 159, 67, 0.1));
+        border: 2px solid var(--accent-pink);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: none;
+      }
+      .result-card.show {
+        display: block;
+      }
+      .result-title {
+        font-weight: 600;
+        color: var(--accent-pink);
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+      }
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .result-item {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        text-align: center;
+      }
+      .result-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-cyan);
+        margin-bottom: 0.25rem;
+      }
+      .result-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .percentile-bar {
+        height: 30px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        position: relative;
+        overflow: hidden;
+        margin: 1rem 0;
+      }
+      .percentile-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+        border-radius: var(--radius-sm);
+        transition: width 0.3s ease;
+      }
+      .percentile-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .info-box {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        line-height: 1.8;
+      }
+      .info-box strong {
+        color: var(--accent-cyan);
+      }
+      .history-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+      .history-item {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .history-date {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .history-data {
+        flex: 1;
+        margin-left: 1rem;
+      }
+      .history-delete {
+        padding: 0.5rem;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: all 0.2s;
+      }
+      .history-delete:hover {
+        color: var(--accent-pink);
+      }
+      .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--text-muted);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <a href="../../index.html#parenting">育儿工具</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">生长曲线</span>
-    </nav>
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#parenting">育儿工具</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">生长曲线</span>
+      </nav>
 
-    <h1>📏 儿童生长曲线</h1>
-    <p class="subtitle">记录身高体重，监测生长发育</p>
+      <h1>📏 儿童生长曲线</h1>
+      <p class="subtitle">记录身高体重，监测生长发育</p>
 
-    <div class="input-card">
-      <div class="form-group">
-        <label>性别</label>
-        <select id="gender">
-          <option value="male">男孩</option>
-          <option value="female">女孩</option>
-        </select>
+      <div class="input-card">
+        <div class="form-group">
+          <label>性别</label>
+          <select id="gender">
+            <option value="male">男孩</option>
+            <option value="female">女孩</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>年龄（月）</label>
+            <input type="number" id="ageMonths" placeholder="24" min="0" max="240" />
+          </div>
+          <div class="form-group">
+            <label>身高（cm）</label>
+            <input type="number" id="height" placeholder="85" step="0.1" />
+          </div>
+          <div class="form-group">
+            <label>体重（kg）</label>
+            <input type="number" id="weight" placeholder="12" step="0.1" />
+          </div>
+        </div>
+
+        <button class="add-btn" onclick="calculate()">计算百分位 & 保存记录</button>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>年龄（月）</label>
-          <input type="number" id="ageMonths" placeholder="24" min="0" max="240" />
+      <div class="result-card" id="resultCard">
+        <div class="result-title">📊 生长评估</div>
+
+        <div class="result-grid">
+          <div class="result-item">
+            <div class="result-value" id="heightPercentile">-</div>
+            <div class="result-label">身高百分位</div>
+          </div>
+          <div class="result-item">
+            <div class="result-value" id="weightPercentile">-</div>
+            <div class="result-label">体重百分位</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>身高（cm）</label>
-          <input type="number" id="height" placeholder="85" step="0.1" />
-        </div>
-        <div class="form-group">
-          <label>体重（kg）</label>
-          <input type="number" id="weight" placeholder="12" step="0.1" />
+
+        <div class="info-box">
+          <strong>说明：</strong>
+          <br />
+          •
+          <strong>P50（第50百分位）</strong>
+          ：平均水平，50%的孩子在此线上
+          <br />
+          •
+          <strong>P3-P97</strong>
+          ：正常范围，97%的孩子在此区间
+          <br />
+          •
+          <strong>&lt;P3 或 &gt;P97</strong>
+          ：建议咨询儿科医生
+          <br />
+          • 每3-6个月测量一次，观察生长趋势
         </div>
       </div>
 
-      <button class="add-btn" onclick="calculate()">计算百分位 & 保存记录</button>
+      <div class="input-card">
+        <div class="result-title">📈 生长记录</div>
+        <div class="history-list" id="historyList">
+          <div class="empty-state">暂无记录</div>
+        </div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
     </div>
 
-    <div class="result-card" id="resultCard">
-      <div class="result-title">📊 生长评估</div>
+    <script>
+      const STORAGE_KEY = "html_tools_growth_tracker_v1";
+      let records = [];
 
-      <div class="result-grid">
-        <div class="result-item">
-          <div class="result-value" id="heightPercentile">-</div>
-          <div class="result-label">身高百分位</div>
-        </div>
-        <div class="result-item">
-          <div class="result-value" id="weightPercentile">-</div>
-          <div class="result-label">体重百分位</div>
-        </div>
-      </div>
+      // Simplified WHO percentile approximation (for demonstration)
+      // In production, use actual WHO growth charts data
+      function estimatePercentile(value, gender, ageMonths, type) {
+        // This is a simplified approximation - real WHO charts should be used
+        // Using rough averages for demonstration
+        let p50, p3, p97;
 
-      <div class="info-box">
-        <strong>说明：</strong><br>
-        • <strong>P50（第50百分位）</strong>：平均水平，50%的孩子在此线上<br>
-        • <strong>P3-P97</strong>：正常范围，97%的孩子在此区间<br>
-        • <strong>&lt;P3 或 &gt;P97</strong>：建议咨询儿科医生<br>
-        • 每3-6个月测量一次，观察生长趋势
-      </div>
-    </div>
-
-    <div class="input-card">
-      <div class="result-title">📈 生长记录</div>
-      <div class="history-list" id="historyList">
-        <div class="empty-state">暂无记录</div>
-      </div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    const STORAGE_KEY = 'html_tools_growth_tracker_v1';
-    let records = [];
-
-    // Simplified WHO percentile approximation (for demonstration)
-    // In production, use actual WHO growth charts data
-    function estimatePercentile(value, gender, ageMonths, type) {
-      // This is a simplified approximation - real WHO charts should be used
-      // Using rough averages for demonstration
-      let p50, p3, p97;
-
-      if (type === 'height') {
-        // Rough height estimates (cm)
-        if (gender === 'male') {
-          p50 = 75 + (ageMonths * 0.8);
-          p3 = p50 - 6;
-          p97 = p50 + 6;
+        if (type === "height") {
+          // Rough height estimates (cm)
+          if (gender === "male") {
+            p50 = 75 + ageMonths * 0.8;
+            p3 = p50 - 6;
+            p97 = p50 + 6;
+          } else {
+            p50 = 74 + ageMonths * 0.75;
+            p3 = p50 - 6;
+            p97 = p50 + 6;
+          }
         } else {
-          p50 = 74 + (ageMonths * 0.75);
-          p3 = p50 - 6;
-          p97 = p50 + 6;
+          // Rough weight estimates (kg)
+          if (gender === "male") {
+            p50 = 9 + ageMonths * 0.15;
+            p3 = p50 - 2;
+            p97 = p50 + 3;
+          } else {
+            p50 = 8.5 + ageMonths * 0.14;
+            p3 = p50 - 2;
+            p97 = p50 + 3;
+          }
         }
-      } else {
-        // Rough weight estimates (kg)
-        if (gender === 'male') {
-          p50 = 9 + (ageMonths * 0.15);
-          p3 = p50 - 2;
-          p97 = p50 + 3;
-        } else {
-          p50 = 8.5 + (ageMonths * 0.14);
-          p3 = p50 - 2;
-          p97 = p50 + 3;
+
+        if (value < p3) return "P3";
+        if (value > p97) return "P97";
+
+        const percentile = 3 + ((value - p3) / (p97 - p3)) * 94;
+        return "P" + Math.round(percentile);
+      }
+
+      function calculate() {
+        const gender = document.getElementById("gender").value;
+        const ageMonths = parseFloat(document.getElementById("ageMonths").value);
+        const height = parseFloat(document.getElementById("height").value);
+        const weight = parseFloat(document.getElementById("weight").value);
+
+        if (!ageMonths || !height || !weight) {
+          alert("请填写完整信息");
+          return;
         }
+
+        if (ageMonths < 0 || ageMonths > 240) {
+          alert("年龄范围：0-240个月（0-20岁）");
+          return;
+        }
+
+        const heightP = estimatePercentile(height, gender, ageMonths, "height");
+        const weightP = estimatePercentile(weight, gender, ageMonths, "weight");
+
+        document.getElementById("heightPercentile").textContent = heightP;
+        document.getElementById("weightPercentile").textContent = weightP;
+        document.getElementById("resultCard").classList.add("show");
+
+        // Save record
+        records.unshift({
+          id: Date.now(),
+          date: new Date().toISOString(),
+          gender,
+          ageMonths,
+          height,
+          weight,
+          heightP,
+          weightP
+        });
+
+        saveData();
+        renderHistory();
       }
 
-      if (value < p3) return 'P3';
-      if (value > p97) return 'P97';
-
-      const percentile = 3 + ((value - p3) / (p97 - p3)) * 94;
-      return 'P' + Math.round(percentile);
-    }
-
-    function calculate() {
-      const gender = document.getElementById('gender').value;
-      const ageMonths = parseFloat(document.getElementById('ageMonths').value);
-      const height = parseFloat(document.getElementById('height').value);
-      const weight = parseFloat(document.getElementById('weight').value);
-
-      if (!ageMonths || !height || !weight) {
-        alert('请填写完整信息');
-        return;
+      function deleteRecord(id) {
+        if (!confirm("确定要删除这条记录吗？")) return;
+        records = records.filter((r) => r.id !== id);
+        saveData();
+        renderHistory();
       }
 
-      if (ageMonths < 0 || ageMonths > 240) {
-        alert('年龄范围：0-240个月（0-20岁）');
-        return;
-      }
+      function renderHistory() {
+        const container = document.getElementById("historyList");
 
-      const heightP = estimatePercentile(height, gender, ageMonths, 'height');
-      const weightP = estimatePercentile(weight, gender, ageMonths, 'weight');
+        if (records.length === 0) {
+          container.innerHTML = '<div class="empty-state">暂无记录</div>';
+          return;
+        }
 
-      document.getElementById('heightPercentile').textContent = heightP;
-      document.getElementById('weightPercentile').textContent = weightP;
-      document.getElementById('resultCard').classList.add('show');
-
-      // Save record
-      records.unshift({
-        id: Date.now(),
-        date: new Date().toISOString(),
-        gender,
-        ageMonths,
-        height,
-        weight,
-        heightP,
-        weightP
-      });
-
-      saveData();
-      renderHistory();
-    }
-
-    function deleteRecord(id) {
-      if (!confirm('确定要删除这条记录吗？')) return;
-      records = records.filter(r => r.id !== id);
-      saveData();
-      renderHistory();
-    }
-
-    function renderHistory() {
-      const container = document.getElementById('historyList');
-
-      if (records.length === 0) {
-        container.innerHTML = '<div class="empty-state">暂无记录</div>';
-        return;
-      }
-
-      container.innerHTML = records.map(r => `
+        container.innerHTML = records
+          .map(
+            (r) => `
         <div class="history-item">
-          <div class="history-date">${new Date(r.date).toLocaleDateString('zh-CN')}</div>
+          <div class="history-date">${new Date(r.date).toLocaleDateString("zh-CN")}</div>
           <div class="history-data">
             ${r.ageMonths}个月 ·
             ${r.height}cm (${r.heightP}) ·
@@ -241,43 +510,45 @@
           </div>
           <button class="history-delete" onclick="deleteRecord(${r.id})">×</button>
         </div>
-      `).join('');
-    }
-
-    function loadData() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        records = saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        records = [];
+      `
+          )
+          .join("");
       }
-      renderHistory();
-    }
 
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    }
-
-    // Initialize
-    loadData();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      function loadData() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          records = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+          records = [];
+        }
+        renderHistory();
       }
-    })();
-  </script>
-</body>
+
+      function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      }
+
+      // Initialize
+      loadData();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

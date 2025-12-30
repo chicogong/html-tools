@@ -5,10 +5,12 @@
 ## 贡献方式
 
 ### 1. 报告 Bug
+
 - 使用 [Bug 报告模板](https://github.com/chicogong/html-tools/issues/new?template=bug_report.yml) 提交问题
 - 请提供详细的复现步骤
 
 ### 2. 提议新工具
+
 - 使用 [新工具提议模板](https://github.com/chicogong/html-tools/issues/new?template=new_tool.yml)
 - 确保工具可以纯前端实现，数据不需要上传到服务器
 
@@ -76,6 +78,7 @@ chore: 构建/工具相关
 ```
 
 示例：
+
 ```
 feat(dev): 添加 JSON 格式化工具
 fix(time): 修复时间戳转换时区问题
@@ -93,48 +96,47 @@ docs: 更新 README 工具列表
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>工具名称 - WebUtils</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
     <style>
-        /* 工具样式 */
+      /* 工具样式 */
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <main class="container">
-        <a href="../../index.html">← 返回工具列表</a>
-        <h1>工具名称</h1>
-        <p>工具描述</p>
-        
-        <!-- 工具界面 -->
-        
+      <a href="../../index.html">← 返回工具列表</a>
+      <h1>工具名称</h1>
+      <p>工具描述</p>
+
+      <!-- 工具界面 -->
     </main>
-    
+
     <script>
-        // 工具逻辑
+      // 工具逻辑
     </script>
-</body>
+  </body>
 </html>
 ```
 
 ## 分类说明
 
-| 分类 | 目录 | 说明 |
-|------|------|------|
-| dev | tools/dev/ | 开发工具：JSON、正则、编码等 |
-| text | tools/text/ | 文本工具：转换、统计、处理 |
-| time | tools/time/ | 时间工具：时间戳、日期计算 |
-| generator | tools/generator/ | 生成器：二维码、密码、UUID |
-| media | tools/media/ | 媒体工具：图片、音视频处理 |
-| calculator | tools/calculator/ | 计算器：各类计算工具 |
-| converter | tools/converter/ | 转换器：格式转换 |
-| extractor | tools/extractor/ | 提取器：数据提取 |
-| ai | tools/ai/ | AI 工具：Prompt、MCP 相关 |
-| network | tools/network/ | 网络工具：API、WebSocket |
-| seo | tools/seo/ | SEO 工具：站长工具 |
-| security | tools/security/ | 安全工具：加密、校验 |
+| 分类       | 目录              | 说明                         |
+| ---------- | ----------------- | ---------------------------- |
+| dev        | tools/dev/        | 开发工具：JSON、正则、编码等 |
+| text       | tools/text/       | 文本工具：转换、统计、处理   |
+| time       | tools/time/       | 时间工具：时间戳、日期计算   |
+| generator  | tools/generator/  | 生成器：二维码、密码、UUID   |
+| media      | tools/media/      | 媒体工具：图片、音视频处理   |
+| calculator | tools/calculator/ | 计算器：各类计算工具         |
+| converter  | tools/converter/  | 转换器：格式转换             |
+| extractor  | tools/extractor/  | 提取器：数据提取             |
+| ai         | tools/ai/         | AI 工具：Prompt、MCP 相关    |
+| network    | tools/network/    | 网络工具：API、WebSocket     |
+| seo        | tools/seo/        | SEO 工具：站长工具           |
+| security   | tools/security/   | 安全工具：加密、校验         |
 
 ## 问题反馈
 

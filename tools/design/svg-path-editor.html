@@ -1,251 +1,499 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SVG 路径编辑器 - WebUtils</title>
-  <meta name="description" content="可视化编辑 SVG 路径，实时预览" />
-  <meta name="keywords" content="svg path editor 路径编辑 矢量图形 bezier" />
-  <style>
-    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
-    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
-    h1 { font-size: 1.75rem; margin: 0 0 8px; }
-    .desc { color: var(--text-muted); margin: 0 0 24px; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
-    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
-    .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 768px) { .editor-grid { grid-template-columns: 1fr; } }
-    .canvas-container { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); aspect-ratio: 1; position: relative; overflow: hidden; }
-    .canvas-container svg { width: 100%; height: 100%; }
-    .canvas-container svg path { fill: none; stroke: var(--primary); stroke-width: 2; }
-    .canvas-container svg .grid { stroke: var(--border); stroke-width: 0.5; }
-    .canvas-container svg .point { fill: var(--primary); cursor: move; }
-    .canvas-container svg .control-point { fill: var(--success); cursor: move; }
-    .canvas-container svg .control-line { stroke: var(--success); stroke-width: 1; stroke-dasharray: 4; }
-    .path-input { margin-bottom: 16px; }
-    .path-input label { display: block; font-weight: 500; margin-bottom: 8px; }
-    .path-input textarea { width: 100%; height: 100px; padding: 12px; font-family: ui-monospace, monospace; font-size: 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; background: var(--bg); color: var(--text); }
-    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-    .btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
-    .btn:hover { border-color: var(--primary); color: var(--primary); }
-    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .preset-btn { padding: 10px; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); cursor: pointer; font-size: 0.8rem; }
-    .preset-btn:hover { border-color: var(--primary); }
-    .preset-btn svg { width: 40px; height: 40px; display: block; margin: 0 auto 4px; }
-    .info { margin-top: 16px; padding: 12px; background: var(--bg); border-radius: var(--radius); font-size: 0.85rem; }
-    .info code { font-family: ui-monospace, monospace; background: var(--card-bg); padding: 2px 6px; border-radius: 4px; }
-    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
-    footer a { color: var(--primary); text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <a href="../../index.html" class="back-link">← 返回工具列表</a>
-    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
-    <h1>SVG 路径编辑器</h1>
-    <p class="desc">可视化编辑 SVG 路径</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SVG 路径编辑器 - WebUtils</title>
+    <meta name="description" content="可视化编辑 SVG 路径，实时预览" />
+    <meta name="keywords" content="svg path editor 路径编辑 矢量图形 bezier" />
+    <style>
+      :root {
+        --bg: #f8f9fa;
+        --card-bg: #fff;
+        --text: #212529;
+        --text-muted: #6c757d;
+        --border: #dee2e6;
+        --primary: #0d6efd;
+        --success: #198754;
+        --shadow: 0 2px 8px rgb(0, 0, 0, 0.08);
+        --radius: 8px;
+      }
+      [data-theme="dark"] {
+        --bg: #0a0a0f;
+        --card-bg: #1a1a24;
+        --text: #e8e8ed;
+        --text-muted: #9898a4;
+        --border: #2a2a36;
+        --primary: #a855f7;
+        --success: #10b981;
+        --shadow: 0 2px 8px rgb(0, 0, 0, 0.3);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 24px;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: var(--primary);
+        text-decoration: none;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin: 0 0 8px;
+      }
+      .desc {
+        color: var(--text-muted);
+        margin: 0 0 24px;
+      }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+      }
+      .editor-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 768px) {
+        .editor-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .canvas-container {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        aspect-ratio: 1;
+        position: relative;
+        overflow: hidden;
+      }
+      .canvas-container svg {
+        width: 100%;
+        height: 100%;
+      }
+      .canvas-container svg path {
+        fill: none;
+        stroke: var(--primary);
+        stroke-width: 2;
+      }
+      .canvas-container svg .grid {
+        stroke: var(--border);
+        stroke-width: 0.5;
+      }
+      .canvas-container svg .point {
+        fill: var(--primary);
+        cursor: move;
+      }
+      .canvas-container svg .control-point {
+        fill: var(--success);
+        cursor: move;
+      }
+      .canvas-container svg .control-line {
+        stroke: var(--success);
+        stroke-width: 1;
+        stroke-dasharray: 4;
+      }
+      .path-input {
+        margin-bottom: 16px;
+      }
+      .path-input label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+      .path-input textarea {
+        width: 100%;
+        height: 100px;
+        padding: 12px;
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        resize: vertical;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card-bg);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      .btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .btn.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .presets {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+      .preset-btn {
+        padding: 10px;
+        text-align: center;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg);
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+      .preset-btn:hover {
+        border-color: var(--primary);
+      }
+      .preset-btn svg {
+        width: 40px;
+        height: 40px;
+        display: block;
+        margin: 0 auto 4px;
+      }
+      .info {
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--bg);
+        border-radius: var(--radius);
+        font-size: 0.85rem;
+      }
+      .info code {
+        font-family: ui-monospace, monospace;
+        background: var(--card-bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      footer {
+        text-align: center;
+        margin-top: 32px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="../../index.html" class="back-link">← 返回工具列表</a>
+      <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+      <h1>SVG 路径编辑器</h1>
+      <p class="desc">可视化编辑 SVG 路径</p>
 
-    <div class="card">
-      <div class="editor-grid">
-        <div>
-          <div class="canvas-container" id="canvasContainer">
-            <svg id="svgCanvas" viewBox="0 0 200 200">
-              <defs>
-                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <path d="M 20 0 L 0 0 0 20" fill="none" class="grid"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)"/>
-              <g id="controlLines"></g>
-              <path id="mainPath" d=""/>
-              <g id="points"></g>
-            </svg>
+      <div class="card">
+        <div class="editor-grid">
+          <div>
+            <div class="canvas-container" id="canvasContainer">
+              <svg id="svgCanvas" viewBox="0 0 200 200">
+                <defs>
+                  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" class="grid" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+                <g id="controlLines"></g>
+                <path id="mainPath" d="" />
+                <g id="points"></g>
+              </svg>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <div class="path-input">
-            <label>路径数据 (d 属性)</label>
-            <textarea id="pathInput" placeholder="M 20 80 Q 100 20 180 80 T 180 180">M 20 80 Q 100 20 180 80 T 180 180</textarea>
-          </div>
+          <div>
+            <div class="path-input">
+              <label>路径数据 (d 属性)</label>
+              <textarea id="pathInput" placeholder="M 20 80 Q 100 20 180 80 T 180 180">
+M 20 80 Q 100 20 180 80 T 180 180</textarea
+              >
+            </div>
 
-          <div class="btn-row">
-            <button class="btn primary" onclick="applyPath()">应用路径</button>
-            <button class="btn" onclick="copyPath()">复制</button>
-            <button class="btn" onclick="clearPath()">清空</button>
-          </div>
+            <div class="btn-row">
+              <button class="btn primary" onclick="applyPath()">应用路径</button>
+              <button class="btn" onclick="copyPath()">复制</button>
+              <button class="btn" onclick="clearPath()">清空</button>
+            </div>
 
-          <h4 style="margin: 16px 0 8px;">预设形状</h4>
-          <div class="presets">
-            <div class="preset-btn" onclick="setPreset('line')">
-              <svg viewBox="0 0 40 40"><line x1="5" y1="35" x2="35" y2="5" stroke="currentColor" stroke-width="2"/></svg>
-              直线
+            <h4 style="margin: 16px 0 8px">预设形状</h4>
+            <div class="presets">
+              <div class="preset-btn" onclick="setPreset('line')">
+                <svg viewBox="0 0 40 40">
+                  <line x1="5" y1="35" x2="35" y2="5" stroke="currentColor" stroke-width="2" />
+                </svg>
+                直线
+              </div>
+              <div class="preset-btn" onclick="setPreset('curve')">
+                <svg viewBox="0 0 40 40">
+                  <path d="M5 35 Q20 5 35 35" fill="none" stroke="currentColor" stroke-width="2" />
+                </svg>
+                曲线
+              </div>
+              <div class="preset-btn" onclick="setPreset('wave')">
+                <svg viewBox="0 0 40 40">
+                  <path
+                    d="M5 20 Q12 5 20 20 T35 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                波浪
+              </div>
+              <div class="preset-btn" onclick="setPreset('heart')">
+                <svg viewBox="0 0 40 40">
+                  <path
+                    d="M20 35 C5 25 5 10 20 15 C35 10 35 25 20 35"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                心形
+              </div>
+              <div class="preset-btn" onclick="setPreset('circle')">
+                <svg viewBox="0 0 40 40">
+                  <circle
+                    cx="20"
+                    cy="20"
+                    r="15"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                圆形
+              </div>
+              <div class="preset-btn" onclick="setPreset('star')">
+                <svg viewBox="0 0 40 40">
+                  <polygon
+                    points="20,5 25,15 35,17 27,25 30,35 20,30 10,35 13,25 5,17 15,15"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                星形
+              </div>
+              <div class="preset-btn" onclick="setPreset('arrow')">
+                <svg viewBox="0 0 40 40">
+                  <path
+                    d="M5 20 L30 20 M20 10 L30 20 L20 30"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                箭头
+              </div>
+              <div class="preset-btn" onclick="setPreset('check')">
+                <svg viewBox="0 0 40 40">
+                  <path
+                    d="M8 20 L16 28 L32 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+                勾选
+              </div>
             </div>
-            <div class="preset-btn" onclick="setPreset('curve')">
-              <svg viewBox="0 0 40 40"><path d="M5 35 Q20 5 35 35" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              曲线
-            </div>
-            <div class="preset-btn" onclick="setPreset('wave')">
-              <svg viewBox="0 0 40 40"><path d="M5 20 Q12 5 20 20 T35 20" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              波浪
-            </div>
-            <div class="preset-btn" onclick="setPreset('heart')">
-              <svg viewBox="0 0 40 40"><path d="M20 35 C5 25 5 10 20 15 C35 10 35 25 20 35" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              心形
-            </div>
-            <div class="preset-btn" onclick="setPreset('circle')">
-              <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              圆形
-            </div>
-            <div class="preset-btn" onclick="setPreset('star')">
-              <svg viewBox="0 0 40 40"><polygon points="20,5 25,15 35,17 27,25 30,35 20,30 10,35 13,25 5,17 15,15" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              星形
-            </div>
-            <div class="preset-btn" onclick="setPreset('arrow')">
-              <svg viewBox="0 0 40 40"><path d="M5 20 L30 20 M20 10 L30 20 L20 30" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              箭头
-            </div>
-            <div class="preset-btn" onclick="setPreset('check')">
-              <svg viewBox="0 0 40 40"><path d="M8 20 L16 28 L32 12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-              勾选
-            </div>
-          </div>
 
-          <div class="info">
-            <strong>路径命令:</strong><br>
-            <code>M</code> 移动到 · <code>L</code> 直线 · <code>H</code> 水平线 · <code>V</code> 垂直线<br>
-            <code>Q</code> 二次贝塞尔 · <code>C</code> 三次贝塞尔 · <code>A</code> 弧线 · <code>Z</code> 闭合
+            <div class="info">
+              <strong>路径命令:</strong>
+              <br />
+              <code>M</code>
+              移动到 ·
+              <code>L</code>
+              直线 ·
+              <code>H</code>
+              水平线 ·
+              <code>V</code>
+              垂直线
+              <br />
+              <code>Q</code>
+              二次贝塞尔 ·
+              <code>C</code>
+              三次贝塞尔 ·
+              <code>A</code>
+              弧线 ·
+              <code>Z</code>
+              闭合
+            </div>
           </div>
         </div>
       </div>
+
+      <footer>
+        纯前端工具 · 无服务器 ·
+        <a href="../../index.html">WebUtils</a>
+      </footer>
     </div>
 
-    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
-  </div>
+    <script>
+      const presets = {
+        line: "M 20 180 L 180 20",
+        curve: "M 20 180 Q 100 20 180 180",
+        wave: "M 20 100 Q 60 40 100 100 T 180 100",
+        heart: "M 100 170 C 40 130 40 60 100 80 C 160 60 160 130 100 170",
+        circle: "M 100 20 A 80 80 0 1 1 100 180 A 80 80 0 1 1 100 20",
+        star: "M 100 20 L 120 70 L 175 70 L 130 105 L 150 160 L 100 130 L 50 160 L 70 105 L 25 70 L 80 70 Z",
+        arrow: "M 20 100 L 150 100 M 110 60 L 150 100 L 110 140",
+        check: "M 30 100 L 80 150 L 170 50"
+      };
 
-  <script>
-    const presets = {
-      line: 'M 20 180 L 180 20',
-      curve: 'M 20 180 Q 100 20 180 180',
-      wave: 'M 20 100 Q 60 40 100 100 T 180 100',
-      heart: 'M 100 170 C 40 130 40 60 100 80 C 160 60 160 130 100 170',
-      circle: 'M 100 20 A 80 80 0 1 1 100 180 A 80 80 0 1 1 100 20',
-      star: 'M 100 20 L 120 70 L 175 70 L 130 105 L 150 160 L 100 130 L 50 160 L 70 105 L 25 70 L 80 70 Z',
-      arrow: 'M 20 100 L 150 100 M 110 60 L 150 100 L 110 140',
-      check: 'M 30 100 L 80 150 L 170 50'
-    };
-
-    function applyPath() {
-      const pathData = document.getElementById('pathInput').value.trim();
-      document.getElementById('mainPath').setAttribute('d', pathData);
-      renderPoints(pathData);
-    }
-
-    function renderPoints(pathData) {
-      const pointsGroup = document.getElementById('points');
-      const linesGroup = document.getElementById('controlLines');
-      pointsGroup.innerHTML = '';
-      linesGroup.innerHTML = '';
-
-      const commands = pathData.match(/[MLHVQTCSAZ][^MLHVQTCSAZ]*/gi) || [];
-      let currentX = 0, currentY = 0;
-
-      commands.forEach((cmd, idx) => {
-        const type = cmd[0].toUpperCase();
-        const nums = cmd.slice(1).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
-
-        if (type === 'M' || type === 'L') {
-          currentX = nums[0];
-          currentY = nums[1];
-          addPoint(currentX, currentY, 'point');
-        } else if (type === 'Q') {
-          const [cx, cy, x, y] = nums;
-          addLine(currentX, currentY, cx, cy);
-          addLine(cx, cy, x, y);
-          addPoint(cx, cy, 'control-point');
-          addPoint(x, y, 'point');
-          currentX = x;
-          currentY = y;
-        } else if (type === 'C') {
-          const [c1x, c1y, c2x, c2y, x, y] = nums;
-          addLine(currentX, currentY, c1x, c1y);
-          addLine(x, y, c2x, c2y);
-          addPoint(c1x, c1y, 'control-point');
-          addPoint(c2x, c2y, 'control-point');
-          addPoint(x, y, 'point');
-          currentX = x;
-          currentY = y;
-        } else if (type === 'T') {
-          currentX = nums[0];
-          currentY = nums[1];
-          addPoint(currentX, currentY, 'point');
-        } else if (type === 'A') {
-          currentX = nums[5];
-          currentY = nums[6];
-          addPoint(currentX, currentY, 'point');
-        }
-      });
-    }
-
-    function addPoint(x, y, className) {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', 5);
-      circle.setAttribute('class', className);
-      document.getElementById('points').appendChild(circle);
-    }
-
-    function addLine(x1, y1, x2, y2) {
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      line.setAttribute('class', 'control-line');
-      document.getElementById('controlLines').appendChild(line);
-    }
-
-    function setPreset(name) {
-      const path = presets[name];
-      document.getElementById('pathInput').value = path;
-      applyPath();
-    }
-
-    function copyPath() {
-      const path = document.getElementById('pathInput').value;
-      navigator.clipboard.writeText(path);
-    }
-
-    function clearPath() {
-      document.getElementById('pathInput').value = '';
-      document.getElementById('mainPath').setAttribute('d', '');
-      document.getElementById('points').innerHTML = '';
-      document.getElementById('controlLines').innerHTML = '';
-    }
-
-    // Initialize
-    applyPath();
-
-    function toggleTheme() {
-      const html = document.documentElement;
-      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
-      localStorage.setItem('theme', next);
-    }
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      function applyPath() {
+        const pathData = document.getElementById("pathInput").value.trim();
+        document.getElementById("mainPath").setAttribute("d", pathData);
+        renderPoints(pathData);
       }
-    })();
-  </script>
-</body>
+
+      function renderPoints(pathData) {
+        const pointsGroup = document.getElementById("points");
+        const linesGroup = document.getElementById("controlLines");
+        pointsGroup.innerHTML = "";
+        linesGroup.innerHTML = "";
+
+        const commands = pathData.match(/[MLHVQTCSAZ][^MLHVQTCSAZ]*/gi) || [];
+        let currentX = 0,
+          currentY = 0;
+
+        commands.forEach((cmd, idx) => {
+          const type = cmd[0].toUpperCase();
+          const nums = cmd
+            .slice(1)
+            .trim()
+            .split(/[\s,]+/)
+            .map(Number)
+            .filter((n) => !isNaN(n));
+
+          if (type === "M" || type === "L") {
+            currentX = nums[0];
+            currentY = nums[1];
+            addPoint(currentX, currentY, "point");
+          } else if (type === "Q") {
+            const [cx, cy, x, y] = nums;
+            addLine(currentX, currentY, cx, cy);
+            addLine(cx, cy, x, y);
+            addPoint(cx, cy, "control-point");
+            addPoint(x, y, "point");
+            currentX = x;
+            currentY = y;
+          } else if (type === "C") {
+            const [c1x, c1y, c2x, c2y, x, y] = nums;
+            addLine(currentX, currentY, c1x, c1y);
+            addLine(x, y, c2x, c2y);
+            addPoint(c1x, c1y, "control-point");
+            addPoint(c2x, c2y, "control-point");
+            addPoint(x, y, "point");
+            currentX = x;
+            currentY = y;
+          } else if (type === "T") {
+            currentX = nums[0];
+            currentY = nums[1];
+            addPoint(currentX, currentY, "point");
+          } else if (type === "A") {
+            currentX = nums[5];
+            currentY = nums[6];
+            addPoint(currentX, currentY, "point");
+          }
+        });
+      }
+
+      function addPoint(x, y, className) {
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", 5);
+        circle.setAttribute("class", className);
+        document.getElementById("points").appendChild(circle);
+      }
+
+      function addLine(x1, y1, x2, y2) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y1);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y2);
+        line.setAttribute("class", "control-line");
+        document.getElementById("controlLines").appendChild(line);
+      }
+
+      function setPreset(name) {
+        const path = presets[name];
+        document.getElementById("pathInput").value = path;
+        applyPath();
+      }
+
+      function copyPath() {
+        const path = document.getElementById("pathInput").value;
+        navigator.clipboard.writeText(path);
+      }
+
+      function clearPath() {
+        document.getElementById("pathInput").value = "";
+        document.getElementById("mainPath").setAttribute("d", "");
+        document.getElementById("points").innerHTML = "";
+        document.getElementById("controlLines").innerHTML = "";
+      }
+
+      // Initialize
+      applyPath();
+
+      function toggleTheme() {
+        const html = document.documentElement;
+        const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        html.setAttribute("data-theme", next);
+        document.querySelector(".theme-toggle").textContent = next === "dark" ? "🌙" : "☀️";
+        localStorage.setItem("theme", next);
+      }
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "dark" ? "🌙" : "☀️";
+        }
+      })();
+    </script>
+  </body>
 </html>

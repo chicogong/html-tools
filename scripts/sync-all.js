@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * 统一同步脚本
- * 
+ *
  * 从 tools.json 同步到所有相关文件：
  * - index.html: CATEGORIES 数组、TOOLS 数组、SEO meta、统计数字
  * - README.md: 徽章、标题、工具数量
  * - sitemap.xml: 所有工具 URL
  * - manifest.json: 描述中的工具数量
  * - GitHub 仓库描述
- * 
+ *
  * 用法: npm run sync
  */
 
@@ -32,8 +32,19 @@ const SITE_URL = 'https://tools.realtime-ai.chat';
 
 // 优先显示的分类顺序
 const PRIORITY_CATEGORIES = [
-  'dev', 'text', 'time', 'generator', 'media', 'privacy', 'security', 
-  'network', 'calculator', 'converter', 'extractor', 'ai', 'life'
+  'dev',
+  'text',
+  'time',
+  'generator',
+  'media',
+  'privacy',
+  'security',
+  'network',
+  'calculator',
+  'converter',
+  'extractor',
+  'ai',
+  'life'
 ];
 
 /**
@@ -53,7 +64,7 @@ function toolToJsLine(tool) {
   const desc = escapeString(tool.description || tool.name);
   const icon = escapeString(tool.icon || '🔧');
   const keywords = escapeString(tool.keywords || tool.name);
-  
+
   return `      { url: '${url}', category: '${category}', name: '${name}', desc: '${desc}', icon: '${icon}', keywords: '${keywords}' },`;
 }
 
@@ -63,19 +74,19 @@ function toolToJsLine(tool) {
 function getSortedCategories(categories) {
   const allCatIds = Object.keys(categories);
   const sorted = [];
-  
+
   for (const catId of PRIORITY_CATEGORIES) {
     if (categories[catId]) {
       sorted.push(catId);
     }
   }
-  
+
   for (const catId of allCatIds) {
     if (!sorted.includes(catId)) {
       sorted.push(catId);
     }
   }
-  
+
   return sorted;
 }
 
@@ -84,23 +95,23 @@ function getSortedCategories(categories) {
  */
 function main() {
   console.log('🔄 开始同步...\n');
-  
+
   // 读取 tools.json
   if (!fs.existsSync(TOOLS_JSON)) {
     console.error('❌ tools.json not found');
     process.exit(1);
   }
-  
+
   const toolsData = JSON.parse(fs.readFileSync(TOOLS_JSON, 'utf8'));
   const { categories, tools: toolsObj } = toolsData;
   const tools = Object.values(toolsObj);
-  
+
   const toolCount = tools.length;
   const categoryCount = Object.keys(categories).length;
   const sortedCategories = getSortedCategories(categories);
-  
+
   console.log(`📦 数据源: ${toolCount} 工具, ${categoryCount} 分类\n`);
-  
+
   // 按分类分组
   const groupedTools = {};
   for (const tool of tools) {
@@ -109,47 +120,49 @@ function main() {
     }
     groupedTools[tool.category].push(tool);
   }
-  
+
   // 检查未定义的分类
-  const undefinedCategories = Object.keys(groupedTools).filter(cat => !categories[cat]);
+  const undefinedCategories = Object.keys(groupedTools).filter((cat) => !categories[cat]);
   if (undefinedCategories.length > 0) {
     console.warn(`⚠️  未定义的分类: ${undefinedCategories.join(', ')}`);
   }
-  
+
   // 生成 CATEGORIES 数组
   const categoriesItems = [
     "      { id: 'all', name: '全部', icon: '🏠' },",
     "      { id: 'favorites', name: '收藏', icon: '⭐' },",
     "      { id: 'recent', name: '最近', icon: '🕐' },"
   ];
-  
+
   for (const catId of sortedCategories) {
     const cat = categories[catId];
     if (cat && groupedTools[catId] && groupedTools[catId].length > 0) {
       const icon = escapeString(cat.icon || '📦');
-      categoriesItems.push(`      { id: '${catId}', name: '${escapeString(cat.name)}', icon: '${icon}' },`);
+      categoriesItems.push(
+        `      { id: '${catId}', name: '${escapeString(cat.name)}', icon: '${icon}' },`
+      );
     }
   }
-  
+
   const categoriesJs = `const CATEGORIES = [\n${categoriesItems.join('\n')}\n    ];`;
-  
+
   // 生成 TOOLS 数组
   const toolsLines = [];
-  
+
   for (const catId of sortedCategories) {
     const catTools = groupedTools[catId];
     if (catTools && catTools.length > 0) {
       const catName = categories[catId]?.name || catId;
       toolsLines.push(`      // ${catName}`);
-      
+
       for (const tool of catTools) {
         toolsLines.push(toolToJsLine(tool));
       }
     }
   }
-  
+
   const toolsJs = `const TOOLS = [\n${toolsLines.join('\n')}\n    ];`;
-  
+
   // 执行所有同步
   const results = {
     indexHtml: updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount),
@@ -158,16 +171,18 @@ function main() {
     manifest: updateManifest(toolCount),
     github: updateGitHubDescription(toolCount)
   };
-  
+
   // 统计各分类数量
-  const activeCategories = sortedCategories.filter(cat => groupedTools[cat] && groupedTools[cat].length > 0);
+  const activeCategories = sortedCategories.filter(
+    (cat) => groupedTools[cat] && groupedTools[cat].length > 0
+  );
   console.log(`\n📊 分类统计 (${activeCategories.length} 个活跃分类):`);
   for (const cat of activeCategories) {
     const catInfo = categories[cat];
     const count = groupedTools[cat]?.length || 0;
     console.log(`   ${catInfo?.icon || '📦'} ${catInfo?.name || cat}: ${count}`);
   }
-  
+
   // 汇总结果
   console.log('\n' + '='.repeat(50));
   console.log('📋 同步结果汇总:');
@@ -187,44 +202,41 @@ function updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount) {
     console.error('❌ index.html not found');
     return false;
   }
-  
+
   let html = fs.readFileSync(INDEX_HTML, 'utf8');
   let updated = false;
-  
+
   // 替换 CATEGORIES 数组
   const categoriesRegex = /const CATEGORIES = \[\s*[\s\S]*?\n\s*\];/;
   if (categoriesRegex.test(html)) {
     html = html.replace(categoriesRegex, () => categoriesJs);
     updated = true;
   }
-  
+
   // 替换 TOOLS 数组
   const toolsRegex = /const TOOLS = \[\s*[\s\S]*?\n\s*\];/;
   if (toolsRegex.test(html)) {
     html = html.replace(toolsRegex, () => toolsJs);
     updated = true;
   }
-  
+
   // 更新 SEO meta 中的工具数量
   html = html.replace(/(\d+)\+\s*个纯前端/g, `${toolCount}+ 个纯前端`);
   html = html.replace(/包含\s*\d+\+?\s*个工具/g, `包含 ${toolCount}+ 个工具`);
-  
+
   // 更新统计初始值
-  html = html.replace(
-    /(<span[^>]*id="tool-count"[^>]*>)\d+(<\/span>)/g,
-    `$1${toolCount}$2`
-  );
+  html = html.replace(/(<span[^>]*id="tool-count"[^>]*>)\d+(<\/span>)/g, `$1${toolCount}$2`);
   html = html.replace(
     /(<span[^>]*id="category-count"[^>]*>)\d+(<\/span>)/g,
     `$1${categoryCount}$2`
   );
-  
+
   if (updated) {
     fs.writeFileSync(INDEX_HTML, html);
     console.log(`✅ index.html: ${toolCount} 工具, ${categoryCount} 分类`);
     return true;
   }
-  
+
   console.log('⏭️  index.html: 无需更新');
   return false;
 }
@@ -237,26 +249,26 @@ function updateReadme(toolCount, categoryCount) {
     if (!fs.existsSync(README_MD)) {
       return false;
     }
-    
+
     let readme = fs.readFileSync(README_MD, 'utf8');
     const original = readme;
-    
+
     // 更新 badge
     readme = readme.replace(/Tools-\d+\+-/g, `Tools-${toolCount}+-`);
-    
+
     // 更新标题
     readme = readme.replace(/(🚀\s*)?\d+\+\s*纯前端/g, `🚀 ${toolCount}+ 纯前端`);
-    
+
     // 更新工具列表标题
     readme = readme.replace(/工具列表[^)]*\(\d+\s*个\)/g, `工具列表 (${toolCount} 个)`);
     readme = readme.replace(/#工具列表-\d+-个/g, `#工具列表-${toolCount}-个`);
-    
+
     if (readme !== original) {
       fs.writeFileSync(README_MD, readme);
       console.log(`✅ README.md: ${toolCount}+ 工具`);
       return true;
     }
-    
+
     console.log('⏭️  README.md: 无需更新');
     return false;
   } catch (err) {
@@ -270,7 +282,7 @@ function updateReadme(toolCount, categoryCount) {
  */
 function updateSitemap(tools, toolCount) {
   const today = new Date().toISOString().split('T')[0];
-  
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- 首页 -->
@@ -301,13 +313,13 @@ function updateSitemap(tools, toolCount) {
   if (fs.existsSync(SITEMAP_XML)) {
     const existing = fs.readFileSync(SITEMAP_XML, 'utf8');
     const existingCount = (existing.match(/<loc>/g) || []).length;
-    
+
     if (existingCount === toolCount + 1) {
       console.log(`⏭️  sitemap.xml: 无需更新 (${existingCount} URLs)`);
       return false;
     }
   }
-  
+
   fs.writeFileSync(SITEMAP_XML, xml);
   console.log(`✅ sitemap.xml: ${toolCount + 1} URLs`);
   return true;
@@ -321,19 +333,19 @@ function updateManifest(toolCount) {
     if (!fs.existsSync(MANIFEST_JSON)) {
       return false;
     }
-    
+
     let manifest = fs.readFileSync(MANIFEST_JSON, 'utf8');
     const original = manifest;
-    
+
     // 更新描述中的工具数量 (只替换数字部分，保留后续描述)
     manifest = manifest.replace(/\d+\+?\s*个纯前端/g, `${toolCount}+ 个纯前端`);
-    
+
     if (manifest !== original) {
       fs.writeFileSync(MANIFEST_JSON, manifest);
       console.log(`✅ manifest.json: ${toolCount}+ 工具`);
       return true;
     }
-    
+
     console.log('⏭️  manifest.json: 无需更新');
     return false;
   } catch (err) {
@@ -347,14 +359,18 @@ function updateManifest(toolCount) {
  */
 function updateGitHubDescription(toolCount) {
   try {
-    const result = execFileSync('gh', ['repo', 'view', '--json', 'description', '-q', '.description'], { 
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    const result = execFileSync(
+      'gh',
+      ['repo', 'view', '--json', 'description', '-q', '.description'],
+      {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      }
+    );
     const currentDesc = result.trim();
-    
+
     const newDesc = currentDesc.replace(/\d+\+\s*纯前端/, `${toolCount}+ 纯前端`);
-    
+
     if (newDesc !== currentDesc) {
       execFileSync('gh', ['repo', 'edit', '--description', newDesc], {
         encoding: 'utf8',
@@ -363,7 +379,7 @@ function updateGitHubDescription(toolCount) {
       console.log(`✅ GitHub 描述: ${toolCount}+ 纯前端`);
       return true;
     }
-    
+
     console.log('⏭️  GitHub 描述: 无需更新');
     return false;
   } catch {

@@ -1,740 +1,856 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>发布时间建议器 - WebUtils</title>
-  <meta name="description" content="根据平台和目标受众推荐最佳发布时间" />
-  <meta name="keywords" content="发布时间 社交媒体 最佳时间 post schedule" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-deep: #0a0a0f;
-      --bg-surface: #12121a;
-      --bg-card: #1a1a24;
-      --bg-input: #0e0e14;
-      --text-primary: #e8e8ed;
-      --text-secondary: #8888a0;
-      --text-muted: #55556a;
-      --border-subtle: #2a2a3a;
-      --border-strong: #3a3a4a;
-      --accent-cyan: #00f5d4;
-      --accent-pink: #f72585;
-      --accent-green: #10b981;
-      --accent-red: #f43f5e;
-      --accent-yellow: #fbbf24;
-      --accent-blue: #3b82f6;
-      --glow-cyan: rgb(0, 245, 212, 0.15);
-      --radius-sm: 4px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
-    }
-    [data-theme="light"] {
-      --bg-deep: #fafafa;
-      --bg-surface: #fff;
-      --bg-card: #fff;
-      --bg-input: #f5f5f5;
-      --text-primary: #1a1a1a;
-      --text-secondary: #666;
-      --text-muted: #999;
-      --border-subtle: #e5e5e5;
-      --border-strong: #d5d5d5;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Space Grotesk', system-ui, sans-serif;
-      background: var(--bg-deep);
-      color: var(--text-primary);
-      min-height: 100vh;
-      line-height: 1.6;
-    }
-    .bg-grid {
-      position: fixed;
-      inset: 0;
-      background-image: 
-        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .container {
-      position: relative;
-      z-index: 1;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 24px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      padding: 8px 14px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-    }
-    .breadcrumb a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-    .breadcrumb a:hover { color: var(--accent-cyan); }
-    .breadcrumb-separator { color: var(--text-muted); }
-    .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
-    .theme-toggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-card);
-      cursor: pointer;
-      font-size: 1.2rem;
-      z-index: 100;
-      transition: all 0.2s;
-    }
-    .theme-toggle:hover { transform: scale(1.1); }
-    .title-section { flex: 1; }
-    .title-section h1 {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.5rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .title-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--accent-yellow), #ff9500);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: #fff;
-    }
-    .title-section .desc {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-    .main-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      flex: 1;
-    }
-    .options {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .options label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-    .options select {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      padding: 8px 12px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      cursor: pointer;
-    }
-    .options select:focus {
-      outline: none;
-      border-color: var(--accent-cyan);
-    }
-    button {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 10px 20px;
-      background: var(--accent-cyan);
-      border: none;
-      border-radius: var(--radius-sm);
-      color: var(--bg-deep);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    button:hover {
-      background: #00dfc4;
-      box-shadow: 0 0 20px var(--glow-cyan);
-    }
-    .result-section {
-      margin-top: 24px;
-    }
-    .result-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 16px;
-    }
-    .time-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 8px;
-      margin-bottom: 24px;
-    }
-    .day-column {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .day-header {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-align: center;
-      padding: 8px 0;
-      background: var(--bg-surface);
-      border-radius: var(--radius-sm);
-    }
-    .time-slot {
-      padding: 8px 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      text-align: center;
-      border-radius: var(--radius-sm);
-      transition: all 0.2s;
-    }
-    .time-slot.hot {
-      background: var(--accent-pink);
-      color: #fff;
-    }
-    .time-slot.warm {
-      background: var(--accent-yellow);
-      color: var(--bg-deep);
-    }
-    .time-slot.normal {
-      background: var(--bg-surface);
-      color: var(--text-secondary);
-    }
-    .best-times {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-top: 24px;
-    }
-    .best-time-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
-    }
-    .best-time-card.primary {
-      border-color: var(--accent-cyan);
-      background: var(--glow-cyan);
-    }
-    .best-time-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
-    }
-    .best-time-value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--accent-cyan);
-    }
-    .best-time-card.primary .best-time-value {
-      color: var(--text-primary);
-    }
-    .best-time-desc {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 6px;
-    }
-    .legend {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid var(--border-subtle);
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
-    .legend-color {
-      width: 16px;
-      height: 16px;
-      border-radius: var(--radius-sm);
-    }
-    .legend-color.hot { background: var(--accent-pink); }
-    .legend-color.warm { background: var(--accent-yellow); }
-    .legend-color.normal { background: var(--bg-surface); border: 1px solid var(--border-subtle); }
-    .tips-section {
-      margin-top: 24px;
-      padding: 16px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-    }
-    .tips-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 12px;
-    }
-    .tips-list {
-      list-style: none;
-    }
-    .tips-list li {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      padding: 6px 0;
-      padding-left: 20px;
-      position: relative;
-    }
-    .tips-list li::before {
-      content: '→';
-      position: absolute;
-      left: 0;
-      color: var(--accent-cyan);
-    }
-    footer {
-      text-align: center;
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-subtle);
-    }
-    footer p {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    footer a {
-      color: var(--accent-cyan);
-      text-decoration: none;
-    }
-    footer a:hover { color: var(--text-primary); }
-    @media (max-width: 640px) {
-      .container { padding: 16px; }
-      .header { flex-direction: column; align-items: flex-start; gap: 12px; }
-      .time-grid { grid-template-columns: repeat(4, 1fr); }
-      .options { flex-direction: column; gap: 12px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  
-  <div class="container">
-    <div class="header">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="../../index.html">首页</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">发布时间建议器</span>
-      </nav>
-      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-      <div class="title-section">
-        <h1>
-          <span class="title-icon">🕐</span>
-          发布时间建议器
-        </h1>
-        <p class="desc">根据平台和目标受众推荐最佳发布时间</p>
-      </div>
-    </div>
-
-    <div class="main-card">
-      <div class="options">
-        <label>
-          平台:
-          <select id="platform">
-            <option value="instagram">Instagram</option>
-            <option value="twitter">Twitter/X</option>
-            <option value="tiktok">TikTok</option>
-            <option value="weibo">微博</option>
-            <option value="xiaohongshu">小红书</option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="facebook">Facebook</option>
-            <option value="youtube">YouTube</option>
-          </select>
-        </label>
-        <label>
-          目标受众:
-          <select id="audience">
-            <option value="general">大众用户</option>
-            <option value="business">商务人士</option>
-            <option value="students">学生群体</option>
-            <option value="parents">家长群体</option>
-            <option value="night_owl">夜猫子</option>
-          </select>
-        </label>
-        <label>
-          时区:
-          <select id="timezone">
-            <option value="Asia/Shanghai">中国 (UTC+8)</option>
-            <option value="America/New_York">美东 (UTC-5)</option>
-            <option value="America/Los_Angeles">美西 (UTC-8)</option>
-            <option value="Europe/London">伦敦 (UTC+0)</option>
-            <option value="Asia/Tokyo">东京 (UTC+9)</option>
-          </select>
-        </label>
-        <button id="btnAnalyze">分析最佳时间</button>
-      </div>
-
-      <div class="result-section">
-        <div class="result-title">一周发布热度图</div>
-        <div class="time-grid" id="timeGrid"></div>
-
-        <div class="legend">
-          <div class="legend-item">
-            <div class="legend-color hot"></div>
-            <span>最佳时段</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color warm"></div>
-            <span>较好时段</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color normal"></div>
-            <span>一般时段</span>
-          </div>
-        </div>
-
-        <div class="best-times" id="bestTimes"></div>
-
-        <div class="tips-section" id="tipsSection">
-          <div class="tips-title">发布建议</div>
-          <ul class="tips-list" id="tipsList"></ul>
-        </div>
-      </div>
-    </div>
-
-    <footer>
-      <p>
-        <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
-        <span>·</span>
-        <span>纯前端 · 无服务器</span>
-        <span>·</span>
-        <a href="../../index.html">WebUtils</a>
-      </p>
-    </footer>
-  </div>
-
-  <script>
-    const platformEl = document.getElementById('platform');
-    const audienceEl = document.getElementById('audience');
-    const timezoneEl = document.getElementById('timezone');
-    const timeGridEl = document.getElementById('timeGrid');
-    const bestTimesEl = document.getElementById('bestTimes');
-    const tipsListEl = document.getElementById('tipsList');
-
-    const LS_KEY = 'post_scheduler_v1';
-
-    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-    const timeSlots = ['6-9', '9-12', '12-14', '14-17', '17-20', '20-23', '23-6'];
-
-    const scheduleData = {
-      instagram: {
-        general: {
-          hot: [
-            { day: 0, slot: 4 }, { day: 0, slot: 5 },
-            { day: 2, slot: 4 }, { day: 2, slot: 5 },
-            { day: 4, slot: 4 }, { day: 4, slot: 5 },
-            { day: 5, slot: 3 }, { day: 5, slot: 4 },
-            { day: 6, slot: 3 }, { day: 6, slot: 4 }
-          ],
-          warm: [
-            { day: 0, slot: 2 }, { day: 1, slot: 4 },
-            { day: 3, slot: 4 }, { day: 5, slot: 2 },
-            { day: 6, slot: 2 }
-          ],
-          bestTimes: ['周三 17:00-20:00', '周五 17:00-20:00', '周末 14:00-17:00'],
-          tips: ['Instagram 用户在通勤时间和晚间最活跃', '周末下午适合发布生活方式内容', '避免凌晨发布，互动率较低']
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>发布时间建议器 - WebUtils</title>
+    <meta name="description" content="根据平台和目标受众推荐最佳发布时间" />
+    <meta name="keywords" content="发布时间 社交媒体 最佳时间 post schedule" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --bg-input: #0e0e14;
+        --text-primary: #e8e8ed;
+        --text-secondary: #8888a0;
+        --text-muted: #55556a;
+        --border-subtle: #2a2a3a;
+        --border-strong: #3a3a4a;
+        --accent-cyan: #00f5d4;
+        --accent-pink: #f72585;
+        --accent-green: #10b981;
+        --accent-red: #f43f5e;
+        --accent-yellow: #fbbf24;
+        --accent-blue: #3b82f6;
+        --glow-cyan: rgb(0, 245, 212, 0.15);
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --bg-input: #f5f5f5;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+        --border-strong: #d5d5d5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        transform: scale(1.1);
+      }
+      .title-section {
+        flex: 1;
+      }
+      .title-section h1 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .title-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, var(--accent-yellow), #ff9500);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #fff;
+      }
+      .title-section .desc {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      .main-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        flex: 1;
+      }
+      .options {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .options label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+      .options select {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        padding: 8px 12px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        cursor: pointer;
+      }
+      .options select:focus {
+        outline: none;
+        border-color: var(--accent-cyan);
+      }
+      button {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 10px 20px;
+        background: var(--accent-cyan);
+        border: none;
+        border-radius: var(--radius-sm);
+        color: var(--bg-deep);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      button:hover {
+        background: #00dfc4;
+        box-shadow: 0 0 20px var(--glow-cyan);
+      }
+      .result-section {
+        margin-top: 24px;
+      }
+      .result-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 16px;
+      }
+      .time-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+      .day-column {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .day-header {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 8px 0;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+      }
+      .time-slot {
+        padding: 8px 4px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        text-align: center;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s;
+      }
+      .time-slot.hot {
+        background: var(--accent-pink);
+        color: #fff;
+      }
+      .time-slot.warm {
+        background: var(--accent-yellow);
+        color: var(--bg-deep);
+      }
+      .time-slot.normal {
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+      }
+      .best-times {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+      .best-time-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 16px;
+      }
+      .best-time-card.primary {
+        border-color: var(--accent-cyan);
+        background: var(--glow-cyan);
+      }
+      .best-time-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 8px;
+      }
+      .best-time-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-cyan);
+      }
+      .best-time-card.primary .best-time-value {
+        color: var(--text-primary);
+      }
+      .best-time-desc {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 6px;
+      }
+      .legend {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: var(--radius-sm);
+      }
+      .legend-color.hot {
+        background: var(--accent-pink);
+      }
+      .legend-color.warm {
+        background: var(--accent-yellow);
+      }
+      .legend-color.normal {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+      }
+      .tips-section {
+        margin-top: 24px;
+        padding: 16px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+      .tips-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+      }
+      .tips-list {
+        list-style: none;
+      }
+      .tips-list li {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        padding: 6px 0;
+        padding-left: 20px;
+        position: relative;
+      }
+      .tips-list li::before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--accent-cyan);
+      }
+      footer {
+        text-align: center;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      footer p {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      footer a {
+        color: var(--accent-cyan);
+        text-decoration: none;
+      }
+      footer a:hover {
+        color: var(--text-primary);
+      }
+      @media (max-width: 640px) {
+        .container {
+          padding: 16px;
         }
-      },
-      twitter: {
-        general: {
-          hot: [
-            { day: 0, slot: 0 }, { day: 0, slot: 2 },
-            { day: 1, slot: 0 }, { day: 1, slot: 2 },
-            { day: 2, slot: 0 }, { day: 2, slot: 2 },
-            { day: 3, slot: 0 }, { day: 3, slot: 2 },
-            { day: 4, slot: 0 }, { day: 4, slot: 2 }
-          ],
-          warm: [
-            { day: 0, slot: 4 }, { day: 1, slot: 4 },
-            { day: 2, slot: 4 }, { day: 3, slot: 4 },
-            { day: 4, slot: 4 }
-          ],
-          bestTimes: ['工作日 8:00-9:00', '工作日 12:00-13:00', '工作日 17:00-18:00'],
-          tips: ['Twitter/X 用户喜欢在工作间隙刷新', '热点话题要抢时效，越早越好', '周末活跃度较低，适合互动型内容']
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
         }
-      },
-      tiktok: {
-        general: {
-          hot: [
-            { day: 0, slot: 5 }, { day: 1, slot: 5 },
-            { day: 2, slot: 5 }, { day: 3, slot: 5 },
-            { day: 4, slot: 5 }, { day: 5, slot: 4 },
-            { day: 5, slot: 5 }, { day: 6, slot: 4 },
-            { day: 6, slot: 5 }
-          ],
-          warm: [
-            { day: 0, slot: 4 }, { day: 1, slot: 4 },
-            { day: 2, slot: 4 }, { day: 3, slot: 4 },
-            { day: 4, slot: 4 }, { day: 5, slot: 3 },
-            { day: 6, slot: 3 }
-          ],
-          bestTimes: ['每天 19:00-23:00', '周末 14:00-17:00', '周五晚间'],
-          tips: ['TikTok 晚间是黄金时段', '周五发布有助于周末传播', '短视频建议提前1-2小时发布预热']
+        .time-grid {
+          grid-template-columns: repeat(4, 1fr);
         }
-      },
-      weibo: {
-        general: {
-          hot: [
-            { day: 0, slot: 2 }, { day: 0, slot: 5 },
-            { day: 1, slot: 2 }, { day: 1, slot: 5 },
-            { day: 2, slot: 2 }, { day: 2, slot: 5 },
-            { day: 3, slot: 2 }, { day: 3, slot: 5 },
-            { day: 4, slot: 2 }, { day: 4, slot: 5 }
-          ],
-          warm: [
-            { day: 0, slot: 0 }, { day: 1, slot: 0 },
-            { day: 5, slot: 2 }, { day: 5, slot: 5 },
-            { day: 6, slot: 2 }, { day: 6, slot: 5 }
-          ],
-          bestTimes: ['工作日 12:00-14:00', '每天 20:00-22:00', '早高峰 7:00-9:00'],
-          tips: ['微博用户午休和晚间最活跃', '热搜话题要把握时效性', '周末互动量相对较低']
-        }
-      },
-      xiaohongshu: {
-        general: {
-          hot: [
-            { day: 0, slot: 5 }, { day: 1, slot: 5 },
-            { day: 2, slot: 5 }, { day: 3, slot: 5 },
-            { day: 4, slot: 5 }, { day: 5, slot: 4 },
-            { day: 5, slot: 5 }, { day: 6, slot: 4 },
-            { day: 6, slot: 5 }
-          ],
-          warm: [
-            { day: 0, slot: 2 }, { day: 1, slot: 2 },
-            { day: 2, slot: 2 }, { day: 3, slot: 2 },
-            { day: 4, slot: 2 }, { day: 5, slot: 2 },
-            { day: 6, slot: 2 }
-          ],
-          bestTimes: ['每天 20:00-22:00', '周末 12:00-14:00', '周五晚间'],
-          tips: ['小红书用户睡前浏览习惯强', '护肤美妆内容晚间效果好', '周末适合发布探店、出行内容']
-        }
-      },
-      linkedin: {
-        general: {
-          hot: [
-            { day: 1, slot: 0 }, { day: 1, slot: 1 },
-            { day: 2, slot: 0 }, { day: 2, slot: 1 },
-            { day: 3, slot: 0 }, { day: 3, slot: 1 }
-          ],
-          warm: [
-            { day: 0, slot: 0 }, { day: 0, slot: 1 },
-            { day: 3, slot: 0 }, { day: 3, slot: 1 },
-            { day: 4, slot: 0 }
-          ],
-          bestTimes: ['周二至周四 8:00-10:00', '工作日午休时间', '避开周末'],
-          tips: ['LinkedIn 适合工作时间发布', '周二至周四是最佳时段', '专业内容建议上午发布']
-        }
-      },
-      facebook: {
-        general: {
-          hot: [
-            { day: 2, slot: 2 }, { day: 2, slot: 5 },
-            { day: 3, slot: 2 }, { day: 3, slot: 5 },
-            { day: 4, slot: 2 }, { day: 4, slot: 5 }
-          ],
-          warm: [
-            { day: 0, slot: 2 }, { day: 1, slot: 2 },
-            { day: 5, slot: 3 }, { day: 6, slot: 3 }
-          ],
-          bestTimes: ['周三至周五 12:00-14:00', '晚间 19:00-21:00', '周末下午'],
-          tips: ['Facebook 用户中午和晚间活跃', '视频内容晚间效果更好', '周末适合家庭和生活内容']
-        }
-      },
-      youtube: {
-        general: {
-          hot: [
-            { day: 3, slot: 3 }, { day: 3, slot: 4 },
-            { day: 4, slot: 3 }, { day: 4, slot: 4 },
-            { day: 5, slot: 3 }, { day: 5, slot: 4 },
-            { day: 6, slot: 2 }, { day: 6, slot: 3 }
-          ],
-          warm: [
-            { day: 0, slot: 4 }, { day: 1, slot: 4 },
-            { day: 2, slot: 4 }, { day: 5, slot: 5 },
-            { day: 6, slot: 4 }
-          ],
-          bestTimes: ['周四/周五 14:00-16:00', '周末上午', '避免周一发布'],
-          tips: ['YouTube 建议下午发布让算法推广', '周四周五发布为周末观看做准备', '视频描述中标注章节提高观看时长']
+        .options {
+          flex-direction: column;
+          gap: 12px;
         }
       }
-    };
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
 
-    function analyze() {
-      const platform = platformEl.value;
-      const audience = audienceEl.value;
+    <div class="container">
+      <div class="header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="../../index.html">首页</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">发布时间建议器</span>
+        </nav>
+        <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        <div class="title-section">
+          <h1>
+            <span class="title-icon">🕐</span>
+            发布时间建议器
+          </h1>
+          <p class="desc">根据平台和目标受众推荐最佳发布时间</p>
+        </div>
+      </div>
 
-      const data = scheduleData[platform]?.general || scheduleData.instagram.general;
+      <div class="main-card">
+        <div class="options">
+          <label>
+            平台:
+            <select id="platform">
+              <option value="instagram">Instagram</option>
+              <option value="twitter">Twitter/X</option>
+              <option value="tiktok">TikTok</option>
+              <option value="weibo">微博</option>
+              <option value="xiaohongshu">小红书</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="facebook">Facebook</option>
+              <option value="youtube">YouTube</option>
+            </select>
+          </label>
+          <label>
+            目标受众:
+            <select id="audience">
+              <option value="general">大众用户</option>
+              <option value="business">商务人士</option>
+              <option value="students">学生群体</option>
+              <option value="parents">家长群体</option>
+              <option value="night_owl">夜猫子</option>
+            </select>
+          </label>
+          <label>
+            时区:
+            <select id="timezone">
+              <option value="Asia/Shanghai">中国 (UTC+8)</option>
+              <option value="America/New_York">美东 (UTC-5)</option>
+              <option value="America/Los_Angeles">美西 (UTC-8)</option>
+              <option value="Europe/London">伦敦 (UTC+0)</option>
+              <option value="Asia/Tokyo">东京 (UTC+9)</option>
+            </select>
+          </label>
+          <button id="btnAnalyze">分析最佳时间</button>
+        </div>
 
-      renderTimeGrid(data);
-      renderBestTimes(data);
-      renderTips(data);
-      saveToStorage();
-    }
+        <div class="result-section">
+          <div class="result-title">一周发布热度图</div>
+          <div class="time-grid" id="timeGrid"></div>
 
-    function renderTimeGrid(data) {
-      timeGridEl.textContent = '';
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color hot"></div>
+              <span>最佳时段</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color warm"></div>
+              <span>较好时段</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color normal"></div>
+              <span>一般时段</span>
+            </div>
+          </div>
 
-      for (let d = 0; d < 7; d++) {
-        const col = document.createElement('div');
-        col.className = 'day-column';
+          <div class="best-times" id="bestTimes"></div>
 
-        const header = document.createElement('div');
-        header.className = 'day-header';
-        header.textContent = days[d];
-        col.appendChild(header);
+          <div class="tips-section" id="tipsSection">
+            <div class="tips-title">发布建议</div>
+            <ul class="tips-list" id="tipsList"></ul>
+          </div>
+        </div>
+      </div>
 
-        for (let s = 0; s < timeSlots.length; s++) {
-          const slot = document.createElement('div');
-          slot.className = 'time-slot';
+      <footer>
+        <p>
+          <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <span>·</span>
+          <span>纯前端 · 无服务器</span>
+          <span>·</span>
+          <a href="../../index.html">WebUtils</a>
+        </p>
+      </footer>
+    </div>
 
-          const isHot = data.hot.some(function(h) { return h.day === d && h.slot === s; });
-          const isWarm = data.warm.some(function(w) { return w.day === d && w.slot === s; });
+    <script>
+      const platformEl = document.getElementById("platform");
+      const audienceEl = document.getElementById("audience");
+      const timezoneEl = document.getElementById("timezone");
+      const timeGridEl = document.getElementById("timeGrid");
+      const bestTimesEl = document.getElementById("bestTimes");
+      const tipsListEl = document.getElementById("tipsList");
 
-          if (isHot) {
-            slot.classList.add('hot');
-          } else if (isWarm) {
-            slot.classList.add('warm');
-          } else {
-            slot.classList.add('normal');
+      const LS_KEY = "post_scheduler_v1";
+
+      const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+      const timeSlots = ["6-9", "9-12", "12-14", "14-17", "17-20", "20-23", "23-6"];
+
+      const scheduleData = {
+        instagram: {
+          general: {
+            hot: [
+              { day: 0, slot: 4 },
+              { day: 0, slot: 5 },
+              { day: 2, slot: 4 },
+              { day: 2, slot: 5 },
+              { day: 4, slot: 4 },
+              { day: 4, slot: 5 },
+              { day: 5, slot: 3 },
+              { day: 5, slot: 4 },
+              { day: 6, slot: 3 },
+              { day: 6, slot: 4 }
+            ],
+            warm: [
+              { day: 0, slot: 2 },
+              { day: 1, slot: 4 },
+              { day: 3, slot: 4 },
+              { day: 5, slot: 2 },
+              { day: 6, slot: 2 }
+            ],
+            bestTimes: ["周三 17:00-20:00", "周五 17:00-20:00", "周末 14:00-17:00"],
+            tips: [
+              "Instagram 用户在通勤时间和晚间最活跃",
+              "周末下午适合发布生活方式内容",
+              "避免凌晨发布，互动率较低"
+            ]
+          }
+        },
+        twitter: {
+          general: {
+            hot: [
+              { day: 0, slot: 0 },
+              { day: 0, slot: 2 },
+              { day: 1, slot: 0 },
+              { day: 1, slot: 2 },
+              { day: 2, slot: 0 },
+              { day: 2, slot: 2 },
+              { day: 3, slot: 0 },
+              { day: 3, slot: 2 },
+              { day: 4, slot: 0 },
+              { day: 4, slot: 2 }
+            ],
+            warm: [
+              { day: 0, slot: 4 },
+              { day: 1, slot: 4 },
+              { day: 2, slot: 4 },
+              { day: 3, slot: 4 },
+              { day: 4, slot: 4 }
+            ],
+            bestTimes: ["工作日 8:00-9:00", "工作日 12:00-13:00", "工作日 17:00-18:00"],
+            tips: [
+              "Twitter/X 用户喜欢在工作间隙刷新",
+              "热点话题要抢时效，越早越好",
+              "周末活跃度较低，适合互动型内容"
+            ]
+          }
+        },
+        tiktok: {
+          general: {
+            hot: [
+              { day: 0, slot: 5 },
+              { day: 1, slot: 5 },
+              { day: 2, slot: 5 },
+              { day: 3, slot: 5 },
+              { day: 4, slot: 5 },
+              { day: 5, slot: 4 },
+              { day: 5, slot: 5 },
+              { day: 6, slot: 4 },
+              { day: 6, slot: 5 }
+            ],
+            warm: [
+              { day: 0, slot: 4 },
+              { day: 1, slot: 4 },
+              { day: 2, slot: 4 },
+              { day: 3, slot: 4 },
+              { day: 4, slot: 4 },
+              { day: 5, slot: 3 },
+              { day: 6, slot: 3 }
+            ],
+            bestTimes: ["每天 19:00-23:00", "周末 14:00-17:00", "周五晚间"],
+            tips: [
+              "TikTok 晚间是黄金时段",
+              "周五发布有助于周末传播",
+              "短视频建议提前1-2小时发布预热"
+            ]
+          }
+        },
+        weibo: {
+          general: {
+            hot: [
+              { day: 0, slot: 2 },
+              { day: 0, slot: 5 },
+              { day: 1, slot: 2 },
+              { day: 1, slot: 5 },
+              { day: 2, slot: 2 },
+              { day: 2, slot: 5 },
+              { day: 3, slot: 2 },
+              { day: 3, slot: 5 },
+              { day: 4, slot: 2 },
+              { day: 4, slot: 5 }
+            ],
+            warm: [
+              { day: 0, slot: 0 },
+              { day: 1, slot: 0 },
+              { day: 5, slot: 2 },
+              { day: 5, slot: 5 },
+              { day: 6, slot: 2 },
+              { day: 6, slot: 5 }
+            ],
+            bestTimes: ["工作日 12:00-14:00", "每天 20:00-22:00", "早高峰 7:00-9:00"],
+            tips: ["微博用户午休和晚间最活跃", "热搜话题要把握时效性", "周末互动量相对较低"]
+          }
+        },
+        xiaohongshu: {
+          general: {
+            hot: [
+              { day: 0, slot: 5 },
+              { day: 1, slot: 5 },
+              { day: 2, slot: 5 },
+              { day: 3, slot: 5 },
+              { day: 4, slot: 5 },
+              { day: 5, slot: 4 },
+              { day: 5, slot: 5 },
+              { day: 6, slot: 4 },
+              { day: 6, slot: 5 }
+            ],
+            warm: [
+              { day: 0, slot: 2 },
+              { day: 1, slot: 2 },
+              { day: 2, slot: 2 },
+              { day: 3, slot: 2 },
+              { day: 4, slot: 2 },
+              { day: 5, slot: 2 },
+              { day: 6, slot: 2 }
+            ],
+            bestTimes: ["每天 20:00-22:00", "周末 12:00-14:00", "周五晚间"],
+            tips: [
+              "小红书用户睡前浏览习惯强",
+              "护肤美妆内容晚间效果好",
+              "周末适合发布探店、出行内容"
+            ]
+          }
+        },
+        linkedin: {
+          general: {
+            hot: [
+              { day: 1, slot: 0 },
+              { day: 1, slot: 1 },
+              { day: 2, slot: 0 },
+              { day: 2, slot: 1 },
+              { day: 3, slot: 0 },
+              { day: 3, slot: 1 }
+            ],
+            warm: [
+              { day: 0, slot: 0 },
+              { day: 0, slot: 1 },
+              { day: 3, slot: 0 },
+              { day: 3, slot: 1 },
+              { day: 4, slot: 0 }
+            ],
+            bestTimes: ["周二至周四 8:00-10:00", "工作日午休时间", "避开周末"],
+            tips: ["LinkedIn 适合工作时间发布", "周二至周四是最佳时段", "专业内容建议上午发布"]
+          }
+        },
+        facebook: {
+          general: {
+            hot: [
+              { day: 2, slot: 2 },
+              { day: 2, slot: 5 },
+              { day: 3, slot: 2 },
+              { day: 3, slot: 5 },
+              { day: 4, slot: 2 },
+              { day: 4, slot: 5 }
+            ],
+            warm: [
+              { day: 0, slot: 2 },
+              { day: 1, slot: 2 },
+              { day: 5, slot: 3 },
+              { day: 6, slot: 3 }
+            ],
+            bestTimes: ["周三至周五 12:00-14:00", "晚间 19:00-21:00", "周末下午"],
+            tips: ["Facebook 用户中午和晚间活跃", "视频内容晚间效果更好", "周末适合家庭和生活内容"]
+          }
+        },
+        youtube: {
+          general: {
+            hot: [
+              { day: 3, slot: 3 },
+              { day: 3, slot: 4 },
+              { day: 4, slot: 3 },
+              { day: 4, slot: 4 },
+              { day: 5, slot: 3 },
+              { day: 5, slot: 4 },
+              { day: 6, slot: 2 },
+              { day: 6, slot: 3 }
+            ],
+            warm: [
+              { day: 0, slot: 4 },
+              { day: 1, slot: 4 },
+              { day: 2, slot: 4 },
+              { day: 5, slot: 5 },
+              { day: 6, slot: 4 }
+            ],
+            bestTimes: ["周四/周五 14:00-16:00", "周末上午", "避免周一发布"],
+            tips: [
+              "YouTube 建议下午发布让算法推广",
+              "周四周五发布为周末观看做准备",
+              "视频描述中标注章节提高观看时长"
+            ]
+          }
+        }
+      };
+
+      function analyze() {
+        const platform = platformEl.value;
+        const audience = audienceEl.value;
+
+        const data = scheduleData[platform]?.general || scheduleData.instagram.general;
+
+        renderTimeGrid(data);
+        renderBestTimes(data);
+        renderTips(data);
+        saveToStorage();
+      }
+
+      function renderTimeGrid(data) {
+        timeGridEl.textContent = "";
+
+        for (let d = 0; d < 7; d++) {
+          const col = document.createElement("div");
+          col.className = "day-column";
+
+          const header = document.createElement("div");
+          header.className = "day-header";
+          header.textContent = days[d];
+          col.appendChild(header);
+
+          for (let s = 0; s < timeSlots.length; s++) {
+            const slot = document.createElement("div");
+            slot.className = "time-slot";
+
+            const isHot = data.hot.some(function (h) {
+              return h.day === d && h.slot === s;
+            });
+            const isWarm = data.warm.some(function (w) {
+              return w.day === d && w.slot === s;
+            });
+
+            if (isHot) {
+              slot.classList.add("hot");
+            } else if (isWarm) {
+              slot.classList.add("warm");
+            } else {
+              slot.classList.add("normal");
+            }
+
+            slot.textContent = timeSlots[s];
+            col.appendChild(slot);
           }
 
-          slot.textContent = timeSlots[s];
-          col.appendChild(slot);
+          timeGridEl.appendChild(col);
         }
-
-        timeGridEl.appendChild(col);
       }
-    }
 
-    function renderBestTimes(data) {
-      bestTimesEl.textContent = '';
+      function renderBestTimes(data) {
+        bestTimesEl.textContent = "";
 
-      for (let i = 0; i < data.bestTimes.length; i++) {
-        const time = data.bestTimes[i];
-        const card = document.createElement('div');
-        card.className = 'best-time-card' + (i === 0 ? ' primary' : '');
+        for (let i = 0; i < data.bestTimes.length; i++) {
+          const time = data.bestTimes[i];
+          const card = document.createElement("div");
+          card.className = "best-time-card" + (i === 0 ? " primary" : "");
 
-        const label = document.createElement('div');
-        label.className = 'best-time-label';
-        label.textContent = i === 0 ? '最佳时段' : '推荐时段 ' + i;
+          const label = document.createElement("div");
+          label.className = "best-time-label";
+          label.textContent = i === 0 ? "最佳时段" : "推荐时段 " + i;
 
-        const value = document.createElement('div');
-        value.className = 'best-time-value';
-        value.textContent = time;
+          const value = document.createElement("div");
+          value.className = "best-time-value";
+          value.textContent = time;
 
-        card.appendChild(label);
-        card.appendChild(value);
-        bestTimesEl.appendChild(card);
+          card.appendChild(label);
+          card.appendChild(value);
+          bestTimesEl.appendChild(card);
+        }
       }
-    }
 
-    function renderTips(data) {
-      tipsListEl.textContent = '';
+      function renderTips(data) {
+        tipsListEl.textContent = "";
 
-      for (const tip of data.tips) {
-        const li = document.createElement('li');
-        li.textContent = tip;
-        tipsListEl.appendChild(li);
+        for (const tip of data.tips) {
+          const li = document.createElement("li");
+          li.textContent = tip;
+          tipsListEl.appendChild(li);
+        }
       }
-    }
 
-    function saveToStorage() {
-      const settings = {
-        platform: platformEl.value,
-        audience: audienceEl.value,
-        timezone: timezoneEl.value
+      function saveToStorage() {
+        const settings = {
+          platform: platformEl.value,
+          audience: audienceEl.value,
+          timezone: timezoneEl.value
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(settings));
+      }
+
+      function loadFromStorage() {
+        try {
+          const saved = localStorage.getItem(LS_KEY);
+          if (saved) {
+            const settings = JSON.parse(saved);
+            if (settings.platform) platformEl.value = settings.platform;
+            if (settings.audience) audienceEl.value = settings.audience;
+            if (settings.timezone) timezoneEl.value = settings.timezone;
+          }
+        } catch (e) {}
+      }
+
+      document.getElementById("btnAnalyze").addEventListener("click", analyze);
+
+      platformEl.addEventListener("change", analyze);
+      audienceEl.addEventListener("change", analyze);
+
+      loadFromStorage();
+      analyze();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
       };
-      localStorage.setItem(LS_KEY, JSON.stringify(settings));
-    }
 
-    function loadFromStorage() {
-      try {
-        const saved = localStorage.getItem(LS_KEY);
+      (function () {
+        const saved = localStorage.getItem("theme");
         if (saved) {
-          const settings = JSON.parse(saved);
-          if (settings.platform) platformEl.value = settings.platform;
-          if (settings.audience) audienceEl.value = settings.audience;
-          if (settings.timezone) timezoneEl.value = settings.timezone;
+          document.documentElement.setAttribute("data-theme", saved);
+          const btn = document.querySelector(".theme-toggle");
+          if (btn) btn.textContent = saved === "light" ? "☀️" : "🌙";
         }
-      } catch (e) {}
-    }
-
-    document.getElementById('btnAnalyze').addEventListener('click', analyze);
-
-    platformEl.addEventListener('change', analyze);
-    audienceEl.addEventListener('change', analyze);
-
-    loadFromStorage();
-    analyze();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        const btn = document.querySelector('.theme-toggle');
-        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
-      }
-    })();
-  </script>
-</body>
+      })();
+    </script>
+  </body>
 </html>

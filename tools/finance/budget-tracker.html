@@ -1,251 +1,497 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>预算追踪器 - WebUtils</title>
-  <meta name="description" content="记录收支，管理预算，可视化财务状况" />
-  <meta name="keywords" content="预算 收支 记账 财务 budget tracker expense income" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/finance/budget-tracker.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>预算追踪器 - WebUtils</title>
+    <meta name="description" content="记录收支，管理预算，可视化财务状况" />
+    <meta name="keywords" content="预算 收支 记账 财务 budget tracker expense income" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/finance/budget-tracker.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-red:#ff6b6b;--accent-orange:#ff9f43;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
-    .summary-card{background:var(--bg-card);border:2px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;text-align:center}
-    .summary-card.income{border-color:var(--accent-green)}
-    .summary-card.expense{border-color:var(--accent-red)}
-    .summary-card.balance{border-color:var(--accent-cyan)}
-    .summary-value{font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:700;margin:.5rem 0}
-    .summary-card.income .summary-value{color:var(--accent-green)}
-    .summary-card.expense .summary-value{color:var(--accent-red)}
-    .summary-card.balance .summary-value{color:var(--accent-cyan)}
-    .summary-label{font-size:.9rem;color:var(--text-muted)}
-    .add-transaction{display:flex;gap:1rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
-    .add-transaction input,.add-transaction select{flex:1;min-width:120px;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
-    .add-transaction input:focus,.add-transaction select:focus{outline:none;border-color:var(--accent-blue)}
-    .add-transaction button{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);background:var(--accent-green);color:#000;font-family:inherit;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
-    .add-transaction button:hover{background:var(--accent-cyan)}
-    .transactions-list{display:flex;flex-direction:column;gap:.75rem}
-    .transaction-item{background:var(--bg-card);border:1px solid var(--border-subtle);border-left:4px solid;border-radius:var(--radius-sm);padding:1rem;display:flex;justify-content:space-between;align-items:center}
-    .transaction-item.income{border-left-color:var(--accent-green)}
-    .transaction-item.expense{border-left-color:var(--accent-red)}
-    .transaction-info{flex:1}
-    .transaction-desc{font-weight:600;margin-bottom:.25rem}
-    .transaction-meta{font-size:.85rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
-    .transaction-amount{font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:700;margin-right:1rem}
-    .transaction-item.income .transaction-amount{color:var(--accent-green)}
-    .transaction-item.expense .transaction-amount{color:var(--accent-red)}
-    .transaction-delete{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s}
-    .transaction-delete:hover{border-color:var(--accent-red);color:var(--accent-red)}
-    .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted)}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-    @media(max-width:600px){.add-transaction{flex-direction:column}}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-green: #00d26a;
+        --accent-red: #ff6b6b;
+        --accent-orange: #ff9f43;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-green));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .summary-card {
+        background: var(--bg-card);
+        border: 2px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        text-align: center;
+      }
+      .summary-card.income {
+        border-color: var(--accent-green);
+      }
+      .summary-card.expense {
+        border-color: var(--accent-red);
+      }
+      .summary-card.balance {
+        border-color: var(--accent-cyan);
+      }
+      .summary-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+      }
+      .summary-card.income .summary-value {
+        color: var(--accent-green);
+      }
+      .summary-card.expense .summary-value {
+        color: var(--accent-red);
+      }
+      .summary-card.balance .summary-value {
+        color: var(--accent-cyan);
+      }
+      .summary-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+      .add-transaction {
+        display: flex;
+        gap: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .add-transaction input,
+      .add-transaction select {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .add-transaction input:focus,
+      .add-transaction select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .add-transaction button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: var(--accent-green);
+        color: #000;
+        font-family: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .add-transaction button:hover {
+        background: var(--accent-cyan);
+      }
+      .transactions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .transaction-item {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-left: 4px solid;
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .transaction-item.income {
+        border-left-color: var(--accent-green);
+      }
+      .transaction-item.expense {
+        border-left-color: var(--accent-red);
+      }
+      .transaction-info {
+        flex: 1;
+      }
+      .transaction-desc {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      .transaction-meta {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .transaction-amount {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-right: 1rem;
+      }
+      .transaction-item.income .transaction-amount {
+        color: var(--accent-green);
+      }
+      .transaction-item.expense .transaction-amount {
+        color: var(--accent-red);
+      }
+      .transaction-delete {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .transaction-delete:hover {
+        border-color: var(--accent-red);
+        color: var(--accent-red);
+      }
+      .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+      @media (max-width: 600px) {
+        .add-transaction {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <a href="../../index.html#finance">财务工具</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">预算追踪</span>
-    </nav>
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#finance">财务工具</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">预算追踪</span>
+      </nav>
 
-    <h1>💰 预算追踪器</h1>
-    <p class="subtitle">记录每一笔收支，掌握财务状况</p>
+      <h1>💰 预算追踪器</h1>
+      <p class="subtitle">记录每一笔收支，掌握财务状况</p>
 
-    <div class="summary">
-      <div class="summary-card income">
-        <div class="summary-label">总收入</div>
-        <div class="summary-value" id="totalIncome">¥0</div>
+      <div class="summary">
+        <div class="summary-card income">
+          <div class="summary-label">总收入</div>
+          <div class="summary-value" id="totalIncome">¥0</div>
+        </div>
+        <div class="summary-card expense">
+          <div class="summary-label">总支出</div>
+          <div class="summary-value" id="totalExpense">¥0</div>
+        </div>
+        <div class="summary-card balance">
+          <div class="summary-label">结余</div>
+          <div class="summary-value" id="balance">¥0</div>
+        </div>
       </div>
-      <div class="summary-card expense">
-        <div class="summary-label">总支出</div>
-        <div class="summary-value" id="totalExpense">¥0</div>
+
+      <div class="add-transaction">
+        <input type="text" id="description" placeholder="描述" onkeypress="handleEnter(event)" />
+        <input
+          type="number"
+          id="amount"
+          placeholder="金额"
+          min="0"
+          step="0.01"
+          onkeypress="handleEnter(event)"
+        />
+        <select id="type">
+          <option value="income">收入</option>
+          <option value="expense">支出</option>
+        </select>
+        <select id="category">
+          <option value="工资">工资</option>
+          <option value="餐饮">餐饮</option>
+          <option value="交通">交通</option>
+          <option value="购物">购物</option>
+          <option value="娱乐">娱乐</option>
+          <option value="医疗">医疗</option>
+          <option value="其他">其他</option>
+        </select>
+        <button onclick="addTransaction()">+ 添加</button>
       </div>
-      <div class="summary-card balance">
-        <div class="summary-label">结余</div>
-        <div class="summary-value" id="balance">¥0</div>
+
+      <div class="transactions-list" id="transactionsList">
+        <div class="empty-state">暂无交易记录</div>
       </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
     </div>
 
-    <div class="add-transaction">
-      <input type="text" id="description" placeholder="描述" onkeypress="handleEnter(event)">
-      <input type="number" id="amount" placeholder="金额" min="0" step="0.01" onkeypress="handleEnter(event)">
-      <select id="type">
-        <option value="income">收入</option>
-        <option value="expense">支出</option>
-      </select>
-      <select id="category">
-        <option value="工资">工资</option>
-        <option value="餐饮">餐饮</option>
-        <option value="交通">交通</option>
-        <option value="购物">购物</option>
-        <option value="娱乐">娱乐</option>
-        <option value="医疗">医疗</option>
-        <option value="其他">其他</option>
-      </select>
-      <button onclick="addTransaction()">+ 添加</button>
-    </div>
+    <script>
+      const STORAGE_KEY = "html_tools_budget_v1";
 
-    <div class="transactions-list" id="transactionsList">
-      <div class="empty-state">暂无交易记录</div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    const STORAGE_KEY = 'html_tools_budget_v1';
-
-    // HTML escape function to prevent XSS
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    let transactions = [];
-
-    function loadTransactions() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        transactions = saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        transactions = [];
+      // HTML escape function to prevent XSS
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
       }
-      render();
-    }
+      let transactions = [];
 
-    function saveTransactions() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-    }
-
-    function handleEnter(event) {
-      if (event.key === 'Enter') {
-        addTransaction();
-      }
-    }
-
-    function addTransaction() {
-      const description = document.getElementById('description').value.trim();
-      const amount = parseFloat(document.getElementById('amount').value);
-      const type = document.getElementById('type').value;
-      const category = document.getElementById('category').value;
-
-      if (!description || !amount || amount <= 0) {
-        alert('请输入描述和金额');
-        return;
+      function loadTransactions() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          transactions = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+          transactions = [];
+        }
+        render();
       }
 
-      transactions.unshift({
-        id: Date.now(),
-        description,
-        amount,
-        type,
-        category,
-        date: new Date().toISOString()
-      });
-
-      document.getElementById('description').value = '';
-      document.getElementById('amount').value = '';
-
-      saveTransactions();
-      render();
-    }
-
-    function deleteTransaction(id) {
-      if (!confirm('确定要删除这条记录吗？')) return;
-      transactions = transactions.filter(t => t.id !== id);
-      saveTransactions();
-      render();
-    }
-
-    function render() {
-      const container = document.getElementById('transactionsList');
-
-      if (transactions.length === 0) {
-        container.innerHTML = '<div class="empty-state">暂无交易记录</div>';
-        updateSummary();
-        return;
+      function saveTransactions() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
       }
 
-      container.innerHTML = transactions.map(t => `
+      function handleEnter(event) {
+        if (event.key === "Enter") {
+          addTransaction();
+        }
+      }
+
+      function addTransaction() {
+        const description = document.getElementById("description").value.trim();
+        const amount = parseFloat(document.getElementById("amount").value);
+        const type = document.getElementById("type").value;
+        const category = document.getElementById("category").value;
+
+        if (!description || !amount || amount <= 0) {
+          alert("请输入描述和金额");
+          return;
+        }
+
+        transactions.unshift({
+          id: Date.now(),
+          description,
+          amount,
+          type,
+          category,
+          date: new Date().toISOString()
+        });
+
+        document.getElementById("description").value = "";
+        document.getElementById("amount").value = "";
+
+        saveTransactions();
+        render();
+      }
+
+      function deleteTransaction(id) {
+        if (!confirm("确定要删除这条记录吗？")) return;
+        transactions = transactions.filter((t) => t.id !== id);
+        saveTransactions();
+        render();
+      }
+
+      function render() {
+        const container = document.getElementById("transactionsList");
+
+        if (transactions.length === 0) {
+          container.innerHTML = '<div class="empty-state">暂无交易记录</div>';
+          updateSummary();
+          return;
+        }
+
+        container.innerHTML = transactions
+          .map(
+            (t) => `
         <div class="transaction-item ${t.type}">
           <div class="transaction-info">
             <div class="transaction-desc">${escapeHtml(t.description)}</div>
             <div class="transaction-meta">
-              ${t.category} · ${new Date(t.date).toLocaleDateString('zh-CN')}
+              ${t.category} · ${new Date(t.date).toLocaleDateString("zh-CN")}
             </div>
           </div>
           <div class="transaction-amount">
-            ${t.type === 'income' ? '+' : '-'}¥${t.amount.toFixed(2)}
+            ${t.type === "income" ? "+" : "-"}¥${t.amount.toFixed(2)}
           </div>
           <button class="transaction-delete" onclick="deleteTransaction(${t.id})">×</button>
         </div>
-      `).join('');
+      `
+          )
+          .join("");
 
-      updateSummary();
-    }
-
-    function updateSummary() {
-      const income = transactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const expense = transactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const balance = income - expense;
-
-      document.getElementById('totalIncome').textContent = '¥' + income.toFixed(2);
-      document.getElementById('totalExpense').textContent = '¥' + expense.toFixed(2);
-      document.getElementById('balance').textContent = '¥' + balance.toFixed(2);
-    }
-
-    // Initialize
-    loadTransactions();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+        updateSummary();
       }
-    })();
-  </script>
-</body>
+
+      function updateSummary() {
+        const income = transactions
+          .filter((t) => t.type === "income")
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const expense = transactions
+          .filter((t) => t.type === "expense")
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const balance = income - expense;
+
+        document.getElementById("totalIncome").textContent = "¥" + income.toFixed(2);
+        document.getElementById("totalExpense").textContent = "¥" + expense.toFixed(2);
+        document.getElementById("balance").textContent = "¥" + balance.toFixed(2);
+      }
+
+      // Initialize
+      loadTransactions();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

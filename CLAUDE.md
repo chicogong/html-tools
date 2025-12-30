@@ -42,7 +42,7 @@ html-tools/
 │   ├── food/              # 餐饮食品 (菜谱, 营养计算)
 │   └── chinese/           # 中文工具 (拼音, 繁简转换)
 ├── scripts/
-│   └── sync-tools.js      # 工具同步脚本 (tools.json → index.html)
+│   └── sync-all.js        # 统一同步脚本 (tools.json → index.html, README, sitemap, manifest)
 ├── package.json           # lint 和 sync 脚本依赖
 ├── PWA 相关文件:
 │   ├── sw.js              # Service Worker (离线缓存、请求拦截)

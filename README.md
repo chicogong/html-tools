@@ -3,7 +3,7 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tools](https://img.shields.io/badge/Tools-750+-blue.svg)](https://tools.realtime-ai.chat)
+[![Tools](https://img.shields.io/badge/Tools-716+-blue.svg)](https://tools.realtime-ai.chat)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
 [![Vercel](https://img.shields.io/badge/Vercel-deployed-black?logo=vercel)](https://html-tools-jade.vercel.app)
@@ -14,13 +14,13 @@
 [![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
 
-### 🚀 750+ 纯前端在线工具集
+### 🚀 716+ 纯前端在线工具集
 
 **单文件 · 零构建 · 可离线 · 隐私优先 · 数据不上传**
 
 一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告、无追踪。
 
-[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-750-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
+[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-716-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
 
 </div>
 
@@ -36,7 +36,7 @@
 | **离线使用** | ✅ 下载 HTML 即可离线用 | ❌ 必须联网 |
 | **无需构建** | ✅ 单文件架构，直接打开 | ❌ 需要 npm/webpack 构建 |
 | **加载速度** | ✅ 极快（无框架开销） | ⚠️ 较慢（React/Vue 加载）|
-| **工具数量** | ✅ 164+ 个工具 | ⚠️ 通常 50-80 个 |
+| **工具数量** | ✅ 669+ 个工具 | ⚠️ 通常 50-80 个 |
 | **开源免费** | ✅ MIT 协议，完全开源 | ⚠️ 部分闭源或有限制 |
 
 ## 📸 预览
@@ -90,7 +90,7 @@
 </tr>
 </table>
 
-[**查看全部 164 个工具 ↓**](#工具列表-750-个)
+[**查看全部 669 个工具 ↓**](#工具列表-716-个)
 
 ---
 
@@ -106,7 +106,7 @@
 | Surge | https://webutils.surge.sh | ✅ |
 | Netlify | https://localtools.netlify.app | ⏸️ 暂停 |
 
-## 工具列表 (750 个)
+## 工具列表 (716 个)
 
 ### 开发工具 (61 个)
 
@@ -352,8 +352,11 @@
 | `sitemap.xml` | 站点地图，包含所有工具页面 (150 URLs) |
 | `robots.txt` | 搜索引擎爬虫规则 |
 | `llms.txt` | AI/LLM 友好的网站描述 |
+| `CLAUDE.md` | AI 辅助开发规范，项目架构和代码约定说明 |
 | `index.html` | 含 Schema.org 结构化数据 (WebApplication, FAQPage, WebSite) |
 | `manifest.json` | PWA 配置文件，支持应用安装 |
+| `sw.js` | Service Worker，离线缓存和请求拦截 |
+| `offline.html` | 离线回退页面，断网时显示已缓存工具列表 |
 | `favicon.svg` | 矢量品牌图标 (3×3 网格设计) |
 | `favicon-16x16.png` | 浏览器标签页图标 |
 | `favicon-32x32.png` | 高清浏览器图标 |

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>.htaccess 生成器 - WebUtils</title>
+  <meta name="description" content="生成 Apache .htaccess 配置文件" />
+  <meta name="keywords" content="htaccess Apache 重定向 URL重写 缓存 安全" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    h4 { margin: 0 0 12px; font-size: 0.95rem; color: var(--text); }
+    .section { margin-bottom: 24px; padding: 16px; background: var(--bg); border-radius: var(--radius); }
+    .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
+    .checkbox-group label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+    .checkbox-group label span { font-size: 0.85rem; color: var(--text-muted); }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); }
+    .redirect-list { margin-top: 12px; }
+    .redirect-item { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .redirect-item input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); font-size: 0.85rem; }
+    .redirect-item button { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text-muted); cursor: pointer; }
+    .add-btn { padding: 6px 12px; border: 1px dashed var(--border); border-radius: var(--radius); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; }
+    .output-code { padding: 16px; background: var(--bg); border-radius: var(--radius); font-family: ui-monospace, monospace; font-size: 0.8rem; white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.6; }
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+    .btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>.htaccess 生成器</h1>
+    <p class="desc">生成 Apache .htaccess 配置文件</p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <div class="section">
+            <h4>基本设置</h4>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="forceHttps" onchange="generate()" checked /> 强制 HTTPS <span>重定向 HTTP 到 HTTPS</span></label>
+              <label><input type="checkbox" id="forceWww" onchange="generate()" /> 强制 www <span>重定向到 www 子域名</span></label>
+              <label><input type="checkbox" id="removeWww" onchange="generate()" /> 移除 www <span>重定向到非 www 域名</span></label>
+              <label><input type="checkbox" id="removeTrailingSlash" onchange="generate()" /> 移除尾部斜杠</label>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>安全设置</h4>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="disableDirectoryListing" onchange="generate()" checked /> 禁止目录浏览</label>
+              <label><input type="checkbox" id="blockSensitiveFiles" onchange="generate()" checked /> 保护敏感文件 <span>.env, .git, .htaccess 等</span></label>
+              <label><input type="checkbox" id="preventHotlinking" onchange="generate()" /> 防止盗链 <span>保护图片资源</span></label>
+              <label><input type="checkbox" id="securityHeaders" onchange="generate()" /> 安全响应头 <span>XSS, CSP 等</span></label>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>缓存设置</h4>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="enableCaching" onchange="generate()" /> 启用浏览器缓存 <span>提高性能</span></label>
+              <label><input type="checkbox" id="gzipCompression" onchange="generate()" checked /> Gzip 压缩</label>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>自定义重定向</h4>
+            <div class="redirect-list" id="redirectList">
+              <div class="redirect-item">
+                <input type="text" placeholder="/old-page" class="from" />
+                <span>→</span>
+                <input type="text" placeholder="/new-page" class="to" />
+                <button onclick="removeRedirect(this)">×</button>
+              </div>
+            </div>
+            <button class="add-btn" onclick="addRedirect()">+ 添加重定向</button>
+          </div>
+
+          <div class="section">
+            <h4>错误页面</h4>
+            <div class="form-group">
+              <label>404 错误页面</label>
+              <input type="text" id="error404" placeholder="/404.html" oninput="generate()" />
+            </div>
+            <div class="form-group">
+              <label>500 错误页面</label>
+              <input type="text" id="error500" placeholder="/500.html" oninput="generate()" />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4>生成的 .htaccess</h4>
+          <div class="output-code" id="output"></div>
+          <div class="btn-row">
+            <button class="btn primary" onclick="copyCode()">复制</button>
+            <button class="btn" onclick="downloadFile()">下载</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    function addRedirect() {
+      const list = document.getElementById('redirectList');
+      const item = document.createElement('div');
+      item.className = 'redirect-item';
+      item.innerHTML = `
+        <input type="text" placeholder="/old-page" class="from" oninput="generate()" />
+        <span>→</span>
+        <input type="text" placeholder="/new-page" class="to" oninput="generate()" />
+        <button onclick="removeRedirect(this)">×</button>
+      `;
+      list.appendChild(item);
+    }
+
+    function removeRedirect(btn) {
+      btn.parentElement.remove();
+      generate();
+    }
+
+    function generate() {
+      let code = '# Generated by WebUtils .htaccess Generator\n\n';
+
+      // Rewrite Engine
+      code += 'RewriteEngine On\n\n';
+
+      // Force HTTPS
+      if (document.getElementById('forceHttps').checked) {
+        code += '# Force HTTPS\n';
+        code += 'RewriteCond %{HTTPS} off\n';
+        code += 'RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\n';
+      }
+
+      // WWW handling
+      if (document.getElementById('forceWww').checked) {
+        code += '# Force www\n';
+        code += 'RewriteCond %{HTTP_HOST} !^www\\. [NC]\n';
+        code += 'RewriteRule ^(.*)$ https://www.%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\n';
+      } else if (document.getElementById('removeWww').checked) {
+        code += '# Remove www\n';
+        code += 'RewriteCond %{HTTP_HOST} ^www\\.(.*)$ [NC]\n';
+        code += 'RewriteRule ^(.*)$ https://%1%{REQUEST_URI} [L,R=301]\n\n';
+      }
+
+      // Remove trailing slash
+      if (document.getElementById('removeTrailingSlash').checked) {
+        code += '# Remove trailing slash\n';
+        code += 'RewriteCond %{REQUEST_FILENAME} !-d\n';
+        code += 'RewriteCond %{REQUEST_URI} (.+)/$\n';
+        code += 'RewriteRule ^ %1 [L,R=301]\n\n';
+      }
+
+      // Directory listing
+      if (document.getElementById('disableDirectoryListing').checked) {
+        code += '# Disable directory listing\n';
+        code += 'Options -Indexes\n\n';
+      }
+
+      // Block sensitive files
+      if (document.getElementById('blockSensitiveFiles').checked) {
+        code += '# Block sensitive files\n';
+        code += '<FilesMatch "^\\.(env|git|htaccess|htpasswd)">\n';
+        code += '    Order allow,deny\n';
+        code += '    Deny from all\n';
+        code += '</FilesMatch>\n\n';
+        code += '<FilesMatch "(composer\\.json|package\\.json|package-lock\\.json|yarn\\.lock)">\n';
+        code += '    Order allow,deny\n';
+        code += '    Deny from all\n';
+        code += '</FilesMatch>\n\n';
+      }
+
+      // Prevent hotlinking
+      if (document.getElementById('preventHotlinking').checked) {
+        code += '# Prevent hotlinking\n';
+        code += 'RewriteCond %{HTTP_REFERER} !^$\n';
+        code += 'RewriteCond %{HTTP_REFERER} !^https?://(www\\.)?yourdomain\\.com [NC]\n';
+        code += 'RewriteRule \\.(jpg|jpeg|png|gif|webp|svg)$ - [F,NC,L]\n\n';
+      }
+
+      // Security headers
+      if (document.getElementById('securityHeaders').checked) {
+        code += '# Security headers\n';
+        code += '<IfModule mod_headers.c>\n';
+        code += '    Header set X-Content-Type-Options "nosniff"\n';
+        code += '    Header set X-Frame-Options "SAMEORIGIN"\n';
+        code += '    Header set X-XSS-Protection "1; mode=block"\n';
+        code += '    Header set Referrer-Policy "strict-origin-when-cross-origin"\n';
+        code += '    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"\n';
+        code += '</IfModule>\n\n';
+      }
+
+      // Caching
+      if (document.getElementById('enableCaching').checked) {
+        code += '# Browser caching\n';
+        code += '<IfModule mod_expires.c>\n';
+        code += '    ExpiresActive On\n';
+        code += '    ExpiresByType image/jpg "access plus 1 year"\n';
+        code += '    ExpiresByType image/jpeg "access plus 1 year"\n';
+        code += '    ExpiresByType image/gif "access plus 1 year"\n';
+        code += '    ExpiresByType image/png "access plus 1 year"\n';
+        code += '    ExpiresByType image/webp "access plus 1 year"\n';
+        code += '    ExpiresByType image/svg+xml "access plus 1 year"\n';
+        code += '    ExpiresByType text/css "access plus 1 month"\n';
+        code += '    ExpiresByType text/javascript "access plus 1 month"\n';
+        code += '    ExpiresByType application/javascript "access plus 1 month"\n';
+        code += '    ExpiresByType application/pdf "access plus 1 month"\n';
+        code += '    ExpiresByType font/woff2 "access plus 1 year"\n';
+        code += '</IfModule>\n\n';
+      }
+
+      // Gzip
+      if (document.getElementById('gzipCompression').checked) {
+        code += '# Gzip compression\n';
+        code += '<IfModule mod_deflate.c>\n';
+        code += '    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css\n';
+        code += '    AddOutputFilterByType DEFLATE text/javascript application/javascript application/json\n';
+        code += '    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml\n';
+        code += '    AddOutputFilterByType DEFLATE image/svg+xml\n';
+        code += '</IfModule>\n\n';
+      }
+
+      // Custom redirects
+      const redirects = [];
+      document.querySelectorAll('#redirectList .redirect-item').forEach(item => {
+        const from = item.querySelector('.from').value.trim();
+        const to = item.querySelector('.to').value.trim();
+        if (from && to) {
+          redirects.push({ from, to });
+        }
+      });
+
+      if (redirects.length > 0) {
+        code += '# Custom redirects\n';
+        redirects.forEach(r => {
+          code += `Redirect 301 ${r.from} ${r.to}\n`;
+        });
+        code += '\n';
+      }
+
+      // Error pages
+      const error404 = document.getElementById('error404').value.trim();
+      const error500 = document.getElementById('error500').value.trim();
+      if (error404 || error500) {
+        code += '# Custom error pages\n';
+        if (error404) code += `ErrorDocument 404 ${error404}\n`;
+        if (error500) code += `ErrorDocument 500 ${error500}\n`;
+      }
+
+      document.getElementById('output').textContent = code.trim();
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(document.getElementById('output').textContent);
+    }
+
+    function downloadFile() {
+      const code = document.getElementById('output').textContent;
+      const blob = new Blob([code], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '.htaccess';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    generate();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

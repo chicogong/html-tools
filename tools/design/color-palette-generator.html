@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配色方案生成器 - WebUtils</title>
+  <meta name="description" content="生成和谐的配色方案，支持多种色彩理论" />
+  <meta name="keywords" content="color palette 配色 调色板 颜色 设计 color scheme" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .control-group { display: flex; align-items: center; gap: 8px; }
+    .control-group label { font-size: 0.85rem; color: var(--text-muted); }
+    .control-group input[type="color"] { width: 50px; height: 40px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+    .control-group select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); }
+    .btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--primary); color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .btn:hover { opacity: 0.9; }
+    .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .color-item { text-align: center; }
+    .color-box { width: 100%; height: 120px; border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; position: relative; transition: transform 0.2s; }
+    .color-box:hover { transform: scale(1.05); }
+    .color-box::after { content: '点击复制'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; opacity: 0; transition: opacity 0.2s; }
+    .color-box:hover::after { opacity: 1; }
+    .color-code { font-family: ui-monospace, monospace; font-size: 0.9rem; font-weight: 600; }
+    .color-name { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>配色方案生成器</h1>
+    <p class="desc">基于色彩理论生成和谐的配色方案</p>
+
+    <div class="card">
+      <div class="controls">
+        <div class="control-group">
+          <label>基础颜色:</label>
+          <input type="color" id="baseColor" value="#3b82f6" onchange="generatePalette()" />
+        </div>
+        <div class="control-group">
+          <label>配色模式:</label>
+          <select id="mode" onchange="generatePalette()">
+            <option value="monochromatic">单色</option>
+            <option value="analogous">类似色</option>
+            <option value="complementary">互补色</option>
+            <option value="triadic">三色</option>
+            <option value="tetradic">四色</option>
+            <option value="split-complementary">分裂互补</option>
+          </select>
+        </div>
+        <button class="btn" onclick="randomize()">🎲 随机生成</button>
+        <button class="btn" onclick="exportPalette()">导出调色板</button>
+      </div>
+
+      <div class="palette" id="palette"></div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    function hexToHSL(hex) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+
+      return [h * 360, s * 100, l * 100];
+    }
+
+    function HSLToHex(h, s, l) {
+      h = h / 360;
+      s = s / 100;
+      l = l / 100;
+
+      let r, g, b;
+
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+
+      const toHex = x => {
+        const hex = Math.round(x * 255).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    function generatePalette() {
+      const baseColor = document.getElementById('baseColor').value;
+      const mode = document.getElementById('mode').value;
+      const [h, s, l] = hexToHSL(baseColor);
+
+      let colors = [];
+
+      switch (mode) {
+        case 'monochromatic':
+          colors = [
+            HSLToHex(h, s, Math.max(l - 30, 10)),
+            HSLToHex(h, s, Math.max(l - 15, 20)),
+            HSLToHex(h, s, l),
+            HSLToHex(h, s, Math.min(l + 15, 80)),
+            HSLToHex(h, s, Math.min(l + 30, 90))
+          ];
+          break;
+
+        case 'analogous':
+          colors = [
+            HSLToHex((h - 60 + 360) % 360, s, l),
+            HSLToHex((h - 30 + 360) % 360, s, l),
+            HSLToHex(h, s, l),
+            HSLToHex((h + 30) % 360, s, l),
+            HSLToHex((h + 60) % 360, s, l)
+          ];
+          break;
+
+        case 'complementary':
+          colors = [
+            HSLToHex(h, s, Math.max(l - 20, 10)),
+            HSLToHex(h, s, l),
+            HSLToHex(h, s, Math.min(l + 20, 90)),
+            HSLToHex((h + 180) % 360, s, l),
+            HSLToHex((h + 180) % 360, s, Math.min(l + 20, 90))
+          ];
+          break;
+
+        case 'triadic':
+          colors = [
+            HSLToHex(h, s, l),
+            HSLToHex((h + 120) % 360, s, l),
+            HSLToHex((h + 240) % 360, s, l),
+            HSLToHex(h, s, Math.min(l + 20, 90)),
+            HSLToHex((h + 120) % 360, s, Math.min(l + 20, 90))
+          ];
+          break;
+
+        case 'tetradic':
+          colors = [
+            HSLToHex(h, s, l),
+            HSLToHex((h + 90) % 360, s, l),
+            HSLToHex((h + 180) % 360, s, l),
+            HSLToHex((h + 270) % 360, s, l),
+            HSLToHex(h, s, Math.min(l + 20, 90))
+          ];
+          break;
+
+        case 'split-complementary':
+          colors = [
+            HSLToHex(h, s, l),
+            HSLToHex((h + 150) % 360, s, l),
+            HSLToHex((h + 210) % 360, s, l),
+            HSLToHex(h, s, Math.min(l + 20, 90)),
+            HSLToHex((h + 150) % 360, s, Math.min(l + 20, 90))
+          ];
+          break;
+      }
+
+      displayPalette(colors);
+    }
+
+    function displayPalette(colors) {
+      const palette = document.getElementById('palette');
+      palette.innerHTML = colors.map((color, i) => `
+        <div class="color-item">
+          <div class="color-box" style="background: ${color}" onclick="copyColor('${color}')"></div>
+          <div class="color-code">${color.toUpperCase()}</div>
+          <div class="color-name">颜色 ${i + 1}</div>
+        </div>
+      `).join('');
+    }
+
+    function copyColor(color) {
+      navigator.clipboard.writeText(color);
+      alert(`已复制颜色: ${color}`);
+    }
+
+    function randomize() {
+      const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+      document.getElementById('baseColor').value = randomColor;
+      generatePalette();
+    }
+
+    function exportPalette() {
+      const colors = Array.from(document.querySelectorAll('.color-code')).map(el => el.textContent);
+      const data = colors.join('\n');
+      const blob = new Blob([data], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'palette.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    generatePalette();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emoji 选择器 - WebUtils</title>
+  <meta name="description" content="快速搜索和复制 Emoji 表情符号" />
+  <meta name="keywords" content="emoji 表情 符号 选择器" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --border-strong: #3a3a4a;
+      --accent-cyan: #00f5d4;
+      --accent-pink: #f72585;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    [data-theme="light"] {
+      --bg-deep: #fafafa;
+      --bg-surface: #fff;
+      --bg-card: #fff;
+      --bg-input: #f5f5f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-subtle: #e5e5e5;
+      --border-strong: #d5d5d5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .breadcrumb a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .breadcrumb a:hover { color: var(--accent-cyan); }
+    .breadcrumb-separator { color: var(--text-muted); }
+    .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover { transform: scale(1.1); }
+    .title-section { flex: 1; }
+    .title-section h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-yellow), #f59e0b);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .title-section .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .main-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      flex: 1;
+    }
+    .search-section {
+      margin-bottom: 20px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .categories {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .category-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .category-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .category-btn.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+    .recent-section {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+    }
+    .recent-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .recent-emojis {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+      gap: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+    .emoji-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 1.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .emoji-btn:hover {
+      transform: scale(1.15);
+      border-color: var(--accent-cyan);
+      background: var(--glow-cyan);
+    }
+    .copied-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--accent-green);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .copied-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .selected-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+    }
+    .selected-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .selected-emojis {
+      min-height: 40px;
+      padding: 10px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 1.5rem;
+      letter-spacing: 4px;
+    }
+    .selected-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .selected-actions button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .selected-actions button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .selected-actions button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+    footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--text-primary); }
+    @media (max-width: 640px) {
+      .container { padding: 16px; }
+      .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .emoji-grid { grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); }
+      .emoji-btn { width: 45px; height: 45px; font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  
+  <div class="container">
+    <div class="header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#social-media">社交媒体</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Emoji 选择器</span>
+      </nav>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+      <div class="title-section">
+        <h1>
+          <span class="title-icon">😀</span>
+          Emoji 选择器
+        </h1>
+        <p class="desc">快速搜索、选择和复制 Emoji 表情符号</p>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="search-section">
+        <input type="text" class="search-input" id="search" placeholder="搜索 emoji (例如: smile, heart, 笑脸, 爱心)..." />
+      </div>
+
+      <div class="categories" id="categories"></div>
+
+      <div class="recent-section" id="recentSection" style="display: none;">
+        <div class="recent-label">最近使用</div>
+        <div class="recent-emojis" id="recentEmojis"></div>
+      </div>
+
+      <div class="emoji-grid" id="emojiGrid"></div>
+
+      <div class="selected-section">
+        <div class="selected-label">已选择的 Emoji</div>
+        <div class="selected-emojis" id="selectedEmojis"></div>
+        <div class="selected-actions">
+          <button class="primary" id="btnCopySelected">复制全部</button>
+          <button id="btnClearSelected">清空</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
+        <span>·</span>
+        <span>纯前端 · 无服务器</span>
+        <span>·</span>
+        <a href="../../index.html">WebUtils</a>
+      </p>
+    </footer>
+  </div>
+
+  <div class="copied-toast" id="copiedToast">已复制!</div>
+
+  <script>
+    const searchEl = document.getElementById('search');
+    const categoriesEl = document.getElementById('categories');
+    const emojiGridEl = document.getElementById('emojiGrid');
+    const recentSectionEl = document.getElementById('recentSection');
+    const recentEmojisEl = document.getElementById('recentEmojis');
+    const selectedEmojisEl = document.getElementById('selectedEmojis');
+    const copiedToastEl = document.getElementById('copiedToast');
+
+    const LS_RECENT_KEY = 'emoji_recent_v1';
+    const LS_SELECTED_KEY = 'emoji_selected_v1';
+
+    let selectedEmojis = '';
+    let recentEmojis = [];
+
+    const emojiData = {
+      'smileys': {
+        name: '表情',
+        icon: '😀',
+        emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖']
+      },
+      'gestures': {
+        name: '手势',
+        icon: '👋',
+        emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄']
+      },
+      'people': {
+        name: '人物',
+        icon: '👤',
+        emojis: ['👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👩‍🦱', '🧑‍🦱', '👨‍🦱', '👩‍🦰', '🧑‍🦰', '👨‍🦰', '👱‍♀️', '👱', '👱‍♂️', '👩‍🦳', '🧑‍🦳', '👨‍🦳', '👩‍🦲', '🧑‍🦲', '👨‍🦲', '🧔', '👵', '🧓', '👴', '👲', '👳‍♀️', '👳', '👳‍♂️', '🧕', '👮‍♀️', '👮', '👮‍♂️', '👷‍♀️', '👷', '👷‍♂️', '💂‍♀️', '💂', '💂‍♂️', '🕵️‍♀️', '🕵️', '🕵️‍♂️', '👩‍⚕️', '🧑‍⚕️', '👨‍⚕️', '👩‍🌾', '🧑‍🌾', '👨‍🌾', '👩‍🍳', '🧑‍🍳', '👨‍🍳', '👩‍🎓', '🧑‍🎓', '👨‍🎓', '👩‍🎤', '🧑‍🎤', '👨‍🎤', '👩‍🏫', '🧑‍🏫', '👨‍🏫', '👩‍🏭', '🧑‍🏭', '👨‍🏭', '👩‍💻', '🧑‍💻', '👨‍💻', '👩‍💼', '🧑‍💼', '👨‍💼', '👩‍🔧', '🧑‍🔧', '👨‍🔧', '👩‍🔬', '🧑‍🔬', '👨‍🔬', '👩‍🎨', '🧑‍🎨', '👨‍🎨', '👩‍🚒', '🧑‍🚒', '👨‍🚒', '👩‍✈️', '🧑‍✈️', '👨‍✈️', '👩‍🚀', '🧑‍🚀', '👨‍🚀', '👩‍⚖️', '🧑‍⚖️', '👨‍⚖️', '👰‍♀️', '👰', '👰‍♂️', '🤵‍♀️', '🤵', '🤵‍♂️', '👸', '🤴', '🥷', '🦸‍♀️', '🦸', '🦸‍♂️', '🦹‍♀️', '🦹', '🦹‍♂️', '🤶', '🧑‍🎄', '🎅', '🧙‍♀️', '🧙', '🧙‍♂️', '🧝‍♀️', '🧝', '🧝‍♂️', '🧛‍♀️', '🧛', '🧛‍♂️', '🧟‍♀️', '🧟', '🧟‍♂️', '🧞‍♀️', '🧞', '🧞‍♂️', '🧜‍♀️', '🧜', '🧜‍♂️', '🧚‍♀️', '🧚', '🧚‍♂️', '👼', '🤰', '🤱', '👩‍🍼', '🧑‍🍼', '👨‍🍼', '🙇‍♀️', '🙇', '🙇‍♂️', '💁‍♀️', '💁', '💁‍♂️', '🙅‍♀️', '🙅', '🙅‍♂️', '🙆‍♀️', '🙆', '🙆‍♂️', '🙋‍♀️', '🙋', '🙋‍♂️', '🧏‍♀️', '🧏', '🧏‍♂️', '🤷‍♀️', '🤷', '🤷‍♂️', '🙎‍♀️', '🙎', '🙎‍♂️', '🙍‍♀️', '🙍', '🙍‍♂️', '💇‍♀️', '💇', '💇‍♂️', '💆‍♀️', '💆', '💆‍♂️', '🧖‍♀️', '🧖', '🧖‍♂️', '💅', '🤳', '💃', '🕺', '👯‍♀️', '👯', '👯‍♂️', '🕴️', '👩‍🦽', '🧑‍🦽', '👨‍🦽', '👩‍🦼', '🧑‍🦼', '👨‍🦼', '🚶‍♀️', '🚶', '🚶‍♂️', '👩‍🦯', '🧑‍🦯', '👨‍🦯', '🧎‍♀️', '🧎', '🧎‍♂️', '🏃‍♀️', '🏃', '🏃‍♂️', '🧍‍♀️', '🧍', '🧍‍♂️', '👫', '👭', '👬', '👩‍❤️‍👨', '👩‍❤️‍👩', '👨‍❤️‍👨', '👩‍❤️‍💋‍👨', '👩‍❤️‍💋‍👩', '👨‍❤️‍💋‍👨', '👨‍👩‍👦', '👨‍👩‍👧', '👨‍👩‍👧‍👦', '👨‍👩‍👦‍👦', '👨‍👩‍👧‍👧', '👩‍👩‍👦', '👩‍👩‍👧', '👩‍👩‍👧‍👦', '👩‍👩‍👦‍👦', '👩‍👩‍👧‍👧', '👨‍👨‍👦', '👨‍👨‍👧', '👨‍👨‍👧‍👦', '👨‍👨‍👦‍👦', '👨‍👨‍👧‍👧', '👩‍👦', '👩‍👧', '👩‍👧‍👦', '👩‍👦‍👦', '👩‍👧‍👧', '👨‍👦', '👨‍👧', '👨‍👧‍👦', '👨‍👦‍👦', '👨‍👧‍👧', '🗣️', '👤', '👥', '🫂']
+      },
+      'hearts': {
+        name: '爱心',
+        icon: '❤️',
+        emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌', '💋', '👄', '🫦']
+      },
+      'animals': {
+        name: '动物',
+        icon: '🐶',
+        emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🪱', '🐛', '🦋', '🐌', '🐞', '🐜', '🪰', '🪲', '🪳', '🦟', '🦗', '🕷️', '🕸️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🦣', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🦬', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐈‍⬛', '🪶', '🐓', '🦃', '🦤', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦫', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔', '🐾', '🐉', '🐲']
+      },
+      'food': {
+        name: '食物',
+        icon: '🍔',
+        emojis: ['🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🫑', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', '🌭', '🍔', '🍟', '🍕', '🫓', '🥪', '🥙', '🧆', '🌮', '🌯', '🫔', '🥗', '🥘', '🫕', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🥮', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🧁', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫', '🍿', '🍩', '🍪', '🌰', '🥜', '🍯', '🥛', '🍼', '🫖', '☕', '🍵', '🧃', '🥤', '🧋', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🧉', '🍾', '🧊', '🥄', '🍴', '🍽️', '🥣', '🥡', '🥢', '🧂']
+      },
+      'activities': {
+        name: '活动',
+        icon: '⚽',
+        emojis: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️‍♀️', '🏋️', '🏋️‍♂️', '🤼‍♀️', '🤼', '🤼‍♂️', '🤸‍♀️', '🤸', '🤸‍♂️', '⛹️‍♀️', '⛹️', '⛹️‍♂️', '🤺', '🤾‍♀️', '🤾', '🤾‍♂️', '🏌️‍♀️', '🏌️', '🏌️‍♂️', '🏇', '🧘‍♀️', '🧘', '🧘‍♂️', '🏄‍♀️', '🏄', '🏄‍♂️', '🏊‍♀️', '🏊', '🏊‍♂️', '🤽‍♀️', '🤽', '🤽‍♂️', '🚣‍♀️', '🚣', '🚣‍♂️', '🧗‍♀️', '🧗', '🧗‍♂️', '🚵‍♀️', '🚵', '🚵‍♂️', '🚴‍♀️', '🚴', '🚴‍♂️', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️', '🎫', '🎟️', '🎪', '🤹‍♀️', '🤹', '🤹‍♂️', '🎭', '🩰', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🪘', '🎷', '🎺', '🪗', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰', '🧩']
+      },
+      'travel': {
+        name: '旅行',
+        icon: '✈️',
+        emojis: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🦯', '🦽', '🦼', '🛴', '🚲', '🛵', '🏍️', '🛺', '🚨', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃', '🚋', '🚞', '🚝', '🚄', '🚅', '🚈', '🚂', '🚆', '🚇', '🚊', '🚉', '✈️', '🛫', '🛬', '🛩️', '💺', '🛰️', '🚀', '🛸', '🚁', '🛶', '⛵', '🚤', '🛥️', '🛳️', '⛴️', '🚢', '⚓', '🪝', '⛽', '🚧', '🚦', '🚥', '🚏', '🗺️', '🗿', '🗽', '🗼', '🏰', '🏯', '🏟️', '🎡', '🎢', '🎠', '⛲', '⛱️', '🏖️', '🏝️', '🏜️', '🌋', '⛰️', '🏔️', '🗻', '🏕️', '⛺', '🛖', '🏠', '🏡', '🏘️', '🏚️', '🏗️', '🏭', '🏢', '🏬', '🏣', '🏤', '🏥', '🏦', '🏨', '🏪', '🏫', '🏩', '💒', '🏛️', '⛪', '🕌', '🕍', '🛕', '🕋', '⛩️', '🛤️', '🛣️', '🗾', '🎑', '🏞️', '🌅', '🌄', '🌠', '🎇', '🎆', '🌇', '🌆', '🏙️', '🌃', '🌌', '🌉', '🌁']
+      },
+      'objects': {
+        name: '物品',
+        icon: '💡',
+        emojis: ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸', '💵', '💴', '💶', '💷', '🪙', '💰', '💳', '💎', '⚖️', '🪜', '🧰', '🪛', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪚', '🔩', '⚙️', '🪤', '🧱', '⛓️', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️', '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '🩹', '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🪠', '🧺', '🧻', '🚽', '🚰', '🚿', '🛁', '🛀', '🧼', '🪥', '🪒', '🧽', '🪣', '🧴', '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️', '🛌', '🧸', '🪆', '🖼️', '🪞', '🪟', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🪄', '🪅', '🎊', '🎉', '🎎', '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️', '🪧', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📆', '📅', '🗑️', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓']
+      },
+      'symbols': {
+        name: '符号',
+        icon: '💯',
+        emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧️', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '🟰', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
+      },
+      'flags': {
+        name: '旗帜',
+        icon: '🏳️',
+        emojis: ['🏳️', '🏴', '🏴‍☠️', '🏁', '🚩', '🎌', '🏳️‍🌈', '🏳️‍⚧️', '🇺🇳', '🇦🇫', '🇦🇱', '🇩🇿', '🇦🇸', '🇦🇩', '🇦🇴', '🇦🇮', '🇦🇶', '🇦🇬', '🇦🇷', '🇦🇲', '🇦🇼', '🇦🇺', '🇦🇹', '🇦🇿', '🇧🇸', '🇧🇭', '🇧🇩', '🇧🇧', '🇧🇾', '🇧🇪', '🇧🇿', '🇧🇯', '🇧🇲', '🇧🇹', '🇧🇴', '🇧🇦', '🇧🇼', '🇧🇷', '🇮🇴', '🇻🇬', '🇧🇳', '🇧🇬', '🇧🇫', '🇧🇮', '🇰🇭', '🇨🇲', '🇨🇦', '🇮🇨', '🇨🇻', '🇧🇶', '🇰🇾', '🇨🇫', '🇹🇩', '🇨🇱', '🇨🇳', '🇨🇽', '🇨🇨', '🇨🇴', '🇰🇲', '🇨🇬', '🇨🇩', '🇨🇰', '🇨🇷', '🇨🇮', '🇭🇷', '🇨🇺', '🇨🇼', '🇨🇾', '🇨🇿', '🇩🇰', '🇩🇯', '🇩🇲', '🇩🇴', '🇪🇨', '🇪🇬', '🇸🇻', '🇬🇶', '🇪🇷', '🇪🇪', '🇸🇿', '🇪🇹', '🇪🇺', '🇫🇰', '🇫🇴', '🇫🇯', '🇫🇮', '🇫🇷', '🇬🇫', '🇵🇫', '🇹🇫', '🇬🇦', '🇬🇲', '🇬🇪', '🇩🇪', '🇬🇭', '🇬🇮', '🇬🇷', '🇬🇱', '🇬🇩', '🇬🇵', '🇬🇺', '🇬🇹', '🇬🇬', '🇬🇳', '🇬🇼', '🇬🇾', '🇭🇹', '🇭🇳', '🇭🇰', '🇭🇺', '🇮🇸', '🇮🇳', '🇮🇩', '🇮🇷', '🇮🇶', '🇮🇪', '🇮🇲', '🇮🇱', '🇮🇹', '🇯🇲', '🇯🇵', '🎌', '🇯🇪', '🇯🇴', '🇰🇿', '🇰🇪', '🇰🇮', '🇽🇰', '🇰🇼', '🇰🇬', '🇱🇦', '🇱🇻', '🇱🇧', '🇱🇸', '🇱🇷', '🇱🇾', '🇱🇮', '🇱🇹', '🇱🇺', '🇲🇴', '🇲🇬', '🇲🇼', '🇲🇾', '🇲🇻', '🇲🇱', '🇲🇹', '🇲🇭', '🇲🇶', '🇲🇷', '🇲🇺', '🇾🇹', '🇲🇽', '🇫🇲', '🇲🇩', '🇲🇨', '🇲🇳', '🇲🇪', '🇲🇸', '🇲🇦', '🇲🇿', '🇲🇲', '🇳🇦', '🇳🇷', '🇳🇵', '🇳🇱', '🇳🇨', '🇳🇿', '🇳🇮', '🇳🇪', '🇳🇬', '🇳🇺', '🇳🇫', '🇰🇵', '🇲🇰', '🇲🇵', '🇳🇴', '🇴🇲', '🇵🇰', '🇵🇼', '🇵🇸', '🇵🇦', '🇵🇬', '🇵🇾', '🇵🇪', '🇵🇭', '🇵🇳', '🇵🇱', '🇵🇹', '🇵🇷', '🇶🇦', '🇷🇪', '🇷🇴', '🇷🇺', '🇷🇼', '🇼🇸', '🇸🇲', '🇸🇹', '🇸🇦', '🇸🇳', '🇷🇸', '🇸🇨', '🇸🇱', '🇸🇬', '🇸🇽', '🇸🇰', '🇸🇮', '🇬🇸', '🇸🇧', '🇸🇴', '🇿🇦', '🇰🇷', '🇸🇸', '🇪🇸', '🇱🇰', '🇧🇱', '🇸🇭', '🇰🇳', '🇱🇨', '🇵🇲', '🇻🇨', '🇸🇩', '🇸🇷', '🇸🇪', '🇨🇭', '🇸🇾', '🇹🇼', '🇹🇯', '🇹🇿', '🇹🇭', '🇹🇱', '🇹🇬', '🇹🇰', '🇹🇴', '🇹🇹', '🇹🇳', '🇹🇷', '🇹🇲', '🇹🇨', '🇹🇻', '🇻🇮', '🇺🇬', '🇺🇦', '🇦🇪', '🇬🇧', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏴󠁧󠁢󠁷󠁬󠁳󠁿', '🇺🇸', '🇺🇾', '🇺🇿', '🇻🇺', '🇻🇦', '🇻🇪', '🇻🇳', '🇼🇫', '🇪🇭', '🇾🇪', '🇿🇲', '🇿🇼']
+      }
+    };
+
+    const searchKeywords = {
+      'smile': ['😀', '😃', '😄', '😁', '😆', '🙂', '😊'],
+      '笑': ['😀', '😃', '😄', '😁', '😆', '🤣', '😂', '🙂', '😊'],
+      '笑脸': ['😀', '😃', '😄', '😁', '😆', '🙂', '😊'],
+      'heart': ['❤️', '🧡', '💛', '💚', '💙', '💜', '💕', '💖', '💗', '💘', '💝'],
+      '爱心': ['❤️', '🧡', '💛', '💚', '💙', '💜', '💕', '💖', '💗', '💘', '💝'],
+      '心': ['❤️', '🧡', '💛', '💚', '💙', '💜', '💕', '💖', '💗', '💘', '💝'],
+      'love': ['❤️', '💕', '💖', '💗', '💘', '💝', '🥰', '😍', '😘'],
+      '喜欢': ['❤️', '💕', '💖', '🥰', '😍', '😘', '👍'],
+      'cry': ['😢', '😭', '😿', '🥲'],
+      '哭': ['😢', '😭', '😿', '🥲'],
+      'sad': ['😢', '😭', '😔', '😞', '🙁', '☹️'],
+      '难过': ['😢', '😭', '😔', '😞', '🙁', '☹️'],
+      'happy': ['😀', '😃', '😄', '😁', '😆', '🥳', '😊'],
+      '开心': ['😀', '😃', '😄', '😁', '😆', '🥳', '😊'],
+      'angry': ['😠', '😡', '🤬', '😤'],
+      '生气': ['😠', '😡', '🤬', '😤'],
+      'fire': ['🔥', '❤️‍🔥'],
+      '火': ['🔥', '❤️‍🔥'],
+      'sun': ['☀️', '🌞', '🌅', '🌄'],
+      '太阳': ['☀️', '🌞', '🌅', '🌄'],
+      'star': ['⭐', '🌟', '✨', '💫', '🌠'],
+      '星': ['⭐', '🌟', '✨', '💫', '🌠'],
+      'cat': ['🐱', '🐈', '🐈‍⬛', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
+      '猫': ['🐱', '🐈', '🐈‍⬛', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
+      'dog': ['🐶', '🐕', '🐕‍🦺', '🦮', '🐩'],
+      '狗': ['🐶', '🐕', '🐕‍🦺', '🦮', '🐩'],
+      'food': ['🍔', '🍕', '🍟', '🌭', '🍿', '🍦', '🍩', '🍪'],
+      '食物': ['🍔', '🍕', '🍟', '🌭', '🍿', '🍦', '🍩', '🍪'],
+      'ok': ['👌', '👍', '✅', '🆗'],
+      '好': ['👌', '👍', '✅', '🆗'],
+      'think': ['🤔', '💭', '🧐'],
+      '想': ['🤔', '💭', '🧐'],
+      '思考': ['🤔', '💭', '🧐']
+    };
+
+    let currentCategory = 'smileys';
+
+    function init() {
+      loadRecentEmojis();
+      loadSelectedEmojis();
+      renderCategories();
+      renderEmojis(currentCategory);
+      renderRecentEmojis();
+    }
+
+    function renderCategories() {
+      categoriesEl.textContent = '';
+
+      for (const [key, data] of Object.entries(emojiData)) {
+        const btn = document.createElement('button');
+        btn.className = 'category-btn' + (key === currentCategory ? ' active' : '');
+        btn.textContent = data.icon + ' ' + data.name;
+        btn.addEventListener('click', function() {
+          currentCategory = key;
+          renderCategories();
+          renderEmojis(key);
+        });
+        categoriesEl.appendChild(btn);
+      }
+    }
+
+    function renderEmojis(category) {
+      emojiGridEl.textContent = '';
+
+      const emojis = emojiData[category]?.emojis || [];
+      for (const emoji of emojis) {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-btn';
+        btn.textContent = emoji;
+        btn.addEventListener('click', function() {
+          selectEmoji(emoji);
+        });
+        emojiGridEl.appendChild(btn);
+      }
+    }
+
+    function renderSearchResults(emojis) {
+      emojiGridEl.textContent = '';
+
+      for (const emoji of emojis) {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-btn';
+        btn.textContent = emoji;
+        btn.addEventListener('click', function() {
+          selectEmoji(emoji);
+        });
+        emojiGridEl.appendChild(btn);
+      }
+    }
+
+    function selectEmoji(emoji) {
+      selectedEmojis += emoji;
+      selectedEmojisEl.textContent = selectedEmojis;
+
+      addToRecent(emoji);
+      copyToClipboard(emoji);
+      saveSelectedEmojis();
+    }
+
+    function addToRecent(emoji) {
+      recentEmojis = recentEmojis.filter(function(e) { return e !== emoji; });
+      recentEmojis.unshift(emoji);
+      recentEmojis = recentEmojis.slice(0, 20);
+      saveRecentEmojis();
+      renderRecentEmojis();
+    }
+
+    function renderRecentEmojis() {
+      if (recentEmojis.length === 0) {
+        recentSectionEl.style.display = 'none';
+        return;
+      }
+
+      recentSectionEl.style.display = 'block';
+      recentEmojisEl.textContent = '';
+
+      for (const emoji of recentEmojis) {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-btn';
+        btn.textContent = emoji;
+        btn.addEventListener('click', function() {
+          selectEmoji(emoji);
+        });
+        recentEmojisEl.appendChild(btn);
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast();
+      });
+    }
+
+    function showToast() {
+      copiedToastEl.classList.add('show');
+      setTimeout(function() {
+        copiedToastEl.classList.remove('show');
+      }, 1500);
+    }
+
+    function saveRecentEmojis() {
+      localStorage.setItem(LS_RECENT_KEY, JSON.stringify(recentEmojis));
+    }
+
+    function loadRecentEmojis() {
+      try {
+        const saved = localStorage.getItem(LS_RECENT_KEY);
+        if (saved) {
+          recentEmojis = JSON.parse(saved);
+        }
+      } catch (e) {}
+    }
+
+    function saveSelectedEmojis() {
+      localStorage.setItem(LS_SELECTED_KEY, selectedEmojis);
+    }
+
+    function loadSelectedEmojis() {
+      const saved = localStorage.getItem(LS_SELECTED_KEY);
+      if (saved) {
+        selectedEmojis = saved;
+        selectedEmojisEl.textContent = selectedEmojis;
+      }
+    }
+
+    function searchEmojis(query) {
+      if (!query) {
+        renderEmojis(currentCategory);
+        return;
+      }
+
+      const queryLower = query.toLowerCase();
+      const results = new Set();
+
+      // Check keywords
+      for (const [keyword, emojis] of Object.entries(searchKeywords)) {
+        if (keyword.toLowerCase().includes(queryLower) || queryLower.includes(keyword.toLowerCase())) {
+          for (const emoji of emojis) {
+            results.add(emoji);
+          }
+        }
+      }
+
+      // Search in all categories
+      for (const data of Object.values(emojiData)) {
+        for (const emoji of data.emojis) {
+          if (data.name.toLowerCase().includes(queryLower)) {
+            results.add(emoji);
+          }
+        }
+      }
+
+      if (results.size > 0) {
+        renderSearchResults(Array.from(results));
+      } else {
+        emojiGridEl.textContent = '';
+        const msg = document.createElement('div');
+        msg.style.cssText = 'grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;';
+        msg.textContent = '未找到匹配的 emoji';
+        emojiGridEl.appendChild(msg);
+      }
+    }
+
+    searchEl.addEventListener('input', function() {
+      searchEmojis(searchEl.value.trim());
+    });
+
+    document.getElementById('btnCopySelected').addEventListener('click', function() {
+      if (selectedEmojis) {
+        copyToClipboard(selectedEmojis);
+      }
+    });
+
+    document.getElementById('btnClearSelected').addEventListener('click', function() {
+      selectedEmojis = '';
+      selectedEmojisEl.textContent = '';
+      localStorage.removeItem(LS_SELECTED_KEY);
+    });
+
+    init();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        const btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

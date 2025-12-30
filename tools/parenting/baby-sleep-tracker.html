@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>宝宝睡眠记录 - WebUtils</title>
+  <meta name="description" content="记录宝宝睡眠时间,分析睡眠规律,帮助建立健康作息" />
+  <meta name="keywords" content="宝宝 睡眠 记录 育儿 baby sleep tracker parenting" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/parenting/baby-sleep-tracker.html" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-pink:#ff6b9d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .quick-log{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:2rem}
+    .quick-btn{padding:2rem;border:2px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--bg-card);cursor:pointer;transition:all .2s;text-align:center}
+    .quick-btn:hover{border-color:var(--accent-cyan)}
+    .btn-icon{font-size:2.5rem;margin-bottom:.75rem}
+    .btn-text{font-weight:600;color:var(--text-primary)}
+    .stats{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:2rem}
+    .stats-title{font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
+    .stat-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--accent-pink)}
+    .history{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
+    .history-title{font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
+    .sleep-item{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center}
+    .sleep-time{font-family:'JetBrains Mono',monospace;font-size:.9rem;color:var(--text-primary)}
+    .sleep-duration{font-weight:600;color:var(--accent-cyan)}
+    .empty-state{text-align:center;padding:2rem;color:var(--text-muted)}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#parenting">育儿工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">睡眠记录</span>
+    </nav>
+    <h1>👶 宝宝睡眠记录</h1>
+    <p class="subtitle">记录睡眠，建立规律</p>
+    <div class="quick-log">
+      <button class="quick-btn" onclick="toggleSleep()">
+        <div class="btn-icon" id="statusIcon">💤</div>
+        <div class="btn-text" id="statusText">开始睡眠</div>
+      </button>
+      <div class="quick-btn" style="cursor:default;background:var(--bg-surface)">
+        <div class="btn-icon">⏱️</div>
+        <div class="stat-value" id="currentDuration">00:00</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stats-title">📊 今日统计</div>
+      <p>总睡眠时间：<span class="stat-value" id="totalToday">0小时0分</span></p>
+      <p>睡眠次数：<span class="stat-value" id="countToday">0</span> 次</p>
+    </div>
+    <div class="history">
+      <div class="history-title">📋 睡眠记录</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'html_tools_baby_sleep_v1';
+    let sleeps = [];
+    let currentStart = null;
+    let timerInterval = null;
+
+    function loadData() {
+      try {
+        sleeps = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const saved = localStorage.getItem(STORAGE_KEY + '_current');
+        if (saved) currentStart = new Date(saved);
+      } catch (e) {
+        sleeps = [];
+      }
+      render();
+      if (currentStart) startTimer();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sleeps));
+      if (currentStart) {
+        localStorage.setItem(STORAGE_KEY + '_current', currentStart.toISOString());
+      } else {
+        localStorage.removeItem(STORAGE_KEY + '_current');
+      }
+    }
+
+    function toggleSleep() {
+      if (currentStart) {
+        endSleep();
+      } else {
+        startSleep();
+      }
+    }
+
+    function startSleep() {
+      currentStart = new Date();
+      saveData();
+      document.getElementById('statusText').textContent = '结束睡眠';
+      document.getElementById('statusIcon').textContent = '😴';
+      startTimer();
+    }
+
+    function endSleep() {
+      if (!currentStart) return;
+      const end = new Date();
+      const duration = Math.floor((end - currentStart) / 60000); // minutes
+
+      sleeps.unshift({
+        start: currentStart.toISOString(),
+        end: end.toISOString(),
+        duration: duration
+      });
+
+      currentStart = null;
+      stopTimer();
+      saveData();
+      render();
+
+      document.getElementById('statusText').textContent = '开始睡眠';
+      document.getElementById('statusIcon').textContent = '💤';
+      document.getElementById('currentDuration').textContent = '00:00';
+    }
+
+    function startTimer() {
+      stopTimer();
+      updateTimer();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function updateTimer() {
+      if (!currentStart) return;
+      const now = new Date();
+      const diff = Math.floor((now - currentStart) / 1000); // seconds
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      document.getElementById('currentDuration').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+
+    function formatDuration(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return hours > 0 ? `${hours}小时${mins}分` : `${mins}分钟`;
+    }
+
+    function render() {
+      const today = new Date().toDateString();
+      const todaySleeps = sleeps.filter(s => new Date(s.start).toDateString() === today);
+      const totalMinutes = todaySleeps.reduce((sum, s) => sum + s.duration, 0);
+
+      document.getElementById('totalToday').textContent = formatDuration(totalMinutes);
+      document.getElementById('countToday').textContent = todaySleeps.length;
+
+      const list = document.getElementById('historyList');
+      if (sleeps.length === 0) {
+        list.innerHTML = '<div class="empty-state">还没有记录</div>';
+        return;
+      }
+
+      list.innerHTML = sleeps.slice(0, 10).map(s => `
+        <div class="sleep-item">
+          <div>
+            <div class="sleep-time">${new Date(s.start).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div class="sleep-duration">${formatDuration(s.duration)}</div>
+        </div>
+      `).join('');
+    }
+
+    loadData();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

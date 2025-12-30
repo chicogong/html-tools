@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>折扣价格计算器 - WebUtils</title>
+  <meta name="description" content="计算商品折扣价、优惠金额和最终价格" />
+  <meta name="keywords" content="折扣 价格 优惠 打折 discount calculator price sale" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/ecommerce/discount-calculator.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-red:#ff6b6b;--accent-orange:#ff9f43;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .card-title{font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-size:.9rem;color:var(--text-secondary);margin-bottom:.5rem}
+    .form-group input{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:1rem}
+    .form-group input:focus{outline:none;border-color:var(--accent-blue)}
+    .discount-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;margin-bottom:1rem}
+    .discount-btn{padding:.5rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:.85rem;text-align:center;transition:all .2s}
+    .discount-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .discount-btn.active{background:var(--accent-orange);color:#000;border-color:var(--accent-orange)}
+    .price-display{background:linear-gradient(135deg,rgba(255,159,67,.1),rgba(255,107,107,.1));border:2px solid var(--accent-orange);border-radius:var(--radius-lg);padding:2rem;margin-bottom:1.5rem}
+    .price-row{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0}
+    .price-label{font-size:.9rem;color:var(--text-secondary)}
+    .price-value{font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:600;color:var(--text-primary)}
+    .price-value.original{text-decoration:line-through;color:var(--text-muted)}
+    .price-value.final{font-size:2rem;color:var(--accent-orange)}
+    .price-value.saved{color:var(--accent-red)}
+    .divider{height:1px;background:var(--border-subtle);margin:.5rem 0}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:500px){.discount-btns{grid-template-columns:repeat(3,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#ecommerce">电商工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">折扣价格计算</span>
+    </nav>
+
+    <h1>🏷️ 折扣价格计算器</h1>
+    <p class="subtitle">快速计算折扣后价格和优惠金额</p>
+
+    <div class="card">
+      <div class="card-title">💰 商品信息</div>
+      <div class="form-group">
+        <label>原价 (元)</label>
+        <input type="number" id="originalPrice" value="299" min="0" step="0.01" oninput="calculate()">
+      </div>
+      <div class="form-group">
+        <label>折扣 (%)</label>
+        <input type="number" id="discountPercent" value="20" min="0" max="100" step="0.1" oninput="calculate(); updateActiveBtn()">
+      </div>
+      <div class="discount-btns">
+        <button class="discount-btn" onclick="setDiscount(10)">9折</button>
+        <button class="discount-btn active" onclick="setDiscount(20)">8折</button>
+        <button class="discount-btn" onclick="setDiscount(30)">7折</button>
+        <button class="discount-btn" onclick="setDiscount(40)">6折</button>
+        <button class="discount-btn" onclick="setDiscount(50)">5折</button>
+        <button class="discount-btn" onclick="setDiscount(60)">4折</button>
+        <button class="discount-btn" onclick="setDiscount(70)">3折</button>
+        <button class="discount-btn" onclick="setDiscount(75)">2.5折</button>
+        <button class="discount-btn" onclick="setDiscount(80)">2折</button>
+        <button class="discount-btn" onclick="setDiscount(90)">1折</button>
+      </div>
+    </div>
+
+    <div class="price-display">
+      <div class="price-row">
+        <div class="price-label">原价</div>
+        <div class="price-value original" id="displayOriginal">¥0.00</div>
+      </div>
+      <div class="price-row">
+        <div class="price-label">折扣</div>
+        <div class="price-value" id="displayDiscount">0%</div>
+      </div>
+      <div class="price-row">
+        <div class="price-label">优惠金额</div>
+        <div class="price-value saved" id="displaySaved">-¥0.00</div>
+      </div>
+      <div class="divider"></div>
+      <div class="price-row">
+        <div class="price-label">实付金额</div>
+        <div class="price-value final" id="displayFinal">¥0.00</div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function setDiscount(percent) {
+      document.getElementById('discountPercent').value = percent;
+      updateActiveBtn();
+      calculate();
+    }
+
+    function updateActiveBtn() {
+      const currentPercent = parseFloat(document.getElementById('discountPercent').value);
+      document.querySelectorAll('.discount-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Highlight matching button
+      const buttons = document.querySelectorAll('.discount-btn');
+      const discounts = [10, 20, 30, 40, 50, 60, 70, 75, 80, 90];
+      const index = discounts.indexOf(currentPercent);
+      if (index !== -1 && buttons[index]) {
+        buttons[index].classList.add('active');
+      }
+    }
+
+    function calculate() {
+      const original = parseFloat(document.getElementById('originalPrice').value) || 0;
+      const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+
+      const discountAmount = original * (discountPercent / 100);
+      const finalPrice = original - discountAmount;
+
+      // Calculate actual discount (like 8折 for 20% off)
+      const actualDiscount = 10 - (discountPercent / 10);
+
+      document.getElementById('displayOriginal').textContent = '¥' + original.toFixed(2);
+      document.getElementById('displayDiscount').textContent = discountPercent.toFixed(1) + '% (' + actualDiscount.toFixed(1) + '折)';
+      document.getElementById('displaySaved').textContent = '-¥' + discountAmount.toFixed(2);
+      document.getElementById('displayFinal').textContent = '¥' + finalPrice.toFixed(2);
+    }
+
+    // Initialize
+    calculate();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

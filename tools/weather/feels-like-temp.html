@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>体感温度计算器 - WebUtils</title>
+  <meta name="description" content="根据气温、湿度、风速计算体感温度，包含风寒指数和热指数" />
+  <meta name="keywords" content="体感温度 风寒指数 热指数 feels like temperature wind chill heat index" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/weather/feels-like-temp.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-cold:#00bfff;--accent-hot:#ff6b6b;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--accent-cold),var(--accent-hot));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem}
+    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .card-title{font-size:1rem;font-weight:500;color:var(--text-secondary);margin-bottom:1rem}
+    .input-group{margin-bottom:1.5rem}
+    .input-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+    .input-label span{font-size:.9rem;color:var(--text-secondary)}
+    .input-value{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;color:var(--accent-cyan)}
+    .slider-container{position:relative}
+    input[type="range"]{width:100%;height:8px;border-radius:4px;background:var(--bg-surface);appearance:none;cursor:pointer}
+    input[type="range"]::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent-cyan);cursor:pointer;box-shadow:0 2px 6px rgba(0,245,212,.3)}
+    .range-labels{display:flex;justify-content:space-between;margin-top:.25rem;font-size:.75rem;color:var(--text-muted)}
+    .result-card{text-align:center;padding:2rem}
+    .result-icon{font-size:4rem;margin-bottom:1rem}
+    .result-temp{font-family:'JetBrains Mono',monospace;font-size:4rem;font-weight:700;margin-bottom:.5rem}
+    .result-temp.cold{color:var(--accent-cold)}
+    .result-temp.cool{color:var(--accent-cyan)}
+    .result-temp.warm{color:#ffa502}
+    .result-temp.hot{color:var(--accent-hot)}
+    .result-label{color:var(--text-secondary);font-size:1.1rem;margin-bottom:1rem}
+    .result-diff{font-size:.9rem;padding:.5rem 1rem;background:var(--bg-surface);border-radius:var(--radius-sm);display:inline-block}
+    .result-diff.warmer{color:var(--accent-hot)}
+    .result-diff.colder{color:var(--accent-cold)}
+    .details-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:1.5rem}
+    .detail-item{padding:1rem;background:var(--bg-surface);border-radius:var(--radius-sm);text-align:center}
+    .detail-label{font-size:.8rem;color:var(--text-muted);margin-bottom:.25rem}
+    .detail-value{font-family:'JetBrains Mono',monospace;font-size:1.25rem;font-weight:600;color:var(--text-primary)}
+    .comfort-meter{margin-top:1.5rem}
+    .comfort-label{font-size:.9rem;color:var(--text-secondary);margin-bottom:.5rem;text-align:center}
+    .comfort-track{height:12px;background:linear-gradient(90deg,#00bfff,#00f5d4,#00d26a,#ffa502,#ff6b6b);border-radius:6px;position:relative}
+    .comfort-marker{position:absolute;top:-4px;width:20px;height:20px;background:#fff;border-radius:50%;transform:translateX(-50%);box-shadow:0 2px 6px rgba(0,0,0,.3);transition:left .3s}
+    .comfort-labels{display:flex;justify-content:space-between;margin-top:.25rem;font-size:.7rem;color:var(--text-muted)}
+    .tips-card{background:var(--bg-surface);border-radius:var(--radius-sm);padding:1rem;margin-top:1rem}
+    .tips-title{font-weight:500;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem}
+    .tips-content{font-size:.9rem;color:var(--text-secondary);line-height:1.8}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#weather">天气气象</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">体感温度计算器</span>
+    </nav>
+
+    <h1>体感温度计算器</h1>
+    <p class="subtitle">考虑风速和湿度的真实温度感受</p>
+
+    <div class="card">
+      <div class="card-title">🌡️ 输入参数</div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>气温</span>
+          <span class="input-value" id="tempValue">25°C</span>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="temperature" min="-40" max="50" value="25" oninput="calculate()">
+        </div>
+        <div class="range-labels">
+          <span>-40°C</span>
+          <span>50°C</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>相对湿度</span>
+          <span class="input-value" id="humidityValue">60%</span>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="humidity" min="0" max="100" value="60" oninput="calculate()">
+        </div>
+        <div class="range-labels">
+          <span>0%</span>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>风速</span>
+          <span class="input-value" id="windValue">10 km/h</span>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="wind" min="0" max="100" value="10" oninput="calculate()">
+        </div>
+        <div class="range-labels">
+          <span>0 km/h</span>
+          <span>100 km/h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card result-card">
+      <div class="result-icon" id="resultIcon">😊</div>
+      <div class="result-temp" id="resultTemp">25°C</div>
+      <div class="result-label">体感温度</div>
+      <div class="result-diff" id="resultDiff">与实际温度相同</div>
+
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="detail-label">风寒指数</div>
+          <div class="detail-value" id="windChill">--</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">热指数</div>
+          <div class="detail-value" id="heatIndex">--</div>
+        </div>
+      </div>
+
+      <div class="comfort-meter">
+        <div class="comfort-label">舒适度指数</div>
+        <div class="comfort-track">
+          <div class="comfort-marker" id="comfortMarker"></div>
+        </div>
+        <div class="comfort-labels">
+          <span>极冷</span>
+          <span>寒冷</span>
+          <span>舒适</span>
+          <span>炎热</span>
+          <span>极热</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tips-card">
+      <div class="tips-title">💡 <span id="tipsTitle">穿衣建议</span></div>
+      <div class="tips-content" id="tips">
+        根据体感温度提供建议...
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function calculate() {
+      const temp = parseFloat(document.getElementById('temperature').value);
+      const humidity = parseFloat(document.getElementById('humidity').value);
+      const wind = parseFloat(document.getElementById('wind').value);
+
+      // Update display values
+      document.getElementById('tempValue').textContent = `${temp}°C`;
+      document.getElementById('humidityValue').textContent = `${humidity}%`;
+      document.getElementById('windValue').textContent = `${wind} km/h`;
+
+      // Calculate Wind Chill (for cold temperatures)
+      let windChill = temp;
+      if (temp <= 10 && wind > 4.8) {
+        // Wind Chill formula (Environment Canada)
+        windChill = 13.12 + 0.6215 * temp - 11.37 * Math.pow(wind, 0.16) + 0.3965 * temp * Math.pow(wind, 0.16);
+      }
+
+      // Calculate Heat Index (for hot temperatures)
+      let heatIndex = temp;
+      if (temp >= 27) {
+        // Heat Index formula (NWS)
+        const T = temp * 9/5 + 32; // Convert to Fahrenheit
+        const R = humidity;
+        let HI = -42.379 + 2.04901523*T + 10.14333127*R - 0.22475541*T*R
+                 - 0.00683783*T*T - 0.05481717*R*R + 0.00122874*T*T*R
+                 + 0.00085282*T*R*R - 0.00000199*T*T*R*R;
+        heatIndex = (HI - 32) * 5/9; // Convert back to Celsius
+      }
+
+      // Determine which index to use for feels-like temperature
+      let feelsLike;
+      if (temp <= 10) {
+        feelsLike = windChill;
+      } else if (temp >= 27) {
+        feelsLike = heatIndex;
+      } else {
+        // Blend between actual temp and slight adjustments for humidity
+        const humidityEffect = (humidity - 50) / 100 * 2;
+        const windEffect = -wind / 20;
+        feelsLike = temp + humidityEffect + windEffect;
+      }
+
+      feelsLike = Math.round(feelsLike * 10) / 10;
+
+      // Update wind chill and heat index displays
+      document.getElementById('windChill').textContent = temp <= 10 ? `${Math.round(windChill)}°C` : '--';
+      document.getElementById('heatIndex').textContent = temp >= 27 ? `${Math.round(heatIndex)}°C` : '--';
+
+      // Update result display
+      const resultEl = document.getElementById('resultTemp');
+      resultEl.textContent = `${feelsLike}°C`;
+
+      // Set color class based on temperature
+      resultEl.classList.remove('cold', 'cool', 'warm', 'hot');
+      if (feelsLike < 0) {
+        resultEl.classList.add('cold');
+      } else if (feelsLike < 18) {
+        resultEl.classList.add('cool');
+      } else if (feelsLike < 28) {
+        resultEl.classList.add('warm');
+      } else {
+        resultEl.classList.add('hot');
+      }
+
+      // Update icon
+      const icons = {
+        freezing: '🥶',
+        cold: '❄️',
+        cool: '🌤️',
+        comfortable: '😊',
+        warm: '☀️',
+        hot: '🥵',
+        extreme: '🔥'
+      };
+      let icon = icons.comfortable;
+      if (feelsLike < -20) icon = icons.freezing;
+      else if (feelsLike < 0) icon = icons.cold;
+      else if (feelsLike < 15) icon = icons.cool;
+      else if (feelsLike < 25) icon = icons.comfortable;
+      else if (feelsLike < 35) icon = icons.warm;
+      else if (feelsLike < 40) icon = icons.hot;
+      else icon = icons.extreme;
+      document.getElementById('resultIcon').textContent = icon;
+
+      // Update difference text
+      const diff = feelsLike - temp;
+      const diffEl = document.getElementById('resultDiff');
+      if (Math.abs(diff) < 0.5) {
+        diffEl.textContent = '与实际温度相同';
+        diffEl.classList.remove('warmer', 'colder');
+      } else if (diff > 0) {
+        diffEl.textContent = `比实际温度高 ${Math.abs(diff).toFixed(1)}°C`;
+        diffEl.classList.add('warmer');
+        diffEl.classList.remove('colder');
+      } else {
+        diffEl.textContent = `比实际温度低 ${Math.abs(diff).toFixed(1)}°C`;
+        diffEl.classList.add('colder');
+        diffEl.classList.remove('warmer');
+      }
+
+      // Update comfort meter (0-100 scale, 50 is comfortable)
+      const comfortPos = Math.max(0, Math.min(100, (feelsLike + 20) / 60 * 100));
+      document.getElementById('comfortMarker').style.left = `${comfortPos}%`;
+
+      // Generate tips
+      generateTips(feelsLike, temp, humidity, wind);
+    }
+
+    function generateTips(feelsLike, temp, humidity, wind) {
+      const tips = [];
+
+      if (feelsLike < -10) {
+        tips.push('🧥 极寒天气，需穿戴羽绒服、保暖内衣、帽子、手套');
+        tips.push('⚠️ 避免长时间暴露在户外，注意防止冻伤');
+      } else if (feelsLike < 5) {
+        tips.push('🧥 天气寒冷，建议穿棉服或厚外套');
+        tips.push('🧣 搭配围巾和手套保护颈部和手部');
+      } else if (feelsLike < 15) {
+        tips.push('🧥 天气较凉，建议穿夹克或薄外套');
+        tips.push('👖 可搭配长裤和轻薄毛衣');
+      } else if (feelsLike < 25) {
+        tips.push('👕 舒适温度，轻便着装即可');
+        tips.push('😊 适合户外活动的好天气');
+      } else if (feelsLike < 32) {
+        tips.push('👕 天气较热，穿着轻薄透气衣物');
+        tips.push('💧 注意多喝水，避免中午时段外出');
+      } else {
+        tips.push('🩳 高温天气，穿着短袖短裤');
+        tips.push('⚠️ 避免长时间户外活动，注意防暑降温');
+        tips.push('🧴 外出需涂防晒霜，佩戴遮阳帽');
+      }
+
+      if (wind > 30) {
+        tips.push('💨 风力较大，外出注意防风');
+      }
+
+      if (humidity > 80) {
+        tips.push('💦 湿度较高，体感闷热，注意通风');
+      } else if (humidity < 30) {
+        tips.push('🏜️ 空气干燥，建议使用加湿器，多喝水');
+      }
+
+      document.getElementById('tips').innerHTML = tips.join('<br>');
+    }
+
+    // Initialize
+    calculate();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -449,22 +449,128 @@
             plot();
         };
 
+        // Safe math expression parser (no eval)
+        function parseMathExpr(expr, x) {
+            // Tokenize
+            const tokens = [];
+            let i = 0;
+            while (i < expr.length) {
+                if (/\s/.test(expr[i])) { i++; continue; }
+                if (/\d/.test(expr[i]) || (expr[i] === '.' && /\d/.test(expr[i+1]))) {
+                    let num = '';
+                    while (i < expr.length && (/\d/.test(expr[i]) || expr[i] === '.')) {
+                        num += expr[i++];
+                    }
+                    tokens.push({ type: 'num', value: parseFloat(num) });
+                } else if (expr[i] === 'x') {
+                    tokens.push({ type: 'num', value: x });
+                    i++;
+                } else if (expr.substr(i, 2) === 'pi') {
+                    tokens.push({ type: 'num', value: Math.PI });
+                    i += 2;
+                } else if (expr[i] === 'e' && !/[xp]/.test(expr[i+1])) {
+                    tokens.push({ type: 'num', value: Math.E });
+                    i++;
+                } else if (expr.substr(i, 3) === 'sin') {
+                    tokens.push({ type: 'fn', value: 'sin' }); i += 3;
+                } else if (expr.substr(i, 3) === 'cos') {
+                    tokens.push({ type: 'fn', value: 'cos' }); i += 3;
+                } else if (expr.substr(i, 3) === 'tan') {
+                    tokens.push({ type: 'fn', value: 'tan' }); i += 3;
+                } else if (expr.substr(i, 4) === 'sqrt') {
+                    tokens.push({ type: 'fn', value: 'sqrt' }); i += 4;
+                } else if (expr.substr(i, 3) === 'log') {
+                    tokens.push({ type: 'fn', value: 'log' }); i += 3;
+                } else if (expr.substr(i, 3) === 'exp') {
+                    tokens.push({ type: 'fn', value: 'exp' }); i += 3;
+                } else if (expr.substr(i, 3) === 'abs') {
+                    tokens.push({ type: 'fn', value: 'abs' }); i += 3;
+                } else if ('+-*/^()'.includes(expr[i])) {
+                    tokens.push({ type: 'op', value: expr[i] });
+                    i++;
+                } else {
+                    i++; // skip unknown
+                }
+            }
+            
+            // Recursive descent parser
+            let pos = 0;
+            function peek() { return tokens[pos]; }
+            function consume() { return tokens[pos++]; }
+            
+            function parseExpr() {
+                let left = parseTerm();
+                while (peek() && (peek().value === '+' || peek().value === '-')) {
+                    const op = consume().value;
+                    const right = parseTerm();
+                    left = op === '+' ? left + right : left - right;
+                }
+                return left;
+            }
+            
+            function parseTerm() {
+                let left = parsePower();
+                while (peek() && (peek().value === '*' || peek().value === '/')) {
+                    const op = consume().value;
+                    const right = parsePower();
+                    left = op === '*' ? left * right : left / right;
+                }
+                return left;
+            }
+            
+            function parsePower() {
+                let left = parseUnary();
+                if (peek() && peek().value === '^') {
+                    consume();
+                    const right = parsePower(); // right associative
+                    left = Math.pow(left, right);
+                }
+                return left;
+            }
+            
+            function parseUnary() {
+                if (peek() && peek().value === '-') {
+                    consume();
+                    return -parseUnary();
+                }
+                if (peek() && peek().value === '+') {
+                    consume();
+                    return parseUnary();
+                }
+                return parsePrimary();
+            }
+            
+            function parsePrimary() {
+                const t = peek();
+                if (!t) return NaN;
+                if (t.type === 'num') {
+                    consume();
+                    return t.value;
+                }
+                if (t.type === 'fn') {
+                    const fn = consume().value;
+                    if (!peek() || peek().value !== '(') return NaN;
+                    consume(); // (
+                    const arg = parseExpr();
+                    if (peek() && peek().value === ')') consume();
+                    const funcs = { sin: Math.sin, cos: Math.cos, tan: Math.tan, sqrt: Math.sqrt, log: Math.log, exp: Math.exp, abs: Math.abs };
+                    return funcs[fn] ? funcs[fn](arg) : NaN;
+                }
+                if (t.value === '(') {
+                    consume();
+                    const val = parseExpr();
+                    if (peek() && peek().value === ')') consume();
+                    return val;
+                }
+                return NaN;
+            }
+            
+            return parseExpr();
+        }
+
         function evaluateFunction(expr, x) {
             try {
-                // Create safe evaluation environment
-                const safeExpr = expr
-                    .replace(/\^/g, '**')
-                    .replace(/sin/g, 'Math.sin')
-                    .replace(/cos/g, 'Math.cos')
-                    .replace(/tan/g, 'Math.tan')
-                    .replace(/sqrt/g, 'Math.sqrt')
-                    .replace(/log/g, 'Math.log')
-                    .replace(/exp/g, 'Math.exp')
-                    .replace(/abs/g, 'Math.abs')
-                    .replace(/pi/gi, 'Math.PI')
-                    .replace(/e(?![xp])/g, 'Math.E');
-                
-                return eval(safeExpr);
+                return parseMathExpr(expr.toLowerCase(), x);
             } catch {
                 return NaN;
             }

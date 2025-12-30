@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BPM节拍器 - WebUtils</title>
+  <meta name="description" content="在线节拍器，支持自定义BPM、节拍和音色，可视化拍子显示" />
+  <meta name="keywords" content="节拍器 BPM metronome 音乐 练习 tempo" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/music/metronome.html" />
+
+  <meta property="og:title" content="BPM节拍器 - WebUtils" />
+  <meta property="og:description" content="在线节拍器，支持自定义BPM和可视化显示" />
+  <meta property="og:type" content="website" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-purple:#a855f7;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .metronome-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:2rem;text-align:center}
+    .bpm-display{margin-bottom:2rem}
+    .bpm-value{font-family:'JetBrains Mono',monospace;font-size:6rem;font-weight:700;color:var(--accent-cyan);line-height:1;transition:color .1s}
+    .bpm-value.beat{color:var(--accent-purple)}
+    .bpm-label{font-size:1.25rem;color:var(--text-secondary);margin-top:.5rem}
+    .bpm-controls{display:flex;justify-content:center;align-items:center;gap:1rem;margin-bottom:2rem}
+    .bpm-btn{width:50px;height:50px;border-radius:50%;border:2px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:1.5rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+    .bpm-btn:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .bpm-btn:active{transform:scale(0.95)}
+    .bpm-slider{flex:1;max-width:200px;-webkit-appearance:none;height:8px;border-radius:4px;background:var(--bg-surface);outline:none}
+    .bpm-slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));cursor:pointer}
+    .beats-display{display:flex;justify-content:center;gap:.75rem;margin-bottom:2rem}
+    .beat-dot{width:20px;height:20px;border-radius:50%;background:var(--bg-surface);border:2px solid var(--border-subtle);transition:all .1s}
+    .beat-dot.active{background:var(--accent-cyan);border-color:var(--accent-cyan);box-shadow:0 0 15px var(--accent-cyan)}
+    .beat-dot.first.active{background:var(--accent-purple);border-color:var(--accent-purple);box-shadow:0 0 15px var(--accent-purple)}
+    .play-btn{width:100px;height:100px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));color:#000;font-size:2.5rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;margin:0 auto 2rem}
+    .play-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(0,245,212,.3)}
+    .play-btn.playing{background:linear-gradient(135deg,#ff6b6b,#ff8787)}
+    .settings{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle)}
+    .setting-group{display:flex;flex-direction:column;gap:.5rem}
+    .setting-group label{font-size:.85rem;color:var(--text-secondary)}
+    .setting-group select{padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
+    .tempo-presets{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:1.5rem}
+    .preset-btn{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.8rem;transition:all .2s}
+    .preset-btn:hover{border-color:var(--accent-cyan);color:var(--text-primary)}
+    .tap-tempo{margin-top:1.5rem;padding:1rem;background:var(--bg-surface);border-radius:var(--radius-sm)}
+    .tap-btn{width:100%;padding:1rem;border:2px dashed var(--border-subtle);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:1rem;transition:all .2s}
+    .tap-btn:hover{border-color:var(--accent-cyan);color:var(--text-primary)}
+    .tap-btn:active{background:var(--bg-hover)}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#music">音乐工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">BPM节拍器</span>
+    </nav>
+
+    <h1>BPM节拍器</h1>
+    <p class="subtitle">可视化节拍器，支持多种拍号和音色</p>
+
+    <div class="metronome-card">
+      <div class="bpm-display">
+        <div class="bpm-value" id="bpmValue">120</div>
+        <div class="bpm-label">BPM</div>
+      </div>
+
+      <div class="bpm-controls">
+        <button class="bpm-btn" onclick="adjustBPM(-10)">−10</button>
+        <button class="bpm-btn" onclick="adjustBPM(-1)">−</button>
+        <input type="range" class="bpm-slider" id="bpmSlider" min="20" max="300" value="120" oninput="setBPM(this.value)">
+        <button class="bpm-btn" onclick="adjustBPM(1)">+</button>
+        <button class="bpm-btn" onclick="adjustBPM(10)">+10</button>
+      </div>
+
+      <div class="beats-display" id="beatsDisplay">
+        <div class="beat-dot first"></div>
+        <div class="beat-dot"></div>
+        <div class="beat-dot"></div>
+        <div class="beat-dot"></div>
+      </div>
+
+      <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+
+      <div class="settings">
+        <div class="setting-group">
+          <label>拍号</label>
+          <select id="timeSignature" onchange="updateTimeSignature()">
+            <option value="2">2/4</option>
+            <option value="3">3/4</option>
+            <option value="4" selected>4/4</option>
+            <option value="6">6/8</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label>音色</label>
+          <select id="soundType" onchange="updateSound()">
+            <option value="click">木鱼</option>
+            <option value="beep" selected>电子</option>
+            <option value="drum">鼓点</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tempo-presets">
+        <button class="preset-btn" onclick="setBPM(60)">Largo 60</button>
+        <button class="preset-btn" onclick="setBPM(80)">Andante 80</button>
+        <button class="preset-btn" onclick="setBPM(100)">Moderato 100</button>
+        <button class="preset-btn" onclick="setBPM(120)">Allegro 120</button>
+        <button class="preset-btn" onclick="setBPM(140)">Vivace 140</button>
+        <button class="preset-btn" onclick="setBPM(180)">Presto 180</button>
+      </div>
+
+      <div class="tap-tempo">
+        <button class="tap-btn" id="tapBtn" onclick="tapTempo()">点击测速 (Tap Tempo)</button>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    let bpm = 120;
+    let isPlaying = false;
+    let currentBeat = 0;
+    let beatsPerMeasure = 4;
+    let intervalId = null;
+    let audioContext = null;
+    let tapTimes = [];
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(isAccent) {
+      initAudio();
+      const soundType = document.getElementById('soundType').value;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      if (soundType === 'click') {
+        oscillator.type = 'sine';
+        oscillator.frequency.value = isAccent ? 1000 : 800;
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+      } else if (soundType === 'beep') {
+        oscillator.type = 'square';
+        oscillator.frequency.value = isAccent ? 880 : 440;
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
+      } else if (soundType === 'drum') {
+        oscillator.type = 'triangle';
+        oscillator.frequency.value = isAccent ? 200 : 150;
+        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      }
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.1);
+    }
+
+    function setBPM(value) {
+      bpm = Math.max(20, Math.min(300, parseInt(value)));
+      document.getElementById('bpmValue').textContent = bpm;
+      document.getElementById('bpmSlider').value = bpm;
+      if (isPlaying) {
+        stopMetronome();
+        startMetronome();
+      }
+    }
+
+    function adjustBPM(delta) {
+      setBPM(bpm + delta);
+    }
+
+    function updateTimeSignature() {
+      beatsPerMeasure = parseInt(document.getElementById('timeSignature').value);
+      const container = document.getElementById('beatsDisplay');
+      container.innerHTML = '';
+      for (let i = 0; i < beatsPerMeasure; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot' + (i === 0 ? ' first' : '');
+        container.appendChild(dot);
+      }
+      currentBeat = 0;
+    }
+
+    function updateSound() {
+      // Sound type is read directly in playSound
+    }
+
+    function tick() {
+      const dots = document.querySelectorAll('.beat-dot');
+      dots.forEach(d => d.classList.remove('active'));
+
+      playSound(currentBeat === 0);
+      dots[currentBeat].classList.add('active');
+
+      // Visual feedback on BPM display
+      const bpmDisplay = document.getElementById('bpmValue');
+      bpmDisplay.classList.add('beat');
+      setTimeout(() => bpmDisplay.classList.remove('beat'), 50);
+
+      currentBeat = (currentBeat + 1) % beatsPerMeasure;
+    }
+
+    function startMetronome() {
+      currentBeat = 0;
+      const interval = 60000 / bpm;
+      tick();
+      intervalId = setInterval(tick, interval);
+    }
+
+    function stopMetronome() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+    }
+
+    function togglePlay() {
+      const btn = document.getElementById('playBtn');
+      isPlaying = !isPlaying;
+
+      if (isPlaying) {
+        initAudio();
+        btn.textContent = '⏸';
+        btn.classList.add('playing');
+        startMetronome();
+      } else {
+        btn.textContent = '▶';
+        btn.classList.remove('playing');
+        stopMetronome();
+      }
+    }
+
+    function tapTempo() {
+      const now = Date.now();
+      tapTimes.push(now);
+
+      // Keep only last 5 taps
+      if (tapTimes.length > 5) {
+        tapTimes.shift();
+      }
+
+      if (tapTimes.length >= 2) {
+        const intervals = [];
+        for (let i = 1; i < tapTimes.length; i++) {
+          intervals.push(tapTimes[i] - tapTimes[i - 1]);
+        }
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const calculatedBPM = Math.round(60000 / avgInterval);
+        setBPM(calculatedBPM);
+      }
+
+      // Reset if no tap for 2 seconds
+      setTimeout(() => {
+        if (Date.now() - tapTimes[tapTimes.length - 1] > 2000) {
+          tapTimes = [];
+        }
+      }, 2000);
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowUp') {
+        adjustBPM(1);
+      } else if (e.code === 'ArrowDown') {
+        adjustBPM(-1);
+      } else if (e.code === 'KeyT') {
+        tapTempo();
+      }
+    });
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

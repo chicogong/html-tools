@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>色轮工具 - WebUtils</title>
+  <meta name="description" content="交互式色轮工具，支持配色方案生成、互补色、类似色等" />
+  <meta name="keywords" content="色轮 颜色 配色 color wheel design palette" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/art/color-wheel.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#9b59b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .card-title{font-size:1rem;font-weight:500;color:var(--text-secondary);margin-bottom:1rem}
+    .wheel-container{display:flex;flex-direction:column;align-items:center;gap:2rem}
+    .wheel-wrapper{position:relative;width:300px;height:300px}
+    .color-wheel{width:100%;height:100%;border-radius:50%;cursor:crosshair}
+    .wheel-pointer{position:absolute;width:20px;height:20px;border:3px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 5px rgba(0,0,0,.5)}
+    .scheme-selector{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+    .scheme-btn{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.85rem;transition:all .2s}
+    .scheme-btn:hover{border-color:var(--accent-cyan)}
+    .scheme-btn.active{background:var(--accent-cyan);color:#000;border-color:var(--accent-cyan)}
+    .selected-color{display:flex;align-items:center;gap:1.5rem;padding:1.5rem;background:var(--bg-surface);border-radius:var(--radius-md)}
+    .color-preview{width:80px;height:80px;border-radius:var(--radius-md);border:2px solid var(--border-subtle)}
+    .color-info{flex:1}
+    .color-hex{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary)}
+    .color-values{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.5rem;font-size:.85rem;color:var(--text-secondary)}
+    .palette{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:1rem;margin-top:1rem}
+    .palette-color{display:flex;flex-direction:column;align-items:center;gap:.5rem}
+    .palette-swatch{width:100%;aspect-ratio:1;border-radius:var(--radius-md);cursor:pointer;transition:transform .2s;border:2px solid transparent}
+    .palette-swatch:hover{transform:scale(1.05)}
+    .palette-swatch.active{border-color:var(--text-primary)}
+    .palette-label{font-size:.75rem;color:var(--text-muted)}
+    .palette-hex{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-secondary)}
+    .copy-btn{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.85rem;transition:all .2s}
+    .copy-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#art">艺术工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">色轮工具</span>
+    </nav>
+
+    <h1>色轮工具</h1>
+    <p class="subtitle">探索色彩关系，生成和谐配色方案</p>
+
+    <div class="card">
+      <div class="card-title">🎨 选择颜色</div>
+      <div class="wheel-container">
+        <div class="wheel-wrapper">
+          <canvas class="color-wheel" id="colorWheel" width="300" height="300"></canvas>
+          <div class="wheel-pointer" id="pointer"></div>
+        </div>
+
+        <div class="scheme-selector">
+          <button class="scheme-btn active" onclick="setScheme('complementary')">互补色</button>
+          <button class="scheme-btn" onclick="setScheme('analogous')">类似色</button>
+          <button class="scheme-btn" onclick="setScheme('triadic')">三色</button>
+          <button class="scheme-btn" onclick="setScheme('split')">分裂互补</button>
+          <button class="scheme-btn" onclick="setScheme('tetradic')">四色</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔍 当前选择</div>
+      <div class="selected-color">
+        <div class="color-preview" id="colorPreview"></div>
+        <div class="color-info">
+          <div class="color-hex" id="colorHex">#FF0000</div>
+          <div class="color-values">
+            <span id="rgbValue">RGB: 255, 0, 0</span>
+            <span id="hslValue">HSL: 0°, 100%, 50%</span>
+            <button class="copy-btn" onclick="copyColor()">复制</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 配色方案</div>
+      <div class="palette" id="palette"></div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('colorWheel');
+    const ctx = canvas.getContext('2d');
+    const pointer = document.getElementById('pointer');
+
+    let currentHue = 0;
+    let currentSaturation = 100;
+    let currentLightness = 50;
+    let currentScheme = 'complementary';
+
+    function drawColorWheel() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = canvas.width / 2 - 5;
+
+      // Draw hue ring
+      for (let angle = 0; angle < 360; angle++) {
+        const startAngle = (angle - 1) * Math.PI / 180;
+        const endAngle = (angle + 1) * Math.PI / 180;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        ctx.fillStyle = `hsl(${angle}, 100%, 50%)`;
+        ctx.fill();
+      }
+
+      // Draw saturation gradient (white center)
+      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    function updatePointer() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = (canvas.width / 2 - 5) * (currentSaturation / 100);
+
+      const angle = currentHue * Math.PI / 180 - Math.PI / 2;
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+
+      pointer.style.left = x + 'px';
+      pointer.style.top = y + 'px';
+      pointer.style.backgroundColor = hslToHex(currentHue, currentSaturation, currentLightness);
+    }
+
+    function handleWheel(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxRadius = canvas.width / 2 - 5;
+
+      if (distance <= maxRadius) {
+        currentHue = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+        currentSaturation = Math.min(100, (distance / maxRadius) * 100);
+
+        updateColor();
+      }
+    }
+
+    canvas.addEventListener('click', handleWheel);
+    canvas.addEventListener('mousemove', (e) => {
+      if (e.buttons === 1) handleWheel(e);
+    });
+
+    function hslToHex(h, s, l) {
+      s /= 100;
+      l /= 100;
+
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+
+      let r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+
+      r = Math.round((r + m) * 255);
+      g = Math.round((g + m) * 255);
+      b = Math.round((b + m) * 255);
+
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function updateColor() {
+      const hex = hslToHex(currentHue, currentSaturation, currentLightness);
+      const rgb = hexToRgb(hex);
+
+      document.getElementById('colorPreview').style.backgroundColor = hex;
+      document.getElementById('colorHex').textContent = hex;
+      document.getElementById('rgbValue').textContent = `RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}`;
+      document.getElementById('hslValue').textContent = `HSL: ${Math.round(currentHue)}°, ${Math.round(currentSaturation)}%, ${currentLightness}%`;
+
+      updatePointer();
+      generatePalette();
+    }
+
+    function setScheme(scheme) {
+      currentScheme = scheme;
+      document.querySelectorAll('.scheme-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      generatePalette();
+    }
+
+    function generatePalette() {
+      const colors = [];
+      const h = currentHue;
+
+      switch (currentScheme) {
+        case 'complementary':
+          colors.push({ hue: h, label: '主色' });
+          colors.push({ hue: (h + 180) % 360, label: '互补色' });
+          break;
+        case 'analogous':
+          colors.push({ hue: (h - 30 + 360) % 360, label: '类似色1' });
+          colors.push({ hue: h, label: '主色' });
+          colors.push({ hue: (h + 30) % 360, label: '类似色2' });
+          break;
+        case 'triadic':
+          colors.push({ hue: h, label: '主色' });
+          colors.push({ hue: (h + 120) % 360, label: '三色2' });
+          colors.push({ hue: (h + 240) % 360, label: '三色3' });
+          break;
+        case 'split':
+          colors.push({ hue: h, label: '主色' });
+          colors.push({ hue: (h + 150) % 360, label: '分裂1' });
+          colors.push({ hue: (h + 210) % 360, label: '分裂2' });
+          break;
+        case 'tetradic':
+          colors.push({ hue: h, label: '主色' });
+          colors.push({ hue: (h + 90) % 360, label: '四色2' });
+          colors.push({ hue: (h + 180) % 360, label: '四色3' });
+          colors.push({ hue: (h + 270) % 360, label: '四色4' });
+          break;
+      }
+
+      const paletteHtml = colors.map(c => {
+        const hex = hslToHex(c.hue, currentSaturation, currentLightness);
+        return `
+          <div class="palette-color">
+            <div class="palette-swatch" style="background:${hex}" onclick="copyHex('${hex}')"></div>
+            <span class="palette-label">${c.label}</span>
+            <span class="palette-hex">${hex}</span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('palette').innerHTML = paletteHtml;
+    }
+
+    function copyColor() {
+      const hex = document.getElementById('colorHex').textContent;
+      copyHex(hex);
+    }
+
+    function copyHex(hex) {
+      navigator.clipboard.writeText(hex).then(() => {
+        alert(`已复制: ${hex}`);
+      });
+    }
+
+    // Initialize
+    drawColorWheel();
+    updateColor();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

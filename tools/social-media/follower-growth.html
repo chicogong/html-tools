@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>粉丝增长预测器 - WebUtils</title>
+  <meta name="description" content="根据当前数据预测粉丝增长趋势" />
+  <meta name="keywords" content="粉丝增长 预测 社交媒体 follower growth" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --bg-card: #1a1a24;
+      --bg-input: #0e0e14;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --border-subtle: #2a2a3a;
+      --border-strong: #3a3a4a;
+      --accent-cyan: #00f5d4;
+      --accent-pink: #f72585;
+      --accent-green: #10b981;
+      --accent-red: #f43f5e;
+      --accent-yellow: #fbbf24;
+      --glow-cyan: rgb(0, 245, 212, 0.15);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    [data-theme="light"] {
+      --bg-deep: #fafafa;
+      --bg-surface: #fff;
+      --bg-card: #fff;
+      --bg-input: #f5f5f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-subtle: #e5e5e5;
+      --border-strong: #d5d5d5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .breadcrumb a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .breadcrumb a:hover { color: var(--accent-cyan); }
+    .breadcrumb-separator { color: var(--text-muted); }
+    .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover { transform: scale(1.1); }
+    .title-section { flex: 1; }
+    .title-section h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-green), #34d399);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #fff;
+    }
+    .title-section .desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .main-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      flex: 1;
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 0;
+    }
+    .form-group label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    input[type="number"], select {
+      width: 100%;
+      padding: 12px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 4px var(--glow-cyan);
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    button.primary {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+    button.primary:hover {
+      background: #00dfc4;
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+    .results-section {
+      margin-top: 24px;
+    }
+    .results-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+    }
+    .prediction-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .prediction-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: center;
+    }
+    .prediction-card.highlight {
+      border-color: var(--accent-cyan);
+      background: var(--glow-cyan);
+    }
+    .prediction-period {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .prediction-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+    .prediction-card.highlight .prediction-value {
+      color: var(--text-primary);
+    }
+    .prediction-growth {
+      font-size: 0.85rem;
+      color: var(--accent-green);
+      margin-top: 4px;
+    }
+    .chart-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .chart-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .chart {
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+    .chart-bar-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-bar {
+      width: 100%;
+      max-width: 60px;
+      background: var(--accent-cyan);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      transition: height 0.5s ease;
+      position: relative;
+    }
+    .chart-bar.current {
+      background: var(--accent-pink);
+    }
+    .chart-bar-value {
+      position: absolute;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .chart-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .tips-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .tips-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .tips-list {
+      list-style: none;
+    }
+    .tips-list li {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      padding: 8px 0;
+      padding-left: 24px;
+      position: relative;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .tips-list li:last-child {
+      border-bottom: none;
+    }
+    .tips-list li::before {
+      content: '💡';
+      position: absolute;
+      left: 0;
+    }
+    footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--text-primary); }
+    @media (max-width: 640px) {
+      .container { padding: 16px; }
+      .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .prediction-cards { grid-template-columns: 1fr 1fr; }
+      .chart { gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  
+  <div class="container">
+    <div class="header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#social-media">社交媒体</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">粉丝增长预测器</span>
+      </nav>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+      <div class="title-section">
+        <h1>
+          <span class="title-icon">📈</span>
+          粉丝增长预测器
+        </h1>
+        <p class="desc">根据当前增长率预测未来粉丝数量</p>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="input-grid">
+        <div class="form-group">
+          <label>当前粉丝数</label>
+          <input type="number" id="currentFollowers" placeholder="10000" min="0" />
+        </div>
+        <div class="form-group">
+          <label>上周粉丝数</label>
+          <input type="number" id="lastWeekFollowers" placeholder="9500" min="0" />
+        </div>
+        <div class="form-group">
+          <label>上月粉丝数（可选）</label>
+          <input type="number" id="lastMonthFollowers" placeholder="8000" min="0" />
+        </div>
+        <div class="form-group">
+          <label>增长模式</label>
+          <select id="growthModel">
+            <option value="linear">线性增长</option>
+            <option value="compound">复合增长</option>
+            <option value="conservative">保守估计</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="primary" id="btnPredict">预测增长</button>
+        <button id="btnClear">清空</button>
+      </div>
+
+      <div class="results-section" id="resultsSection" style="display: none;">
+        <div class="results-label">增长预测</div>
+        
+        <div class="prediction-cards" id="predictionCards"></div>
+
+        <div class="chart-container">
+          <div class="chart-title">增长趋势图</div>
+          <div class="chart" id="chart"></div>
+        </div>
+
+        <div class="tips-section">
+          <div class="tips-title">加速增长的建议</div>
+          <ul class="tips-list" id="tipsList"></ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
+        <span>·</span>
+        <span>纯前端 · 无服务器</span>
+        <span>·</span>
+        <a href="../../index.html">WebUtils</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    const currentFollowersEl = document.getElementById('currentFollowers');
+    const lastWeekFollowersEl = document.getElementById('lastWeekFollowers');
+    const lastMonthFollowersEl = document.getElementById('lastMonthFollowers');
+    const growthModelEl = document.getElementById('growthModel');
+    const resultsSectionEl = document.getElementById('resultsSection');
+    const predictionCardsEl = document.getElementById('predictionCards');
+    const chartEl = document.getElementById('chart');
+    const tipsListEl = document.getElementById('tipsList');
+
+    const LS_KEY = 'follower_growth_v1';
+
+    function predict() {
+      const current = parseInt(currentFollowersEl.value, 10) || 0;
+      const lastWeek = parseInt(lastWeekFollowersEl.value, 10) || 0;
+      const lastMonth = parseInt(lastMonthFollowersEl.value, 10) || 0;
+      const model = growthModelEl.value;
+
+      if (current === 0 || lastWeek === 0) {
+        alert('请输入当前粉丝数和上周粉丝数');
+        return;
+      }
+
+      // Calculate growth rates
+      const weeklyGrowth = current - lastWeek;
+      const weeklyGrowthRate = (weeklyGrowth / lastWeek) * 100;
+
+      let monthlyGrowthRate;
+      if (lastMonth > 0) {
+        monthlyGrowthRate = ((current - lastMonth) / lastMonth) * 100;
+      } else {
+        monthlyGrowthRate = weeklyGrowthRate * 4;
+      }
+
+      // Predict future followers
+      const predictions = calculatePredictions(current, weeklyGrowthRate, model);
+      
+      displayPredictions(predictions, current, weeklyGrowthRate);
+      displayChart(predictions, current);
+      displayTips(weeklyGrowthRate);
+      
+      resultsSectionEl.style.display = 'block';
+      saveToStorage();
+    }
+
+    function calculatePredictions(current, weeklyRate, model) {
+      const predictions = [];
+      const periods = [
+        { label: '1周后', weeks: 1 },
+        { label: '1月后', weeks: 4 },
+        { label: '3月后', weeks: 12 },
+        { label: '6月后', weeks: 26 },
+        { label: '1年后', weeks: 52 }
+      ];
+
+      for (const period of periods) {
+        let predicted;
+        const weeks = period.weeks;
+
+        if (model === 'linear') {
+          const weeklyGain = current * (weeklyRate / 100);
+          predicted = current + (weeklyGain * weeks);
+        } else if (model === 'compound') {
+          predicted = current * Math.pow(1 + weeklyRate / 100, weeks);
+        } else {
+          // Conservative: reduce growth rate over time
+          const decayFactor = Math.pow(0.98, weeks);
+          const adjustedRate = weeklyRate * decayFactor;
+          predicted = current * Math.pow(1 + adjustedRate / 100, weeks);
+        }
+
+        predictions.push({
+          label: period.label,
+          value: Math.round(predicted),
+          growth: Math.round(predicted - current)
+        });
+      }
+
+      return predictions;
+    }
+
+    function displayPredictions(predictions, current, weeklyRate) {
+      predictionCardsEl.textContent = '';
+
+      // Add current card
+      const currentCard = document.createElement('div');
+      currentCard.className = 'prediction-card highlight';
+
+      const currentPeriod = document.createElement('div');
+      currentPeriod.className = 'prediction-period';
+      currentPeriod.textContent = '当前';
+
+      const currentValue = document.createElement('div');
+      currentValue.className = 'prediction-value';
+      currentValue.textContent = formatNumber(current);
+
+      const currentGrowth = document.createElement('div');
+      currentGrowth.className = 'prediction-growth';
+      currentGrowth.textContent = '周增长率: ' + weeklyRate.toFixed(1) + '%';
+
+      currentCard.appendChild(currentPeriod);
+      currentCard.appendChild(currentValue);
+      currentCard.appendChild(currentGrowth);
+      predictionCardsEl.appendChild(currentCard);
+
+      // Add prediction cards
+      for (const pred of predictions) {
+        const card = document.createElement('div');
+        card.className = 'prediction-card';
+
+        const period = document.createElement('div');
+        period.className = 'prediction-period';
+        period.textContent = pred.label;
+
+        const value = document.createElement('div');
+        value.className = 'prediction-value';
+        value.textContent = formatNumber(pred.value);
+
+        const growth = document.createElement('div');
+        growth.className = 'prediction-growth';
+        growth.textContent = '+' + formatNumber(pred.growth);
+
+        card.appendChild(period);
+        card.appendChild(value);
+        card.appendChild(growth);
+        predictionCardsEl.appendChild(card);
+      }
+    }
+
+    function displayChart(predictions, current) {
+      chartEl.textContent = '';
+
+      const allValues = [current].concat(predictions.map(function(p) { return p.value; }));
+      const maxValue = Math.max.apply(null, allValues);
+      const labels = ['现在', '1周', '1月', '3月', '6月', '1年'];
+
+      for (let i = 0; i < allValues.length; i++) {
+        const container = document.createElement('div');
+        container.className = 'chart-bar-container';
+
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar' + (i === 0 ? ' current' : '');
+        const height = (allValues[i] / maxValue) * 160;
+        bar.style.height = height + 'px';
+
+        const barValue = document.createElement('div');
+        barValue.className = 'chart-bar-value';
+        barValue.textContent = formatNumber(allValues[i]);
+        bar.appendChild(barValue);
+
+        const label = document.createElement('div');
+        label.className = 'chart-label';
+        label.textContent = labels[i];
+
+        container.appendChild(bar);
+        container.appendChild(label);
+        chartEl.appendChild(container);
+      }
+    }
+
+    function displayTips(weeklyRate) {
+      tipsListEl.textContent = '';
+
+      const tips = [];
+
+      if (weeklyRate < 1) {
+        tips.push('增长率偏低，建议增加发布频率和互动');
+        tips.push('尝试与其他创作者合作扩大曝光');
+        tips.push('分析高表现内容，复制成功模式');
+      } else if (weeklyRate < 3) {
+        tips.push('保持当前节奏，继续优化内容质量');
+        tips.push('尝试不同的内容形式（视频/图文/直播）');
+        tips.push('关注热门话题，及时参与讨论');
+      } else {
+        tips.push('增长势头良好，注意内容质量不要下降');
+        tips.push('考虑建立粉丝社群增加粘性');
+        tips.push('可以尝试付费推广加速增长');
+      }
+
+      tips.push('定期分析数据，了解粉丝画像');
+      tips.push('保持与粉丝的互动，回复评论和私信');
+
+      for (const tip of tips) {
+        const li = document.createElement('li');
+        li.textContent = tip;
+        tipsListEl.appendChild(li);
+      }
+    }
+
+    function formatNumber(num) {
+      if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+      } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+      }
+      return num.toString();
+    }
+
+    function saveToStorage() {
+      const data = {
+        current: currentFollowersEl.value,
+        lastWeek: lastWeekFollowersEl.value,
+        lastMonth: lastMonthFollowersEl.value,
+        model: growthModelEl.value
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+      try {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (data.current) currentFollowersEl.value = data.current;
+          if (data.lastWeek) lastWeekFollowersEl.value = data.lastWeek;
+          if (data.lastMonth) lastMonthFollowersEl.value = data.lastMonth;
+          if (data.model) growthModelEl.value = data.model;
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('btnPredict').addEventListener('click', predict);
+
+    document.getElementById('btnClear').addEventListener('click', function() {
+      currentFollowersEl.value = '';
+      lastWeekFollowersEl.value = '';
+      lastMonthFollowersEl.value = '';
+      resultsSectionEl.style.display = 'none';
+      localStorage.removeItem(LS_KEY);
+    });
+
+    loadFromStorage();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        const btn = document.querySelector('.theme-toggle');
+        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

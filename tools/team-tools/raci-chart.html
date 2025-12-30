@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RACI 责任分配矩阵 - WebUtils</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+            --primary-color: #0f3460;
+            --accent-color: #00d9ff;
+            --border-color: #0f3460;
+            --input-bg: #1a1a2e;
+            --r-color: #f87171;
+            --a-color: #fbbf24;
+            --c-color: #4ade80;
+            --i-color: #60a5fa;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f4f8;
+            --card-bg: #fff;
+            --text-color: #1a1a2e;
+            --primary-color: #e0e7ff;
+            --accent-color: #0891b2;
+            --border-color: #c7d2fe;
+            --input-bg: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .back-link {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .legend-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .badge-r { background: var(--r-color); color: #000; }
+        .badge-a { background: var(--a-color); color: #000; }
+        .badge-c { background: var(--c-color); color: #000; }
+        .badge-i { background: var(--i-color); color: #000; }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .item-row input {
+            flex: 1;
+            padding: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .item-row input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--r-color);
+            padding: 8px 12px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .matrix-wrapper {
+            overflow-x: auto;
+        }
+
+        .raci-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .raci-table th, .raci-table td {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .raci-table th {
+            background: var(--primary-color);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .raci-table td.task-name {
+            text-align: left;
+            font-weight: 500;
+            min-width: 150px;
+        }
+
+        .raci-cell {
+            cursor: pointer;
+            transition: background 0.2s ease;
+            min-width: 80px;
+        }
+
+        .raci-cell:hover {
+            background: var(--primary-color);
+        }
+
+        .raci-badge {
+            display: inline-flex;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .raci-badge.r { background: var(--r-color); color: #000; }
+        .raci-badge.a { background: var(--a-color); color: #000; }
+        .raci-badge.c { background: var(--c-color); color: #000; }
+        .raci-badge.i { background: var(--i-color); color: #000; }
+
+        .validation-section {
+            margin-top: 20px;
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .validation-item.valid {
+            border-left: 3px solid var(--c-color);
+        }
+
+        .validation-item.warning {
+            border-left: 3px solid var(--a-color);
+        }
+
+        .validation-item.error {
+            border-left: 3px solid var(--r-color);
+        }
+
+        .validation-icon {
+            font-size: 18px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: var(--input-bg);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .setup-grid {
+                grid-template-columns: 1fr;
+            }
+            .legend {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../../index.html" class="back-link">← 返回工具列表</a>
+            <h1>RACI 责任分配矩阵</h1>
+            <p>明确团队成员职责分工</p>
+            <button class="theme-toggle" onclick="toggleTheme()">🌓 切换主题</button>
+        </div>
+
+        <div class="panel">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-badge badge-r">R</div>
+                    <span>Responsible 执行者 - 实际完成工作的人</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-badge badge-a">A</div>
+                    <span>Accountable 负责人 - 对结果负最终责任</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-badge badge-c">C</div>
+                    <span>Consulted 被咨询者 - 提供意见和建议</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-badge badge-i">I</div>
+                    <span>Informed 被通知者 - 需要被告知进展</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="setup-grid">
+            <div class="panel">
+                <div class="panel-title">📋 任务/活动</div>
+                <div class="item-list" id="taskList"></div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="addTask()">+ 添加任务</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">👥 角色/人员</div>
+                <div class="item-list" id="roleList"></div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="addRole()">+ 添加角色</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">📊 RACI 矩阵 (点击单元格切换状态)</div>
+            <div class="matrix-wrapper">
+                <table class="raci-table" id="raciTable"></table>
+            </div>
+            <p style="font-size: 12px; opacity: 0.6; margin-top: 10px; text-align: center;">
+                点击单元格循环切换: 空 → R → A → C → I → 空
+            </p>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">✅ 验证检查</div>
+            <div class="validation-section" id="validationSection"></div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTasks">0</div>
+                    <div class="stat-label">任务数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRoles">0</div>
+                    <div class="stat-label">角色数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="assignedCells">0</div>
+                    <div class="stat-label">已分配</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="completionRate">0%</div>
+                    <div class="stat-label">完成率</div>
+                </div>
+            </div>
+            <div class="btn-group" style="justify-content: center; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="exportRACI()">📋 导出</button>
+                <button class="btn btn-secondary" onclick="shareRACI()">🔗 分享</button>
+                <button class="btn btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LS_KEY = 'raci-chart-data';
+        const RACI_SEQUENCE = ['', 'R', 'A', 'C', 'I'];
+        
+        let tasks = [];
+        let roles = [];
+        let assignments = {};
+
+        function init() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+            }
+
+            loadFromStorage();
+            loadFromUrl();
+
+            if (tasks.length === 0) {
+                tasks = [
+                    { id: 1, name: '需求分析' },
+                    { id: 2, name: '系统设计' },
+                    { id: 3, name: '开发实现' },
+                    { id: 4, name: '测试验证' }
+                ];
+            }
+            if (roles.length === 0) {
+                roles = [
+                    { id: 1, name: '产品经理' },
+                    { id: 2, name: '技术负责人' },
+                    { id: 3, name: '开发工程师' },
+                    { id: 4, name: '测试工程师' }
+                ];
+            }
+
+            renderTasks();
+            renderRoles();
+            renderMatrix();
+        }
+
+        function generateId() {
+            return Date.now() + Math.random().toString(36).substr(2, 9);
+        }
+
+        function addTask(name = '') {
+            tasks.push({ id: generateId(), name: name });
+            renderTasks();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function removeTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            // Clean up assignments
+            Object.keys(assignments).forEach(key => {
+                if (key.startsWith(id + '-')) {
+                    delete assignments[key];
+                }
+            });
+            renderTasks();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('taskList');
+            container.textContent = '';
+
+            tasks.forEach(task => {
+                const div = document.createElement('div');
+                div.className = 'item-row';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = '任务名称';
+                input.value = task.name;
+                input.addEventListener('input', (e) => {
+                    task.name = e.target.value;
+                    renderMatrix();
+                    saveToStorage();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', () => removeTask(task.id));
+
+                div.appendChild(input);
+                div.appendChild(deleteBtn);
+                container.appendChild(div);
+            });
+        }
+
+        function addRole(name = '') {
+            roles.push({ id: generateId(), name: name });
+            renderRoles();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function removeRole(id) {
+            roles = roles.filter(r => r.id !== id);
+            // Clean up assignments
+            Object.keys(assignments).forEach(key => {
+                if (key.endsWith('-' + id)) {
+                    delete assignments[key];
+                }
+            });
+            renderRoles();
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function renderRoles() {
+            const container = document.getElementById('roleList');
+            container.textContent = '';
+
+            roles.forEach(role => {
+                const div = document.createElement('div');
+                div.className = 'item-row';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = '角色名称';
+                input.value = role.name;
+                input.addEventListener('input', (e) => {
+                    role.name = e.target.value;
+                    renderMatrix();
+                    saveToStorage();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', () => removeRole(role.id));
+
+                div.appendChild(input);
+                div.appendChild(deleteBtn);
+                container.appendChild(div);
+            });
+        }
+
+        function cycleRaci(taskId, roleId) {
+            const key = taskId + '-' + roleId;
+            const current = assignments[key] || '';
+            const currentIndex = RACI_SEQUENCE.indexOf(current);
+            const nextIndex = (currentIndex + 1) % RACI_SEQUENCE.length;
+            const nextValue = RACI_SEQUENCE[nextIndex];
+            
+            if (nextValue) {
+                assignments[key] = nextValue;
+            } else {
+                delete assignments[key];
+            }
+            
+            renderMatrix();
+            saveToStorage();
+        }
+
+        function renderMatrix() {
+            const table = document.getElementById('raciTable');
+            table.textContent = '';
+
+            if (tasks.length === 0 || roles.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.textContent = '请先添加任务和角色';
+                cell.style.padding = '20px';
+                cell.style.opacity = '0.5';
+                row.appendChild(cell);
+                table.appendChild(row);
+                validate();
+                return;
+            }
+
+            // Header row
+            const headerRow = document.createElement('tr');
+            const emptyHeader = document.createElement('th');
+            emptyHeader.textContent = '任务 / 角色';
+            headerRow.appendChild(emptyHeader);
+
+            roles.forEach(role => {
+                const th = document.createElement('th');
+                th.textContent = role.name || '(未命名)';
+                headerRow.appendChild(th);
+            });
+
+            table.appendChild(headerRow);
+
+            // Task rows
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+
+                const nameCell = document.createElement('td');
+                nameCell.className = 'task-name';
+                nameCell.textContent = task.name || '(未命名)';
+                row.appendChild(nameCell);
+
+                roles.forEach(role => {
+                    const cell = document.createElement('td');
+                    cell.className = 'raci-cell';
+                    
+                    const key = task.id + '-' + role.id;
+                    const value = assignments[key] || '';
+                    
+                    if (value) {
+                        const badge = document.createElement('span');
+                        badge.className = 'raci-badge ' + value.toLowerCase();
+                        badge.textContent = value;
+                        cell.appendChild(badge);
+                    }
+
+                    cell.addEventListener('click', () => cycleRaci(task.id, role.id));
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+            });
+
+            validate();
+        }
+
+        function validate() {
+            const container = document.getElementById('validationSection');
+            container.textContent = '';
+
+            const issues = [];
+            let totalAssigned = 0;
+
+            tasks.forEach(task => {
+                let hasR = false;
+                let hasA = false;
+                let aCount = 0;
+
+                roles.forEach(role => {
+                    const key = task.id + '-' + role.id;
+                    const value = assignments[key];
+                    if (value) {
+                        totalAssigned++;
+                        if (value === 'R') hasR = true;
+                        if (value === 'A') {
+                            hasA = true;
+                            aCount++;
+                        }
+                    }
+                });
+
+                const taskName = task.name || '(未命名任务)';
+
+                if (!hasR) {
+                    issues.push({ type: 'error', message: '「' + taskName + '」没有指定执行者 (R)' });
+                }
+                if (!hasA) {
+                    issues.push({ type: 'error', message: '「' + taskName + '」没有指定负责人 (A)' });
+                }
+                if (aCount > 1) {
+                    issues.push({ type: 'warning', message: '「' + taskName + '」有多个负责人 (A)，建议只有一个' });
+                }
+            });
+
+            if (issues.length === 0 && tasks.length > 0 && roles.length > 0) {
+                issues.push({ type: 'valid', message: '所有任务都已正确分配责任' });
+            }
+
+            issues.forEach(issue => {
+                const div = document.createElement('div');
+                div.className = 'validation-item ' + issue.type;
+
+                const icon = document.createElement('span');
+                icon.className = 'validation-icon';
+                icon.textContent = issue.type === 'valid' ? '✓' : issue.type === 'warning' ? '⚠' : '✗';
+
+                const text = document.createElement('span');
+                text.textContent = issue.message;
+
+                div.appendChild(icon);
+                div.appendChild(text);
+                container.appendChild(div);
+            });
+
+            // Update stats
+            document.getElementById('totalTasks').textContent = tasks.length;
+            document.getElementById('totalRoles').textContent = roles.length;
+            document.getElementById('assignedCells').textContent = totalAssigned;
+            
+            const totalCells = tasks.length * roles.length;
+            const rate = totalCells > 0 ? Math.round((totalAssigned / totalCells) * 100) : 0;
+            document.getElementById('completionRate').textContent = rate + '%';
+        }
+
+        function exportRACI() {
+            let text = '═══════════════════════════════════════\n';
+            text += '         RACI 责任分配矩阵\n';
+            text += '═══════════════════════════════════════\n\n';
+
+            text += 'R = 执行者 | A = 负责人 | C = 被咨询者 | I = 被通知者\n\n';
+
+            // Find max task name length for formatting
+            const maxTaskLen = Math.max(...tasks.map(t => (t.name || '').length), 10);
+
+            // Header
+            text += '任务'.padEnd(maxTaskLen + 2);
+            roles.forEach(role => {
+                text += (role.name || '角色').padEnd(12);
+            });
+            text += '\n';
+            text += '─'.repeat(maxTaskLen + 2 + roles.length * 12) + '\n';
+
+            // Rows
+            tasks.forEach(task => {
+                text += (task.name || '(未命名)').padEnd(maxTaskLen + 2);
+                roles.forEach(role => {
+                    const key = task.id + '-' + role.id;
+                    const value = assignments[key] || '-';
+                    text += value.padEnd(12);
+                });
+                text += '\n';
+            });
+
+            text += '\n═══════════════════════════════════════\n';
+
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板');
+            });
+        }
+
+        function shareRACI() {
+            const data = {
+                tasks: tasks,
+                roles: roles,
+                assignments: assignments
+            };
+            const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+            const url = window.location.href.split('#')[0] + '#' + encoded;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('分享链接已复制');
+            });
+        }
+
+        function loadFromUrl() {
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(atob(hash)));
+                    if (data.tasks) tasks = data.tasks;
+                    if (data.roles) roles = data.roles;
+                    if (data.assignments) assignments = data.assignments;
+                } catch (e) {
+                    console.error('Failed to load from URL:', e);
+                }
+            }
+        }
+
+        function saveToStorage() {
+            const data = {
+                tasks: tasks,
+                roles: roles,
+                assignments: assignments
+            };
+            localStorage.setItem(LS_KEY, JSON.stringify(data));
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.tasks) tasks = data.tasks;
+                    if (data.roles) roles = data.roles;
+                    if (data.assignments) assignments = data.assignments;
+                } catch (e) {
+                    console.error('Failed to load from storage:', e);
+                }
+            }
+        }
+
+        function clearAll() {
+            if (confirm('确定要清空所有内容吗？')) {
+                tasks = [{ id: generateId(), name: '' }];
+                roles = [{ id: generateId(), name: '' }];
+                assignments = {};
+                renderTasks();
+                renderRoles();
+                renderMatrix();
+                localStorage.removeItem(LS_KEY);
+                window.location.hash = '';
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent-color);color:#000;padding:12px 24px;border-radius:8px;z-index:1000;font-size:14px;';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.toggleTheme = function() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        };
+
+        init();
+    </script>
+</body>
+</html>

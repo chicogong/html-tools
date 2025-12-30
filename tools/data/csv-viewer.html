@@ -135,13 +135,6 @@
     function toggleTheme(){const body=document.body;const isDark=body.getAttribute('data-theme')!=='light';body.setAttribute('data-theme',isDark?'light':'dark');localStorage.setItem('theme',isDark?'light':'dark')}
     (function(){const saved=localStorage.getItem('theme');if(saved==='light')document.body.setAttribute('data-theme','light')})();
 
-    // Escape HTML to prevent XSS
-    function escapeHtml(text){
-      const div=document.createElement('div');
-      div.textContent=text;
-      return div.innerHTML;
-    }
-
     function parseCSV(){
       const input=document.getElementById('csvInput').value.trim();
       if(!input){showToast('请输入 CSV 数据');return}
@@ -153,17 +146,33 @@
       const headers=rows[0];
       const data=rows.slice(1);
 
-      let html='<table><thead><tr>';
-      headers.forEach(h=>html+=`<th>${escapeHtml(h)}</th>`);
-      html+='</tr></thead><tbody>';
-      data.forEach(row=>{
-        html+='<tr>';
-        row.forEach(cell=>html+=`<td>${escapeHtml(cell)}</td>`);
-        html+='</tr>';
+      // 使用 DOM API 防止 XSS
+      const container=document.getElementById('tableContainer');
+      container.textContent='';
+      const table=document.createElement('table');
+      const thead=document.createElement('thead');
+      const headerRow=document.createElement('tr');
+      headers.forEach(h=>{
+        const th=document.createElement('th');
+        th.textContent=h;
+        headerRow.appendChild(th);
       });
-      html+='</tbody></table>';
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
 
-      document.getElementById('tableContainer').innerHTML=html;
+      const tbody=document.createElement('tbody');
+      data.forEach(row=>{
+        const tr=document.createElement('tr');
+        row.forEach(cell=>{
+          const td=document.createElement('td');
+          td.textContent=cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      container.appendChild(table);
+
       document.getElementById('stats').style.display='flex';
       document.getElementById('rowCount').textContent=data.length;
       document.getElementById('colCount').textContent=headers.length;
@@ -172,7 +181,7 @@
 
     function clearAll(){
       document.getElementById('csvInput').value='';
-      document.getElementById('tableContainer').innerHTML='';
+      document.getElementById('tableContainer').textContent='';
       document.getElementById('stats').style.display='none';
       showToast('已清空');
     }

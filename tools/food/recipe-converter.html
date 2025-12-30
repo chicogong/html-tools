@@ -1,212 +1,482 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>食谱份量转换器 - WebUtils</title>
-  <meta name="description" content="快速调整食谱份量，自动换算所有食材比例" />
-  <meta name="keywords" content="食谱 烹饪 份量 比例 recipe converter cooking scaling" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/food/recipe-converter.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>食谱份量转换器 - WebUtils</title>
+    <meta name="description" content="快速调整食谱份量，自动换算所有食材比例" />
+    <meta name="keywords" content="食谱 烹饪 份量 比例 recipe converter cooking scaling" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/food/recipe-converter.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-orange:#ff9f43;--accent-pink:#ff6b9d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
-    .card-title{font-size:1.1rem;font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
-    .servings-control{display:flex;align-items:center;justify-content:center;gap:1rem;margin-bottom:2rem}
-    .servings-btn{width:40px;height:40px;border:1px solid var(--border-subtle);border-radius:50%;background:var(--bg-surface);color:var(--text-primary);font-size:1.2rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
-    .servings-btn:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .servings-display{display:flex;flex-direction:column;align-items:center;min-width:120px}
-    .servings-label{font-size:.85rem;color:var(--text-secondary);margin-bottom:.25rem}
-    .servings-value{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:var(--accent-orange)}
-    .servings-text{font-size:.85rem;color:var(--text-muted)}
-    .quick-btns{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:2rem}
-    .quick-btn{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:.85rem;transition:all .2s}
-    .quick-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
-    .ingredients-list{display:flex;flex-direction:column;gap:.75rem}
-    .ingredient-item{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1rem;align-items:center;padding:.75rem;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-subtle)}
-    .ingredient-name{color:var(--text-primary);font-weight:500}
-    .ingredient-original{font-family:'JetBrains Mono',monospace;font-size:.9rem;color:var(--text-muted);text-align:right}
-    .ingredient-converted{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;color:var(--accent-cyan);text-align:right}
-    .add-ingredient{display:flex;gap:.5rem;margin-top:1rem}
-    .add-ingredient input{flex:1;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
-    .add-ingredient input:focus{outline:none;border-color:var(--accent-blue)}
-    .add-ingredient button{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);background:var(--accent-blue);color:#000;font-weight:600;cursor:pointer;transition:all .2s}
-    .add-ingredient button:hover{transform:translateY(-1px)}
-    .scale-info{background:linear-gradient(135deg,rgba(255,159,67,.1),rgba(0,245,212,.1));border:1px solid var(--accent-orange);padding:1rem;border-radius:var(--radius-md);text-align:center;font-size:.9rem;color:var(--text-secondary);margin-bottom:1.5rem}
-    .scale-factor{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent-orange)}
-    .delete-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:.25rem;font-size:1rem;transition:all .2s}
-    .delete-btn:hover{color:var(--accent-pink);transform:scale(1.1)}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-    @media(max-width:600px){.ingredient-item{grid-template-columns:1fr;gap:.5rem;text-align:left}.ingredient-original,.ingredient-converted{text-align:left}}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">食谱份量转换</span>
-    </nav>
-
-    <h1>👨‍🍳 食谱份量转换器</h1>
-    <p class="subtitle">智能调整食材份量，轻松烹饪任意人数</p>
-
-    <div class="servings-control">
-      <button class="servings-btn" onclick="changeServings(-1)">−</button>
-      <div class="servings-display">
-        <div class="servings-label">原始份量</div>
-        <div class="servings-value" id="originalServings">4</div>
-        <div class="servings-text">人份</div>
-      </div>
-      <span style="font-size:1.5rem;color:var(--text-muted)">→</span>
-      <div class="servings-display">
-        <div class="servings-label">目标份量</div>
-        <div class="servings-value" id="targetServings">4</div>
-        <div class="servings-text">人份</div>
-      </div>
-      <button class="servings-btn" onclick="changeServings(1)">+</button>
-    </div>
-
-    <div class="quick-btns">
-      <button class="quick-btn" onclick="setServings(1)">1人份</button>
-      <button class="quick-btn" onclick="setServings(2)">2人份</button>
-      <button class="quick-btn" onclick="setServings(4)">4人份</button>
-      <button class="quick-btn" onclick="setServings(6)">6人份</button>
-      <button class="quick-btn" onclick="setServings(8)">8人份</button>
-      <button class="quick-btn" onclick="setServings(10)">10人份</button>
-    </div>
-
-    <div class="scale-info" id="scaleInfo">
-      缩放比例: <span class="scale-factor">1.00x</span>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📝 食材列表</div>
-      <div class="ingredients-list" id="ingredientsList">
-        <!-- Ingredients will be rendered here -->
-      </div>
-      <div class="add-ingredient">
-        <input type="text" id="ingredientName" placeholder="食材名称 (如: 鸡蛋)">
-        <input type="text" id="ingredientAmount" placeholder="数量 (如: 200g 或 2个)">
-        <button onclick="addIngredient()">添加</button>
-      </div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    let originalServings = 4;
-    let targetServings = 4;
-    let ingredients = [
-      { id: 1, name: '鸡蛋', amount: 4, unit: '个' },
-      { id: 2, name: '面粉', amount: 200, unit: 'g' },
-      { id: 3, name: '牛奶', amount: 250, unit: 'ml' },
-      { id: 4, name: '白糖', amount: 50, unit: 'g' },
-      { id: 5, name: '黄油', amount: 30, unit: 'g' }
-    ];
-
-    function parseAmount(str) {
-      // Extract number and unit from string like "200g" or "2个"
-      const match = str.match(/^([\d.]+)\s*(.*)$/);
-      if (match) {
-        return { amount: parseFloat(match[1]), unit: match[2] || '' };
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-orange: #ff9f43;
+        --accent-pink: #ff6b9d;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
       }
-      return { amount: parseFloat(str) || 0, unit: '' };
-    }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-orange));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--accent-cyan);
+      }
+      .servings-control {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .servings-btn {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--border-subtle);
+        border-radius: 50%;
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .servings-btn:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .servings-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 120px;
+      }
+      .servings-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+      }
+      .servings-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent-orange);
+      }
+      .servings-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .quick-btns {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 2rem;
+      }
+      .quick-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .quick-btn:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      .ingredients-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .ingredient-item {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+      }
+      .ingredient-name {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .ingredient-original {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        text-align: right;
+      }
+      .ingredient-converted {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--accent-cyan);
+        text-align: right;
+      }
+      .add-ingredient {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+      .add-ingredient input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .add-ingredient input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .add-ingredient button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: var(--accent-blue);
+        color: #000;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .add-ingredient button:hover {
+        transform: translateY(-1px);
+      }
+      .scale-info {
+        background: linear-gradient(135deg, rgba(255, 159, 67, 0.1), rgba(0, 245, 212, 0.1));
+        border: 1px solid var(--accent-orange);
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+      }
+      .scale-factor {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        color: var(--accent-orange);
+      }
+      .delete-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1rem;
+        transition: all 0.2s;
+      }
+      .delete-btn:hover {
+        color: var(--accent-pink);
+        transform: scale(1.1);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+      @media (max-width: 600px) {
+        .ingredient-item {
+          grid-template-columns: 1fr;
+          gap: 0.5rem;
+          text-align: left;
+        }
+        .ingredient-original,
+        .ingredient-converted {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    function formatAmount(amount, unit) {
-      // Round to 1 decimal place, remove .0 if whole number
-      const rounded = Math.round(amount * 10) / 10;
-      const formatted = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
-      return formatted + (unit ? unit : '');
-    }
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">食谱份量转换</span>
+      </nav>
 
-    function changeServings(delta) {
-      targetServings = Math.max(1, targetServings + delta);
-      render();
-    }
+      <h1>👨‍🍳 食谱份量转换器</h1>
+      <p class="subtitle">智能调整食材份量，轻松烹饪任意人数</p>
 
-    function setServings(num) {
-      targetServings = num;
-      render();
-    }
+      <div class="servings-control">
+        <button class="servings-btn" onclick="changeServings(-1)">−</button>
+        <div class="servings-display">
+          <div class="servings-label">原始份量</div>
+          <div class="servings-value" id="originalServings">4</div>
+          <div class="servings-text">人份</div>
+        </div>
+        <span style="font-size: 1.5rem; color: var(--text-muted)">→</span>
+        <div class="servings-display">
+          <div class="servings-label">目标份量</div>
+          <div class="servings-value" id="targetServings">4</div>
+          <div class="servings-text">人份</div>
+        </div>
+        <button class="servings-btn" onclick="changeServings(1)">+</button>
+      </div>
 
-    function addIngredient() {
-      const name = document.getElementById('ingredientName').value.trim();
-      const amountStr = document.getElementById('ingredientAmount').value.trim();
+      <div class="quick-btns">
+        <button class="quick-btn" onclick="setServings(1)">1人份</button>
+        <button class="quick-btn" onclick="setServings(2)">2人份</button>
+        <button class="quick-btn" onclick="setServings(4)">4人份</button>
+        <button class="quick-btn" onclick="setServings(6)">6人份</button>
+        <button class="quick-btn" onclick="setServings(8)">8人份</button>
+        <button class="quick-btn" onclick="setServings(10)">10人份</button>
+      </div>
 
-      if (!name || !amountStr) {
-        alert('请填写食材名称和数量');
-        return;
+      <div class="scale-info" id="scaleInfo">
+        缩放比例:
+        <span class="scale-factor">1.00x</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 食材列表</div>
+        <div class="ingredients-list" id="ingredientsList">
+          <!-- Ingredients will be rendered here -->
+        </div>
+        <div class="add-ingredient">
+          <input type="text" id="ingredientName" placeholder="食材名称 (如: 鸡蛋)" />
+          <input type="text" id="ingredientAmount" placeholder="数量 (如: 200g 或 2个)" />
+          <button onclick="addIngredient()">添加</button>
+        </div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
+    </div>
+
+    <script>
+      let originalServings = 4;
+      let targetServings = 4;
+      let ingredients = [
+        { id: 1, name: "鸡蛋", amount: 4, unit: "个" },
+        { id: 2, name: "面粉", amount: 200, unit: "g" },
+        { id: 3, name: "牛奶", amount: 250, unit: "ml" },
+        { id: 4, name: "白糖", amount: 50, unit: "g" },
+        { id: 5, name: "黄油", amount: 30, unit: "g" }
+      ];
+
+      function parseAmount(str) {
+        // Extract number and unit from string like "200g" or "2个"
+        const match = str.match(/^([\d.]+)\s*(.*)$/);
+        if (match) {
+          return { amount: parseFloat(match[1]), unit: match[2] || "" };
+        }
+        return { amount: parseFloat(str) || 0, unit: "" };
       }
 
-      const parsed = parseAmount(amountStr);
-      ingredients.push({
-        id: Date.now(),
-        name,
-        amount: parsed.amount,
-        unit: parsed.unit
-      });
+      function formatAmount(amount, unit) {
+        // Round to 1 decimal place, remove .0 if whole number
+        const rounded = Math.round(amount * 10) / 10;
+        const formatted = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+        return formatted + (unit ? unit : "");
+      }
 
-      document.getElementById('ingredientName').value = '';
-      document.getElementById('ingredientAmount').value = '';
-      render();
-    }
+      function changeServings(delta) {
+        targetServings = Math.max(1, targetServings + delta);
+        render();
+      }
 
-    function deleteIngredient(id) {
-      ingredients = ingredients.filter(i => i.id !== id);
-      render();
-    }
+      function setServings(num) {
+        targetServings = num;
+        render();
+      }
 
-    function render() {
-      document.getElementById('originalServings').textContent = originalServings;
-      document.getElementById('targetServings').textContent = targetServings;
+      function addIngredient() {
+        const name = document.getElementById("ingredientName").value.trim();
+        const amountStr = document.getElementById("ingredientAmount").value.trim();
 
-      const scaleFactor = targetServings / originalServings;
-      document.getElementById('scaleInfo').innerHTML = `
+        if (!name || !amountStr) {
+          alert("请填写食材名称和数量");
+          return;
+        }
+
+        const parsed = parseAmount(amountStr);
+        ingredients.push({
+          id: Date.now(),
+          name,
+          amount: parsed.amount,
+          unit: parsed.unit
+        });
+
+        document.getElementById("ingredientName").value = "";
+        document.getElementById("ingredientAmount").value = "";
+        render();
+      }
+
+      function deleteIngredient(id) {
+        ingredients = ingredients.filter((i) => i.id !== id);
+        render();
+      }
+
+      function render() {
+        document.getElementById("originalServings").textContent = originalServings;
+        document.getElementById("targetServings").textContent = targetServings;
+
+        const scaleFactor = targetServings / originalServings;
+        document.getElementById("scaleInfo").innerHTML = `
         缩放比例: <span class="scale-factor">${scaleFactor.toFixed(2)}x</span>
       `;
 
-      const list = document.getElementById('ingredientsList');
-      if (ingredients.length === 0) {
-        list.innerHTML = `
+        const list = document.getElementById("ingredientsList");
+        if (ingredients.length === 0) {
+          list.innerHTML = `
           <div style="text-align:center;padding:2rem;color:var(--text-muted)">
             <div style="font-size:2rem;margin-bottom:.5rem">🥘</div>
             <div>还没有添加食材</div>
             <div style="font-size:.85rem;margin-top:.25rem">使用下方输入框添加食材</div>
           </div>
         `;
-        return;
-      }
+          return;
+        }
 
-      list.innerHTML = ingredients.map(ing => {
-        const original = formatAmount(ing.amount, ing.unit);
-        const converted = formatAmount(ing.amount * scaleFactor, ing.unit);
+        list.innerHTML = ingredients
+          .map((ing) => {
+            const original = formatAmount(ing.amount, ing.unit);
+            const converted = formatAmount(ing.amount * scaleFactor, ing.unit);
 
-        return `
+            return `
           <div class="ingredient-item">
             <div class="ingredient-name">
               ${ing.name}
@@ -216,34 +486,35 @@
             <div class="ingredient-converted">${converted}</div>
           </div>
         `;
-      }).join('');
-    }
-
-    // Initialize
-    render();
-
-    // Handle Enter key
-    document.getElementById('ingredientAmount').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addIngredient();
-    });
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+          })
+          .join("");
       }
-    })();
-  </script>
-</body>
+
+      // Initialize
+      render();
+
+      // Handle Enter key
+      document.getElementById("ingredientAmount").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") addIngredient();
+      });
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

@@ -102,7 +102,7 @@ test('tool files exist', () => {
 
 test('tool paths are unique', () => {
   const tools = toolsData.tools;
-  const paths = Object.values(tools).map(t => t.path);
+  const paths = Object.values(tools).map((t) => t.path);
   const uniquePaths = [...new Set(paths)];
   assert(paths.length === uniquePaths.length, 'Duplicate paths found');
 });

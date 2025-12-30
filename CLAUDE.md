@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 这是一个纯前端工具集项目,每个工具都是独立的单文件 HTML。所有代码(HTML/CSS/JavaScript)都内联在单个文件中,无需任何构建步骤或打包工具。
 
 **核心理念**:
+
 - 单文件: 所有代码(HTML/CSS/JS)完全内联,无外部依赖文件
 - 零构建: 无需 npm run build,直接打开 HTML 即可运行
 - 纯前端: 所有处理在浏览器本地完成,不向服务器发送数据
@@ -72,6 +73,10 @@ npm run lint:js      # ESLint - 检查内联 JavaScript
 # 自动修复 CSS 问题
 npm run lint:fix
 
+# 代码格式化 (Prettier)
+npm run format        # 格式化所有文件
+npm run format:check  # 检查格式（不修改文件）
+
 # 同步工具列表（将 tools.json 同步到 index.html）
 npm run sync:tools
 
@@ -90,42 +95,42 @@ npm test
 ```html
 <!DOCTYPE html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <title>工具名 - WebUtils</title>
+  <head>
+    <meta charset="utf-8" />
+    <title>工具名 - WebUtils</title>
 
-  <!-- 字体从 Google Fonts CDN 加载 -->
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:..." rel="stylesheet">
+    <!-- 字体从 Google Fonts CDN 加载 -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:..." rel="stylesheet" />
 
-  <!-- 所有 CSS 内联在 <style> 标签中 -->
-  <style>
-    :root {
-      /* CSS 变量定义暗色主题 */
-      --bg-deep: #0a0a0f;
-      --text-primary: #e8e8ed;
-      --accent-cyan: #00f5d4;
-      ...
-    }
+    <!-- 所有 CSS 内联在 <style> 标签中 -->
+    <style>
+      :root {
+        /* CSS 变量定义暗色主题 */
+        --bg-deep: #0a0a0f;
+        --text-primary: #e8e8ed;
+        --accent-cyan: #00f5d4;
+        ...
+      }
 
-    [data-theme="light"] {
-      /* 浅色主题覆盖变量 (如果支持主题切换) */
-      --bg-deep: #fafafa;
-      --text-primary: #1a1a1a;
-      ...
-    }
-  </style>
-</head>
-<body>
-  <!-- HTML 内容 -->
+      [data-theme="light"] {
+        /* 浅色主题覆盖变量 (如果支持主题切换) */
+        --bg-deep: #fafafa;
+        --text-primary: #1a1a1a;
+        ...
+      }
+    </style>
+  </head>
+  <body>
+    <!-- HTML 内容 -->
 
-  <!-- 外部库从 CDN 加载 (如需要) -->
-  <script src="https://cdn.jsdelivr.net/npm/..."></script>
+    <!-- 外部库从 CDN 加载 (如需要) -->
+    <script src="https://cdn.jsdelivr.net/npm/..."></script>
 
-  <!-- 所有 JavaScript 内联在 <script> 标签中 -->
-  <script>
-    // 工具逻辑
-  </script>
-</body>
+    <!-- 所有 JavaScript 内联在 <script> 标签中 -->
+    <script>
+      // 工具逻辑
+    </script>
+  </body>
 </html>
 ```
 
@@ -138,23 +143,32 @@ index.html 使用 **JSON 数据驱动的动态渲染** 架构：
 const CATEGORIES = [
   { id: 'all', name: '全部' },
   { id: 'favorites', name: '⭐ 收藏' },
-  { id: 'dev', name: '开发工具' },
+  { id: 'dev', name: '开发工具' }
   // ...
 ];
 
 // 工具数据
 const TOOLS = [
-  { url: 'tools/dev/json-formatter.html', category: 'dev', name: 'JSON 格式化', desc: '...', icon: '{}', keywords: '...' },
+  {
+    url: 'tools/dev/json-formatter.html',
+    category: 'dev',
+    name: 'JSON 格式化',
+    desc: '...',
+    icon: '{}',
+    keywords: '...'
+  }
   // ...
 ];
 ```
 
 **数据同步流程**：
+
 1. `tools.json` 是工具列表的唯一数据源（Single Source of Truth）
 2. 运行 `npm run sync:tools` 将 tools.json 同步到 index.html 的 TOOLS/CATEGORIES 数组
 3. CI 会检查两者是否同步，不同步则构建失败
 
 **主页特性**：
+
 - **动态渲染**: 工具卡片通过 JavaScript 从 TOOLS 数组动态生成 (使用 document.createElement)
 - **主题切换**: 通过 `data-theme="light"` 属性切换明暗主题,状态保存在 localStorage
 - **分类筛选**: 按工具类别筛选 (共 22 个分类，见项目结构)
@@ -187,6 +201,7 @@ const TOOLS = [
   - 数据保存在 localStorage (`html_tools_recent_v1`)
 
 **DOM 结构和选择器（重要！）**：
+
 - 工具卡片使用 `<span class="tool-name">` 而非 `<h3>` 来存储工具名称
 - 筛选和搜索逻辑必须使用 `querySelector('.tool-name')` 而非 `querySelector('h3')`
 - 为了向后兼容，建议使用：`querySelector('.tool-name') || querySelector('h3')`
@@ -202,6 +217,7 @@ const TOOLS = [
   ```
 
 **DOM 渲染逻辑**：
+
 - 工具卡片通过 `renderTools()` 函数从 TOOLS 数组动态生成
 - 使用 `document.createElement()` 而非 innerHTML (更安全)
 - 收藏按钮在渲染时动态添加,支持键盘事件 (`Enter` 和 `Space` 键)
@@ -221,6 +237,7 @@ const TOOLS = [
 ### 4. 外部依赖使用
 
 项目通过 CDN 加载外部库,常用的有:
+
 - **js-yaml**: YAML 解析 (json-yaml.html)
 - **jsdiff**: 文本差异对比 (text-diff.html)
 - **marked**: Markdown 渲染 (markdown-preview.html)
@@ -249,6 +266,7 @@ const TOOLS = [
 5. 提交更改（CI 会检查同步状态）
 
 **工具同步机制**:
+
 - `tools.json` 是工具列表的唯一数据源（Single Source of Truth）
 - `npm run sync:tools` 读取 tools.json 并更新:
   - index.html 中的 CATEGORIES 数组
@@ -270,6 +288,7 @@ sitemap.xml 用于 SEO，帮助搜索引擎发现和索引所有工具页面。
 ### Sitemap 生成步骤
 
 **1. 检查当前状态**
+
 ```bash
 # 统计 sitemap 中的 URL 数量
 grep -c "<loc>" sitemap.xml
@@ -281,18 +300,21 @@ node -e "const data = require('./tools.json'); console.log('Total tools:', data.
 **2. 重新生成 sitemap.xml**
 
 sitemap.xml 需要根据 tools.json 手动生成，包含：
+
 - 1 个主页 URL (priority: 1.0, changefreq: weekly)
 - N 个工具页 URL (priority: 0.8, changefreq: monthly)
 - 正确的域名: `tools.realtime-ai.chat`
 - 当前日期作为 lastmod
 
 **3. 验证 XML 格式**
+
 ```bash
 # 验证 XML 格式是否正确
 xmllint --noout sitemap.xml && echo "✅ XML 格式验证通过"
 ```
 
 **4. 提交更改**
+
 ```bash
 # 提交 sitemap 更新
 git add sitemap.xml
@@ -352,30 +374,30 @@ git push
 ```html
 <!-- JSON-LD BreadcrumbList Schema -->
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "首页",
-      "item": "https://tools.realtime-ai.chat/"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "开发工具",  <!-- 根据工具类别修改: dev/text/time/generator/privacy/media 等 -->
-      "item": "https://tools.realtime-ai.chat/#dev"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "JSON 格式化",  <!-- 修改为实际工具名称 -->
-      "item": "https://tools.realtime-ai.chat/tools/dev/json-formatter.html"
-    }
-  ]
-}
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "首页",
+        "item": "https://tools.realtime-ai.chat/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "开发工具", <!-- 根据工具类别修改: dev/text/time/generator/privacy/media 等 -->
+        "item": "https://tools.realtime-ai.chat/#dev"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "JSON 格式化", <!-- 修改为实际工具名称 -->
+        "item": "https://tools.realtime-ai.chat/tools/dev/json-formatter.html"
+      }
+    ]
+  }
 </script>
 ```
 
@@ -427,13 +449,16 @@ git push
 <nav class="breadcrumb" aria-label="Breadcrumb">
   <a href="../../index.html">首页</a>
   <span class="breadcrumb-separator">/</span>
-  <a href="../../index.html#dev">开发工具</a>  <!-- 修改类别: #dev #text #time #generator #privacy #media 等 -->
+  <a href="../../index.html#dev">开发工具</a>
+  <!-- 修改类别: #dev #text #time #generator #privacy #media 等 -->
   <span class="breadcrumb-separator">/</span>
-  <span class="breadcrumb-current">JSON 格式化</span>  <!-- 修改为实际工具名称 -->
+  <span class="breadcrumb-current">JSON 格式化</span>
+  <!-- 修改为实际工具名称 -->
 </nav>
 ```
 
 **类别对照表:**
+
 - `dev` → 开发工具
 - `text` → 文本工具
 - `time` → 时间工具
@@ -452,6 +477,7 @@ git push
 项目使用简约的 3×3 网格设计作为品牌图标,象征工具集合。
 
 **已创建的图标文件:**
+
 ```
 favicon.svg           # 矢量图标 (可缩放到任意尺寸)
 favicon-16x16.png     # 标准浏览器标签页图标
@@ -460,6 +486,7 @@ apple-touch-icon.png  # iOS/macOS 添加到主屏幕图标 (180x180)
 ```
 
 **设计规范:**
+
 - **背景色**: `#0a0a0f` (项目主题深色)
 - **图案色**: 青色渐变 `#00f5d4` → `#00d9ff`
 - **图案**: 3×3 网格,每个方块 16×16px,圆角 3px,间距 6px
@@ -467,6 +494,7 @@ apple-touch-icon.png  # iOS/macOS 添加到主屏幕图标 (180x180)
 - **圆角**: 外框圆角 20px
 
 **生成命令** (使用 rsvg-convert):
+
 ```bash
 # 从 SVG 生成各尺寸 PNG
 rsvg-convert -w 16 -h 16 favicon.svg -o favicon-16x16.png
@@ -475,6 +503,7 @@ rsvg-convert -w 180 -h 180 favicon.svg -o apple-touch-icon.png
 ```
 
 **在 HTML 中引用** (已添加到 index.html):
+
 ```html
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
@@ -488,6 +517,7 @@ rsvg-convert -w 180 -h 180 favicon.svg -o apple-touch-icon.png
 Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕。
 
 **核心配置:**
+
 ```json
 {
   "name": "WebUtils - 纯前端工具集",
@@ -499,12 +529,14 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 ```
 
 **已配置功能:**
+
 - **App Shortcuts**: 4 个快捷方式到常用工具 (JSON/时间戳/Base64/二维码)
 - **Icons**: 多尺寸图标支持 PWA 安装
 - **Categories**: utilities, productivity, developer tools
 - **截图**: 使用 social-preview.png 作为应用预览
 
 **在 HTML 中引用** (已添加到 index.html):
+
 ```html
 <link rel="manifest" href="manifest.json" />
 ```
@@ -514,6 +546,7 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 在 index.html 中添加 FAQPage Schema,帮助 Google 在搜索结果中显示常见问题。
 
 **已添加的 8 个问答:**
+
 1. WebUtils 是什么？
 2. 这些工具安全吗？我的数据会被上传到服务器吗？
 3. 如何使用这些工具？
@@ -526,22 +559,23 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 **实现位置**: index.html 的 `<head>` 中,在 WebSite Schema 之后
 
 **格式示例:**
+
 ```html
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "问题内容",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "答案内容"
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "问题内容",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "答案内容"
+        }
       }
-    }
-  ]
-}
+    ]
+  }
 </script>
 ```
 
@@ -550,22 +584,33 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 使用 preload 和 "print media hack" 优化 Google Fonts 加载,避免阻塞渲染。
 
 **优化策略:**
+
 ```html
 <!-- 1. DNS 预连接 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
 <!-- 2. 预加载字体 CSS -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<link
+  rel="preload"
+  as="style"
+  href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+/>
 
 <!-- 3. 使用 print media hack 异步加载 -->
-<link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet" media="print" onload="this.media='all'">
+<link
+  href="https://fonts.googleapis.com/css2?family=..."
+  rel="stylesheet"
+  media="print"
+  onload="this.media='all'"
+/>
 
 <!-- 4. 无 JS 降级方案 -->
-<noscript><link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet"></noscript>
+<noscript><link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet" /></noscript>
 ```
 
 **工作原理:**
+
 - `preload` 提前下载 CSS,不阻塞渲染
 - `media="print"` 让浏览器认为是打印样式,低优先级加载
 - `onload="this.media='all'"` 加载完成后切换为全局样式
@@ -574,9 +619,35 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 ## CI/CD 和部署
 
 - **Lint CI**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint
+- **Format Check**: CI 检查代码格式是否符合 Prettier 规范
 - **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
 - **Deploy CI**: 推送到 master 自动部署到 GitHub Pages
 - **多平台部署**: 同时部署到 GitHub Pages, Vercel, Netlify, Cloudflare Pages
+
+## 提交前检查
+
+在提交代码或创建 PR 前，务必运行以下检查：
+
+```bash
+# 1. 运行所有 lint 检查
+npm run lint
+
+# 2. 检查代码格式
+npm run format:check
+
+# 3. 如果格式检查失败，运行格式化
+npm run format
+
+# 4. 同步工具列表（如添加新工具）
+npm run sync:tools
+```
+
+**快速检查命令**:
+
+```bash
+# 一键运行所有检查
+npm run lint && npm run format:check
+```
 
 ## 开发注意事项
 
@@ -600,11 +671,13 @@ Progressive Web App 配置文件,允许用户将网站安装到设备主屏幕�
 **症状**: 工具列表无法显示，浏览器控制台报 "Cannot read property 'textContent' of null" 错误
 
 **解决方案**:
+
 - 工具卡片使用 `<span class="tool-name">` 而非 `<h3>`
 - 始终使用 `querySelector('.tool-name')` 或添加 fallback: `querySelector('.tool-name') || querySelector('h3')`
 - 修改 HTML 结构后，检查所有相关的 JavaScript 选择器
 
 **示例**:
+
 ```javascript
 // ❌ 错误 - 假设使用 h3
 const title = card.querySelector('h3').textContent;
@@ -625,6 +698,7 @@ const title = titleEl ? titleEl.textContent : '';
 **症状**: CI 构建失败，提示 "Tools sync check failed"
 
 **解决方案**:
+
 - 修改 tools.json 后必须运行 `npm run sync:tools`
 - 提交前运行 `npm run lint` 检查同步状态
 - CI 会自动检测，本地先检查可避免失败的 CI
@@ -634,6 +708,7 @@ const title = titleEl ? titleEl.textContent : '';
 **问题**: HTML 内联 JavaScript 中的函数在 onclick 属性中调用，ESLint 误报为未使用
 
 **解决方案**: 已在 eslint.config.js 中配置忽略模式：
+
 ```javascript
 'no-unused-vars': ['warn', {
   argsIgnorePattern: '^_|^e$|^event$|^error$',
@@ -646,6 +721,7 @@ const title = titleEl ? titleEl.textContent : '';
 **问题**: 部署后新版本未生效，用户仍看到旧版本
 
 **解决方案**:
+
 - GitHub Pages/Cloudflare 等平台有 CDN 缓存
 - 用户需要强制刷新（Ctrl+F5 / Cmd+Shift+R）或清除缓存
 - 部署后等待 1-2 分钟让 CDN 更新

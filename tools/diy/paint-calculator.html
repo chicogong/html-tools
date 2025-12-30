@@ -1,202 +1,511 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>油漆用量计算器 - WebUtils</title>
-  <meta name="description" content="计算墙面油漆用量，支持多面墙、门窗扣除，估算涂料费用" />
-  <meta name="keywords" content="油漆计算 涂料用量 墙面面积 装修计算 paint calculator" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/diy/paint-calculator.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>油漆用量计算器 - WebUtils</title>
+    <meta name="description" content="计算墙面油漆用量，支持多面墙、门窗扣除，估算涂料费用" />
+    <meta name="keywords" content="油漆计算 涂料用量 墙面面积 装修计算 paint calculator" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/diy/paint-calculator.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-yellow:#ffd93d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem}
-    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
-    .card-title{font-size:1rem;font-weight:500;color:var(--text-secondary);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
-    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1rem}
-    .form-group{display:flex;flex-direction:column;gap:.5rem}
-    .form-group label{font-size:.85rem;color:var(--text-secondary)}
-    .form-group input,.form-group select{padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:.95rem}
-    .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent-blue)}
-    .walls-list{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem}
-    .wall-item{display:grid;grid-template-columns:1fr 80px 80px 40px;gap:.75rem;align-items:center;padding:.75rem;background:var(--bg-surface);border-radius:var(--radius-sm)}
-    .wall-name{font-weight:500;font-size:.9rem}
-    .wall-input{padding:.5rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:.9rem;width:100%}
-    .wall-input:focus{outline:none;border-color:var(--accent-blue)}
-    .delete-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;opacity:.5;transition:all .2s}
-    .delete-btn:hover{opacity:1;color:#ff6b6b}
-    .add-btn{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.75rem;border:2px dashed var(--border-subtle);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.9rem;transition:all .2s}
-    .add-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
-    .deduct-section{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-subtle)}
-    .deduct-title{font-size:.9rem;color:var(--text-muted);margin-bottom:.75rem}
-    .deduct-row{display:grid;grid-template-columns:1fr 80px 80px 60px;gap:.75rem;align-items:center;margin-bottom:.5rem}
-    .deduct-label{font-size:.85rem;color:var(--text-secondary)}
-    .result-card{background:linear-gradient(135deg,rgba(255,217,61,.1),rgba(0,245,212,.1));border:1px solid var(--accent-yellow)}
-    .result-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
-    .result-item{padding:1rem;background:var(--bg-surface);border-radius:var(--radius-sm);text-align:center}
-    .result-item.highlight{grid-column:span 2;background:linear-gradient(135deg,var(--accent-yellow),var(--accent-cyan));color:#000}
-    .result-label{font-size:.8rem;color:var(--text-muted);margin-bottom:.25rem}
-    .result-item.highlight .result-label{color:rgba(0,0,0,.7)}
-    .result-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--accent-cyan)}
-    .result-item.highlight .result-value{font-size:2.5rem;color:#000}
-    .result-unit{font-size:.9rem;color:var(--text-secondary)}
-    .result-item.highlight .result-unit{color:rgba(0,0,0,.7)}
-    .tips{margin-top:1rem;padding:1rem;background:var(--bg-surface);border-radius:var(--radius-sm);border-left:3px solid var(--accent-yellow)}
-    .tips-title{font-weight:500;margin-bottom:.5rem;color:var(--accent-yellow)}
-    .tips-content{font-size:.9rem;color:var(--text-secondary);line-height:1.8}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-    @media(max-width:500px){.wall-item,.deduct-row{grid-template-columns:1fr 60px 60px 30px;gap:.5rem}}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-yellow: #ffd93d;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-yellow));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+      }
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .card-title {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .form-group label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+      .form-group input,
+      .form-group select {
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.95rem;
+      }
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .walls-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .wall-item {
+        display: grid;
+        grid-template-columns: 1fr 80px 80px 40px;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+      }
+      .wall-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+      .wall-input {
+        padding: 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        width: 100%;
+      }
+      .wall-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .delete-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1.2rem;
+        opacity: 0.5;
+        transition: all 0.2s;
+      }
+      .delete-btn:hover {
+        opacity: 1;
+        color: #ff6b6b;
+      }
+      .add-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px dashed var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+      .add-btn:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      .deduct-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .deduct-title {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+      }
+      .deduct-row {
+        display: grid;
+        grid-template-columns: 1fr 80px 80px 60px;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .deduct-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+      .result-card {
+        background: linear-gradient(135deg, rgba(255, 217, 61, 0.1), rgba(0, 245, 212, 0.1));
+        border: 1px solid var(--accent-yellow);
+      }
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+      .result-item {
+        padding: 1rem;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        text-align: center;
+      }
+      .result-item.highlight {
+        grid-column: span 2;
+        background: linear-gradient(135deg, var(--accent-yellow), var(--accent-cyan));
+        color: #000;
+      }
+      .result-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+      }
+      .result-item.highlight .result-label {
+        color: rgba(0, 0, 0, 0.7);
+      }
+      .result-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--accent-cyan);
+      }
+      .result-item.highlight .result-value {
+        font-size: 2.5rem;
+        color: #000;
+      }
+      .result-unit {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+      }
+      .result-item.highlight .result-unit {
+        color: rgba(0, 0, 0, 0.7);
+      }
+      .tips {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        border-left: 3px solid var(--accent-yellow);
+      }
+      .tips-title {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--accent-yellow);
+      }
+      .tips-content {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+      @media (max-width: 500px) {
+        .wall-item,
+        .deduct-row {
+          grid-template-columns: 1fr 60px 60px 30px;
+          gap: 0.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">油漆用量计算器</span>
-    </nav>
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">油漆用量计算器</span>
+      </nav>
 
-    <h1>油漆用量计算器</h1>
-    <p class="subtitle">精确计算墙面涂料用量，避免浪费</p>
+      <h1>油漆用量计算器</h1>
+      <p class="subtitle">精确计算墙面涂料用量，避免浪费</p>
 
-    <div class="card">
-      <div class="card-title">🎨 涂料参数</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>涂刷遍数</label>
-          <select id="coats" onchange="calculate()">
-            <option value="1">1遍</option>
-            <option value="2" selected>2遍</option>
-            <option value="3">3遍</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>涂布率 (㎡/L)</label>
-          <input type="number" id="coverage" value="10" min="1" max="20" step="0.5" oninput="calculate()">
-        </div>
-        <div class="form-group">
-          <label>油漆单价 (元/L)</label>
-          <input type="number" id="price" value="80" min="0" step="10" oninput="calculate()">
+      <div class="card">
+        <div class="card-title">🎨 涂料参数</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>涂刷遍数</label>
+            <select id="coats" onchange="calculate()">
+              <option value="1">1遍</option>
+              <option value="2" selected>2遍</option>
+              <option value="3">3遍</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>涂布率 (㎡/L)</label>
+            <input
+              type="number"
+              id="coverage"
+              value="10"
+              min="1"
+              max="20"
+              step="0.5"
+              oninput="calculate()"
+            />
+          </div>
+          <div class="form-group">
+            <label>油漆单价 (元/L)</label>
+            <input type="number" id="price" value="80" min="0" step="10" oninput="calculate()" />
+          </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-title">🏠 墙面尺寸</div>
+        <div class="walls-list" id="wallsList">
+          <!-- Walls will be rendered here -->
+        </div>
+        <button class="add-btn" onclick="addWall()">
+          <span>+</span>
+          添加墙面
+        </button>
+
+        <div class="deduct-section">
+          <div class="deduct-title">扣除区域（门窗等不涂刷区域）</div>
+          <div class="deduct-row">
+            <span class="deduct-label">🚪 门</span>
+            <input
+              type="number"
+              class="wall-input"
+              id="doorCount"
+              value="1"
+              min="0"
+              oninput="calculate()"
+            />
+            <span style="font-size: 0.85rem; color: var(--text-muted)">个</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted)">≈2㎡/个</span>
+          </div>
+          <div class="deduct-row">
+            <span class="deduct-label">🪟 窗户</span>
+            <input
+              type="number"
+              class="wall-input"
+              id="windowCount"
+              value="2"
+              min="0"
+              oninput="calculate()"
+            />
+            <span style="font-size: 0.85rem; color: var(--text-muted)">个</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted)">≈1.5㎡/个</span>
+          </div>
+          <div class="deduct-row">
+            <span class="deduct-label">其他扣除</span>
+            <input
+              type="number"
+              class="wall-input"
+              id="otherDeduct"
+              value="0"
+              min="0"
+              step="0.5"
+              oninput="calculate()"
+            />
+            <span style="font-size: 0.85rem; color: var(--text-muted)">㎡</span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card result-card">
+        <div class="card-title">📊 计算结果</div>
+        <div class="result-grid">
+          <div class="result-item">
+            <div class="result-label">墙面总面积</div>
+            <div class="result-value" id="totalArea">0</div>
+            <div class="result-unit">平方米</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">扣除面积</div>
+            <div class="result-value" id="deductArea">0</div>
+            <div class="result-unit">平方米</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">实际涂刷面积</div>
+            <div class="result-value" id="paintArea">0</div>
+            <div class="result-unit">平方米</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">涂刷总面积</div>
+            <div class="result-value" id="totalPaintArea">0</div>
+            <div class="result-unit">平方米 × 遍</div>
+          </div>
+          <div class="result-item highlight">
+            <div class="result-label">所需油漆</div>
+            <div class="result-value" id="paintNeeded">0</div>
+            <div class="result-unit">升 (建议多备10%)</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">预估费用</div>
+            <div class="result-value" id="totalCost">¥0</div>
+            <div class="result-unit">元</div>
+          </div>
+          <div class="result-item">
+            <div class="result-label">含备用量费用</div>
+            <div class="result-value" id="totalCostExtra">¥0</div>
+            <div class="result-unit">元 (+10%)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tips">
+        <div class="tips-title">💡 涂刷建议</div>
+        <div class="tips-content" id="tips">计算后显示涂刷建议...</div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
     </div>
 
-    <div class="card">
-      <div class="card-title">🏠 墙面尺寸</div>
-      <div class="walls-list" id="wallsList">
-        <!-- Walls will be rendered here -->
-      </div>
-      <button class="add-btn" onclick="addWall()">
-        <span>+</span> 添加墙面
-      </button>
+    <script>
+      let walls = [
+        { id: 1, name: "墙面1", width: 4, height: 2.8 },
+        { id: 2, name: "墙面2", width: 3, height: 2.8 },
+        { id: 3, name: "墙面3", width: 4, height: 2.8 },
+        { id: 4, name: "墙面4", width: 3, height: 2.8 }
+      ];
+      let nextId = 5;
 
-      <div class="deduct-section">
-        <div class="deduct-title">扣除区域（门窗等不涂刷区域）</div>
-        <div class="deduct-row">
-          <span class="deduct-label">🚪 门</span>
-          <input type="number" class="wall-input" id="doorCount" value="1" min="0" oninput="calculate()">
-          <span style="font-size:.85rem;color:var(--text-muted)">个</span>
-          <span style="font-size:.85rem;color:var(--text-muted)">≈2㎡/个</span>
-        </div>
-        <div class="deduct-row">
-          <span class="deduct-label">🪟 窗户</span>
-          <input type="number" class="wall-input" id="windowCount" value="2" min="0" oninput="calculate()">
-          <span style="font-size:.85rem;color:var(--text-muted)">个</span>
-          <span style="font-size:.85rem;color:var(--text-muted)">≈1.5㎡/个</span>
-        </div>
-        <div class="deduct-row">
-          <span class="deduct-label">其他扣除</span>
-          <input type="number" class="wall-input" id="otherDeduct" value="0" min="0" step="0.5" oninput="calculate()">
-          <span style="font-size:.85rem;color:var(--text-muted)">㎡</span>
-          <span></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card result-card">
-      <div class="card-title">📊 计算结果</div>
-      <div class="result-grid">
-        <div class="result-item">
-          <div class="result-label">墙面总面积</div>
-          <div class="result-value" id="totalArea">0</div>
-          <div class="result-unit">平方米</div>
-        </div>
-        <div class="result-item">
-          <div class="result-label">扣除面积</div>
-          <div class="result-value" id="deductArea">0</div>
-          <div class="result-unit">平方米</div>
-        </div>
-        <div class="result-item">
-          <div class="result-label">实际涂刷面积</div>
-          <div class="result-value" id="paintArea">0</div>
-          <div class="result-unit">平方米</div>
-        </div>
-        <div class="result-item">
-          <div class="result-label">涂刷总面积</div>
-          <div class="result-value" id="totalPaintArea">0</div>
-          <div class="result-unit">平方米 × 遍</div>
-        </div>
-        <div class="result-item highlight">
-          <div class="result-label">所需油漆</div>
-          <div class="result-value" id="paintNeeded">0</div>
-          <div class="result-unit">升 (建议多备10%)</div>
-        </div>
-        <div class="result-item">
-          <div class="result-label">预估费用</div>
-          <div class="result-value" id="totalCost">¥0</div>
-          <div class="result-unit">元</div>
-        </div>
-        <div class="result-item">
-          <div class="result-label">含备用量费用</div>
-          <div class="result-value" id="totalCostExtra">¥0</div>
-          <div class="result-unit">元 (+10%)</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="tips">
-      <div class="tips-title">💡 涂刷建议</div>
-      <div class="tips-content" id="tips">
-        计算后显示涂刷建议...
-      </div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    let walls = [
-      { id: 1, name: '墙面1', width: 4, height: 2.8 },
-      { id: 2, name: '墙面2', width: 3, height: 2.8 },
-      { id: 3, name: '墙面3', width: 4, height: 2.8 },
-      { id: 4, name: '墙面4', width: 3, height: 2.8 }
-    ];
-    let nextId = 5;
-
-    function render() {
-      const list = document.getElementById('wallsList');
-      list.innerHTML = walls.map((wall, index) => `
+      function render() {
+        const list = document.getElementById("wallsList");
+        list.innerHTML = walls
+          .map(
+            (wall, index) => `
         <div class="wall-item" data-id="${wall.id}">
           <span class="wall-name">${wall.name}</span>
           <input type="number" class="wall-input" value="${wall.width}" min="0" step="0.1" placeholder="宽(m)"
@@ -205,117 +514,119 @@
             oninput="updateWall(${wall.id}, 'height', parseFloat(this.value) || 0)">
           <button class="delete-btn" onclick="removeWall(${wall.id})" title="删除">×</button>
         </div>
-      `).join('');
-      calculate();
-    }
-
-    function addWall() {
-      walls.push({ id: nextId, name: `墙面${nextId}`, width: 3, height: 2.8 });
-      nextId++;
-      render();
-    }
-
-    function removeWall(id) {
-      if (walls.length <= 1) {
-        alert('至少保留一面墙');
-        return;
-      }
-      walls = walls.filter(w => w.id !== id);
-      render();
-    }
-
-    function updateWall(id, field, value) {
-      const wall = walls.find(w => w.id === id);
-      if (wall) {
-        wall[field] = value;
+      `
+          )
+          .join("");
         calculate();
       }
-    }
 
-    function calculate() {
-      const coats = parseInt(document.getElementById('coats').value);
-      const coverage = parseFloat(document.getElementById('coverage').value) || 10;
-      const price = parseFloat(document.getElementById('price').value) || 0;
-      const doorCount = parseInt(document.getElementById('doorCount').value) || 0;
-      const windowCount = parseInt(document.getElementById('windowCount').value) || 0;
-      const otherDeduct = parseFloat(document.getElementById('otherDeduct').value) || 0;
-
-      // Calculate total wall area
-      const totalArea = walls.reduce((sum, wall) => sum + (wall.width * wall.height), 0);
-
-      // Calculate deductions (door ≈ 2㎡, window ≈ 1.5㎡)
-      const deductArea = doorCount * 2 + windowCount * 1.5 + otherDeduct;
-
-      // Calculate paint area
-      const paintArea = Math.max(0, totalArea - deductArea);
-      const totalPaintArea = paintArea * coats;
-
-      // Calculate paint needed
-      const paintNeeded = totalPaintArea / coverage;
-      const paintWithExtra = paintNeeded * 1.1; // 10% extra
-
-      // Calculate cost
-      const totalCost = paintNeeded * price;
-      const totalCostExtra = paintWithExtra * price;
-
-      // Update display
-      document.getElementById('totalArea').textContent = totalArea.toFixed(1);
-      document.getElementById('deductArea').textContent = deductArea.toFixed(1);
-      document.getElementById('paintArea').textContent = paintArea.toFixed(1);
-      document.getElementById('totalPaintArea').textContent = totalPaintArea.toFixed(1);
-      document.getElementById('paintNeeded').textContent = paintNeeded.toFixed(1);
-      document.getElementById('totalCost').textContent = '¥' + totalCost.toFixed(0);
-      document.getElementById('totalCostExtra').textContent = '¥' + totalCostExtra.toFixed(0);
-
-      // Generate tips
-      generateTips(paintNeeded, coats, coverage);
-    }
-
-    function generateTips(paintNeeded, coats, coverage) {
-      const tips = [];
-
-      tips.push(`📏 标准涂布率参考：乳胶漆约10-12㎡/L，底漆约12-15㎡/L`);
-
-      if (coats === 1) {
-        tips.push('⚠️ 建议至少涂刷2遍以确保覆盖均匀');
-      } else if (coats >= 3) {
-        tips.push('✅ 3遍涂刷可获得最佳效果和耐久性');
+      function addWall() {
+        walls.push({ id: nextId, name: `墙面${nextId}`, width: 3, height: 2.8 });
+        nextId++;
+        render();
       }
 
-      if (paintNeeded < 5) {
-        tips.push('🪣 小面积涂刷，建议购买小桶装（1L或5L）');
-      } else if (paintNeeded < 20) {
-        tips.push('🪣 中等面积，建议购买标准桶装（5L或10L）');
-      } else {
-        tips.push('🪣 大面积涂刷，建议购买大桶装（15L或20L）更划算');
+      function removeWall(id) {
+        if (walls.length <= 1) {
+          alert("至少保留一面墙");
+          return;
+        }
+        walls = walls.filter((w) => w.id !== id);
+        render();
       }
 
-      tips.push('🖌️ 涂刷前确保墙面干燥、平整，处理好裂缝和钉眼');
-      tips.push('⏱️ 每遍涂刷间隔2-4小时，确保干透后再刷下一遍');
-
-      document.getElementById('tips').innerHTML = tips.join('<br>');
-    }
-
-    // Initialize
-    render();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      function updateWall(id, field, value) {
+        const wall = walls.find((w) => w.id === id);
+        if (wall) {
+          wall[field] = value;
+          calculate();
+        }
       }
-    })();
-  </script>
-</body>
+
+      function calculate() {
+        const coats = parseInt(document.getElementById("coats").value);
+        const coverage = parseFloat(document.getElementById("coverage").value) || 10;
+        const price = parseFloat(document.getElementById("price").value) || 0;
+        const doorCount = parseInt(document.getElementById("doorCount").value) || 0;
+        const windowCount = parseInt(document.getElementById("windowCount").value) || 0;
+        const otherDeduct = parseFloat(document.getElementById("otherDeduct").value) || 0;
+
+        // Calculate total wall area
+        const totalArea = walls.reduce((sum, wall) => sum + wall.width * wall.height, 0);
+
+        // Calculate deductions (door ≈ 2㎡, window ≈ 1.5㎡)
+        const deductArea = doorCount * 2 + windowCount * 1.5 + otherDeduct;
+
+        // Calculate paint area
+        const paintArea = Math.max(0, totalArea - deductArea);
+        const totalPaintArea = paintArea * coats;
+
+        // Calculate paint needed
+        const paintNeeded = totalPaintArea / coverage;
+        const paintWithExtra = paintNeeded * 1.1; // 10% extra
+
+        // Calculate cost
+        const totalCost = paintNeeded * price;
+        const totalCostExtra = paintWithExtra * price;
+
+        // Update display
+        document.getElementById("totalArea").textContent = totalArea.toFixed(1);
+        document.getElementById("deductArea").textContent = deductArea.toFixed(1);
+        document.getElementById("paintArea").textContent = paintArea.toFixed(1);
+        document.getElementById("totalPaintArea").textContent = totalPaintArea.toFixed(1);
+        document.getElementById("paintNeeded").textContent = paintNeeded.toFixed(1);
+        document.getElementById("totalCost").textContent = "¥" + totalCost.toFixed(0);
+        document.getElementById("totalCostExtra").textContent = "¥" + totalCostExtra.toFixed(0);
+
+        // Generate tips
+        generateTips(paintNeeded, coats, coverage);
+      }
+
+      function generateTips(paintNeeded, coats, coverage) {
+        const tips = [];
+
+        tips.push(`📏 标准涂布率参考：乳胶漆约10-12㎡/L，底漆约12-15㎡/L`);
+
+        if (coats === 1) {
+          tips.push("⚠️ 建议至少涂刷2遍以确保覆盖均匀");
+        } else if (coats >= 3) {
+          tips.push("✅ 3遍涂刷可获得最佳效果和耐久性");
+        }
+
+        if (paintNeeded < 5) {
+          tips.push("🪣 小面积涂刷，建议购买小桶装（1L或5L）");
+        } else if (paintNeeded < 20) {
+          tips.push("🪣 中等面积，建议购买标准桶装（5L或10L）");
+        } else {
+          tips.push("🪣 大面积涂刷，建议购买大桶装（15L或20L）更划算");
+        }
+
+        tips.push("🖌️ 涂刷前确保墙面干燥、平整，处理好裂缝和钉眼");
+        tips.push("⏱️ 每遍涂刷间隔2-4小时，确保干透后再刷下一遍");
+
+        document.getElementById("tips").innerHTML = tips.join("<br>");
+      }
+
+      // Initialize
+      render();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

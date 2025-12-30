@@ -1,840 +1,891 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>社交媒体文案生成器 - WebUtils</title>
-  <meta name="description" content="根据主题和风格生成社交媒体文案" />
-  <meta name="keywords" content="文案 caption 社交媒体 文案生成" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-deep: #0a0a0f;
-      --bg-surface: #12121a;
-      --bg-card: #1a1a24;
-      --bg-input: #0e0e14;
-      --text-primary: #e8e8ed;
-      --text-secondary: #8888a0;
-      --text-muted: #55556a;
-      --border-subtle: #2a2a3a;
-      --border-strong: #3a3a4a;
-      --accent-cyan: #00f5d4;
-      --accent-pink: #f72585;
-      --accent-green: #10b981;
-      --accent-red: #f43f5e;
-      --accent-yellow: #fbbf24;
-      --glow-cyan: rgb(0, 245, 212, 0.15);
-      --radius-sm: 4px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
-    }
-    [data-theme="light"] {
-      --bg-deep: #fafafa;
-      --bg-surface: #fff;
-      --bg-card: #fff;
-      --bg-input: #f5f5f5;
-      --text-primary: #1a1a1a;
-      --text-secondary: #666;
-      --text-muted: #999;
-      --border-subtle: #e5e5e5;
-      --border-strong: #d5d5d5;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Space Grotesk', system-ui, sans-serif;
-      background: var(--bg-deep);
-      color: var(--text-primary);
-      min-height: 100vh;
-      line-height: 1.6;
-    }
-    .bg-grid {
-      position: fixed;
-      inset: 0;
-      background-image: 
-        linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .container {
-      position: relative;
-      z-index: 1;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 24px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      padding: 8px 14px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-    }
-    .breadcrumb a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-    .breadcrumb a:hover { color: var(--accent-cyan); }
-    .breadcrumb-separator { color: var(--text-muted); }
-    .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
-    .theme-toggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-card);
-      cursor: pointer;
-      font-size: 1.2rem;
-      z-index: 100;
-      transition: all 0.2s;
-    }
-    .theme-toggle:hover { transform: scale(1.1); }
-    .title-section { flex: 1; }
-    .title-section h1 {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.5rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .title-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--accent-pink), #ff6b6b);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: #fff;
-    }
-    .title-section .desc {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-    .main-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      flex: 1;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
-    }
-    input[type="text"], textarea, select {
-      width: 100%;
-      padding: 12px 16px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9rem;
-      background: var(--bg-input);
-      border: 2px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      color: var(--text-primary);
-      transition: all 0.2s;
-    }
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 0 4px var(--glow-cyan);
-    }
-    input::placeholder, textarea::placeholder { color: var(--text-muted); }
-    textarea { min-height: 100px; resize: vertical; }
-    .options-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .options-row .form-group {
-      flex: 1;
-      min-width: 150px;
-    }
-    .style-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .style-tag {
-      padding: 6px 14px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 20px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .style-tag:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-    .style-tag.active {
-      background: var(--accent-cyan);
-      border-color: var(--accent-cyan);
-      color: var(--bg-deep);
-    }
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin: 20px 0;
-      padding: 20px 0;
-      border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    button {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 10px 16px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    button:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-    button.primary {
-      background: var(--accent-cyan);
-      border-color: var(--accent-cyan);
-      color: var(--bg-deep);
-    }
-    button.primary:hover {
-      background: #00dfc4;
-      box-shadow: 0 0 20px var(--glow-cyan);
-    }
-    .output-section {
-      margin-top: 20px;
-    }
-    .output-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 10px;
-    }
-    .caption-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      margin-bottom: 12px;
-      position: relative;
-    }
-    .caption-card:hover {
-      border-color: var(--accent-cyan);
-    }
-    .caption-text {
-      font-size: 0.95rem;
-      line-height: 1.8;
-      color: var(--text-primary);
-      white-space: pre-wrap;
-    }
-    .caption-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border-subtle);
-    }
-    .caption-length {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-    .caption-copy {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      padding: 6px 12px;
-      background: transparent;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      color: var(--text-secondary);
-      cursor: pointer;
-    }
-    .caption-copy:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-    .status {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 16px;
-    }
-    .status.success { color: var(--accent-green); }
-    .status.error { color: var(--accent-red); }
-    footer {
-      text-align: center;
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-subtle);
-    }
-    footer p {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    footer a {
-      color: var(--accent-cyan);
-      text-decoration: none;
-    }
-    footer a:hover { color: var(--text-primary); }
-    @media (max-width: 640px) {
-      .container { padding: 16px; }
-      .header { flex-direction: column; align-items: flex-start; gap: 12px; }
-      .options-row { flex-direction: column; }
-    }
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  
-  <div class="container">
-    <div class="header">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="../../index.html">首页</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">文案生成器</span>
-      </nav>
-      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-      <div class="title-section">
-        <h1>
-          <span class="title-icon">✍️</span>
-          社交媒体文案生成器
-        </h1>
-        <p class="desc">根据主题和风格生成吸引人的社交媒体文案</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>社交媒体文案生成器 - WebUtils</title>
+    <meta name="description" content="根据主题和风格生成社交媒体文案" />
+    <meta name="keywords" content="文案 caption 社交媒体 文案生成" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --bg-input: #0e0e14;
+        --text-primary: #e8e8ed;
+        --text-secondary: #8888a0;
+        --text-muted: #55556a;
+        --border-subtle: #2a2a3a;
+        --border-strong: #3a3a4a;
+        --accent-cyan: #00f5d4;
+        --accent-pink: #f72585;
+        --accent-green: #10b981;
+        --accent-red: #f43f5e;
+        --accent-yellow: #fbbf24;
+        --glow-cyan: rgb(0, 245, 212, 0.15);
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --bg-input: #f5f5f5;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+        --border-strong: #d5d5d5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgb(0, 245, 212, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgb(0, 245, 212, 0.02) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        transform: scale(1.1);
+      }
+      .title-section {
+        flex: 1;
+      }
+      .title-section h1 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .title-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, var(--accent-pink), #ff6b6b);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #fff;
+      }
+      .title-section .desc {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      .main-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        flex: 1;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      .form-group label {
+        display: block;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 8px;
+      }
+      input[type="text"],
+      textarea,
+      select {
+        width: 100%;
+        padding: 12px 16px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        background: var(--bg-input);
+        border: 2px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        transition: all 0.2s;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent-cyan);
+        box-shadow: 0 0 0 4px var(--glow-cyan);
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: var(--text-muted);
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .options-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .options-row .form-group {
+        flex: 1;
+        min-width: 150px;
+      }
+      .style-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .style-tag {
+        padding: 6px 14px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 20px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .style-tag:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      .style-tag.active {
+        background: var(--accent-cyan);
+        border-color: var(--accent-cyan);
+        color: var(--bg-deep);
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+        padding: 20px 0;
+        border-top: 1px solid var(--border-subtle);
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      button {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 10px 16px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      button:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      button.primary {
+        background: var(--accent-cyan);
+        border-color: var(--accent-cyan);
+        color: var(--bg-deep);
+      }
+      button.primary:hover {
+        background: #00dfc4;
+        box-shadow: 0 0 20px var(--glow-cyan);
+      }
+      .output-section {
+        margin-top: 20px;
+      }
+      .output-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 10px;
+      }
+      .caption-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 12px;
+        position: relative;
+      }
+      .caption-card:hover {
+        border-color: var(--accent-cyan);
+      }
+      .caption-text {
+        font-size: 0.95rem;
+        line-height: 1.8;
+        color: var(--text-primary);
+        white-space: pre-wrap;
+      }
+      .caption-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .caption-length {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      .caption-copy {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        padding: 6px 12px;
+        background: transparent;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+      .caption-copy:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      .status {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 16px;
+      }
+      .status.success {
+        color: var(--accent-green);
+      }
+      .status.error {
+        color: var(--accent-red);
+      }
+      footer {
+        text-align: center;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-subtle);
+      }
+      footer p {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      footer a {
+        color: var(--accent-cyan);
+        text-decoration: none;
+      }
+      footer a:hover {
+        color: var(--text-primary);
+      }
+      @media (max-width: 640px) {
+        .container {
+          padding: 16px;
+        }
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .options-row {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <div class="container">
+      <div class="header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="../../index.html">首页</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">文案生成器</span>
+        </nav>
+        <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+        <div class="title-section">
+          <h1>
+            <span class="title-icon">✍️</span>
+            社交媒体文案生成器
+          </h1>
+          <p class="desc">根据主题和风格生成吸引人的社交媒体文案</p>
+        </div>
       </div>
+
+      <div class="main-card">
+        <div class="form-group">
+          <label>主题/关键词</label>
+          <input type="text" id="topic" placeholder="例如: 周末旅行、新品上市、健身打卡..." />
+        </div>
+
+        <div class="form-group">
+          <label>补充说明（可选）</label>
+          <textarea id="details" placeholder="添加更多细节，如地点、感受、产品特点等..."></textarea>
+        </div>
+
+        <div class="options-row">
+          <div class="form-group">
+            <label>平台</label>
+            <select id="platform">
+              <option value="instagram">Instagram</option>
+              <option value="twitter">Twitter/X</option>
+              <option value="weibo">微博</option>
+              <option value="xiaohongshu">小红书</option>
+              <option value="douyin">抖音</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>语言</label>
+            <select id="language">
+              <option value="chinese">中文</option>
+              <option value="english">English</option>
+              <option value="mixed">中英混合</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>文案风格</label>
+          <div class="style-tags" id="styleTags">
+            <span class="style-tag active" data-style="casual">轻松日常</span>
+            <span class="style-tag" data-style="inspiring">励志正能量</span>
+            <span class="style-tag" data-style="funny">幽默搞笑</span>
+            <span class="style-tag" data-style="poetic">文艺诗意</span>
+            <span class="style-tag" data-style="professional">专业正式</span>
+            <span class="style-tag" data-style="cute">可爱软萌</span>
+            <span class="style-tag" data-style="mysterious">神秘高冷</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="primary" id="btnGenerate">生成文案</button>
+          <button id="btnClear">清空</button>
+          <button id="btnShare">分享</button>
+        </div>
+
+        <div class="output-section">
+          <div class="output-label">生成的文案</div>
+          <div id="captionsContainer"></div>
+        </div>
+
+        <div id="status" class="status"></div>
+      </div>
+
+      <footer>
+        <p>
+          <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <span>·</span>
+          <span>纯前端 · 无服务器</span>
+          <span>·</span>
+          <a href="../../index.html">WebUtils</a>
+        </p>
+      </footer>
     </div>
 
-    <div class="main-card">
-      <div class="form-group">
-        <label>主题/关键词</label>
-        <input type="text" id="topic" placeholder="例如: 周末旅行、新品上市、健身打卡..." />
-      </div>
+    <script>
+      const topicEl = document.getElementById("topic");
+      const detailsEl = document.getElementById("details");
+      const platformEl = document.getElementById("platform");
+      const languageEl = document.getElementById("language");
+      const styleTagsEl = document.getElementById("styleTags");
+      const captionsContainerEl = document.getElementById("captionsContainer");
+      const statusEl = document.getElementById("status");
 
-      <div class="form-group">
-        <label>补充说明（可选）</label>
-        <textarea id="details" placeholder="添加更多细节，如地点、感受、产品特点等..."></textarea>
-      </div>
+      const LS_KEY = "caption_writer_v1";
 
-      <div class="options-row">
-        <div class="form-group">
-          <label>平台</label>
-          <select id="platform">
-            <option value="instagram">Instagram</option>
-            <option value="twitter">Twitter/X</option>
-            <option value="weibo">微博</option>
-            <option value="xiaohongshu">小红书</option>
-            <option value="douyin">抖音</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>语言</label>
-          <select id="language">
-            <option value="chinese">中文</option>
-            <option value="english">English</option>
-            <option value="mixed">中英混合</option>
-          </select>
-        </div>
-      </div>
+      let selectedStyle = "casual";
 
-      <div class="form-group">
-        <label>文案风格</label>
-        <div class="style-tags" id="styleTags">
-          <span class="style-tag active" data-style="casual">轻松日常</span>
-          <span class="style-tag" data-style="inspiring">励志正能量</span>
-          <span class="style-tag" data-style="funny">幽默搞笑</span>
-          <span class="style-tag" data-style="poetic">文艺诗意</span>
-          <span class="style-tag" data-style="professional">专业正式</span>
-          <span class="style-tag" data-style="cute">可爱软萌</span>
-          <span class="style-tag" data-style="mysterious">神秘高冷</span>
-        </div>
-      </div>
+      const captionTemplates = {
+        casual: {
+          chinese: [
+            "今天的{topic}，简单但快乐 ✨",
+            "记录一下{topic}的美好瞬间~",
+            "日常{topic}打卡 📍",
+            "{topic}的一天，满足！",
+            "又是{topic}的好日子~",
+            "分享今天的{topic} 🌟",
+            "{topic}中... 幸福感爆棚",
+            "平平淡淡才是真，{topic}日常",
+            "今日份{topic}已签收 ✓",
+            "生活就是{topic}的点点滴滴"
+          ],
+          english: [
+            "Just another {topic} day ✨",
+            "{topic} vibes only",
+            "Living my best {topic} life",
+            "Currently: {topic} mode ON",
+            "{topic} is my therapy",
+            "Making memories with {topic}",
+            "This is what {topic} looks like",
+            "{topic} state of mind",
+            "Caught in the moment of {topic}",
+            "Simple pleasures: {topic}"
+          ]
+        },
+        inspiring: {
+          chinese: [
+            "{topic}，是我给自己最好的礼物",
+            "每一次{topic}，都是成长的印记",
+            "不负时光，不负{topic}",
+            "{topic}教会我：坚持就是力量",
+            "从{topic}开始，遇见更好的自己",
+            "追逐{topic}的路上，我从不孤单",
+            "{topic}的意义，在于那份热爱",
+            "愿所有的{topic}，都能如愿以偿",
+            "为了{topic}，值得全力以赴",
+            "{topic}，让我相信一切皆有可能"
+          ],
+          english: [
+            "{topic} is not just a goal, it is a journey",
+            "Every {topic} brings me closer to my dreams",
+            "Embrace the challenge of {topic}",
+            "{topic} taught me that growth never stops",
+            "The best time for {topic} is now",
+            "Transform your {topic} into your superpower",
+            "{topic}: where passion meets purpose",
+            "Be fearless in the pursuit of {topic}",
+            "{topic} is proof that I am capable",
+            "Let {topic} be your motivation"
+          ]
+        },
+        funny: {
+          chinese: [
+            "本人在{topic}方面，已经达到了菜鸟的巅峰",
+            "{topic}？我以为是{topic}呢！",
+            "今天的{topic}告诉我：我果然是个人才",
+            "{topic}之后，我的钱包表示很受伤",
+            "在{topic}的路上，我迷路了",
+            "成功避开了所有正确的{topic}选项",
+            "{topic}使我快乐，也使我贫穷",
+            "问：{topic}怎么样？答：下次再也不了",
+            "今天{topic}的心情：想开，但没完全想开",
+            "{topic}本快乐，{topic}本无罪"
+          ],
+          english: [
+            "Tried {topic}, instructions unclear",
+            "My {topic} skills are still loading...",
+            "{topic}? More like chaos in disguise",
+            "Professional {topic} rookie here",
+            "Did {topic}, regret nothing, learned nothing",
+            "{topic}: expectations vs reality",
+            "Warning: {topic} may cause happiness",
+            "Plot twist: I actually enjoyed {topic}",
+            "{topic} level: confused but optimistic",
+            "Dear {topic}, we need to talk"
+          ]
+        },
+        poetic: {
+          chinese: [
+            "在{topic}的时光里，与美好不期而遇",
+            "{topic}如诗，岁月如歌",
+            "愿以{topic}为笔，书写生命的篇章",
+            "于{topic}之中，寻得一方宁静",
+            "{topic}是风，是雨，是人间烟火",
+            "时光温柔，{topic}亦然",
+            "在{topic}的角落，藏着世间的温柔",
+            "以{topic}之名，赴一场心灵之约",
+            "{topic}轻轻落下，带走了所有喧嚣",
+            "借一缕{topic}，温暖整个冬天"
+          ],
+          english: [
+            "In the poetry of {topic}, I found peace",
+            "{topic} whispers what words cannot say",
+            "Lost in the art of {topic}",
+            "Where {topic} meets the soul",
+            "{topic} paints the sky of my dreams",
+            "In every {topic}, there is a story untold",
+            "Dancing with {topic} under moonlight",
+            "{topic} is the music of silence",
+            "Through {topic}, I see the universe",
+            "Let {topic} be my sanctuary"
+          ]
+        },
+        professional: {
+          chinese: [
+            "深度解析{topic}，带你了解行业趋势",
+            "{topic}实践分享，干货满满",
+            "关于{topic}，这些要点值得关注",
+            "{topic}领域最新动态，速览",
+            "专业视角看{topic}：机遇与挑战并存",
+            "{topic}行业报告，数据说话",
+            "从{topic}看未来发展方向",
+            "{topic}最佳实践，经验总结",
+            "深耕{topic}，持续输出价值",
+            "{topic}专题：从入门到精通"
+          ],
+          english: [
+            "Deep dive into {topic}: Key insights",
+            "{topic} trends you should know about",
+            "Professional take on {topic}",
+            "{topic} best practices for success",
+            "Industry perspective: {topic} in focus",
+            "Mastering {topic}: A comprehensive guide",
+            "{topic} analysis: What the data tells us",
+            "Strategic approach to {topic}",
+            "{topic} expertise: Lessons learned",
+            "Elevating {topic} to the next level"
+          ]
+        },
+        cute: {
+          chinese: [
+            "{topic}也太可爱了叭！",
+            "今天的{topic}，甜度超标~",
+            "被{topic}萌化了呜呜呜",
+            "{topic}冲鸭！加油鸭！",
+            "小小的{topic}，大大的快乐",
+            "嘿嘿，{topic}使我快乐~",
+            "{topic}好耶！开心！",
+            "今日份{topic}已到账，请查收~",
+            "{topic}星人报道！",
+            "被{topic}治愈的一天~"
+          ],
+          english: [
+            "{topic} is just too cute!",
+            "Feeling fluffy about {topic} today",
+            "{topic} makes my heart go uwu",
+            "Tiny {topic}, big happiness",
+            "Sending {topic} hugs to everyone",
+            "{topic} vibes are adorable",
+            "Having a {topic} moment rn",
+            "So much love for {topic}!",
+            "{topic} = instant serotonin",
+            "Cuteness overload: {topic} edition"
+          ]
+        },
+        mysterious: {
+          chinese: [
+            "{topic}的背后，藏着不为人知的秘密",
+            "关于{topic}，我有话说...",
+            "如果你也懂{topic}，请给我一个眼神",
+            "{topic}，懂的都懂",
+            "今天的{topic}，有点意思",
+            "不是所有人都能理解{topic}的魅力",
+            "{topic}，是我最后的倔强",
+            "在{topic}的世界里，我主宰一切",
+            "有些{topic}，只可意会不可言传",
+            "{topic}：此处省略一万字"
+          ],
+          english: [
+            "{topic} has its secrets",
+            "The untold story of {topic}",
+            "If you know, you know: {topic}",
+            "{topic} speaks louder than words",
+            "Some things about {topic} remain unspoken",
+            "Enter the realm of {topic}",
+            "{topic}: not for the faint of heart",
+            "Decoding the mystery of {topic}",
+            "Between the lines of {topic}",
+            "{topic}. No further explanation needed."
+          ]
+        }
+      };
 
-      <div class="toolbar">
-        <button class="primary" id="btnGenerate">生成文案</button>
-        <button id="btnClear">清空</button>
-        <button id="btnShare">分享</button>
-      </div>
+      const emojisByStyle = {
+        casual: ["✨", "🌟", "💫", "🎉", "🌈", "☀️", "🌸", "💕", "🎵", "📸"],
+        inspiring: ["💪", "🔥", "⭐", "🌱", "🚀", "💡", "✊", "🏆", "💎", "🌅"],
+        funny: ["😂", "🤣", "😅", "🙃", "😜", "🤪", "💀", "😭", "🤦", "👀"],
+        poetic: ["🌙", "✨", "🍃", "🌊", "🦋", "🌸", "💫", "☁️", "🌿", "🕊️"],
+        professional: ["📊", "💼", "📈", "🎯", "💡", "🔍", "📌", "✅", "🏅", "📝"],
+        cute: ["💕", "🥰", "💖", "🌸", "✨", "🎀", "🧸", "🍰", "🌈", "💗"],
+        mysterious: ["🌙", "✨", "🔮", "👁️", "🖤", "💫", "🌌", "⚡", "🃏", "🎭"]
+      };
 
-      <div class="output-section">
-        <div class="output-label">生成的文案</div>
-        <div id="captionsContainer"></div>
-      </div>
-
-      <div id="status" class="status"></div>
-    </div>
-
-    <footer>
-      <p>
-        <a href="https://github.com/nicogong/html-tools" target="_blank" rel="noreferrer">GitHub</a>
-        <span>·</span>
-        <span>纯前端 · 无服务器</span>
-        <span>·</span>
-        <a href="../../index.html">WebUtils</a>
-      </p>
-    </footer>
-  </div>
-
-  <script>
-    const topicEl = document.getElementById('topic');
-    const detailsEl = document.getElementById('details');
-    const platformEl = document.getElementById('platform');
-    const languageEl = document.getElementById('language');
-    const styleTagsEl = document.getElementById('styleTags');
-    const captionsContainerEl = document.getElementById('captionsContainer');
-    const statusEl = document.getElementById('status');
-
-    const LS_KEY = 'caption_writer_v1';
-
-    let selectedStyle = 'casual';
-
-    const captionTemplates = {
-      casual: {
-        chinese: [
-          '今天的{topic}，简单但快乐 ✨',
-          '记录一下{topic}的美好瞬间~',
-          '日常{topic}打卡 📍',
-          '{topic}的一天，满足！',
-          '又是{topic}的好日子~',
-          '分享今天的{topic} 🌟',
-          '{topic}中... 幸福感爆棚',
-          '平平淡淡才是真，{topic}日常',
-          '今日份{topic}已签收 ✓',
-          '生活就是{topic}的点点滴滴'
-        ],
-        english: [
-          'Just another {topic} day ✨',
-          '{topic} vibes only',
-          'Living my best {topic} life',
-          'Currently: {topic} mode ON',
-          '{topic} is my therapy',
-          'Making memories with {topic}',
-          'This is what {topic} looks like',
-          '{topic} state of mind',
-          'Caught in the moment of {topic}',
-          'Simple pleasures: {topic}'
-        ]
-      },
-      inspiring: {
-        chinese: [
-          '{topic}，是我给自己最好的礼物',
-          '每一次{topic}，都是成长的印记',
-          '不负时光，不负{topic}',
-          '{topic}教会我：坚持就是力量',
-          '从{topic}开始，遇见更好的自己',
-          '追逐{topic}的路上，我从不孤单',
-          '{topic}的意义，在于那份热爱',
-          '愿所有的{topic}，都能如愿以偿',
-          '为了{topic}，值得全力以赴',
-          '{topic}，让我相信一切皆有可能'
-        ],
-        english: [
-          '{topic} is not just a goal, it is a journey',
-          'Every {topic} brings me closer to my dreams',
-          'Embrace the challenge of {topic}',
-          '{topic} taught me that growth never stops',
-          'The best time for {topic} is now',
-          'Transform your {topic} into your superpower',
-          '{topic}: where passion meets purpose',
-          'Be fearless in the pursuit of {topic}',
-          '{topic} is proof that I am capable',
-          'Let {topic} be your motivation'
-        ]
-      },
-      funny: {
-        chinese: [
-          '本人在{topic}方面，已经达到了菜鸟的巅峰',
-          '{topic}？我以为是{topic}呢！',
-          '今天的{topic}告诉我：我果然是个人才',
-          '{topic}之后，我的钱包表示很受伤',
-          '在{topic}的路上，我迷路了',
-          '成功避开了所有正确的{topic}选项',
-          '{topic}使我快乐，也使我贫穷',
-          '问：{topic}怎么样？答：下次再也不了',
-          '今天{topic}的心情：想开，但没完全想开',
-          '{topic}本快乐，{topic}本无罪'
-        ],
-        english: [
-          'Tried {topic}, instructions unclear',
-          'My {topic} skills are still loading...',
-          '{topic}? More like chaos in disguise',
-          'Professional {topic} rookie here',
-          'Did {topic}, regret nothing, learned nothing',
-          '{topic}: expectations vs reality',
-          'Warning: {topic} may cause happiness',
-          'Plot twist: I actually enjoyed {topic}',
-          '{topic} level: confused but optimistic',
-          'Dear {topic}, we need to talk'
-        ]
-      },
-      poetic: {
-        chinese: [
-          '在{topic}的时光里，与美好不期而遇',
-          '{topic}如诗，岁月如歌',
-          '愿以{topic}为笔，书写生命的篇章',
-          '于{topic}之中，寻得一方宁静',
-          '{topic}是风，是雨，是人间烟火',
-          '时光温柔，{topic}亦然',
-          '在{topic}的角落，藏着世间的温柔',
-          '以{topic}之名，赴一场心灵之约',
-          '{topic}轻轻落下，带走了所有喧嚣',
-          '借一缕{topic}，温暖整个冬天'
-        ],
-        english: [
-          'In the poetry of {topic}, I found peace',
-          '{topic} whispers what words cannot say',
-          'Lost in the art of {topic}',
-          'Where {topic} meets the soul',
-          '{topic} paints the sky of my dreams',
-          'In every {topic}, there is a story untold',
-          'Dancing with {topic} under moonlight',
-          '{topic} is the music of silence',
-          'Through {topic}, I see the universe',
-          'Let {topic} be my sanctuary'
-        ]
-      },
-      professional: {
-        chinese: [
-          '深度解析{topic}，带你了解行业趋势',
-          '{topic}实践分享，干货满满',
-          '关于{topic}，这些要点值得关注',
-          '{topic}领域最新动态，速览',
-          '专业视角看{topic}：机遇与挑战并存',
-          '{topic}行业报告，数据说话',
-          '从{topic}看未来发展方向',
-          '{topic}最佳实践，经验总结',
-          '深耕{topic}，持续输出价值',
-          '{topic}专题：从入门到精通'
-        ],
-        english: [
-          'Deep dive into {topic}: Key insights',
-          '{topic} trends you should know about',
-          'Professional take on {topic}',
-          '{topic} best practices for success',
-          'Industry perspective: {topic} in focus',
-          'Mastering {topic}: A comprehensive guide',
-          '{topic} analysis: What the data tells us',
-          'Strategic approach to {topic}',
-          '{topic} expertise: Lessons learned',
-          'Elevating {topic} to the next level'
-        ]
-      },
-      cute: {
-        chinese: [
-          '{topic}也太可爱了叭！',
-          '今天的{topic}，甜度超标~',
-          '被{topic}萌化了呜呜呜',
-          '{topic}冲鸭！加油鸭！',
-          '小小的{topic}，大大的快乐',
-          '嘿嘿，{topic}使我快乐~',
-          '{topic}好耶！开心！',
-          '今日份{topic}已到账，请查收~',
-          '{topic}星人报道！',
-          '被{topic}治愈的一天~'
-        ],
-        english: [
-          '{topic} is just too cute!',
-          'Feeling fluffy about {topic} today',
-          '{topic} makes my heart go uwu',
-          'Tiny {topic}, big happiness',
-          'Sending {topic} hugs to everyone',
-          '{topic} vibes are adorable',
-          'Having a {topic} moment rn',
-          'So much love for {topic}!',
-          '{topic} = instant serotonin',
-          'Cuteness overload: {topic} edition'
-        ]
-      },
-      mysterious: {
-        chinese: [
-          '{topic}的背后，藏着不为人知的秘密',
-          '关于{topic}，我有话说...',
-          '如果你也懂{topic}，请给我一个眼神',
-          '{topic}，懂的都懂',
-          '今天的{topic}，有点意思',
-          '不是所有人都能理解{topic}的魅力',
-          '{topic}，是我最后的倔强',
-          '在{topic}的世界里，我主宰一切',
-          '有些{topic}，只可意会不可言传',
-          '{topic}：此处省略一万字'
-        ],
-        english: [
-          '{topic} has its secrets',
-          'The untold story of {topic}',
-          'If you know, you know: {topic}',
-          '{topic} speaks louder than words',
-          'Some things about {topic} remain unspoken',
-          'Enter the realm of {topic}',
-          '{topic}: not for the faint of heart',
-          'Decoding the mystery of {topic}',
-          'Between the lines of {topic}',
-          '{topic}. No further explanation needed.'
-        ]
-      }
-    };
-
-    const emojisByStyle = {
-      casual: ['✨', '🌟', '💫', '🎉', '🌈', '☀️', '🌸', '💕', '🎵', '📸'],
-      inspiring: ['💪', '🔥', '⭐', '🌱', '🚀', '💡', '✊', '🏆', '💎', '🌅'],
-      funny: ['😂', '🤣', '😅', '🙃', '😜', '🤪', '💀', '😭', '🤦', '👀'],
-      poetic: ['🌙', '✨', '🍃', '🌊', '🦋', '🌸', '💫', '☁️', '🌿', '🕊️'],
-      professional: ['📊', '💼', '📈', '🎯', '💡', '🔍', '📌', '✅', '🏅', '📝'],
-      cute: ['💕', '🥰', '💖', '🌸', '✨', '🎀', '🧸', '🍰', '🌈', '💗'],
-      mysterious: ['🌙', '✨', '🔮', '👁️', '🖤', '💫', '🌌', '⚡', '🃏', '🎭']
-    };
-
-    function getRandomEmojis(style, count) {
-      const emojis = emojisByStyle[style] || emojisByStyle.casual;
-      const shuffled = emojis.slice().sort(function() { return 0.5 - Math.random(); });
-      return shuffled.slice(0, count).join(' ');
-    }
-
-    function generateCaptions() {
-      const topic = topicEl.value.trim();
-      if (!topic) {
-        showStatus('请输入主题或关键词', 'error');
-        return;
+      function getRandomEmojis(style, count) {
+        const emojis = emojisByStyle[style] || emojisByStyle.casual;
+        const shuffled = emojis.slice().sort(function () {
+          return 0.5 - Math.random();
+        });
+        return shuffled.slice(0, count).join(" ");
       }
 
-      const platform = platformEl.value;
-      const language = languageEl.value;
-      const details = detailsEl.value.trim();
-
-      const templates = captionTemplates[selectedStyle];
-      if (!templates) {
-        showStatus('请选择文案风格', 'error');
-        return;
-      }
-
-      const captions = [];
-      let templateList;
-
-      if (language === 'chinese') {
-        templateList = templates.chinese;
-      } else if (language === 'english') {
-        templateList = templates.english;
-      } else {
-        templateList = templates.chinese.concat(templates.english);
-      }
-
-      const shuffled = templateList.slice().sort(function() { return 0.5 - Math.random(); });
-      const selected = shuffled.slice(0, 5);
-
-      for (const template of selected) {
-        let caption = template.replace(/{topic}/g, topic);
-        
-        if (details) {
-          caption += '\n\n' + details;
+      function generateCaptions() {
+        const topic = topicEl.value.trim();
+        if (!topic) {
+          showStatus("请输入主题或关键词", "error");
+          return;
         }
 
-        caption += '\n\n' + getRandomEmojis(selectedStyle, 3);
+        const platform = platformEl.value;
+        const language = languageEl.value;
+        const details = detailsEl.value.trim();
 
-        captions.push(caption);
-      }
+        const templates = captionTemplates[selectedStyle];
+        if (!templates) {
+          showStatus("请选择文案风格", "error");
+          return;
+        }
 
-      displayCaptions(captions);
-      saveToStorage();
-      showStatus('已生成 ' + captions.length + ' 条文案', 'success');
-    }
+        const captions = [];
+        let templateList;
 
-    function displayCaptions(captions) {
-      captionsContainerEl.textContent = '';
+        if (language === "chinese") {
+          templateList = templates.chinese;
+        } else if (language === "english") {
+          templateList = templates.english;
+        } else {
+          templateList = templates.chinese.concat(templates.english);
+        }
 
-      for (let i = 0; i < captions.length; i++) {
-        const caption = captions[i];
-        const card = document.createElement('div');
-        card.className = 'caption-card';
-
-        const text = document.createElement('div');
-        text.className = 'caption-text';
-        text.textContent = caption;
-
-        const meta = document.createElement('div');
-        meta.className = 'caption-meta';
-
-        const length = document.createElement('span');
-        length.className = 'caption-length';
-        length.textContent = caption.length + ' 字符';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'caption-copy';
-        copyBtn.textContent = '复制';
-        copyBtn.addEventListener('click', function() {
-          copyToClipboard(caption);
+        const shuffled = templateList.slice().sort(function () {
+          return 0.5 - Math.random();
         });
+        const selected = shuffled.slice(0, 5);
 
-        meta.appendChild(length);
-        meta.appendChild(copyBtn);
+        for (const template of selected) {
+          let caption = template.replace(/{topic}/g, topic);
 
-        card.appendChild(text);
-        card.appendChild(meta);
-        captionsContainerEl.appendChild(card);
+          if (details) {
+            caption += "\n\n" + details;
+          }
+
+          caption += "\n\n" + getRandomEmojis(selectedStyle, 3);
+
+          captions.push(caption);
+        }
+
+        displayCaptions(captions);
+        saveToStorage();
+        showStatus("已生成 " + captions.length + " 条文案", "success");
       }
-    }
 
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(function() {
-        showStatus('已复制到剪贴板', 'success');
-      }).catch(function() {
-        showStatus('复制失败', 'error');
-      });
-    }
+      function displayCaptions(captions) {
+        captionsContainerEl.textContent = "";
 
-    function showStatus(msg, type) {
-      statusEl.textContent = msg;
-      statusEl.className = 'status ' + (type || '');
-    }
+        for (let i = 0; i < captions.length; i++) {
+          const caption = captions[i];
+          const card = document.createElement("div");
+          card.className = "caption-card";
 
-    function saveToStorage() {
-      const data = {
-        topic: topicEl.value,
-        details: detailsEl.value,
-        platform: platformEl.value,
-        language: languageEl.value,
-        style: selectedStyle
-      };
-      localStorage.setItem(LS_KEY, JSON.stringify(data));
-    }
+          const text = document.createElement("div");
+          text.className = "caption-text";
+          text.textContent = caption;
 
-    function loadFromStorage() {
-      try {
-        const saved = localStorage.getItem(LS_KEY);
-        if (saved) {
-          const data = JSON.parse(saved);
-          if (data.topic) topicEl.value = data.topic;
-          if (data.details) detailsEl.value = data.details;
-          if (data.platform) platformEl.value = data.platform;
-          if (data.language) languageEl.value = data.language;
-          if (data.style) {
-            selectedStyle = data.style;
-            updateStyleTags();
+          const meta = document.createElement("div");
+          meta.className = "caption-meta";
+
+          const length = document.createElement("span");
+          length.className = "caption-length";
+          length.textContent = caption.length + " 字符";
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "caption-copy";
+          copyBtn.textContent = "复制";
+          copyBtn.addEventListener("click", function () {
+            copyToClipboard(caption);
+          });
+
+          meta.appendChild(length);
+          meta.appendChild(copyBtn);
+
+          card.appendChild(text);
+          card.appendChild(meta);
+          captionsContainerEl.appendChild(card);
+        }
+      }
+
+      function copyToClipboard(text) {
+        navigator.clipboard
+          .writeText(text)
+          .then(function () {
+            showStatus("已复制到剪贴板", "success");
+          })
+          .catch(function () {
+            showStatus("复制失败", "error");
+          });
+      }
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function saveToStorage() {
+        const data = {
+          topic: topicEl.value,
+          details: detailsEl.value,
+          platform: platformEl.value,
+          language: languageEl.value,
+          style: selectedStyle
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+
+      function loadFromStorage() {
+        try {
+          const saved = localStorage.getItem(LS_KEY);
+          if (saved) {
+            const data = JSON.parse(saved);
+            if (data.topic) topicEl.value = data.topic;
+            if (data.details) detailsEl.value = data.details;
+            if (data.platform) platformEl.value = data.platform;
+            if (data.language) languageEl.value = data.language;
+            if (data.style) {
+              selectedStyle = data.style;
+              updateStyleTags();
+            }
+          }
+        } catch (e) {}
+      }
+
+      function updateStyleTags() {
+        const tags = styleTagsEl.querySelectorAll(".style-tag");
+        for (const tag of tags) {
+          if (tag.dataset.style === selectedStyle) {
+            tag.classList.add("active");
+          } else {
+            tag.classList.remove("active");
           }
         }
-      } catch (e) {}
-    }
+      }
 
-    function updateStyleTags() {
-      const tags = styleTagsEl.querySelectorAll('.style-tag');
-      for (const tag of tags) {
-        if (tag.dataset.style === selectedStyle) {
-          tag.classList.add('active');
-        } else {
-          tag.classList.remove('active');
+      styleTagsEl.addEventListener("click", function (e) {
+        if (e.target.classList.contains("style-tag")) {
+          selectedStyle = e.target.dataset.style;
+          updateStyleTags();
+          saveToStorage();
         }
-      }
-    }
+      });
 
-    styleTagsEl.addEventListener('click', function(e) {
-      if (e.target.classList.contains('style-tag')) {
-        selectedStyle = e.target.dataset.style;
-        updateStyleTags();
-        saveToStorage();
-      }
-    });
+      document.getElementById("btnGenerate").addEventListener("click", generateCaptions);
 
-    document.getElementById('btnGenerate').addEventListener('click', generateCaptions);
+      document.getElementById("btnClear").addEventListener("click", function () {
+        topicEl.value = "";
+        detailsEl.value = "";
+        captionsContainerEl.textContent = "";
+        statusEl.textContent = "";
+        statusEl.className = "status";
+        localStorage.removeItem(LS_KEY);
+      });
 
-    document.getElementById('btnClear').addEventListener('click', function() {
-      topicEl.value = '';
-      detailsEl.value = '';
-      captionsContainerEl.textContent = '';
-      statusEl.textContent = '';
-      statusEl.className = 'status';
-      localStorage.removeItem(LS_KEY);
-    });
-
-    document.getElementById('btnShare').addEventListener('click', function() {
-      try {
-        const encoded = btoa(encodeURIComponent(topicEl.value));
-        history.replaceState(null, '', '#' + encoded);
-        navigator.clipboard.writeText(location.href).then(function() {
-          showStatus('链接已复制', 'success');
-        });
-      } catch (e) {
-        showStatus('分享失败', 'error');
-      }
-    });
-
-    topicEl.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        generateCaptions();
-      }
-    });
-
-    (function() {
-      const hash = location.hash.slice(1);
-      if (hash) {
+      document.getElementById("btnShare").addEventListener("click", function () {
         try {
-          topicEl.value = decodeURIComponent(atob(hash));
-        } catch (e) {}
-      } else {
-        loadFromStorage();
-      }
-    })();
+          const encoded = btoa(encodeURIComponent(topicEl.value));
+          history.replaceState(null, "", "#" + encoded);
+          navigator.clipboard.writeText(location.href).then(function () {
+            showStatus("链接已复制", "success");
+          });
+        } catch (e) {
+          showStatus("分享失败", "error");
+        }
+      });
 
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
+      topicEl.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          generateCaptions();
+        }
+      });
 
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        const btn = document.querySelector('.theme-toggle');
-        if (btn) btn.textContent = saved === 'light' ? '☀️' : '🌙';
-      }
-    })();
-  </script>
-</body>
+      (function () {
+        const hash = location.hash.slice(1);
+        if (hash) {
+          try {
+            topicEl.value = decodeURIComponent(atob(hash));
+          } catch (e) {}
+        } else {
+          loadFromStorage();
+        }
+      })();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          const btn = document.querySelector(".theme-toggle");
+          if (btn) btn.textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

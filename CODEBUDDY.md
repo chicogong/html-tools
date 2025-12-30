@@ -25,6 +25,10 @@ npm run lint:js      # ESLint (JS in HTML files)
 # Auto-fix CSS issues
 npm run lint:fix
 
+# Code formatting (Prettier)
+npm run format        # Format all files
+npm run format:check  # Check formatting without changes
+
 # Sync tools list (tools.json → index.html)
 npm run sync:tools
 
@@ -79,43 +83,43 @@ Each tool in `tools/` follows this pattern:
 ```html
 <!DOCTYPE html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>[Tool Name] - HTML Tools</title>
-  <!-- Google Fonts: JetBrains Mono + Space Grotesk -->
-  <style>
-    /* CSS Variables for theming (dark theme) */
-    :root {
-      --bg-deep: #0a0a0f;
-      --accent-cyan: #00f5d4;
-      /* ... */
-    }
-    /* All styles inline */
-  </style>
-</head>
-<body>
-  <!-- Background grid effect -->
-  <div class="bg-grid"></div>
-  
-  <div class="container">
-    <!-- Back link to index -->
-    <a href="../../index.html" class="back-link">← 返回</a>
-    
-    <!-- Tool UI -->
-    
-    <!-- Footer with GitHub link -->
-  </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>[Tool Name] - HTML Tools</title>
+    <!-- Google Fonts: JetBrains Mono + Space Grotesk -->
+    <style>
+      /* CSS Variables for theming (dark theme) */
+      :root {
+        --bg-deep: #0a0a0f;
+        --accent-cyan: #00f5d4;
+        /* ... */
+      }
+      /* All styles inline */
+    </style>
+  </head>
+  <body>
+    <!-- Background grid effect -->
+    <div class="bg-grid"></div>
 
-  <script>
-    /* All JavaScript inline */
-    
-    // Common patterns:
-    // 1. localStorage persistence (LS_KEY)
-    // 2. URL hash state sharing (loadFromUrl/saveToUrl)
-    // 3. Clipboard API integration
-  </script>
-</body>
+    <div class="container">
+      <!-- Back link to index -->
+      <a href="../../index.html" class="back-link">← 返回</a>
+
+      <!-- Tool UI -->
+
+      <!-- Footer with GitHub link -->
+    </div>
+
+    <script>
+      /* All JavaScript inline */
+
+      // Common patterns:
+      // 1. localStorage persistence (LS_KEY)
+      // 2. URL hash state sharing (loadFromUrl/saveToUrl)
+      // 3. Clipboard API integration
+    </script>
+  </body>
 </html>
 ```
 
@@ -145,6 +149,7 @@ The project uses a **Neo-Brutalist Tech** dark theme:
 5. Commit and push (CI will verify sync status)
 
 **Tools Sync Mechanism**:
+
 - `tools.json` is the single source of truth for all tools
 - `npm run sync:tools` generates tool cards in index.html from tools.json
 - CI checks sync status - build fails if out of sync
@@ -152,8 +157,9 @@ The project uses a **Neo-Brutalist Tech** dark theme:
 ## Common Tool Features
 
 Each tool should implement:
+
 - **Paste button**: Read from clipboard
-- **Copy button**: Write output to clipboard  
+- **Copy button**: Write output to clipboard
 - **Share button**: Encode state to URL hash (`btoa(encodeURIComponent(input))`)
 - **Clear button**: Reset state and localStorage
 - **Auto-save**: Save to localStorage on input change
@@ -161,6 +167,7 @@ Each tool should implement:
 ## CDN Dependencies
 
 Only use CDN when necessary. Current dependencies:
+
 - `js-yaml` - JSON-YAML conversion
 - `jsdiff` - Text diff comparison
 - `marked` + `DOMPurify` - Markdown preview
@@ -180,16 +187,19 @@ python3 -m http.server 8080   # http://localhost:8080 (if HTTP required)
 ### Testing Checklist
 
 **Functional**:
+
 - [ ] Page loads without console errors
 - [ ] Paste/Copy/Share buttons work
 - [ ] localStorage and URL hash persistence work
 
 **Responsive** (DevTools F12):
+
 - [ ] Desktop (1440px+)
 - [ ] Tablet (768px)
 - [ ] Mobile (375px)
 
 **Theme**:
+
 - [ ] Dark/Light themes display correctly
 
 ### Pre-commit

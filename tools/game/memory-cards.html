@@ -1,326 +1,619 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>记忆翻牌 - WebUtils</title>
-  <meta name="description" content="经典记忆翻牌游戏，找出所有配对的卡片，锻炼记忆力" />
-  <meta name="keywords" content="记忆 翻牌 配对 游戏 memory cards matching game" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/game/memory-cards.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>记忆翻牌 - WebUtils</title>
+    <meta name="description" content="经典记忆翻牌游戏，找出所有配对的卡片，锻炼记忆力" />
+    <meta name="keywords" content="记忆 翻牌 配对 游戏 memory cards matching game" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/game/memory-cards.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-purple:#a55eea;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:500px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:1.5rem;text-align:center}
-    .stats-bar{display:flex;justify-content:space-around;padding:1rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);margin-bottom:1.5rem}
-    .stat{text-align:center}
-    .stat-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--accent-cyan)}
-    .stat-label{font-size:.8rem;color:var(--text-muted)}
-    .difficulty-selector{display:flex;gap:.5rem;justify-content:center;margin-bottom:1.5rem}
-    .diff-btn{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:.85rem;transition:all .2s}
-    .diff-btn:hover{border-color:var(--accent-cyan)}
-    .diff-btn.active{background:var(--accent-purple);color:#fff;border-color:var(--accent-purple)}
-    .game-board{display:grid;gap:.5rem;margin-bottom:1.5rem}
-    .game-board.easy{grid-template-columns:repeat(3,1fr)}
-    .game-board.medium{grid-template-columns:repeat(4,1fr)}
-    .game-board.hard{grid-template-columns:repeat(5,1fr)}
-    .card{aspect-ratio:1;border-radius:var(--radius-sm);cursor:pointer;perspective:1000px;user-select:none}
-    .card-inner{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d}
-    .card.flipped .card-inner,.card.matched .card-inner{transform:rotateY(180deg)}
-    .card-front,.card-back{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center}
-    .card-front{background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));font-size:1.5rem}
-    .card-back{background:var(--bg-card);border:2px solid var(--border-subtle);transform:rotateY(180deg);font-size:2rem}
-    .card.matched .card-back{border-color:var(--accent-green);background:rgba(0,210,106,.1)}
-    .card:hover:not(.flipped, .matched) .card-front{transform:scale(1.05)}
-    .controls{display:flex;justify-content:center;gap:1rem}
-    .btn{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:500;transition:all .2s}
-    .btn-primary{background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));color:#000}
-    .btn-secondary{background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-subtle)}
-    .btn:hover{transform:translateY(-2px)}
-    .win-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center}
-    .win-modal.show{display:flex}
-    .win-content{background:var(--bg-card);border-radius:var(--radius-lg);padding:2rem;text-align:center;max-width:300px}
-    .win-icon{font-size:4rem;margin-bottom:1rem}
-    .win-title{font-size:1.5rem;font-weight:600;margin-bottom:.5rem}
-    .win-stats{color:var(--text-secondary);margin-bottom:1.5rem}
-    .win-stats div{margin:.25rem 0}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">记忆翻牌</span>
-    </nav>
-
-    <h1>🎴 记忆翻牌</h1>
-    <p class="subtitle">找出所有配对的卡片</p>
-
-    <div class="stats-bar">
-      <div class="stat">
-        <div class="stat-value" id="moves">0</div>
-        <div class="stat-label">步数</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="pairs">0/0</div>
-        <div class="stat-label">配对</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="timer">00:00</div>
-        <div class="stat-label">时间</div>
-      </div>
-    </div>
-
-    <div class="difficulty-selector">
-      <button class="diff-btn" onclick="setDifficulty('easy')">简单 3×2</button>
-      <button class="diff-btn active" onclick="setDifficulty('medium')">中等 4×4</button>
-      <button class="diff-btn" onclick="setDifficulty('hard')">困难 5×4</button>
-    </div>
-
-    <div class="game-board medium" id="gameBoard">
-      <!-- Cards will be rendered here -->
-    </div>
-
-    <div class="controls">
-      <button class="btn btn-primary" onclick="startGame()">新游戏</button>
-    </div>
-
-    <div class="win-modal" id="winModal">
-      <div class="win-content">
-        <div class="win-icon">🎉</div>
-        <div class="win-title">恭喜过关!</div>
-        <div class="win-stats">
-          <div>总步数: <span id="finalMoves">0</span></div>
-          <div>用时: <span id="finalTime">00:00</span></div>
-        </div>
-        <button class="btn btn-primary" onclick="closeModal();startGame()">再玩一次</button>
-      </div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    const emojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑', '🥭', '🍍', '🥥', '🍌', '🌟', '🌙', '☀️', '⭐', '💎', '🎈', '🎁', '🎨'];
-
-    let difficulty = 'medium';
-    let cards = [];
-    let flippedCards = [];
-    let matchedPairs = 0;
-    let totalPairs = 0;
-    let moves = 0;
-    let timer = null;
-    let seconds = 0;
-    let gameStarted = false;
-    let locked = false;
-
-    const difficultySettings = {
-      easy: { pairs: 3, cols: 3 },
-      medium: { pairs: 8, cols: 4 },
-      hard: { pairs: 10, cols: 5 }
-    };
-
-    function setDifficulty(diff) {
-      difficulty = diff;
-      document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelector(`.diff-btn:nth-child(${diff === 'easy' ? 1 : diff === 'medium' ? 2 : 3})`).classList.add('active');
-
-      const board = document.getElementById('gameBoard');
-      board.className = 'game-board ' + diff;
-      startGame();
-    }
-
-    function shuffle(array) {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-green: #00d26a;
+        --accent-purple: #a55eea;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
       }
-      return shuffled;
-    }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      .stats-bar {
+        display: flex;
+        justify-content: space-around;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        margin-bottom: 1.5rem;
+      }
+      .stat {
+        text-align: center;
+      }
+      .stat-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--accent-cyan);
+      }
+      .stat-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      .difficulty-selector {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+      .diff-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .diff-btn:hover {
+        border-color: var(--accent-cyan);
+      }
+      .diff-btn.active {
+        background: var(--accent-purple);
+        color: #fff;
+        border-color: var(--accent-purple);
+      }
+      .game-board {
+        display: grid;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .game-board.easy {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .game-board.medium {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .game-board.hard {
+        grid-template-columns: repeat(5, 1fr);
+      }
+      .card {
+        aspect-ratio: 1;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        perspective: 1000px;
+        user-select: none;
+      }
+      .card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.5s;
+        transform-style: preserve-3d;
+      }
+      .card.flipped .card-inner,
+      .card.matched .card-inner {
+        transform: rotateY(180deg);
+      }
+      .card-front,
+      .card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card-front {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+        font-size: 1.5rem;
+      }
+      .card-back {
+        background: var(--bg-card);
+        border: 2px solid var(--border-subtle);
+        transform: rotateY(180deg);
+        font-size: 2rem;
+      }
+      .card.matched .card-back {
+        border-color: var(--accent-green);
+        background: rgba(0, 210, 106, 0.1);
+      }
+      .card:hover:not(.flipped, .matched) .card-front {
+        transform: scale(1.05);
+      }
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+      }
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+        color: #000;
+      }
+      .btn-secondary {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+      .win-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 200;
+        align-items: center;
+        justify-content: center;
+      }
+      .win-modal.show {
+        display: flex;
+      }
+      .win-content {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        text-align: center;
+        max-width: 300px;
+      }
+      .win-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+      }
+      .win-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      .win-stats {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+      }
+      .win-stats div {
+        margin: 0.25rem 0;
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    function startGame() {
-      // Reset state
-      stopTimer();
-      flippedCards = [];
-      matchedPairs = 0;
-      moves = 0;
-      seconds = 0;
-      gameStarted = false;
-      locked = false;
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">记忆翻牌</span>
+      </nav>
 
-      const settings = difficultySettings[difficulty];
-      totalPairs = settings.pairs;
+      <h1>🎴 记忆翻牌</h1>
+      <p class="subtitle">找出所有配对的卡片</p>
 
-      // Select random emojis
-      const selectedEmojis = shuffle(emojis).slice(0, totalPairs);
-      const cardValues = shuffle([...selectedEmojis, ...selectedEmojis]);
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-value" id="moves">0</div>
+          <div class="stat-label">步数</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="pairs">0/0</div>
+          <div class="stat-label">配对</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="timer">00:00</div>
+          <div class="stat-label">时间</div>
+        </div>
+      </div>
 
-      cards = cardValues.map((emoji, index) => ({
-        id: index,
-        emoji,
-        flipped: false,
-        matched: false
-      }));
+      <div class="difficulty-selector">
+        <button class="diff-btn" onclick="setDifficulty('easy')">简单 3×2</button>
+        <button class="diff-btn active" onclick="setDifficulty('medium')">中等 4×4</button>
+        <button class="diff-btn" onclick="setDifficulty('hard')">困难 5×4</button>
+      </div>
 
-      render();
-      updateStats();
-    }
+      <div class="game-board medium" id="gameBoard">
+        <!-- Cards will be rendered here -->
+      </div>
 
-    function render() {
-      const board = document.getElementById('gameBoard');
-      board.innerHTML = cards.map(card => `
-        <div class="card ${card.flipped ? 'flipped' : ''} ${card.matched ? 'matched' : ''}"
+      <div class="controls">
+        <button class="btn btn-primary" onclick="startGame()">新游戏</button>
+      </div>
+
+      <div class="win-modal" id="winModal">
+        <div class="win-content">
+          <div class="win-icon">🎉</div>
+          <div class="win-title">恭喜过关!</div>
+          <div class="win-stats">
+            <div>
+              总步数:
+              <span id="finalMoves">0</span>
+            </div>
+            <div>
+              用时:
+              <span id="finalTime">00:00</span>
+            </div>
+          </div>
+          <button
+            class="btn btn-primary"
+            onclick="
+              closeModal();
+              startGame();
+            "
+          >
+            再玩一次
+          </button>
+        </div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
+    </div>
+
+    <script>
+      const emojis = [
+        "🍎",
+        "🍊",
+        "🍋",
+        "🍇",
+        "🍓",
+        "🍒",
+        "🥝",
+        "🍑",
+        "🥭",
+        "🍍",
+        "🥥",
+        "🍌",
+        "🌟",
+        "🌙",
+        "☀️",
+        "⭐",
+        "💎",
+        "🎈",
+        "🎁",
+        "🎨"
+      ];
+
+      let difficulty = "medium";
+      let cards = [];
+      let flippedCards = [];
+      let matchedPairs = 0;
+      let totalPairs = 0;
+      let moves = 0;
+      let timer = null;
+      let seconds = 0;
+      let gameStarted = false;
+      let locked = false;
+
+      const difficultySettings = {
+        easy: { pairs: 3, cols: 3 },
+        medium: { pairs: 8, cols: 4 },
+        hard: { pairs: 10, cols: 5 }
+      };
+
+      function setDifficulty(diff) {
+        difficulty = diff;
+        document.querySelectorAll(".diff-btn").forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelector(`.diff-btn:nth-child(${diff === "easy" ? 1 : diff === "medium" ? 2 : 3})`)
+          .classList.add("active");
+
+        const board = document.getElementById("gameBoard");
+        board.className = "game-board " + diff;
+        startGame();
+      }
+
+      function shuffle(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+      function startGame() {
+        // Reset state
+        stopTimer();
+        flippedCards = [];
+        matchedPairs = 0;
+        moves = 0;
+        seconds = 0;
+        gameStarted = false;
+        locked = false;
+
+        const settings = difficultySettings[difficulty];
+        totalPairs = settings.pairs;
+
+        // Select random emojis
+        const selectedEmojis = shuffle(emojis).slice(0, totalPairs);
+        const cardValues = shuffle([...selectedEmojis, ...selectedEmojis]);
+
+        cards = cardValues.map((emoji, index) => ({
+          id: index,
+          emoji,
+          flipped: false,
+          matched: false
+        }));
+
+        render();
+        updateStats();
+      }
+
+      function render() {
+        const board = document.getElementById("gameBoard");
+        board.innerHTML = cards
+          .map(
+            (card) => `
+        <div class="card ${card.flipped ? "flipped" : ""} ${card.matched ? "matched" : ""}"
           data-id="${card.id}" onclick="flipCard(${card.id})">
           <div class="card-inner">
             <div class="card-front">?</div>
             <div class="card-back">${card.emoji}</div>
           </div>
         </div>
-      `).join('');
-    }
-
-    function flipCard(id) {
-      if (locked) return;
-
-      const card = cards.find(c => c.id === id);
-      if (!card || card.flipped || card.matched) return;
-
-      // Start timer on first flip
-      if (!gameStarted) {
-        gameStarted = true;
-        startTimer();
+      `
+          )
+          .join("");
       }
 
-      card.flipped = true;
-      flippedCards.push(card);
-      updateCardDOM(card);
+      function flipCard(id) {
+        if (locked) return;
 
-      if (flippedCards.length === 2) {
-        moves++;
-        updateStats();
-        checkMatch();
-      }
-    }
+        const card = cards.find((c) => c.id === id);
+        if (!card || card.flipped || card.matched) return;
 
-    function checkMatch() {
-      locked = true;
-      const [card1, card2] = flippedCards;
-
-      if (card1.emoji === card2.emoji) {
-        // Match found
-        card1.matched = true;
-        card2.matched = true;
-        matchedPairs++;
-        flippedCards = [];
-        locked = false;
-        updateStats();
-
-        updateCardDOM(card1);
-        updateCardDOM(card2);
-
-        if (matchedPairs === totalPairs) {
-          stopTimer();
-          setTimeout(showWin, 500);
+        // Start timer on first flip
+        if (!gameStarted) {
+          gameStarted = true;
+          startTimer();
         }
-      } else {
-        // No match
-        setTimeout(() => {
-          card1.flipped = false;
-          card2.flipped = false;
+
+        card.flipped = true;
+        flippedCards.push(card);
+        updateCardDOM(card);
+
+        if (flippedCards.length === 2) {
+          moves++;
+          updateStats();
+          checkMatch();
+        }
+      }
+
+      function checkMatch() {
+        locked = true;
+        const [card1, card2] = flippedCards;
+
+        if (card1.emoji === card2.emoji) {
+          // Match found
+          card1.matched = true;
+          card2.matched = true;
+          matchedPairs++;
           flippedCards = [];
           locked = false;
+          updateStats();
+
           updateCardDOM(card1);
           updateCardDOM(card2);
+
+          if (matchedPairs === totalPairs) {
+            stopTimer();
+            setTimeout(showWin, 500);
+          }
+        } else {
+          // No match
+          setTimeout(() => {
+            card1.flipped = false;
+            card2.flipped = false;
+            flippedCards = [];
+            locked = false;
+            updateCardDOM(card1);
+            updateCardDOM(card2);
+          }, 1000);
+        }
+      }
+
+      function updateCardDOM(card) {
+        const el = document.querySelector(`.card[data-id="${card.id}"]`);
+        if (el) {
+          el.classList.toggle("flipped", card.flipped);
+          el.classList.toggle("matched", card.matched);
+        }
+      }
+
+      function updateStats() {
+        document.getElementById("moves").textContent = moves;
+        document.getElementById("pairs").textContent = `${matchedPairs}/${totalPairs}`;
+      }
+
+      function startTimer() {
+        timer = setInterval(() => {
+          seconds++;
+          document.getElementById("timer").textContent = formatTime(seconds);
         }, 1000);
       }
-    }
 
-    function updateCardDOM(card) {
-      const el = document.querySelector(`.card[data-id="${card.id}"]`);
-      if (el) {
-        el.classList.toggle('flipped', card.flipped);
-        el.classList.toggle('matched', card.matched);
+      function stopTimer() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
       }
-    }
 
-    function updateStats() {
-      document.getElementById('moves').textContent = moves;
-      document.getElementById('pairs').textContent = `${matchedPairs}/${totalPairs}`;
-    }
-
-    function startTimer() {
-      timer = setInterval(() => {
-        seconds++;
-        document.getElementById('timer').textContent = formatTime(seconds);
-      }, 1000);
-    }
-
-    function stopTimer() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
+      function formatTime(s) {
+        const mins = Math.floor(s / 60)
+          .toString()
+          .padStart(2, "0");
+        const secs = (s % 60).toString().padStart(2, "0");
+        return `${mins}:${secs}`;
       }
-    }
 
-    function formatTime(s) {
-      const mins = Math.floor(s / 60).toString().padStart(2, '0');
-      const secs = (s % 60).toString().padStart(2, '0');
-      return `${mins}:${secs}`;
-    }
-
-    function showWin() {
-      document.getElementById('finalMoves').textContent = moves;
-      document.getElementById('finalTime').textContent = formatTime(seconds);
-      document.getElementById('winModal').classList.add('show');
-    }
-
-    function closeModal() {
-      document.getElementById('winModal').classList.remove('show');
-    }
-
-    // Initialize
-    startGame();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      function showWin() {
+        document.getElementById("finalMoves").textContent = moves;
+        document.getElementById("finalTime").textContent = formatTime(seconds);
+        document.getElementById("winModal").classList.add("show");
       }
-    })();
-  </script>
-</body>
+
+      function closeModal() {
+        document.getElementById("winModal").classList.remove("show");
+      }
+
+      // Initialize
+      startGame();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

@@ -1,267 +1,546 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>跨时区会议安排 - WebUtils</title>
-  <meta name="description" content="找到适合不同时区参会者的最佳会议时间" />
-  <meta name="keywords" content="时区 会议 时间 timezone meeting planner scheduler" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/productivity/timezone-meeting.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>跨时区会议安排 - WebUtils</title>
+    <meta name="description" content="找到适合不同时区参会者的最佳会议时间" />
+    <meta name="keywords" content="时区 会议 时间 timezone meeting planner scheduler" />
+    <meta name="author" content="WebUtils" />
+    <link
+      rel="canonical"
+      href="https://tools.realtime-ai.chat/tools/productivity/timezone-meeting.html"
+    />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-yellow:#ffd93d;--accent-red:#ff6b6b;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
-    .card-title{font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
-    .meeting-input{display:flex;gap:1rem;margin-bottom:1.5rem;align-items:center;flex-wrap:wrap}
-    .meeting-input label{color:var(--text-secondary);font-size:.9rem}
-    .meeting-input input{padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace}
-    .meeting-input input:focus{outline:none;border-color:var(--accent-blue)}
-    .locations{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem}
-    .location-item{display:flex;gap:.75rem;align-items:center}
-    .location-item input{flex:1;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
-    .location-item select{flex:2;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
-    .location-item input:focus,.location-item select:focus{outline:none;border-color:var(--accent-blue)}
-    .location-delete{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:.5rem;transition:all .2s;font-size:1.2rem}
-    .location-delete:hover{color:var(--accent-red);transform:scale(1.1)}
-    .add-location{padding:.75rem;border:2px dashed var(--border-subtle);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit;transition:all .2s;width:100%}
-    .add-location:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
-    .timeline{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;overflow-x:auto}
-    .timeline-header{display:grid;grid-template-columns:150px repeat(24,60px);gap:1px;margin-bottom:.5rem}
-    .timeline-location{padding:.75rem;background:var(--bg-surface);font-weight:600;position:sticky;left:0;z-index:10}
-    .timeline-hour{padding:.75rem;background:var(--bg-surface);text-align:center;font-family:'JetBrains Mono',monospace;font-size:.8rem}
-    .timeline-row{display:grid;grid-template-columns:150px repeat(24,60px);gap:1px;margin-bottom:1px}
-    .timeline-cell{padding:.75rem;text-align:center;font-size:.75rem}
-    .timeline-cell.work{background:var(--accent-green);color:#000}
-    .timeline-cell.sleep{background:var(--text-muted);color:var(--bg-deep)}
-    .timeline-cell.awkward{background:var(--accent-yellow);color:#000}
-    .legend{display:flex;gap:1.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap}
-    .legend-item{display:flex;align-items:center;gap:.5rem;font-size:.85rem}
-    .legend-box{width:20px;height:20px;border-radius:4px}
-    .legend-box.work{background:var(--accent-green)}
-    .legend-box.awkward{background:var(--accent-yellow)}
-    .legend-box.sleep{background:var(--text-muted)}
-    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
-    footer a{color:var(--accent-blue);text-decoration:none}
-    @media(max-width:768px){.meeting-input{flex-direction:column;align-items:stretch}.timeline{font-size:.75rem}}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">跨时区会议</span>
-    </nav>
-
-    <h1>🌍 跨时区会议安排</h1>
-    <p class="subtitle">找到适合所有参会者的最佳会议时间</p>
-
-    <div class="card">
-      <div class="card-title">👥 参会者位置</div>
-      <div class="locations" id="locations">
-        <!-- Locations will be rendered here -->
-      </div>
-      <button class="add-location" onclick="addLocation()">+ 添加位置</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📋 会议时间安排</div>
-      <div class="meeting-input">
-        <label>会议时间:</label>
-        <input type="time" id="meetingTime" value="14:00" onchange="render()">
-        <label>在时区:</label>
-        <select id="baseTimezone" onchange="render()">
-          <option value="8">中国 (UTC+8)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="timeline">
-      <div class="card-title">⏰ 各地时间对照</div>
-      <div id="timelineContent">
-        <!-- Timeline will be rendered here -->
-      </div>
-      <div class="legend">
-        <div class="legend-item">
-          <div class="legend-box work"></div>
-          <span>工作时间 (9-18)</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-box awkward"></div>
-          <span>不便时间 (7-9, 18-22)</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-box sleep"></div>
-          <span>休息时间 (22-7)</span>
-        </div>
-      </div>
-    </div>
-
-    <footer>
-      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
-    </footer>
-  </div>
-
-  <script>
-    const TIMEZONES = [
-      { name: '中国 (UTC+8)', offset: 8, cities: 'Beijing, Shanghai, Hong Kong' },
-      { name: '日本/韩国 (UTC+9)', offset: 9, cities: 'Tokyo, Seoul' },
-      { name: '新加坡 (UTC+8)', offset: 8, cities: 'Singapore' },
-      { name: '印度 (UTC+5:30)', offset: 5.5, cities: 'Mumbai, Delhi' },
-      { name: '迪拜 (UTC+4)', offset: 4, cities: 'Dubai' },
-      { name: '莫斯科 (UTC+3)', offset: 3, cities: 'Moscow' },
-      { name: '英国 (UTC+0)', offset: 0, cities: 'London' },
-      { name: '德国/法国 (UTC+1)', offset: 1, cities: 'Berlin, Paris' },
-      { name: '美东 (UTC-5)', offset: -5, cities: 'New York, Toronto' },
-      { name: '美中 (UTC-6)', offset: -6, cities: 'Chicago, Dallas' },
-      { name: '美西 (UTC-8)', offset: -8, cities: 'San Francisco, LA' },
-      { name: '澳洲东部 (UTC+10)', offset: 10, cities: 'Sydney, Melbourne' }
-    ];
-
-    let locations = [
-      { id: 1, name: '北京', timezone: 8 },
-      { id: 2, name: '纽约', timezone: -5 },
-      { id: 3, name: '伦敦', timezone: 0 }
-    ];
-
-    function addLocation() {
-      locations.push({
-        id: Date.now(),
-        name: '新位置',
-        timezone: 8
-      });
-      render();
-    }
-
-    function deleteLocation(id) {
-      if (locations.length <= 1) {
-        alert('至少需要保留一个位置');
-        return;
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-green: #00d26a;
+        --accent-yellow: #ffd93d;
+        --accent-red: #ff6b6b;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
       }
-      locations = locations.filter(l => l.id !== id);
-      render();
-    }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--accent-cyan);
+      }
+      .meeting-input {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .meeting-input label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      .meeting-input input {
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .meeting-input input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .locations {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .location-item {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+      }
+      .location-item input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .location-item select {
+        flex: 2;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .location-item input:focus,
+      .location-item select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .location-delete {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.5rem;
+        transition: all 0.2s;
+        font-size: 1.2rem;
+      }
+      .location-delete:hover {
+        color: var(--accent-red);
+        transform: scale(1.1);
+      }
+      .add-location {
+        padding: 0.75rem;
+        border: 2px dashed var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+        width: 100%;
+      }
+      .add-location:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+      .timeline {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        overflow-x: auto;
+      }
+      .timeline-header {
+        display: grid;
+        grid-template-columns: 150px repeat(24, 60px);
+        gap: 1px;
+        margin-bottom: 0.5rem;
+      }
+      .timeline-location {
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        font-weight: 600;
+        position: sticky;
+        left: 0;
+        z-index: 10;
+      }
+      .timeline-hour {
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        text-align: center;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 150px repeat(24, 60px);
+        gap: 1px;
+        margin-bottom: 1px;
+      }
+      .timeline-cell {
+        padding: 0.75rem;
+        text-align: center;
+        font-size: 0.75rem;
+      }
+      .timeline-cell.work {
+        background: var(--accent-green);
+        color: #000;
+      }
+      .timeline-cell.sleep {
+        background: var(--text-muted);
+        color: var(--bg-deep);
+      }
+      .timeline-cell.awkward {
+        background: var(--accent-yellow);
+        color: #000;
+      }
+      .legend {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+      }
+      .legend-box {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+      }
+      .legend-box.work {
+        background: var(--accent-green);
+      }
+      .legend-box.awkward {
+        background: var(--accent-yellow);
+      }
+      .legend-box.sleep {
+        background: var(--text-muted);
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-subtle);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+      footer a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+      @media (max-width: 768px) {
+        .meeting-input {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .timeline {
+          font-size: 0.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-    function updateLocation(id, field, value) {
-      const location = locations.find(l => l.id === id);
-      if (location) {
-        location[field] = field === 'timezone' ? parseFloat(value) : value;
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">跨时区会议</span>
+      </nav>
+
+      <h1>🌍 跨时区会议安排</h1>
+      <p class="subtitle">找到适合所有参会者的最佳会议时间</p>
+
+      <div class="card">
+        <div class="card-title">👥 参会者位置</div>
+        <div class="locations" id="locations">
+          <!-- Locations will be rendered here -->
+        </div>
+        <button class="add-location" onclick="addLocation()">+ 添加位置</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 会议时间安排</div>
+        <div class="meeting-input">
+          <label>会议时间:</label>
+          <input type="time" id="meetingTime" value="14:00" onchange="render()" />
+          <label>在时区:</label>
+          <select id="baseTimezone" onchange="render()">
+            <option value="8">中国 (UTC+8)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="card-title">⏰ 各地时间对照</div>
+        <div id="timelineContent">
+          <!-- Timeline will be rendered here -->
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-box work"></div>
+            <span>工作时间 (9-18)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box awkward"></div>
+            <span>不便时间 (7-9, 18-22)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box sleep"></div>
+            <span>休息时间 (22-7)</span>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+      </footer>
+    </div>
+
+    <script>
+      const TIMEZONES = [
+        { name: "中国 (UTC+8)", offset: 8, cities: "Beijing, Shanghai, Hong Kong" },
+        { name: "日本/韩国 (UTC+9)", offset: 9, cities: "Tokyo, Seoul" },
+        { name: "新加坡 (UTC+8)", offset: 8, cities: "Singapore" },
+        { name: "印度 (UTC+5:30)", offset: 5.5, cities: "Mumbai, Delhi" },
+        { name: "迪拜 (UTC+4)", offset: 4, cities: "Dubai" },
+        { name: "莫斯科 (UTC+3)", offset: 3, cities: "Moscow" },
+        { name: "英国 (UTC+0)", offset: 0, cities: "London" },
+        { name: "德国/法国 (UTC+1)", offset: 1, cities: "Berlin, Paris" },
+        { name: "美东 (UTC-5)", offset: -5, cities: "New York, Toronto" },
+        { name: "美中 (UTC-6)", offset: -6, cities: "Chicago, Dallas" },
+        { name: "美西 (UTC-8)", offset: -8, cities: "San Francisco, LA" },
+        { name: "澳洲东部 (UTC+10)", offset: 10, cities: "Sydney, Melbourne" }
+      ];
+
+      let locations = [
+        { id: 1, name: "北京", timezone: 8 },
+        { id: 2, name: "纽约", timezone: -5 },
+        { id: 3, name: "伦敦", timezone: 0 }
+      ];
+
+      function addLocation() {
+        locations.push({
+          id: Date.now(),
+          name: "新位置",
+          timezone: 8
+        });
+        render();
+      }
+
+      function deleteLocation(id) {
+        if (locations.length <= 1) {
+          alert("至少需要保留一个位置");
+          return;
+        }
+        locations = locations.filter((l) => l.id !== id);
+        render();
+      }
+
+      function updateLocation(id, field, value) {
+        const location = locations.find((l) => l.id === id);
+        if (location) {
+          location[field] = field === "timezone" ? parseFloat(value) : value;
+          renderTimeline();
+        }
+      }
+
+      function getHourClass(hour) {
+        if (hour >= 9 && hour < 18) return "work";
+        if ((hour >= 7 && hour < 9) || (hour >= 18 && hour < 22)) return "awkward";
+        return "sleep";
+      }
+
+      function render() {
+        renderLocations();
         renderTimeline();
       }
-    }
 
-    function getHourClass(hour) {
-      if (hour >= 9 && hour < 18) return 'work';
-      if ((hour >= 7 && hour < 9) || (hour >= 18 && hour < 22)) return 'awkward';
-      return 'sleep';
-    }
-
-    function render() {
-      renderLocations();
-      renderTimeline();
-    }
-
-    function renderLocations() {
-      const container = document.getElementById('locations');
-      container.innerHTML = locations.map(loc => `
+      function renderLocations() {
+        const container = document.getElementById("locations");
+        container.innerHTML = locations
+          .map(
+            (loc) => `
         <div class="location-item">
           <input type="text" value="${loc.name}" onchange="updateLocation(${loc.id}, 'name', this.value)" placeholder="位置名称">
           <select onchange="updateLocation(${loc.id}, 'timezone', this.value)">
-            ${TIMEZONES.map(tz => `
-              <option value="${tz.offset}" ${tz.offset === loc.timezone ? 'selected' : ''}>
+            ${TIMEZONES.map(
+              (tz) => `
+              <option value="${tz.offset}" ${tz.offset === loc.timezone ? "selected" : ""}>
                 ${tz.name}
               </option>
-            `).join('')}
+            `
+            ).join("")}
           </select>
           <button class="location-delete" onclick="deleteLocation(${loc.id})">×</button>
         </div>
-      `).join('');
-    }
-
-    function renderTimeline() {
-      const meetingTime = document.getElementById('meetingTime').value;
-      const baseTimezone = parseFloat(document.getElementById('baseTimezone').value);
-      const [hours, minutes] = meetingTime.split(':').map(Number);
-
-      const baseHour = hours;
-
-      // Render header
-      let headerHTML = '<div class="timeline-header">';
-      headerHTML += '<div class="timeline-location">位置</div>';
-      for (let h = 0; h < 24; h++) {
-        headerHTML += `<div class="timeline-hour">${String(h).padStart(2, '0')}:00</div>`;
+      `
+          )
+          .join("");
       }
-      headerHTML += '</div>';
 
-      // Render rows
-      let rowsHTML = '';
-      locations.forEach(loc => {
-        const offset = loc.timezone - baseTimezone;
-        rowsHTML += '<div class="timeline-row">';
-        rowsHTML += `<div class="timeline-location">${loc.name}</div>`;
+      function renderTimeline() {
+        const meetingTime = document.getElementById("meetingTime").value;
+        const baseTimezone = parseFloat(document.getElementById("baseTimezone").value);
+        const [hours, minutes] = meetingTime.split(":").map(Number);
 
+        const baseHour = hours;
+
+        // Render header
+        let headerHTML = '<div class="timeline-header">';
+        headerHTML += '<div class="timeline-location">位置</div>';
         for (let h = 0; h < 24; h++) {
-          let localHour = (baseHour + offset + h) % 24;
-          if (localHour < 0) localHour += 24;
-
-          const hourClass = getHourClass(Math.floor(localHour));
-          const isMeeting = h === 0;
-          const cellContent = isMeeting ? '🎯' : '';
-
-          rowsHTML += `<div class="timeline-cell ${hourClass}">${cellContent}</div>`;
+          headerHTML += `<div class="timeline-hour">${String(h).padStart(2, "0")}:00</div>`;
         }
+        headerHTML += "</div>";
 
-        rowsHTML += '</div>';
-      });
+        // Render rows
+        let rowsHTML = "";
+        locations.forEach((loc) => {
+          const offset = loc.timezone - baseTimezone;
+          rowsHTML += '<div class="timeline-row">';
+          rowsHTML += `<div class="timeline-location">${loc.name}</div>`;
 
-      document.getElementById('timelineContent').innerHTML = headerHTML + rowsHTML;
-    }
+          for (let h = 0; h < 24; h++) {
+            let localHour = (baseHour + offset + h) % 24;
+            if (localHour < 0) localHour += 24;
 
-    // Populate base timezone selector
-    const baseTimezoneSelect = document.getElementById('baseTimezone');
-    baseTimezoneSelect.innerHTML = TIMEZONES.map(tz => `
-      <option value="${tz.offset}">${tz.name}</option>
-    `).join('');
+            const hourClass = getHourClass(Math.floor(localHour));
+            const isMeeting = h === 0;
+            const cellContent = isMeeting ? "🎯" : "";
 
-    // Initialize
-    render();
+            rowsHTML += `<div class="timeline-cell ${hourClass}">${cellContent}</div>`;
+          }
 
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
+          rowsHTML += "</div>";
+        });
 
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+        document.getElementById("timelineContent").innerHTML = headerHTML + rowsHTML;
       }
-    })();
-  </script>
-</body>
+
+      // Populate base timezone selector
+      const baseTimezoneSelect = document.getElementById("baseTimezone");
+      baseTimezoneSelect.innerHTML = TIMEZONES.map(
+        (tz) => `
+      <option value="${tz.offset}">${tz.name}</option>
+    `
+      ).join("");
+
+      // Initialize
+      render();
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
+      };
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

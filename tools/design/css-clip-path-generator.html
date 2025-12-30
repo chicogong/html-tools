@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSS Clip-Path 生成器 - WebUtils</title>
+  <meta name="description" content="CSS clip-path 裁剪路径可视化生成器" />
+  <meta name="keywords" content="clip-path CSS 裁剪 形状 生成器" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .shapes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .shape-btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
+    .shape-btn:hover, .shape-btn.active { border-color: var(--primary); color: var(--primary); }
+    .preview-area { height: 300px; background: var(--bg); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative; }
+    .preview-element { width: 250px; height: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: clip-path 0.3s; }
+    .output { margin-top: 20px; }
+    .output textarea { width: 100%; height: 80px; padding: 12px; font-family: ui-monospace, monospace; font-size: 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; background: var(--bg); color: var(--text); }
+    .btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 20px; }
+    .control-group { display: flex; flex-direction: column; gap: 8px; }
+    .control-group label { font-weight: 500; font-size: 0.9rem; }
+    .control-group input[type="range"] { width: 100%; }
+    .value { font-family: ui-monospace, monospace; color: var(--text-muted); font-size: 0.85rem; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>CSS Clip-Path 生成器</h1>
+    <p class="desc">可视化生成 CSS clip-path 裁剪效果</p>
+
+    <div class="card">
+      <div class="shapes">
+        <button class="shape-btn active" onclick="setShape('triangle', this)">三角形</button>
+        <button class="shape-btn" onclick="setShape('trapezoid', this)">梯形</button>
+        <button class="shape-btn" onclick="setShape('parallelogram', this)">平行四边形</button>
+        <button class="shape-btn" onclick="setShape('rhombus', this)">菱形</button>
+        <button class="shape-btn" onclick="setShape('pentagon', this)">五边形</button>
+        <button class="shape-btn" onclick="setShape('hexagon', this)">六边形</button>
+        <button class="shape-btn" onclick="setShape('octagon', this)">八边形</button>
+        <button class="shape-btn" onclick="setShape('star', this)">星形</button>
+        <button class="shape-btn" onclick="setShape('cross', this)">十字</button>
+        <button class="shape-btn" onclick="setShape('arrow', this)">箭头</button>
+        <button class="shape-btn" onclick="setShape('circle', this)">圆形</button>
+        <button class="shape-btn" onclick="setShape('ellipse', this)">椭圆</button>
+      </div>
+
+      <div class="preview-area">
+        <div class="preview-element" id="previewElement"></div>
+      </div>
+
+      <div id="controlsContainer" class="controls"></div>
+
+      <div class="output">
+        <textarea id="output" readonly></textarea>
+        <button class="btn" onclick="copyCSS()" style="margin-top: 12px;">复制 CSS</button>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    let currentShape = 'triangle';
+
+    const shapes = {
+      triangle: () => 'polygon(50% 0%, 0% 100%, 100% 100%)',
+      trapezoid: () => 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)',
+      parallelogram: () => 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)',
+      rhombus: () => 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+      pentagon: () => 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
+      hexagon: () => 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+      octagon: () => 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
+      star: () => 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
+      cross: () => 'polygon(35% 0%, 65% 0%, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0% 65%, 0% 35%, 35% 35%)',
+      arrow: () => 'polygon(40% 0%, 40% 40%, 0% 40%, 50% 100%, 100% 40%, 60% 40%, 60% 0%)',
+      circle: (r) => `circle(${r || 50}% at 50% 50%)`,
+      ellipse: (rx, ry) => `ellipse(${rx || 50}% ${ry || 35}% at 50% 50%)`
+    };
+
+    function setShape(shape, btn) {
+      currentShape = shape;
+      document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderControls();
+      updateClipPath();
+    }
+
+    function renderControls() {
+      const container = document.getElementById('controlsContainer');
+
+      if (currentShape === 'circle') {
+        container.innerHTML = `
+          <div class="control-group">
+            <label>半径: <span class="value" id="radiusVal">50%</span></label>
+            <input type="range" id="radius" min="10" max="70" value="50" oninput="updateClipPath()" />
+          </div>
+        `;
+      } else if (currentShape === 'ellipse') {
+        container.innerHTML = `
+          <div class="control-group">
+            <label>水平半径: <span class="value" id="rxVal">50%</span></label>
+            <input type="range" id="rx" min="10" max="70" value="50" oninput="updateClipPath()" />
+          </div>
+          <div class="control-group">
+            <label>垂直半径: <span class="value" id="ryVal">35%</span></label>
+            <input type="range" id="ry" min="10" max="70" value="35" oninput="updateClipPath()" />
+          </div>
+        `;
+      } else {
+        container.innerHTML = '';
+      }
+    }
+
+    function updateClipPath() {
+      let clipPath;
+
+      if (currentShape === 'circle') {
+        const r = document.getElementById('radius')?.value || 50;
+        document.getElementById('radiusVal').textContent = r + '%';
+        clipPath = shapes.circle(r);
+      } else if (currentShape === 'ellipse') {
+        const rx = document.getElementById('rx')?.value || 50;
+        const ry = document.getElementById('ry')?.value || 35;
+        document.getElementById('rxVal').textContent = rx + '%';
+        document.getElementById('ryVal').textContent = ry + '%';
+        clipPath = shapes.ellipse(rx, ry);
+      } else {
+        clipPath = shapes[currentShape]();
+      }
+
+      document.getElementById('previewElement').style.clipPath = clipPath;
+      document.getElementById('output').value = `clip-path: ${clipPath};`;
+    }
+
+    function copyCSS() {
+      navigator.clipboard.writeText(document.getElementById('output').value);
+    }
+
+    renderControls();
+    updateClipPath();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

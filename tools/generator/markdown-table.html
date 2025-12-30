@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Markdown 表格生成器 - WebUtils</title>
+  <meta name="description" content="可视化生成 Markdown 表格" />
+  <meta name="keywords" content="Markdown table generator 表格 生成器 可视化" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .control-group { display: flex; align-items: center; gap: 8px; }
+    .control-group label { font-size: 0.85rem; color: var(--text-muted); }
+    .control-group input { width: 60px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); text-align: center; }
+    .btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .table-editor { overflow-x: auto; margin-bottom: 20px; }
+    .table-editor table { border-collapse: collapse; width: 100%; min-width: 500px; }
+    .table-editor th, .table-editor td { border: 1px solid var(--border); padding: 0; }
+    .table-editor input { width: 100%; padding: 10px; border: none; background: transparent; color: var(--text); font-size: 0.9rem; }
+    .table-editor th input { font-weight: 600; background: var(--bg); }
+    .table-editor .align-row { background: var(--bg); }
+    .table-editor .align-row select { width: 100%; padding: 6px; border: none; background: transparent; color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+    .row-actions { display: flex; gap: 4px; padding: 4px; }
+    .row-actions button { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--card-bg); color: var(--text-muted); cursor: pointer; font-size: 0.75rem; }
+    .row-actions button:hover { color: var(--primary); border-color: var(--primary); }
+    h4 { margin: 0 0 12px; font-size: 0.95rem; }
+    .output-code { padding: 16px; background: var(--bg); border-radius: var(--radius); font-family: ui-monospace, monospace; font-size: 0.85rem; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+    .preview-table { margin-top: 20px; }
+    .preview-table table { border-collapse: collapse; width: 100%; }
+    .preview-table th, .preview-table td { border: 1px solid var(--border); padding: 10px 12px; }
+    .preview-table th { background: var(--bg); font-weight: 600; }
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>Markdown 表格生成器</h1>
+    <p class="desc">可视化编辑并生成 Markdown 表格</p>
+
+    <div class="card">
+      <div class="controls">
+        <div class="control-group">
+          <label>列数:</label>
+          <input type="number" id="cols" value="3" min="1" max="20" onchange="resizeTable()" />
+        </div>
+        <div class="control-group">
+          <label>行数:</label>
+          <input type="number" id="rows" value="3" min="1" max="50" onchange="resizeTable()" />
+        </div>
+        <button class="btn" onclick="addColumn()">+ 列</button>
+        <button class="btn" onclick="addRow()">+ 行</button>
+        <button class="btn" onclick="clearTable()">清空</button>
+        <button class="btn" onclick="loadSample()">示例</button>
+      </div>
+
+      <div class="table-editor">
+        <table id="editTable"></table>
+      </div>
+
+      <h4>生成的 Markdown</h4>
+      <div class="output-code" id="output"></div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="copyMarkdown()">复制 Markdown</button>
+      </div>
+
+      <div class="preview-table">
+        <h4>预览</h4>
+        <div id="preview"></div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    let tableData = {
+      headers: ['列 1', '列 2', '列 3'],
+      aligns: ['left', 'left', 'left'],
+      rows: [
+        ['数据 1', '数据 2', '数据 3'],
+        ['数据 4', '数据 5', '数据 6'],
+        ['数据 7', '数据 8', '数据 9']
+      ]
+    };
+
+    function renderEditTable() {
+      const table = document.getElementById('editTable');
+      let html = '<thead><tr>';
+
+      // Header row
+      tableData.headers.forEach((h, i) => {
+        html += `<th><input type="text" value="${escapeHtml(h)}" onchange="updateHeader(${i}, this.value)" /></th>`;
+      });
+      html += '</tr>';
+
+      // Align row
+      html += '<tr class="align-row">';
+      tableData.aligns.forEach((a, i) => {
+        html += `<td><select onchange="updateAlign(${i}, this.value)">
+          <option value="left" ${a === 'left' ? 'selected' : ''}>左对齐</option>
+          <option value="center" ${a === 'center' ? 'selected' : ''}>居中</option>
+          <option value="right" ${a === 'right' ? 'selected' : ''}>右对齐</option>
+        </select></td>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      // Data rows
+      tableData.rows.forEach((row, ri) => {
+        html += '<tr>';
+        row.forEach((cell, ci) => {
+          html += `<td><input type="text" value="${escapeHtml(cell)}" onchange="updateCell(${ri}, ${ci}, this.value)" /></td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      table.innerHTML = html;
+
+      generateMarkdown();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function updateHeader(index, value) {
+      tableData.headers[index] = value;
+      generateMarkdown();
+    }
+
+    function updateAlign(index, value) {
+      tableData.aligns[index] = value;
+      generateMarkdown();
+    }
+
+    function updateCell(row, col, value) {
+      tableData.rows[row][col] = value;
+      generateMarkdown();
+    }
+
+    function addColumn() {
+      const colNum = tableData.headers.length + 1;
+      tableData.headers.push(`列 ${colNum}`);
+      tableData.aligns.push('left');
+      tableData.rows.forEach(row => row.push(''));
+      document.getElementById('cols').value = tableData.headers.length;
+      renderEditTable();
+    }
+
+    function addRow() {
+      const newRow = tableData.headers.map(() => '');
+      tableData.rows.push(newRow);
+      document.getElementById('rows').value = tableData.rows.length;
+      renderEditTable();
+    }
+
+    function resizeTable() {
+      const cols = parseInt(document.getElementById('cols').value) || 1;
+      const rows = parseInt(document.getElementById('rows').value) || 1;
+
+      // Resize columns
+      while (tableData.headers.length < cols) {
+        tableData.headers.push(`列 ${tableData.headers.length + 1}`);
+        tableData.aligns.push('left');
+        tableData.rows.forEach(row => row.push(''));
+      }
+      while (tableData.headers.length > cols) {
+        tableData.headers.pop();
+        tableData.aligns.pop();
+        tableData.rows.forEach(row => row.pop());
+      }
+
+      // Resize rows
+      while (tableData.rows.length < rows) {
+        tableData.rows.push(tableData.headers.map(() => ''));
+      }
+      while (tableData.rows.length > rows) {
+        tableData.rows.pop();
+      }
+
+      renderEditTable();
+    }
+
+    function clearTable() {
+      const cols = tableData.headers.length;
+      const rows = tableData.rows.length;
+      tableData.headers = tableData.headers.map((_, i) => `列 ${i + 1}`);
+      tableData.aligns = tableData.aligns.map(() => 'left');
+      tableData.rows = tableData.rows.map(() => tableData.headers.map(() => ''));
+      renderEditTable();
+    }
+
+    function loadSample() {
+      tableData = {
+        headers: ['功能', '免费版', '专业版', '企业版'],
+        aligns: ['left', 'center', 'center', 'center'],
+        rows: [
+          ['存储空间', '5 GB', '100 GB', '无限'],
+          ['API 调用', '1000/月', '10000/月', '无限'],
+          ['技术支持', '社区', '邮件', '24/7 专属'],
+          ['价格', '免费', '$9/月', '联系销售']
+        ]
+      };
+      document.getElementById('cols').value = 4;
+      document.getElementById('rows').value = 4;
+      renderEditTable();
+    }
+
+    function generateMarkdown() {
+      // Calculate column widths
+      const widths = tableData.headers.map((h, i) => {
+        let max = h.length;
+        tableData.rows.forEach(row => {
+          if (row[i].length > max) max = row[i].length;
+        });
+        return Math.max(max, 3);
+      });
+
+      // Generate markdown
+      let md = '| ' + tableData.headers.map((h, i) => h.padEnd(widths[i])).join(' | ') + ' |\n';
+
+      // Separator row
+      md += '| ' + tableData.aligns.map((a, i) => {
+        const w = widths[i];
+        if (a === 'center') return ':' + '-'.repeat(w - 2) + ':';
+        if (a === 'right') return '-'.repeat(w - 1) + ':';
+        return '-'.repeat(w);
+      }).join(' | ') + ' |\n';
+
+      // Data rows
+      tableData.rows.forEach(row => {
+        md += '| ' + row.map((cell, i) => cell.padEnd(widths[i])).join(' | ') + ' |\n';
+      });
+
+      document.getElementById('output').textContent = md;
+
+      // Preview
+      let previewHtml = '<table><thead><tr>';
+      tableData.headers.forEach((h, i) => {
+        const align = tableData.aligns[i];
+        previewHtml += `<th style="text-align: ${align}">${escapeHtml(h)}</th>`;
+      });
+      previewHtml += '</tr></thead><tbody>';
+      tableData.rows.forEach(row => {
+        previewHtml += '<tr>';
+        row.forEach((cell, i) => {
+          const align = tableData.aligns[i];
+          previewHtml += `<td style="text-align: ${align}">${escapeHtml(cell)}</td>`;
+        });
+        previewHtml += '</tr>';
+      });
+      previewHtml += '</tbody></table>';
+      document.getElementById('preview').innerHTML = previewHtml;
+    }
+
+    function copyMarkdown() {
+      navigator.clipboard.writeText(document.getElementById('output').textContent);
+    }
+
+    renderEditTable();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

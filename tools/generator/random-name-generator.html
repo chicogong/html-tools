@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>随机姓名生成器 - WebUtils</title>
+  <meta name="description" content="生成随机中英文姓名，支持性别选择" />
+  <meta name="keywords" content="随机姓名 名字生成器 假名 测试数据" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 700px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .options { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+    .options select, .options input { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); }
+    .options input[type="number"] { width: 80px; }
+    .btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .result { margin-top: 20px; }
+    .name-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .name-item { padding: 16px; background: var(--bg); border-radius: var(--radius); text-align: center; cursor: pointer; transition: all 0.2s; }
+    .name-item:hover { transform: scale(1.02); }
+    .name-item .name { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
+    .name-item .type { font-size: 0.8rem; color: var(--text-muted); }
+    .output { margin-top: 20px; }
+    .output textarea { width: 100%; height: 150px; padding: 12px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; background: var(--bg); color: var(--text); }
+    .btn-row { display: flex; gap: 12px; margin-top: 12px; }
+    .status { font-size: 0.85rem; color: var(--success); margin-top: 8px; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>随机姓名生成器</h1>
+    <p class="desc">生成随机中英文姓名，适合测试数据</p>
+
+    <div class="card">
+      <div class="options">
+        <label>类型:</label>
+        <select id="type">
+          <option value="chinese">中文姓名</option>
+          <option value="english">英文姓名</option>
+          <option value="both">中英文混合</option>
+        </select>
+        <label>性别:</label>
+        <select id="gender">
+          <option value="random">随机</option>
+          <option value="male">男性</option>
+          <option value="female">女性</option>
+        </select>
+        <label>数量:</label>
+        <input type="number" id="count" value="10" min="1" max="100" />
+        <button class="btn primary" onclick="generate()">生成</button>
+      </div>
+
+      <div class="result">
+        <div class="name-list" id="nameList"></div>
+      </div>
+
+      <div class="output">
+        <textarea id="output" readonly></textarea>
+        <div class="btn-row">
+          <button class="btn" onclick="copyText()">复制全部</button>
+          <button class="btn" onclick="generate()">重新生成</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const chineseSurnames = ['王', '李', '张', '刘', '陈', '杨', '黄', '赵', '周', '吴', '徐', '孙', '马', '朱', '胡', '郭', '林', '何', '高', '罗'];
+    const chineseMaleNames = ['伟', '强', '磊', '洋', '勇', '军', '杰', '涛', '明', '辉', '鹏', '飞', '超', '宇', '俊', '浩', '峰', '华', '建', '志'];
+    const chineseFemaleNames = ['芳', '娟', '敏', '静', '丽', '婷', '雪', '燕', '玲', '华', '红', '梅', '秀', '英', '莉', '桂', '兰', '萍', '霞', '颖'];
+
+    const englishMaleFirstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Steven'];
+    const englishFemaleFirstNames = ['Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Lisa', 'Nancy', 'Emily', 'Ashley', 'Amanda'];
+    const englishLastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson'];
+
+    function random(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function generateChineseName(gender) {
+      const surname = random(chineseSurnames);
+      const g = gender === 'random' ? (Math.random() > 0.5 ? 'male' : 'female') : gender;
+      const names = g === 'male' ? chineseMaleNames : chineseFemaleNames;
+      const nameLength = Math.random() > 0.5 ? 1 : 2;
+      let name = '';
+      for (let i = 0; i < nameLength; i++) {
+        name += random(names);
+      }
+      return { name: surname + name, type: '中文', gender: g === 'male' ? '男' : '女' };
+    }
+
+    function generateEnglishName(gender) {
+      const g = gender === 'random' ? (Math.random() > 0.5 ? 'male' : 'female') : gender;
+      const firstNames = g === 'male' ? englishMaleFirstNames : englishFemaleFirstNames;
+      const firstName = random(firstNames);
+      const lastName = random(englishLastNames);
+      return { name: firstName + ' ' + lastName, type: 'English', gender: g === 'male' ? '男' : '女' };
+    }
+
+    function generate() {
+      const type = document.getElementById('type').value;
+      const gender = document.getElementById('gender').value;
+      const count = parseInt(document.getElementById('count').value) || 10;
+
+      const names = [];
+      for (let i = 0; i < count; i++) {
+        let name;
+        if (type === 'chinese') {
+          name = generateChineseName(gender);
+        } else if (type === 'english') {
+          name = generateEnglishName(gender);
+        } else {
+          name = Math.random() > 0.5 ? generateChineseName(gender) : generateEnglishName(gender);
+        }
+        names.push(name);
+      }
+
+      // 显示名字卡片
+      document.getElementById('nameList').innerHTML = names.map(n => `
+        <div class="name-item" onclick="copyName('${n.name}')">
+          <div class="name">${n.name}</div>
+          <div class="type">${n.type} · ${n.gender}</div>
+        </div>
+      `).join('');
+
+      // 显示文本列表
+      document.getElementById('output').value = names.map(n => n.name).join('\n');
+    }
+
+    function copyName(name) {
+      navigator.clipboard.writeText(name).then(() => {
+        document.getElementById('status').textContent = '已复制: ' + name;
+        setTimeout(() => document.getElementById('status').textContent = '', 2000);
+      });
+    }
+
+    function copyText() {
+      const text = document.getElementById('output').value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('status').textContent = '已复制全部姓名';
+        setTimeout(() => document.getElementById('status').textContent = '', 2000);
+      });
+    }
+
+    generate();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>测试信用卡号生成器 - WebUtils</title>
+  <meta name="description" content="生成符合 Luhn 算法的测试信用卡号" />
+  <meta name="keywords" content="信用卡号 credit card luhn 测试数据 开发测试" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 700px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; font-size: 0.9rem; }
+    [data-theme="dark"] .warning { background: #332701; border-color: #664d03; color: #ffc107; }
+    .options { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+    .options select, .options input { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); }
+    .btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .credit-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 24px; color: #fff; margin: 20px 0; aspect-ratio: 1.586; max-width: 400px; position: relative; }
+    .credit-card .card-type { font-size: 1.5rem; font-weight: 700; margin-bottom: 30px; }
+    .credit-card .card-number { font-size: 1.5rem; font-family: ui-monospace, monospace; letter-spacing: 2px; margin-bottom: 20px; }
+    .credit-card .card-info { display: flex; justify-content: space-between; }
+    .credit-card .info-item .label { font-size: 0.7rem; opacity: 0.8; margin-bottom: 4px; }
+    .credit-card .info-item .value { font-size: 1rem; font-family: ui-monospace, monospace; }
+    .result-list { margin-top: 20px; }
+    .result-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg); border-radius: var(--radius); margin-bottom: 8px; }
+    .result-item .number { font-family: ui-monospace, monospace; font-size: 1rem; }
+    .result-item .copy-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.8rem; }
+    .result-item .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>测试信用卡号生成器</h1>
+    <p class="desc">生成符合 Luhn 算法的测试卡号</p>
+
+    <div class="warning">
+      ⚠️ 仅供开发测试使用！生成的卡号符合格式但无法用于真实交易。请勿用于任何非法目的。
+    </div>
+
+    <div class="card">
+      <div class="options">
+        <select id="cardType">
+          <option value="visa">Visa</option>
+          <option value="mastercard">MasterCard</option>
+          <option value="amex">American Express</option>
+          <option value="discover">Discover</option>
+          <option value="jcb">JCB</option>
+          <option value="unionpay">UnionPay 银联</option>
+        </select>
+        <input type="number" id="count" value="5" min="1" max="20" />
+        <button class="btn primary" onclick="generate()">生成</button>
+      </div>
+
+      <div class="credit-card" id="cardPreview">
+        <div class="card-type" id="previewType">VISA</div>
+        <div class="card-number" id="previewNumber">4532 •••• •••• ••••</div>
+        <div class="card-info">
+          <div class="info-item">
+            <div class="label">VALID THRU</div>
+            <div class="value" id="previewExpiry">12/28</div>
+          </div>
+          <div class="info-item">
+            <div class="label">CVV</div>
+            <div class="value" id="previewCvv">•••</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-list" id="resultList"></div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const cardPrefixes = {
+      visa: { prefixes: ['4'], length: 16 },
+      mastercard: { prefixes: ['51', '52', '53', '54', '55'], length: 16 },
+      amex: { prefixes: ['34', '37'], length: 15 },
+      discover: { prefixes: ['6011', '644', '645', '646', '647', '648', '649', '65'], length: 16 },
+      jcb: { prefixes: ['3528', '3529', '353', '354', '355', '356', '357', '358'], length: 16 },
+      unionpay: { prefixes: ['62'], length: 16 }
+    };
+
+    function luhnChecksum(num) {
+      let sum = 0;
+      let isEven = false;
+
+      for (let i = num.length - 1; i >= 0; i--) {
+        let digit = parseInt(num[i]);
+
+        if (isEven) {
+          digit *= 2;
+          if (digit > 9) digit -= 9;
+        }
+
+        sum += digit;
+        isEven = !isEven;
+      }
+
+      return (10 - (sum % 10)) % 10;
+    }
+
+    function generateCardNumber(type) {
+      const config = cardPrefixes[type];
+      const prefix = config.prefixes[Math.floor(Math.random() * config.prefixes.length)];
+      const length = config.length;
+
+      let number = prefix;
+      while (number.length < length - 1) {
+        number += Math.floor(Math.random() * 10);
+      }
+
+      number += luhnChecksum(number);
+      return number;
+    }
+
+    function formatCardNumber(number) {
+      if (number.length === 15) {
+        return number.replace(/(\d{4})(\d{6})(\d{5})/, '$1 $2 $3');
+      }
+      return number.replace(/(\d{4})/g, '$1 ').trim();
+    }
+
+    function generateExpiry() {
+      const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+      const year = String(new Date().getFullYear() + Math.floor(Math.random() * 5) + 1).slice(-2);
+      return `${month}/${year}`;
+    }
+
+    function generateCVV(length = 3) {
+      return String(Math.floor(Math.random() * Math.pow(10, length))).padStart(length, '0');
+    }
+
+    function generate() {
+      const type = document.getElementById('cardType').value;
+      const count = parseInt(document.getElementById('count').value) || 5;
+
+      const results = [];
+      for (let i = 0; i < count; i++) {
+        const number = generateCardNumber(type);
+        const expiry = generateExpiry();
+        const cvvLength = type === 'amex' ? 4 : 3;
+        const cvv = generateCVV(cvvLength);
+        results.push({ number, expiry, cvv });
+      }
+
+      // Update preview
+      const first = results[0];
+      document.getElementById('previewType').textContent = type.toUpperCase();
+      document.getElementById('previewNumber').textContent = formatCardNumber(first.number);
+      document.getElementById('previewExpiry').textContent = first.expiry;
+      document.getElementById('previewCvv').textContent = first.cvv;
+
+      // Update card gradient based on type
+      const gradients = {
+        visa: 'linear-gradient(135deg, #1a1f71 0%, #004d40 100%)',
+        mastercard: 'linear-gradient(135deg, #eb001b 0%, #f79e1b 100%)',
+        amex: 'linear-gradient(135deg, #006fcf 0%, #00175a 100%)',
+        discover: 'linear-gradient(135deg, #ff6000 0%, #86b817 100%)',
+        jcb: 'linear-gradient(135deg, #0f4c81 0%, #00a94f 100%)',
+        unionpay: 'linear-gradient(135deg, #e21836 0%, #00447c 100%)'
+      };
+      document.getElementById('cardPreview').style.background = gradients[type];
+
+      // Display list
+      document.getElementById('resultList').innerHTML = results.map((r, i) => `
+        <div class="result-item">
+          <span class="number">${formatCardNumber(r.number)} | ${r.expiry} | ${r.cvv}</span>
+          <button class="copy-btn" onclick="copyCard('${r.number}', '${r.expiry}', '${r.cvv}')">复制</button>
+        </div>
+      `).join('');
+    }
+
+    function copyCard(number, expiry, cvv) {
+      const text = `卡号: ${formatCardNumber(number)}\n有效期: ${expiry}\nCVV: ${cvv}`;
+      navigator.clipboard.writeText(text);
+    }
+
+    generate();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

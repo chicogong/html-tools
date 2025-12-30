@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>端口扫描器 - WebUtils</title>
+  <meta name="description" content="检查常用端口状态和服务" />
+  <meta name="keywords" content="port scanner 端口 扫描 网络 服务 TCP" />
+  <style>
+    :root { --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d; --border: #dee2e6; --primary: #0d6efd; --success: #198754; --danger: #dc3545; --warning: #ffc107; --shadow: 0 2px 8px rgb(0,0,0,0.08); --radius: 8px; }
+    [data-theme="dark"] { --bg: #0a0a0f; --card-bg: #1a1a24; --text: #e8e8ed; --text-muted: #9898a4; --border: #2a2a36; --primary: #a855f7; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --shadow: 0 2px 8px rgb(0,0,0,0.3); }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: var(--primary); text-decoration: none; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .desc { color: var(--text-muted); margin: 0 0 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .theme-toggle { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); cursor: pointer; font-size: 1.2rem; z-index: 100; }
+    .warning { padding: 12px; background: rgba(255, 193, 7, 0.15); border-left: 3px solid var(--warning); border-radius: var(--radius); margin-bottom: 20px; font-size: 0.9rem; }
+    .port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 20px; }
+    .port-card { padding: 16px; background: var(--bg); border-radius: var(--radius); border-left: 3px solid var(--border); }
+    .port-card.open { border-left-color: var(--success); }
+    .port-card.closed { border-left-color: var(--danger); opacity: 0.6; }
+    .port-card.checking { border-left-color: var(--warning); }
+    .port-card .port-number { font-size: 1.5rem; font-weight: 700; font-family: ui-monospace, monospace; }
+    .port-card .service-name { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+    .port-card .status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; margin-top: 8px; font-weight: 600; }
+    .port-card .status.open { background: rgba(25, 135, 84, 0.15); color: var(--success); }
+    .port-card .status.closed { background: rgba(220, 53, 69, 0.15); color: var(--danger); }
+    .port-card .status.checking { background: rgba(255, 193, 7, 0.15); color: var(--warning); }
+    .scan-btn { width: 100%; padding: 12px; border: none; border-radius: var(--radius); background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; font-size: 1rem; }
+    .scan-btn:hover { opacity: 0.9; }
+    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; }
+    .filter-btn:hover { border-color: var(--primary); }
+    .filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    footer { text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回工具列表</a>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+    <h1>端口扫描器</h1>
+    <p class="desc">检查常用端口状态（仅供学习和测试）</p>
+
+    <div class="card">
+      <div class="warning">
+        ⚠️ 注意：此工具仅用于检查公开的常用端口状态，不能进行真实的端口扫描。浏览器出于安全限制无法直接扫描端口。此工具仅显示常用端口及其服务说明。
+      </div>
+
+      <button class="scan-btn" id="scanBtn" onclick="simulateScan(this)">模拟扫描常用端口</button>
+
+      <div class="filters" style="margin-top: 20px;">
+        <button class="filter-btn active" onclick="filterPorts('all', this)">全部</button>
+        <button class="filter-btn" onclick="filterPorts('web', this)">Web 服务</button>
+        <button class="filter-btn" onclick="filterPorts('database', this)">数据库</button>
+        <button class="filter-btn" onclick="filterPorts('other', this)">其他</button>
+      </div>
+
+      <div class="port-grid" id="portGrid"></div>
+    </div>
+
+    <footer>纯前端工具 · 无服务器 · <a href="../../index.html">WebUtils</a></footer>
+  </div>
+
+  <script>
+    const commonPorts = [
+      { port: 20, service: 'FTP Data', category: 'other' },
+      { port: 21, service: 'FTP Control', category: 'other' },
+      { port: 22, service: 'SSH', category: 'other' },
+      { port: 23, service: 'Telnet', category: 'other' },
+      { port: 25, service: 'SMTP', category: 'other' },
+      { port: 53, service: 'DNS', category: 'other' },
+      { port: 80, service: 'HTTP', category: 'web' },
+      { port: 110, service: 'POP3', category: 'other' },
+      { port: 143, service: 'IMAP', category: 'other' },
+      { port: 443, service: 'HTTPS', category: 'web' },
+      { port: 445, service: 'SMB', category: 'other' },
+      { port: 465, service: 'SMTPS', category: 'other' },
+      { port: 587, service: 'SMTP', category: 'other' },
+      { port: 993, service: 'IMAPS', category: 'other' },
+      { port: 995, service: 'POP3S', category: 'other' },
+      { port: 1433, service: 'SQL Server', category: 'database' },
+      { port: 3000, service: 'Node.js Dev', category: 'web' },
+      { port: 3306, service: 'MySQL', category: 'database' },
+      { port: 3389, service: 'RDP', category: 'other' },
+      { port: 5000, service: 'Flask Dev', category: 'web' },
+      { port: 5432, service: 'PostgreSQL', category: 'database' },
+      { port: 5900, service: 'VNC', category: 'other' },
+      { port: 6379, service: 'Redis', category: 'database' },
+      { port: 8000, service: 'HTTP Alt', category: 'web' },
+      { port: 8080, service: 'HTTP Proxy', category: 'web' },
+      { port: 8443, service: 'HTTPS Alt', category: 'web' },
+      { port: 9000, service: 'PHP-FPM', category: 'web' },
+      { port: 27017, service: 'MongoDB', category: 'database' }
+    ];
+
+    let currentFilter = 'all';
+
+    function filterPorts(category, btn) {
+      currentFilter = category;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPorts();
+    }
+
+    function renderPorts(status = null) {
+      const grid = document.getElementById('portGrid');
+      const filtered = currentFilter === 'all'
+        ? commonPorts
+        : commonPorts.filter(p => p.category === currentFilter);
+
+      grid.innerHTML = filtered.map(port => {
+        const portStatus = status?.[port.port] || 'unknown';
+        const statusClass = portStatus === 'checking' ? 'checking' : portStatus === 'open' ? 'open' : 'closed';
+        const statusText = portStatus === 'checking' ? '检查中...' : portStatus === 'open' ? '开放' : portStatus === 'closed' ? '关闭' : '未知';
+
+        return `
+          <div class="port-card ${statusClass}">
+            <div class="port-number">${port.port}</div>
+            <div class="service-name">${port.service}</div>
+            <span class="status ${statusClass}">${statusText}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function simulateScan(btn) {
+      btn.disabled = true;
+      btn.textContent = '扫描中...';
+
+      // Show checking status
+      const checkingStatus = {};
+      commonPorts.forEach(p => checkingStatus[p.port] = 'checking');
+      renderPorts(checkingStatus);
+
+      // Simulate scan with delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Randomly set some ports as "open" or "closed" (purely simulated)
+      const finalStatus = {};
+      commonPorts.forEach(p => {
+        // Common ports more likely to be "open" in simulation
+        const commonOpenPorts = [80, 443, 8080, 8443, 3000, 5000];
+        const isCommon = commonOpenPorts.includes(p.port);
+        finalStatus[p.port] = (isCommon && Math.random() > 0.3) || Math.random() > 0.7 ? 'open' : 'closed';
+      });
+
+      renderPorts(finalStatus);
+
+      btn.disabled = false;
+      btn.textContent = '重新扫描';
+    }
+
+    renderPorts();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      document.querySelector('.theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', next);
+    }
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+      }
+    })();
+  </script>
+</body>
+</html>

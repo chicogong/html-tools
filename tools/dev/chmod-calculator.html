@@ -1,330 +1,112 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chmod 计算器 - WebUtils</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <title>Chmod权限计算器</title>
     <style>
-        :root { --primary-color: #10b981; --read-color: #3b82f6; --write-color: #f59e0b; --exec-color: #ef4444; }
-        [data-theme="dark"] { --primary-color: #34d399; }
-        body { padding: 1rem; min-height: 100vh; }
-        .container { max-width: 900px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
-        header h1 { margin: 0; font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem; }
-        .header-actions { display: flex; gap: 0.5rem; align-items: center; }
-        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; font-size: 1rem; }
-        .back-link { color: var(--primary-color); text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--primary-color); font-size: 0.9rem; }
-        .result-display { background: var(--card-background-color); border-radius: 12px; padding: 2rem; text-align: center; margin-bottom: 2rem; }
-        .permission-code { font-family: 'SF Mono', Monaco, monospace; font-size: 4rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem; }
-        .permission-string { font-family: 'SF Mono', Monaco, monospace; font-size: 1.5rem; color: var(--muted-color); margin-bottom: 1rem; }
-        .permission-string .read { color: var(--read-color); }
-        .permission-string .write { color: var(--write-color); }
-        .permission-string .exec { color: var(--exec-color); }
-        .permission-string .none { color: var(--muted-color); }
-        .copy-btn { font-size: 0.9rem; }
-        .permissions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
-        @media (max-width: 640px) { .permissions-grid { grid-template-columns: 1fr; } }
-        .permission-group { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; }
-        .permission-group h3 { margin: 0 0 1rem; font-size: 1rem; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .permission-group h3 .icon { font-size: 1.25rem; }
-        .permission-group h3 .value { font-family: 'SF Mono', Monaco, monospace; background: var(--primary-color); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem; }
-        .checkbox-group { display: flex; flex-direction: column; gap: 0.75rem; }
-        .checkbox-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--code-background-color); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .checkbox-item:hover { background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
-        .checkbox-item input { margin: 0; width: 20px; height: 20px; cursor: pointer; }
-        .checkbox-item label { flex: 1; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .checkbox-item .perm-name { font-weight: 500; }
-        .checkbox-item .perm-value { font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: var(--muted-color); }
-        .checkbox-item.read .perm-name { color: var(--read-color); }
-        .checkbox-item.write .perm-name { color: var(--write-color); }
-        .checkbox-item.exec .perm-name { color: var(--exec-color); }
-        .octal-input { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
-        .octal-input h3 { margin: 0 0 1rem; font-size: 1rem; }
-        .octal-input-row { display: flex; gap: 1rem; align-items: center; }
-        .octal-input-row input { max-width: 200px; font-family: 'SF Mono', Monaco, monospace; font-size: 1.25rem; text-align: center; }
-        .common-permissions { background: var(--card-background-color); border-radius: 12px; padding: 1.5rem; }
-        .common-permissions h3 { margin: 0 0 1rem; font-size: 1rem; }
-        .common-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
-        .common-btn { padding: 0.75rem; background: var(--code-background-color); border: 1px solid var(--muted-border-color); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s; }
-        .common-btn:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-        .common-btn .code { font-family: 'SF Mono', Monaco, monospace; font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 0.25rem; }
-        .common-btn .desc { font-size: 0.75rem; color: var(--muted-color); }
-        .common-btn:hover .desc { color: rgba(255,255,255,0.8); }
-        .command-preview { margin-top: 2rem; background: var(--code-background-color); padding: 1rem; border-radius: 8px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
-        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: #10b981; color: white; border-radius: 8px; font-weight: 500; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .result { text-align: center; margin-bottom: 30px; padding: 25px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 15px; }
+        .result-numeric { font-size: 48px; font-weight: 700; color: white; font-family: monospace; }
+        .result-symbolic { font-size: 24px; color: rgba(255,255,255,0.9); margin-top: 10px; font-family: monospace; }
+        .permissions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .perm-group { background: #f8f9fa; padding: 20px; border-radius: 12px; }
+        .perm-title { font-weight: 600; margin-bottom: 15px; text-align: center; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; }
+        .perm-title.owner { color: #e74c3c; border-color: #e74c3c; }
+        .perm-title.group { color: #3498db; border-color: #3498db; }
+        .perm-title.other { color: #2ecc71; border-color: #2ecc71; }
+        .perm-option { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+        .perm-option input { width: 20px; height: 20px; cursor: pointer; }
+        .perm-option label { cursor: pointer; font-size: 15px; }
+        .command { margin-top: 25px; padding: 20px; background: #1a1a2e; border-radius: 12px; }
+        .command-title { color: #aaa; font-size: 12px; margin-bottom: 10px; }
+        .command-text { color: #2ecc71; font-family: monospace; font-size: 16px; }
+        .common-permissions { margin-top: 25px; }
+        .common-title { font-weight: 600; margin-bottom: 15px; }
+        .common-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .common-item { padding: 12px; background: #f0f0f0; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .common-item:hover { background: #667eea; color: white; }
+        .common-value { font-weight: 700; font-family: monospace; }
+        .common-desc { font-size: 11px; color: #666; margin-top: 5px; }
+        .common-item:hover .common-desc { color: rgba(255,255,255,0.8); }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
     </style>
 </head>
 <body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#dev">开发工具</a><span>›</span>Chmod 计算器</nav>
     <div class="container">
-        <header>
-            <h1>🔐 Chmod 计算器</h1>
-            <div class="header-actions">
-                <a href="/" class="back-link">← 返回首页</a>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        <h1>🔐 Chmod权限计算器</h1>
+        <div class="card">
+            <div class="result">
+                <div class="result-numeric" id="numeric">755</div>
+                <div class="result-symbolic" id="symbolic">rwxr-xr-x</div>
             </div>
-        </header>
-
-        <div class="result-display">
-            <div class="permission-code" id="permCode">644</div>
-            <div class="permission-string" id="permString">
-                <span class="read">r</span><span class="write">w</span><span class="none">-</span>
-                <span class="read">r</span><span class="none">-</span><span class="none">-</span>
-                <span class="read">r</span><span class="none">-</span><span class="none">-</span>
-            </div>
-            <button class="copy-btn" onclick="copyPermission()">复制权限码</button>
-        </div>
-
-        <div class="octal-input">
-            <h3>直接输入八进制权限</h3>
-            <div class="octal-input-row">
-                <input type="text" id="octalInput" placeholder="644" maxlength="4" oninput="parseOctal()">
-                <span style="color: var(--muted-color);">输入 3-4 位数字 (如 644, 755, 0777)</span>
-            </div>
-        </div>
-
-        <div class="permissions-grid">
-            <div class="permission-group">
-                <h3><span class="icon">👤</span> 所有者 (Owner) <span class="value" id="ownerValue">6</span></h3>
-                <div class="checkbox-group">
-                    <div class="checkbox-item read">
-                        <input type="checkbox" id="ownerRead" checked onchange="updatePermissions()">
-                        <label for="ownerRead">
-                            <span class="perm-name">读取 (Read)</span>
-                            <span class="perm-value">4</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item write">
-                        <input type="checkbox" id="ownerWrite" checked onchange="updatePermissions()">
-                        <label for="ownerWrite">
-                            <span class="perm-name">写入 (Write)</span>
-                            <span class="perm-value">2</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item exec">
-                        <input type="checkbox" id="ownerExec" onchange="updatePermissions()">
-                        <label for="ownerExec">
-                            <span class="perm-name">执行 (Execute)</span>
-                            <span class="perm-value">1</span>
-                        </label>
-                    </div>
+            <div class="permissions">
+                <div class="perm-group">
+                    <div class="perm-title owner">所有者 (Owner)</div>
+                    <div class="perm-option"><input type="checkbox" id="or" checked onchange="calc()"><label for="or">读取 (r) = 4</label></div>
+                    <div class="perm-option"><input type="checkbox" id="ow" checked onchange="calc()"><label for="ow">写入 (w) = 2</label></div>
+                    <div class="perm-option"><input type="checkbox" id="ox" checked onchange="calc()"><label for="ox">执行 (x) = 1</label></div>
+                </div>
+                <div class="perm-group">
+                    <div class="perm-title group">用户组 (Group)</div>
+                    <div class="perm-option"><input type="checkbox" id="gr" checked onchange="calc()"><label for="gr">读取 (r) = 4</label></div>
+                    <div class="perm-option"><input type="checkbox" id="gw" onchange="calc()"><label for="gw">写入 (w) = 2</label></div>
+                    <div class="perm-option"><input type="checkbox" id="gx" checked onchange="calc()"><label for="gx">执行 (x) = 1</label></div>
+                </div>
+                <div class="perm-group">
+                    <div class="perm-title other">其他人 (Other)</div>
+                    <div class="perm-option"><input type="checkbox" id="tr" checked onchange="calc()"><label for="tr">读取 (r) = 4</label></div>
+                    <div class="perm-option"><input type="checkbox" id="tw" onchange="calc()"><label for="tw">写入 (w) = 2</label></div>
+                    <div class="perm-option"><input type="checkbox" id="tx" checked onchange="calc()"><label for="tx">执行 (x) = 1</label></div>
                 </div>
             </div>
-
-            <div class="permission-group">
-                <h3><span class="icon">👥</span> 用户组 (Group) <span class="value" id="groupValue">4</span></h3>
-                <div class="checkbox-group">
-                    <div class="checkbox-item read">
-                        <input type="checkbox" id="groupRead" checked onchange="updatePermissions()">
-                        <label for="groupRead">
-                            <span class="perm-name">读取 (Read)</span>
-                            <span class="perm-value">4</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item write">
-                        <input type="checkbox" id="groupWrite" onchange="updatePermissions()">
-                        <label for="groupWrite">
-                            <span class="perm-name">写入 (Write)</span>
-                            <span class="perm-value">2</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item exec">
-                        <input type="checkbox" id="groupExec" onchange="updatePermissions()">
-                        <label for="groupExec">
-                            <span class="perm-name">执行 (Execute)</span>
-                            <span class="perm-value">1</span>
-                        </label>
-                    </div>
+            <div class="command">
+                <div class="command-title">Linux命令</div>
+                <div class="command-text" id="command">chmod 755 filename</div>
+            </div>
+            <div class="common-permissions">
+                <div class="common-title">常用权限</div>
+                <div class="common-grid">
+                    <div class="common-item" onclick="setPerms(7,7,7)"><div class="common-value">777</div><div class="common-desc">完全开放</div></div>
+                    <div class="common-item" onclick="setPerms(7,5,5)"><div class="common-value">755</div><div class="common-desc">可执行文件</div></div>
+                    <div class="common-item" onclick="setPerms(7,4,4)"><div class="common-value">744</div><div class="common-desc">脚本文件</div></div>
+                    <div class="common-item" onclick="setPerms(6,4,4)"><div class="common-value">644</div><div class="common-desc">普通文件</div></div>
+                    <div class="common-item" onclick="setPerms(6,0,0)"><div class="common-value">600</div><div class="common-desc">私密文件</div></div>
+                    <div class="common-item" onclick="setPerms(7,0,0)"><div class="common-value">700</div><div class="common-desc">私密目录</div></div>
+                    <div class="common-item" onclick="setPerms(4,0,0)"><div class="common-value">400</div><div class="common-desc">只读私密</div></div>
+                    <div class="common-item" onclick="setPerms(0,0,0)"><div class="common-value">000</div><div class="common-desc">无权限</div></div>
                 </div>
             </div>
-
-            <div class="permission-group">
-                <h3><span class="icon">🌍</span> 其他人 (Others) <span class="value" id="othersValue">4</span></h3>
-                <div class="checkbox-group">
-                    <div class="checkbox-item read">
-                        <input type="checkbox" id="othersRead" checked onchange="updatePermissions()">
-                        <label for="othersRead">
-                            <span class="perm-name">读取 (Read)</span>
-                            <span class="perm-value">4</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item write">
-                        <input type="checkbox" id="othersWrite" onchange="updatePermissions()">
-                        <label for="othersWrite">
-                            <span class="perm-name">写入 (Write)</span>
-                            <span class="perm-value">2</span>
-                        </label>
-                    </div>
-                    <div class="checkbox-item exec">
-                        <input type="checkbox" id="othersExec" onchange="updatePermissions()">
-                        <label for="othersExec">
-                            <span class="perm-name">执行 (Execute)</span>
-                            <span class="perm-value">1</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="common-permissions">
-            <h3>常用权限</h3>
-            <div class="common-grid">
-                <button class="common-btn" onclick="setPermission(644)">
-                    <span class="code">644</span>
-                    <span class="desc">普通文件</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(755)">
-                    <span class="code">755</span>
-                    <span class="desc">可执行文件/目录</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(777)">
-                    <span class="code">777</span>
-                    <span class="desc">完全权限</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(600)">
-                    <span class="code">600</span>
-                    <span class="desc">私有文件</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(700)">
-                    <span class="code">700</span>
-                    <span class="desc">私有目录</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(444)">
-                    <span class="code">444</span>
-                    <span class="desc">只读文件</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(666)">
-                    <span class="code">666</span>
-                    <span class="desc">可读写文件</span>
-                </button>
-                <button class="common-btn" onclick="setPermission(400)">
-                    <span class="code">400</span>
-                    <span class="desc">SSH 私钥</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="command-preview">
-            <span>chmod <span id="cmdCode">644</span> filename</span>
-            <button onclick="copyCommand()" class="secondary outline" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">复制命令</button>
         </div>
     </div>
-
-    <div class="toast" id="toast"></div>
-
     <script>
-        window.toggleTheme = function() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        };
-
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-
-        function getGroupValue(prefix) {
-            const read = document.getElementById(prefix + 'Read').checked ? 4 : 0;
-            const write = document.getElementById(prefix + 'Write').checked ? 2 : 0;
-            const exec = document.getElementById(prefix + 'Exec').checked ? 1 : 0;
-            return read + write + exec;
+        function calc() {
+            const o = (document.getElementById('or').checked ? 4 : 0) + (document.getElementById('ow').checked ? 2 : 0) + (document.getElementById('ox').checked ? 1 : 0);
+            const g = (document.getElementById('gr').checked ? 4 : 0) + (document.getElementById('gw').checked ? 2 : 0) + (document.getElementById('gx').checked ? 1 : 0);
+            const t = (document.getElementById('tr').checked ? 4 : 0) + (document.getElementById('tw').checked ? 2 : 0) + (document.getElementById('tx').checked ? 1 : 0);
+            const numeric = `${o}${g}${t}`;
+            const toSymbolic = n => (n & 4 ? 'r' : '-') + (n & 2 ? 'w' : '-') + (n & 1 ? 'x' : '-');
+            const symbolic = toSymbolic(o) + toSymbolic(g) + toSymbolic(t);
+            document.getElementById('numeric').textContent = numeric;
+            document.getElementById('symbolic').textContent = symbolic;
+            document.getElementById('command').textContent = `chmod ${numeric} filename`;
         }
-
-        function setGroupValue(prefix, value) {
-            document.getElementById(prefix + 'Read').checked = (value & 4) !== 0;
-            document.getElementById(prefix + 'Write').checked = (value & 2) !== 0;
-            document.getElementById(prefix + 'Exec').checked = (value & 1) !== 0;
+        function setPerms(o, g, t) {
+            document.getElementById('or').checked = o & 4; document.getElementById('ow').checked = o & 2; document.getElementById('ox').checked = o & 1;
+            document.getElementById('gr').checked = g & 4; document.getElementById('gw').checked = g & 2; document.getElementById('gx').checked = g & 1;
+            document.getElementById('tr').checked = t & 4; document.getElementById('tw').checked = t & 2; document.getElementById('tx').checked = t & 1;
+            calc();
         }
-
-        function updatePermissions() {
-            const owner = getGroupValue('owner');
-            const group = getGroupValue('group');
-            const others = getGroupValue('others');
-
-            document.getElementById('ownerValue').textContent = owner;
-            document.getElementById('groupValue').textContent = group;
-            document.getElementById('othersValue').textContent = others;
-
-            const code = `${owner}${group}${others}`;
-            document.getElementById('permCode').textContent = code;
-            document.getElementById('cmdCode').textContent = code;
-            document.getElementById('octalInput').value = code;
-
-            updatePermissionString(owner, group, others);
-        }
-
-        function updatePermissionString(owner, group, others) {
-            const toStr = (val) => {
-                const r = (val & 4) ? '<span class="read">r</span>' : '<span class="none">-</span>';
-                const w = (val & 2) ? '<span class="write">w</span>' : '<span class="none">-</span>';
-                const x = (val & 1) ? '<span class="exec">x</span>' : '<span class="none">-</span>';
-                return r + w + x;
-            };
-            document.getElementById('permString').innerHTML = toStr(owner) + toStr(group) + toStr(others);
-        }
-
-        function parseOctal() {
-            let input = document.getElementById('octalInput').value.replace(/[^0-7]/g, '');
-            if (input.length === 0) return;
-            
-            // Handle leading 0
-            if (input.startsWith('0') && input.length === 4) {
-                input = input.slice(1);
-            }
-            
-            if (input.length === 3) {
-                const owner = parseInt(input[0]);
-                const group = parseInt(input[1]);
-                const others = parseInt(input[2]);
-
-                if (owner <= 7 && group <= 7 && others <= 7) {
-                    setGroupValue('owner', owner);
-                    setGroupValue('group', group);
-                    setGroupValue('others', others);
-                    
-                    document.getElementById('ownerValue').textContent = owner;
-                    document.getElementById('groupValue').textContent = group;
-                    document.getElementById('othersValue').textContent = others;
-                    
-                    document.getElementById('permCode').textContent = input;
-                    document.getElementById('cmdCode').textContent = input;
-                    updatePermissionString(owner, group, others);
-                }
-            }
-        }
-
-        window.setPermission = function(code) {
-            document.getElementById('octalInput').value = code;
-            parseOctal();
-        };
-
-        window.copyPermission = function() {
-            const code = document.getElementById('permCode').textContent;
-            navigator.clipboard.writeText(code);
-            showToast('权限码已复制');
-        };
-
-        window.copyCommand = function() {
-            const code = document.getElementById('cmdCode').textContent;
-            navigator.clipboard.writeText(`chmod ${code} filename`);
-            showToast('命令已复制');
-        };
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        // Init
-        updatePermissions();
+        calc();
     </script>
 </body>
 </html>

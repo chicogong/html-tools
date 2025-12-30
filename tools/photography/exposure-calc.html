@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>曝光计算器 - WebUtils</title>
+  <meta name="description" content="摄影曝光三角计算器，计算光圈、快门、ISO的等效曝光组合" />
+  <meta name="keywords" content="曝光 光圈 快门 ISO 摄影 exposure calculator photography" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/photography/exposure-calc.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--bg-hover:#22222e;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-magenta:#e879f9;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--bg-hover:#f5f5f5;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem}
+    .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .card-title{font-size:1rem;font-weight:500;color:var(--text-secondary);margin-bottom:1rem}
+    .exposure-triangle{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:1.5rem}
+    .exposure-item{display:flex;flex-direction:column;align-items:center;padding:1.5rem;background:var(--bg-surface);border-radius:var(--radius-md);border:2px solid transparent;transition:all .2s}
+    .exposure-item.locked{border-color:var(--accent-cyan);background:rgba(0,245,212,.05)}
+    .exposure-icon{font-size:2rem;margin-bottom:.5rem}
+    .exposure-label{font-size:.85rem;color:var(--text-secondary);margin-bottom:.5rem}
+    .exposure-value{font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary)}
+    .exposure-select{width:100%;margin-top:.75rem;padding:.5rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:.9rem}
+    .lock-btn{margin-top:.75rem;padding:.4rem .8rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:.8rem;transition:all .2s}
+    .lock-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .lock-btn.locked{background:var(--accent-cyan);color:#000;border-color:var(--accent-cyan)}
+    .ev-display{text-align:center;padding:1.5rem;background:linear-gradient(135deg,rgba(232,121,249,.1),rgba(0,245,212,.1));border-radius:var(--radius-md)}
+    .ev-label{font-size:.9rem;color:var(--text-secondary)}
+    .ev-value{font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:600;color:var(--accent-magenta)}
+    .ev-hint{font-size:.8rem;color:var(--text-muted);margin-top:.5rem}
+    .equivalent-title{font-size:.9rem;color:var(--text-secondary);margin-bottom:1rem}
+    .equivalent-list{display:flex;flex-direction:column;gap:.5rem}
+    .equivalent-item{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;padding:.75rem;background:var(--bg-surface);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:.9rem;text-align:center}
+    .equivalent-item:hover{background:var(--bg-hover)}
+    .info-box{background:var(--bg-surface);border-radius:var(--radius-sm);padding:1rem;margin-top:1.5rem}
+    .info-title{font-size:.9rem;font-weight:500;color:var(--accent-cyan);margin-bottom:.5rem}
+    .info-text{font-size:.85rem;color:var(--text-secondary);line-height:1.7}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:600px){.exposure-triangle{grid-template-columns:1fr}.equivalent-item{grid-template-columns:1fr;text-align:left}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#photography">摄影工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">曝光计算器</span>
+    </nav>
+
+    <h1>曝光计算器</h1>
+    <p class="subtitle">计算等效曝光组合，掌握曝光三角</p>
+
+    <div class="card">
+      <div class="card-title">📷 当前曝光设置</div>
+      <div class="exposure-triangle">
+        <div class="exposure-item" id="apertureItem">
+          <span class="exposure-icon">🔘</span>
+          <span class="exposure-label">光圈</span>
+          <span class="exposure-value" id="apertureValue">f/2.8</span>
+          <select class="exposure-select" id="aperture" onchange="calculate()">
+            <option value="1">f/1</option>
+            <option value="1.4">f/1.4</option>
+            <option value="2">f/2</option>
+            <option value="2.8" selected>f/2.8</option>
+            <option value="4">f/4</option>
+            <option value="5.6">f/5.6</option>
+            <option value="8">f/8</option>
+            <option value="11">f/11</option>
+            <option value="16">f/16</option>
+            <option value="22">f/22</option>
+          </select>
+          <button class="lock-btn" onclick="toggleLock('aperture')">🔒 锁定</button>
+        </div>
+
+        <div class="exposure-item" id="shutterItem">
+          <span class="exposure-icon">⏱️</span>
+          <span class="exposure-label">快门</span>
+          <span class="exposure-value" id="shutterValue">1/125</span>
+          <select class="exposure-select" id="shutter" onchange="calculate()">
+            <option value="30">30s</option>
+            <option value="15">15s</option>
+            <option value="8">8s</option>
+            <option value="4">4s</option>
+            <option value="2">2s</option>
+            <option value="1">1s</option>
+            <option value="0.5">1/2</option>
+            <option value="0.25">1/4</option>
+            <option value="0.125">1/8</option>
+            <option value="0.0625">1/15</option>
+            <option value="0.03333">1/30</option>
+            <option value="0.01667">1/60</option>
+            <option value="0.008" selected>1/125</option>
+            <option value="0.004">1/250</option>
+            <option value="0.002">1/500</option>
+            <option value="0.001">1/1000</option>
+            <option value="0.0005">1/2000</option>
+            <option value="0.00025">1/4000</option>
+            <option value="0.000125">1/8000</option>
+          </select>
+          <button class="lock-btn" onclick="toggleLock('shutter')">🔒 锁定</button>
+        </div>
+
+        <div class="exposure-item" id="isoItem">
+          <span class="exposure-icon">📊</span>
+          <span class="exposure-label">ISO</span>
+          <span class="exposure-value" id="isoValue">100</span>
+          <select class="exposure-select" id="iso" onchange="calculate()">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+            <option value="400">400</option>
+            <option value="800">800</option>
+            <option value="1600">1600</option>
+            <option value="3200">3200</option>
+            <option value="6400">6400</option>
+            <option value="12800">12800</option>
+            <option value="25600">25600</option>
+          </select>
+          <button class="lock-btn" onclick="toggleLock('iso')">🔒 锁定</button>
+        </div>
+      </div>
+
+      <div class="ev-display">
+        <div class="ev-label">曝光值 (EV)</div>
+        <div class="ev-value" id="evValue">13.0</div>
+        <div class="ev-hint">EV值越大，场景越亮</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔄 等效曝光组合</div>
+      <div class="equivalent-title">保持相同曝光的其他设置组合</div>
+      <div class="equivalent-list" id="equivalentList"></div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-title">💡 曝光三角原理</div>
+      <div class="info-text">
+        <p><strong>光圈 (Aperture):</strong> 控制进光量和景深。f值越小，进光越多，景深越浅。</p>
+        <p><strong>快门 (Shutter):</strong> 控制曝光时间。数值越大，曝光时间越长。</p>
+        <p><strong>ISO:</strong> 控制感光度。ISO越高，画面越亮，但噪点也越多。</p>
+        <p style="margin-top:.5rem"><strong>互易律:</strong> 三者每变化1档，曝光量增减1EV。</p>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/chicogong/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    let locked = { aperture: false, shutter: false, iso: false };
+
+    const apertureStops = [1, 1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22];
+    const shutterStops = [30, 15, 8, 4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03333, 0.01667, 0.008, 0.004, 0.002, 0.001, 0.0005, 0.00025, 0.000125];
+    const isoStops = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600];
+
+    function formatShutter(value) {
+      if (value >= 1) return value + 's';
+      return '1/' + Math.round(1 / value);
+    }
+
+    function calculateEV(aperture, shutter, iso) {
+      // EV = log2(N²/t) - log2(ISO/100)
+      return Math.log2(Math.pow(aperture, 2) / shutter) - Math.log2(iso / 100);
+    }
+
+    function toggleLock(param) {
+      locked[param] = !locked[param];
+      const btn = document.querySelector(`#${param}Item .lock-btn`);
+      const item = document.getElementById(`${param}Item`);
+      btn.classList.toggle('locked', locked[param]);
+      item.classList.toggle('locked', locked[param]);
+      btn.textContent = locked[param] ? '🔓 解锁' : '🔒 锁定';
+    }
+
+    function calculate() {
+      const aperture = parseFloat(document.getElementById('aperture').value);
+      const shutter = parseFloat(document.getElementById('shutter').value);
+      const iso = parseFloat(document.getElementById('iso').value);
+
+      // Update display values
+      document.getElementById('apertureValue').textContent = 'f/' + aperture;
+      document.getElementById('shutterValue').textContent = formatShutter(shutter);
+      document.getElementById('isoValue').textContent = iso;
+
+      // Calculate EV
+      const ev = calculateEV(aperture, shutter, iso);
+      document.getElementById('evValue').textContent = ev.toFixed(1);
+
+      // Generate equivalent exposures
+      generateEquivalents(aperture, shutter, iso, ev);
+    }
+
+    function generateEquivalents(currentAperture, currentShutter, currentIso, targetEV) {
+      const equivalents = [];
+
+      // Generate combinations
+      for (let a of apertureStops) {
+        for (let i of isoStops) {
+          // Calculate required shutter
+          // EV = log2(a²/t) - log2(iso/100)
+          // t = a² / (2^(EV + log2(iso/100)))
+          const requiredShutter = Math.pow(a, 2) / Math.pow(2, targetEV + Math.log2(i / 100));
+
+          // Find closest shutter stop
+          let closestShutter = shutterStops.reduce((prev, curr) =>
+            Math.abs(curr - requiredShutter) < Math.abs(prev - requiredShutter) ? curr : prev
+          );
+
+          // Check if it's a valid combination
+          const checkEV = calculateEV(a, closestShutter, i);
+          if (Math.abs(checkEV - targetEV) < 0.5) {
+            // Avoid duplicates and current setting
+            const key = `${a}-${closestShutter}-${i}`;
+            if (!equivalents.find(e => e.key === key) &&
+                !(a === currentAperture && closestShutter === currentShutter && i === currentIso)) {
+              equivalents.push({
+                key,
+                aperture: a,
+                shutter: closestShutter,
+                iso: i
+              });
+            }
+          }
+        }
+      }
+
+      // Sort and limit
+      equivalents.sort((a, b) => a.aperture - b.aperture);
+      const limited = equivalents.slice(0, 8);
+
+      // Render
+      const container = document.getElementById('equivalentList');
+      container.innerHTML = limited.map(eq => `
+        <div class="equivalent-item" onclick="applyEquivalent(${eq.aperture}, ${eq.shutter}, ${eq.iso})">
+          <span>f/${eq.aperture}</span>
+          <span>${formatShutter(eq.shutter)}</span>
+          <span>ISO ${eq.iso}</span>
+        </div>
+      `).join('');
+    }
+
+    function applyEquivalent(aperture, shutter, iso) {
+      if (!locked.aperture) document.getElementById('aperture').value = aperture;
+      if (!locked.shutter) {
+        // Find closest option
+        const select = document.getElementById('shutter');
+        let closest = select.options[0].value;
+        for (let opt of select.options) {
+          if (Math.abs(parseFloat(opt.value) - shutter) < Math.abs(parseFloat(closest) - shutter)) {
+            closest = opt.value;
+          }
+        }
+        select.value = closest;
+      }
+      if (!locked.iso) document.getElementById('iso').value = iso;
+      calculate();
+    }
+
+    // Initialize
+    calculate();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

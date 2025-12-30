@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>表格生成器 - WebUtils</title>
+  <meta name="description" content="快速生成Markdown、HTML、CSV格式的表格" />
+  <meta name="keywords" content="表格 markdown table generator HTML CSV" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/dev/table-generator.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem}
+    .controls{display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+    .controls input{padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;width:80px}
+    .controls input:focus{outline:none;border-color:var(--accent-blue)}
+    .controls button{padding:.75rem 1.5rem;border:none;border-radius:var(--radius-sm);background:var(--accent-blue);color:#000;font-weight:600;cursor:pointer;transition:all .2s}
+    .controls button:hover{transform:translateY(-1px)}
+    .table-editor{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem;overflow-x:auto}
+    .table-editor table{width:100%;border-collapse:collapse}
+    .table-editor th,.table-editor td{padding:.75rem;border:1px solid var(--border-subtle);min-width:120px}
+    .table-editor input{width:100%;padding:.5rem;border:none;background:transparent;color:var(--text-primary);font-family:inherit}
+    .table-editor input:focus{outline:2px solid var(--accent-cyan);outline-offset:-2px}
+    .table-editor th{background:var(--bg-surface);font-weight:600}
+    .output{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
+    .output-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .output-title{font-size:1rem;font-weight:600;color:var(--accent-cyan)}
+    .tabs{display:flex;gap:.5rem}
+    .tab{padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:.85rem;transition:all .2s}
+    .tab:hover{border-color:var(--accent-cyan)}
+    .tab.active{background:var(--accent-cyan);color:#000;border-color:var(--accent-cyan)}
+    .output-content{position:relative}
+    .output-content pre{background:var(--bg-surface);padding:1rem;border-radius:var(--radius-sm);overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.9rem;line-height:1.6;white-space:pre;color:var(--text-primary)}
+    .copy-btn{position:absolute;top:1rem;right:1rem;padding:.5rem 1rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;font-size:.85rem;transition:all .2s}
+    .copy-btn:hover{border-color:var(--accent-cyan);color:var(--accent-cyan)}
+    .copy-btn.copied{background:var(--accent-green);color:#000;border-color:var(--accent-green)}
+    footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border-subtle);text-align:center;color:var(--text-muted);font-size:.85rem}
+    footer a{color:var(--accent-blue);text-decoration:none}
+    @media(max-width:768px){.controls{flex-direction:column;align-items:stretch}.controls input,.controls button{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#dev">开发工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">表格生成器</span>
+    </nav>
+
+    <h1>📊 表格生成器</h1>
+    <p class="subtitle">快速创建 Markdown、HTML、CSV 格式的表格</p>
+
+    <div class="controls">
+      <label style="color:var(--text-secondary)">行数:</label>
+      <input type="number" id="rows" value="3" min="1" max="20">
+      <label style="color:var(--text-secondary)">列数:</label>
+      <input type="number" id="cols" value="3" min="1" max="10">
+      <button onclick="updateTable()">更新</button>
+    </div>
+
+    <div class="table-editor">
+      <table id="tableEditor">
+        <!-- Table will be rendered here -->
+      </table>
+    </div>
+
+    <div class="output">
+      <div class="output-header">
+        <div class="output-title">📝 输出</div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('markdown')">Markdown</button>
+          <button class="tab" onclick="switchTab('html')">HTML</button>
+          <button class="tab" onclick="switchTab('csv')">CSV</button>
+        </div>
+      </div>
+      <div class="output-content">
+        <button class="copy-btn" onclick="copyOutput()">复制</button>
+        <pre id="output"></pre>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nicexe/html-tools" target="_blank">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    let data = [];
+    let currentFormat = 'markdown';
+
+    function initData() {
+      const rows = parseInt(document.getElementById('rows').value);
+      const cols = parseInt(document.getElementById('cols').value);
+
+      data = [];
+      for (let i = 0; i < rows + 1; i++) { // +1 for header
+        data[i] = [];
+        for (let j = 0; j < cols; j++) {
+          if (i === 0) {
+            data[i][j] = `Header ${j + 1}`;
+          } else {
+            data[i][j] = `Row ${i} Col ${j + 1}`;
+          }
+        }
+      }
+    }
+
+    function updateTable() {
+      initData();
+      renderTable();
+      generateOutput();
+    }
+
+    function renderTable() {
+      const table = document.getElementById('tableEditor');
+      let html = '';
+
+      data.forEach((row, i) => {
+        html += '<tr>';
+        row.forEach((cell, j) => {
+          if (i === 0) {
+            html += `<th><input type="text" value="${cell}" onchange="updateCell(${i}, ${j}, this.value)"></th>`;
+          } else {
+            html += `<td><input type="text" value="${cell}" onchange="updateCell(${i}, ${j}, this.value)"></td>`;
+          }
+        });
+        html += '</tr>';
+      });
+
+      table.innerHTML = html;
+    }
+
+    function updateCell(row, col, value) {
+      data[row][col] = value;
+      generateOutput();
+    }
+
+    function generateMarkdown() {
+      if (data.length === 0) return '';
+
+      let md = '';
+
+      // Header
+      md += '| ' + data[0].join(' | ') + ' |\n';
+
+      // Separator
+      md += '| ' + data[0].map(() => '---').join(' | ') + ' |\n';
+
+      // Rows
+      for (let i = 1; i < data.length; i++) {
+        md += '| ' + data[i].join(' | ') + ' |\n';
+      }
+
+      return md;
+    }
+
+    function generateHTML() {
+      if (data.length === 0) return '';
+
+      let html = '<table>\n';
+
+      // Header
+      html += '  <thead>\n    <tr>\n';
+      data[0].forEach(cell => {
+        html += `      <th>${cell}</th>\n`;
+      });
+      html += '    </tr>\n  </thead>\n';
+
+      // Body
+      html += '  <tbody>\n';
+      for (let i = 1; i < data.length; i++) {
+        html += '    <tr>\n';
+        data[i].forEach(cell => {
+          html += `      <td>${cell}</td>\n`;
+        });
+        html += '    </tr>\n';
+      }
+      html += '  </tbody>\n</table>';
+
+      return html;
+    }
+
+    function generateCSV() {
+      if (data.length === 0) return '';
+
+      return data.map(row => {
+        return row.map(cell => {
+          // Escape cells with commas or quotes
+          if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+            return `"${cell.replace(/"/g, '""')}"`;
+          }
+          return cell;
+        }).join(',');
+      }).join('\n');
+    }
+
+    function generateOutput() {
+      let output = '';
+
+      if (currentFormat === 'markdown') {
+        output = generateMarkdown();
+      } else if (currentFormat === 'html') {
+        output = generateHTML();
+      } else if (currentFormat === 'csv') {
+        output = generateCSV();
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    function switchTab(format) {
+      currentFormat = format;
+
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+
+      generateOutput();
+    }
+
+    function copyOutput() {
+      const output = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(output).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = '已复制!';
+        btn.classList.add('copied');
+
+        setTimeout(() => {
+          btn.textContent = '复制';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Initialize
+    initData();
+    renderTable();
+    generateOutput();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

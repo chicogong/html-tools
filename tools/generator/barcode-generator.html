@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>条形码生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input, select { width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .preview { margin-top: 25px; padding: 30px; background: white; border: 2px dashed #e0e0e0; border-radius: 15px; text-align: center; }
+        #barcode { max-width: 100%; }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#generator">生成器</a><span>›</span>条形码生成器</nav>
+    <div class="container">
+        <h1>📊 条形码生成器</h1>
+        <div class="card">
+            <div class="input-group">
+                <label>输入内容</label>
+                <input type="text" id="text" value="1234567890" placeholder="输入要编码的内容">
+            </div>
+            <div class="options">
+                <div class="input-group">
+                    <label>格式</label>
+                    <select id="format">
+                        <option value="CODE128">CODE128</option>
+                        <option value="CODE39">CODE39</option>
+                        <option value="EAN13">EAN-13</option>
+                        <option value="EAN8">EAN-8</option>
+                        <option value="UPC">UPC</option>
+                        <option value="ITF14">ITF-14</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>宽度</label>
+                    <select id="width">
+                        <option value="1">细</option>
+                        <option value="2" selected>标准</option>
+                        <option value="3">粗</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>高度</label>
+                    <input type="number" id="height" value="100" min="30" max="200">
+                </div>
+                <div class="input-group">
+                    <label>显示文字</label>
+                    <select id="displayValue">
+                        <option value="true" selected>显示</option>
+                        <option value="false">隐藏</option>
+                    </select>
+                </div>
+            </div>
+            <div class="preview">
+                <svg id="barcode"></svg>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="downloadSVG()">下载 SVG</button>
+                <button class="btn btn-secondary" onclick="downloadPNG()">下载 PNG</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        function generate() {
+            const text = document.getElementById('text').value;
+            const format = document.getElementById('format').value;
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+            const displayValue = document.getElementById('displayValue').value === 'true';
+            try {
+                JsBarcode("#barcode", text, {
+                    format: format,
+                    width: width,
+                    height: height,
+                    displayValue: displayValue,
+                    fontSize: 16,
+                    margin: 10,
+                    background: "#ffffff",
+                    lineColor: "#000000"
+                });
+            } catch (e) {
+                document.getElementById('barcode').innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#e74c3c">格式不支持此内容</text>`;
+            }
+        }
+        function downloadSVG() {
+            const svg = document.getElementById('barcode');
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const blob = new Blob([svgData], {type: 'image/svg+xml'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'barcode.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        function downloadPNG() {
+            const svg = document.getElementById('barcode');
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width * 2;
+                canvas.height = img.height * 2;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = 'barcode.png';
+                a.click();
+            };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        }
+        document.getElementById('text').addEventListener('input', generate);
+        document.getElementById('format').addEventListener('change', generate);
+        document.getElementById('width').addEventListener('change', generate);
+        document.getElementById('height').addEventListener('input', generate);
+        document.getElementById('displayValue').addEventListener('change', generate);
+        generate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>单词拼写游戏 - HTML Tools</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #12121a;
+      --text-primary: #e8e8ed;
+      --text-secondary: #a0a0b0;
+      --accent-cyan: #00f5d4;
+      --accent-magenta: #f72585;
+      --border-subtle: #2a2a3a;
+      --radius-md: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 600px; margin: 0 auto; text-align: center; }
+    .back-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 20px; }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 30px;
+    }
+    .stat-value { font-size: 2rem; color: var(--accent-cyan); }
+    .stat-label { font-size: 0.8rem; color: var(--text-secondary); }
+    .game-box {
+      background: var(--bg-surface);
+      padding: 30px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+    .hint { color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem; }
+    .scrambled {
+      font-size: 3rem;
+      letter-spacing: 8px;
+      margin: 30px 0;
+      color: var(--accent-magenta);
+    }
+    input {
+      width: 100%;
+      max-width: 300px;
+      padding: 15px;
+      font-size: 1.5rem;
+      font-family: inherit;
+      background: var(--bg-deep);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      text-align: center;
+      outline: none;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+    }
+    input:focus { border-color: var(--accent-cyan); }
+    .btn {
+      padding: 12px 30px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--bg-deep);
+      cursor: pointer;
+      font-weight: 600;
+      margin: 15px 5px;
+    }
+    .btn-secondary {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+    }
+    .message {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      min-height: 30px;
+    }
+    .correct { color: #0f8; }
+    .wrong { color: #ff6b6b; }
+    .level {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .level button {
+      padding: 8px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .level button.active { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#game">小游戏</a><span>›</span>单词拼图</nav>
+  <div class="container">
+    <a href="../../index.html" class="back-link">← 返回首页</a>
+    <h1>🔤 单词拼写游戏</h1>
+    
+    <div class="level">
+      <button class="active" onclick="setLevel('easy', this)">简单</button>
+      <button onclick="setLevel('medium', this)">中等</button>
+      <button onclick="setLevel('hard', this)">困难</button>
+    </div>
+    
+    <div class="stats">
+      <div>
+        <div class="stat-value" id="score">0</div>
+        <div class="stat-label">得分</div>
+      </div>
+      <div>
+        <div class="stat-value" id="round">1</div>
+        <div class="stat-label">关卡</div>
+      </div>
+    </div>
+    
+    <div class="game-box">
+      <div class="hint" id="hint">提示: 水果</div>
+      <div class="scrambled" id="scrambled">PLPAE</div>
+      <input type="text" id="answer" placeholder="输入答案" autofocus />
+      <br>
+      <button class="btn" onclick="checkAnswer()">提交</button>
+      <button class="btn btn-secondary" onclick="skipWord()">跳过</button>
+      <div class="message" id="message"></div>
+    </div>
+  </div>
+  
+  <script>
+    const words = {
+      easy: [
+        { word: 'APPLE', hint: '水果' },
+        { word: 'ORANGE', hint: '水果' },
+        { word: 'BANANA', hint: '水果' },
+        { word: 'CAT', hint: '动物' },
+        { word: 'DOG', hint: '动物' },
+        { word: 'BIRD', hint: '动物' },
+        { word: 'BOOK', hint: '物品' },
+        { word: 'DESK', hint: '家具' },
+        { word: 'TREE', hint: '植物' },
+        { word: 'MOON', hint: '天体' }
+      ],
+      medium: [
+        { word: 'COMPUTER', hint: '电子设备' },
+        { word: 'KEYBOARD', hint: '输入设备' },
+        { word: 'ELEPHANT', hint: '动物' },
+        { word: 'MOUNTAIN', hint: '地形' },
+        { word: 'SUNSHINE', hint: '天气' },
+        { word: 'BUTTERFLY', hint: '昆虫' },
+        { word: 'CHOCOLATE', hint: '食物' },
+        { word: 'ADVENTURE', hint: '活动' },
+        { word: 'BEAUTIFUL', hint: '形容词' },
+        { word: 'KNOWLEDGE', hint: '抽象名词' }
+      ],
+      hard: [
+        { word: 'JAVASCRIPT', hint: '编程语言' },
+        { word: 'ALGORITHM', hint: '计算机术语' },
+        { word: 'ARCHITECTURE', hint: '设计' },
+        { word: 'DEVELOPMENT', hint: '过程' },
+        { word: 'ENVIRONMENT', hint: '周围' },
+        { word: 'IMAGINATION', hint: '思维' },
+        { word: 'TEMPERATURE', hint: '物理量' },
+        { word: 'COMMUNICATION', hint: '交流' },
+        { word: 'RESPONSIBILITY', hint: '品质' },
+        { word: 'EXTRAORDINARY', hint: '形容词' }
+      ]
+    };
+    
+    let level = 'easy';
+    let score = 0;
+    let round = 1;
+    let currentWord = '';
+    let usedWords = [];
+    
+    function setLevel(lv, btn) {
+      level = lv;
+      document.querySelectorAll('.level button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      usedWords = [];
+      round = 1;
+      score = 0;
+      document.getElementById('score').textContent = 0;
+      document.getElementById('round').textContent = 1;
+      nextWord();
+    }
+    
+    function scramble(word) {
+      const arr = word.split('');
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      // 确保打乱后不等于原词
+      if (arr.join('') === word) return scramble(word);
+      return arr.join('');
+    }
+    
+    function nextWord() {
+      const available = words[level].filter(w => !usedWords.includes(w.word));
+      if (available.length === 0) {
+        usedWords = [];
+        return nextWord();
+      }
+      
+      const item = available[Math.floor(Math.random() * available.length)];
+      currentWord = item.word;
+      usedWords.push(currentWord);
+      
+      document.getElementById('hint').textContent = '提示: ' + item.hint;
+      document.getElementById('scrambled').textContent = scramble(currentWord);
+      document.getElementById('answer').value = '';
+      document.getElementById('message').textContent = '';
+      document.getElementById('answer').focus();
+    }
+    
+    function checkAnswer() {
+      const answer = document.getElementById('answer').value.toUpperCase().trim();
+      const msg = document.getElementById('message');
+      
+      if (answer === currentWord) {
+        const points = level === 'easy' ? 10 : level === 'medium' ? 20 : 30;
+        score += points;
+        round++;
+        document.getElementById('score').textContent = score;
+        document.getElementById('round').textContent = round;
+        msg.className = 'message correct';
+        msg.textContent = '✓ 正确！+' + points + '分';
+        setTimeout(nextWord, 1000);
+      } else {
+        msg.className = 'message wrong';
+        msg.textContent = '✗ 再试一次';
+      }
+    }
+    
+    function skipWord() {
+      document.getElementById('message').className = 'message';
+      document.getElementById('message').textContent = '答案是: ' + currentWord;
+      setTimeout(nextWord, 1500);
+    }
+    
+    document.getElementById('answer').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') checkAnswer();
+    });
+    
+    nextWord();
+  </script>
+</body>
+</html>

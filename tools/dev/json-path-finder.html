@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON路径查找器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; min-height: 100vh; padding: 20px; color: #c9d1d9; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #58a6ff; text-align: center; margin-bottom: 20px; }
+        .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+        .card { background: #161b22; border-radius: 12px; padding: 20px; border: 1px solid #30363d; }
+        h3 { color: #58a6ff; margin-bottom: 12px; font-size: 14px; }
+        textarea { width: 100%; height: 400px; padding: 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #c9d1d9; font-family: monospace; font-size: 13px; resize: vertical; }
+        .path-display { background: #0d1117; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; color: #7ee787; margin-bottom: 16px; min-height: 44px; display: flex; align-items: center; justify-content: space-between; }
+        .btn { padding: 8px 16px; background: #238636; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 13px; }
+        .btn:hover { background: #2ea043; }
+        .tree { font-family: monospace; font-size: 13px; line-height: 1.6; }
+        .tree-node { cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+        .tree-node:hover { background: #30363d; }
+        .tree-node.selected { background: #388bfd33; }
+        .tree-key { color: #79c0ff; }
+        .tree-string { color: #a5d6ff; }
+        .tree-number { color: #7ee787; }
+        .tree-boolean { color: #ff7b72; }
+        .tree-null { color: #8b949e; }
+        .tree-bracket { color: #8b949e; }
+        .collapsible { cursor: pointer; user-select: none; }
+        .collapsible::before { content: '▼ '; font-size: 10px; color: #8b949e; }
+        .collapsible.collapsed::before { content: '▶ '; }
+        .collapsed + .tree-children { display: none; }
+        .tree-children { margin-left: 20px; border-left: 1px solid #30363d; padding-left: 8px; }
+        .value-preview { background: #0d1117; padding: 16px; border-radius: 8px; margin-top: 16px; max-height: 200px; overflow: auto; }
+        .search-box { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-box input { flex: 1; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; }
+        .stats { display: flex; gap: 16px; margin-top: 16px; font-size: 13px; color: #8b949e; }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#dev">开发工具</a><span>›</span>JSON路径查找器</nav>
+    <div class="container">
+        <h1>🔎 JSON路径查找器</h1>
+        <div class="layout">
+            <div class="card">
+                <h3>输入JSON</h3>
+                <textarea id="jsonInput" oninput="parseJSON()" placeholder="粘贴JSON数据...">{
+  "user": {
+    "name": "张三",
+    "age": 28,
+    "email": "zhangsan@example.com",
+    "address": {
+      "city": "北京",
+      "district": "朝阳区"
+    },
+    "hobbies": ["读书", "旅游", "编程"],
+    "isActive": true
+  },
+  "orders": [
+    {"id": 1001, "product": "手机", "price": 4999},
+    {"id": 1002, "product": "笔记本", "price": 6999}
+  ]
+}</textarea>
+                <div class="stats">
+                    <span>深度: <strong id="depth">0</strong></span>
+                    <span>键数: <strong id="keyCount">0</strong></span>
+                    <span>大小: <strong id="size">0</strong> bytes</span>
+                </div>
+            </div>
+            <div class="card">
+                <h3>JSON路径</h3>
+                <div class="path-display">
+                    <span id="currentPath">点击左侧树节点查看路径</span>
+                    <button class="btn" onclick="copyPath()">复制</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索键名或值..." oninput="searchJSON()">
+                </div>
+                <h3>JSON树</h3>
+                <div class="tree" id="jsonTree"></div>
+                <div class="value-preview" id="valuePreview" style="display: none;">
+                    <h3>选中值</h3>
+                    <pre id="selectedValue"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let jsonData = null;
+        let selectedPath = '';
+        
+        function parseJSON() {
+            const input = document.getElementById('jsonInput').value;
+            const treeEl = document.getElementById('jsonTree');
+            
+            try {
+                jsonData = JSON.parse(input);
+                treeEl.innerHTML = renderNode(jsonData, '');
+                
+                // Stats
+                document.getElementById('depth').textContent = getDepth(jsonData);
+                document.getElementById('keyCount').textContent = countKeys(jsonData);
+                document.getElementById('size').textContent = new Blob([input]).size;
+            } catch (e) {
+                treeEl.innerHTML = `<span style="color: #f85149;">JSON解析错误: ${e.message}</span>`;
+            }
+        }
+        
+        function renderNode(data, path, key = null) {
+            const type = getType(data);
+            let html = '';
+            
+            if (type === 'object' || type === 'array') {
+                const isArray = type === 'array';
+                const bracket = isArray ? ['[', ']'] : ['{', '}'];
+                const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
+                const isEmpty = entries.length === 0;
+                
+                html += `<div class="tree-node" onclick="selectNode(event, '${path}')" data-path="${path}">`;
+                if (key !== null) {
+                    html += `<span class="tree-key">"${key}"</span>: `;
+                }
+                html += `<span class="tree-bracket collapsible">${bracket[0]}</span>`;
+                if (isEmpty) {
+                    html += `<span class="tree-bracket">${bracket[1]}</span>`;
+                }
+                html += '</div>';
+                
+                if (!isEmpty) {
+                    html += '<div class="tree-children">';
+                    entries.forEach(([k, v], i) => {
+                        const newPath = isArray ? `${path}[${k}]` : (path ? `${path}.${k}` : k);
+                        html += renderNode(v, newPath, isArray ? null : k);
+                        if (i < entries.length - 1) html += '';
+                    });
+                    html += `<div class="tree-node"><span class="tree-bracket">${bracket[1]}</span></div>`;
+                    html += '</div>';
+                }
+            } else {
+                html += `<div class="tree-node" onclick="selectNode(event, '${path}')" data-path="${path}">`;
+                if (key !== null) {
+                    html += `<span class="tree-key">"${key}"</span>: `;
+                }
+                html += formatValue(data, type);
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        function getType(data) {
+            if (data === null) return 'null';
+            if (Array.isArray(data)) return 'array';
+            return typeof data;
+        }
+        
+        function formatValue(value, type) {
+            switch (type) {
+                case 'string': return `<span class="tree-string">"${escapeHtml(value)}"</span>`;
+                case 'number': return `<span class="tree-number">${value}</span>`;
+                case 'boolean': return `<span class="tree-boolean">${value}</span>`;
+                case 'null': return `<span class="tree-null">null</span>`;
+                default: return String(value);
+            }
+        }
+        
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        
+        function selectNode(event, path) {
+            event.stopPropagation();
+            
+            // Toggle collapse
+            const target = event.target;
+            if (target.classList.contains('collapsible')) {
+                target.classList.toggle('collapsed');
+                return;
+            }
+            
+            // Select node
+            document.querySelectorAll('.tree-node.selected').forEach(el => el.classList.remove('selected'));
+            const node = event.currentTarget;
+            node.classList.add('selected');
+            
+            selectedPath = path || '$';
+            document.getElementById('currentPath').textContent = '$' + (path ? '.' + path : '');
+            
+            // Show value
+            const value = getValueByPath(jsonData, path);
+            document.getElementById('valuePreview').style.display = 'block';
+            document.getElementById('selectedValue').textContent = JSON.stringify(value, null, 2);
+        }
+        
+        function getValueByPath(obj, path) {
+            if (!path) return obj;
+            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.');
+            let current = obj;
+            for (const part of parts) {
+                if (current === undefined || current === null) return undefined;
+                current = current[part];
+            }
+            return current;
+        }
+        
+        function copyPath() {
+            const path = document.getElementById('currentPath').textContent;
+            navigator.clipboard.writeText(path);
+            alert('已复制: ' + path);
+        }
+        
+        function getDepth(obj, depth = 0) {
+            if (typeof obj !== 'object' || obj === null) return depth;
+            const children = Array.isArray(obj) ? obj : Object.values(obj);
+            if (children.length === 0) return depth;
+            return Math.max(...children.map(v => getDepth(v, depth + 1)));
+        }
+        
+        function countKeys(obj) {
+            if (typeof obj !== 'object' || obj === null) return 0;
+            const entries = Array.isArray(obj) ? obj : Object.values(obj);
+            return (Array.isArray(obj) ? 0 : Object.keys(obj).length) + entries.reduce((sum, v) => sum + countKeys(v), 0);
+        }
+        
+        function searchJSON() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.tree-node').forEach(node => {
+                node.style.background = '';
+            });
+            
+            if (!query) return;
+            
+            document.querySelectorAll('.tree-node').forEach(node => {
+                if (node.textContent.toLowerCase().includes(query)) {
+                    node.style.background = '#9e6a03';
+                }
+            });
+        }
+        
+        parseJSON();
+    </script>
+</body>
+</html>

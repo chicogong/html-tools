@@ -1,389 +1,57 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文本差异对比 - WebUtils</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <title>文本对比</title>
     <style>
-        :root { --primary-color: #3b82f6; --add-color: #10b981; --remove-color: #ef4444; --add-bg: #10b98120; --remove-bg: #ef444420; }
-        [data-theme="dark"] { --primary-color: #60a5fa; --add-bg: #10b98130; --remove-bg: #ef444430; }
-        body { padding: 1rem; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
-        header h1 { margin: 0; font-size: 1.75rem; display: flex; align-items: center; gap: 0.5rem; }
-        .header-actions { display: flex; gap: 0.5rem; align-items: center; }
-        .theme-toggle { cursor: pointer; background: var(--primary-color); border: none; padding: 0.5rem 1rem; border-radius: 8px; color: white; font-size: 1rem; }
-        .back-link { color: var(--primary-color); text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--primary-color); font-size: 0.9rem; }
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        @media (max-width: 768px) { .input-grid { grid-template-columns: 1fr; } }
-        .input-panel { display: flex; flex-direction: column; }
-        .input-panel label { font-weight: 600; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .input-panel label .actions { display: flex; gap: 0.25rem; }
-        .input-panel label button { font-size: 0.7rem; padding: 0.2rem 0.5rem; }
-        .input-panel textarea { flex: 1; min-height: 200px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.9rem; resize: vertical; }
-        .toolbar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
-        .toolbar button { font-size: 0.85rem; }
-        .toolbar select { font-size: 0.85rem; padding: 0.4rem 0.8rem; }
-        .stats { margin-left: auto; font-size: 0.85rem; color: var(--muted-color); display: flex; gap: 1rem; }
-        .stats .added { color: var(--add-color); }
-        .stats .removed { color: var(--remove-color); }
-        .diff-container { background: var(--card-background-color); border-radius: 12px; overflow: hidden; border: 1px solid var(--muted-border-color); }
-        .diff-header { display: flex; background: var(--code-background-color); border-bottom: 1px solid var(--muted-border-color); }
-        .diff-header-item { flex: 1; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.9rem; }
-        .diff-header-item:first-child { border-right: 1px solid var(--muted-border-color); }
-        .diff-view { display: flex; max-height: 500px; overflow: auto; }
-        .diff-view.unified { flex-direction: column; }
-        .diff-side { flex: 1; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; }
-        .diff-side:first-child { border-right: 1px solid var(--muted-border-color); }
-        .diff-line { display: flex; min-height: 1.5rem; line-height: 1.5rem; }
-        .diff-line:hover { background: color-mix(in srgb, var(--primary-color) 5%, transparent); }
-        .line-num { min-width: 45px; padding: 0 0.5rem; text-align: right; color: var(--muted-color); background: var(--code-background-color); border-right: 1px solid var(--muted-border-color); user-select: none; font-size: 0.8rem; }
-        .line-content { flex: 1; padding: 0 0.5rem; white-space: pre-wrap; word-break: break-all; }
-        .diff-line.added { background: var(--add-bg); }
-        .diff-line.added .line-content::before { content: '+'; color: var(--add-color); margin-right: 0.25rem; }
-        .diff-line.removed { background: var(--remove-bg); }
-        .diff-line.removed .line-content::before { content: '-'; color: var(--remove-color); margin-right: 0.25rem; }
-        .diff-line.unchanged .line-content::before { content: ' '; margin-right: 0.25rem; }
-        .char-add { background: var(--add-color); color: white; border-radius: 2px; }
-        .char-remove { background: var(--remove-color); color: white; border-radius: 2px; }
-        .unified-view .diff-line { justify-content: flex-start; }
-        .unified-view .line-num { min-width: 80px; }
-        .unified-view .line-num .old, .unified-view .line-num .new { display: inline-block; width: 35px; }
-        .empty-state { padding: 3rem; text-align: center; color: var(--muted-color); }
-        .legend { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; }
-        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
-        .legend-box { width: 16px; height: 16px; border-radius: 3px; }
-        .legend-box.add { background: var(--add-bg); border: 1px solid var(--add-color); }
-        .legend-box.remove { background: var(--remove-bg); border: 1px solid var(--remove-color); }
-        .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; background: #10b981; color: white; border-radius: 8px; font-weight: 500; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h1 { text-align: center; margin-bottom: 20px; }
+        .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 200px; padding: 15px; border: 2px solid #e2e8f0; border-radius: 10px; font-family: monospace; resize: vertical; }
+        .btn { display: block; margin: 0 auto 20px; padding: 12px 30px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+        .result { padding: 20px; background: #f7fafc; border-radius: 10px; font-family: monospace; white-space: pre-wrap; line-height: 1.6; }
+        .added { background: #c6f6d5; color: #22543d; }
+        .removed { background: #fed7d7; color: #742a2a; text-decoration: line-through; }
+        @media (max-width: 768px) { .inputs { grid-template-columns: 1fr; } }
+    
+        .breadcrumb { position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-size: 0.85rem; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 5px; }
     </style>
 </head>
 <body>
+    <nav class="breadcrumb"><a href="../../index.html">首页</a><span>›</span><a href="../../index.html#text">文本工具</a><span>›</span>文本 Diff</nav>
     <div class="container">
-        <header>
-            <h1>📊 文本差异对比</h1>
-            <div class="header-actions">
-                <a href="/" class="back-link">← 返回首页</a>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-            </div>
-        </header>
-
-        <div class="input-grid">
-            <div class="input-panel">
-                <label>
-                    原始文本
-                    <div class="actions">
-                        <button class="secondary outline" onclick="pasteText('text1')">粘贴</button>
-                        <button class="secondary outline" onclick="clearText('text1')">清空</button>
-                    </div>
-                </label>
-                <textarea id="text1" placeholder="输入原始文本..." oninput="compare()"></textarea>
-            </div>
-            <div class="input-panel">
-                <label>
-                    修改后文本
-                    <div class="actions">
-                        <button class="secondary outline" onclick="pasteText('text2')">粘贴</button>
-                        <button class="secondary outline" onclick="clearText('text2')">清空</button>
-                    </div>
-                </label>
-                <textarea id="text2" placeholder="输入修改后的文本..." oninput="compare()"></textarea>
-            </div>
+        <h1>📝 文本对比</h1>
+        <div class="inputs">
+            <div><label>原始文本</label><textarea id="text1" placeholder="输入原始文本..."></textarea></div>
+            <div><label>新文本</label><textarea id="text2" placeholder="输入新文本..."></textarea></div>
         </div>
-
-        <div class="toolbar">
-            <button onclick="compare()">对比</button>
-            <button onclick="swapTexts()" class="secondary">交换</button>
-            <button onclick="loadExample()" class="secondary outline">加载示例</button>
-            <select id="viewMode" onchange="compare()">
-                <option value="split">并排视图</option>
-                <option value="unified">统一视图</option>
-            </select>
-            <select id="diffMode" onchange="compare()">
-                <option value="line">按行对比</option>
-                <option value="word">按词对比</option>
-                <option value="char">按字符对比</option>
-            </select>
-            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
-                <input type="checkbox" id="ignoreWhitespace" onchange="compare()" style="margin: 0;">
-                忽略空白
-            </label>
-            <div class="stats" id="stats"></div>
-        </div>
-
-        <div class="diff-container">
-            <div class="diff-header" id="diffHeader">
-                <div class="diff-header-item">原始文本</div>
-                <div class="diff-header-item">修改后文本</div>
-            </div>
-            <div class="diff-view" id="diffView">
-                <div class="empty-state">输入文本后点击"对比"查看差异</div>
-            </div>
-        </div>
-
-        <div class="legend">
-            <div class="legend-item"><div class="legend-box add"></div> 新增内容</div>
-            <div class="legend-item"><div class="legend-box remove"></div> 删除内容</div>
-        </div>
+        <button class="btn" onclick="compare()">对比</button>
+        <div class="result" id="result">差异将显示在这里...</div>
     </div>
-
-    <div class="toast" id="toast"></div>
-
     <script>
-        window.toggleTheme = function() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        };
-
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        })();
-
-        window.pasteText = async function(id) {
-            try {
-                const text = await navigator.clipboard.readText();
-                document.getElementById(id).value = text;
-                compare();
-            } catch (e) {
-                showToast('无法访问剪贴板', 'error');
-            }
-        };
-
-        window.clearText = function(id) {
-            document.getElementById(id).value = '';
-            compare();
-        };
-
-        window.swapTexts = function() {
-            const t1 = document.getElementById('text1');
-            const t2 = document.getElementById('text2');
-            [t1.value, t2.value] = [t2.value, t1.value];
-            compare();
-        };
-
-        window.loadExample = function() {
-            document.getElementById('text1').value = `function greeting(name) {
-    console.log("Hello, " + name);
-    return true;
-}
-
-const users = ["Alice", "Bob"];
-users.forEach(greeting);`;
-
-            document.getElementById('text2').value = `function greeting(name, time) {
-    const msg = time ? \`Good \${time}, \${name}!\` : \`Hello, \${name}!\`;
-    console.log(msg);
-    return msg;
-}
-
-const users = ["Alice", "Bob", "Charlie"];
-users.forEach(user => greeting(user, "morning"));`;
-
-            compare();
-        };
-
-        // Simple diff algorithm
-        function diff(oldText, newText, mode = 'line') {
-            const ignoreWs = document.getElementById('ignoreWhitespace').checked;
-            
-            let oldParts, newParts;
-            if (mode === 'line') {
-                oldParts = oldText.split('\n');
-                newParts = newText.split('\n');
-            } else if (mode === 'word') {
-                oldParts = oldText.split(/(\s+)/);
-                newParts = newText.split(/(\s+)/);
-            } else {
-                oldParts = oldText.split('');
-                newParts = newText.split('');
-            }
-
-            const normalize = s => ignoreWs ? s.replace(/\s+/g, ' ').trim() : s;
-            
-            // LCS-based diff
-            const m = oldParts.length, n = newParts.length;
-            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-            
-            for (let i = 1; i <= m; i++) {
-                for (let j = 1; j <= n; j++) {
-                    if (normalize(oldParts[i-1]) === normalize(newParts[j-1])) {
-                        dp[i][j] = dp[i-1][j-1] + 1;
-                    } else {
-                        dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
-                    }
-                }
-            }
-
-            // Backtrack to find diff
-            const result = [];
-            let i = m, j = n;
-            while (i > 0 || j > 0) {
-                if (i > 0 && j > 0 && normalize(oldParts[i-1]) === normalize(newParts[j-1])) {
-                    result.unshift({ type: 'unchanged', old: oldParts[i-1], new: newParts[j-1], oldIdx: i, newIdx: j });
-                    i--; j--;
-                } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
-                    result.unshift({ type: 'added', new: newParts[j-1], newIdx: j });
-                    j--;
+        function compare() {
+            const text1 = document.getElementById('text1').value.split('\n');
+            const text2 = document.getElementById('text2').value.split('\n');
+            let result = '';
+            const maxLen = Math.max(text1.length, text2.length);
+            for (let i = 0; i < maxLen; i++) {
+                const line1 = text1[i] || '';
+                const line2 = text2[i] || '';
+                if (line1 === line2) {
+                    result += '  ' + line1 + '\n';
                 } else {
-                    result.unshift({ type: 'removed', old: oldParts[i-1], oldIdx: i });
-                    i--;
+                    if (line1) result += '<span class="removed">- ' + line1 + '</span>\n';
+                    if (line2) result += '<span class="added">+ ' + line2 + '</span>\n';
                 }
             }
-
-            return result;
+            document.getElementById('result').innerHTML = result || '两段文本相同';
         }
-
-        window.escapeHtml = function(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        };
-
-        window.compare = function() {
-            const text1 = document.getElementById('text1').value;
-            const text2 = document.getElementById('text2').value;
-            const viewMode = document.getElementById('viewMode').value;
-            const diffMode = document.getElementById('diffMode').value;
-            const diffView = document.getElementById('diffView');
-            const diffHeader = document.getElementById('diffHeader');
-
-            if (!text1 && !text2) {
-                diffView.innerHTML = '<div class="empty-state">输入文本后查看差异</div>';
-                document.getElementById('stats').innerHTML = '';
-                return;
-            }
-
-            const changes = diff(text1, text2, diffMode === 'line' ? 'line' : 'char');
-            
-            // Count stats
-            let added = 0, removed = 0;
-            changes.forEach(c => {
-                if (c.type === 'added') added++;
-                if (c.type === 'removed') removed++;
-            });
-
-            document.getElementById('stats').innerHTML = `
-                <span class="added">+${added} 新增</span>
-                <span class="removed">-${removed} 删除</span>
-            `;
-
-            if (viewMode === 'split') {
-                renderSplitView(changes, diffMode);
-                diffHeader.style.display = 'flex';
-            } else {
-                renderUnifiedView(changes, diffMode);
-                diffHeader.style.display = 'none';
-            }
-        };
-
-        function renderSplitView(changes, mode) {
-            const diffView = document.getElementById('diffView');
-            diffView.className = 'diff-view split-view';
-
-            if (mode === 'line') {
-                let leftHtml = '', rightHtml = '';
-                let leftNum = 0, rightNum = 0;
-
-                changes.forEach(c => {
-                    if (c.type === 'unchanged') {
-                        leftNum++; rightNum++;
-                        leftHtml += `<div class="diff-line unchanged"><span class="line-num">${leftNum}</span><span class="line-content">${escapeHtml(c.old)}</span></div>`;
-                        rightHtml += `<div class="diff-line unchanged"><span class="line-num">${rightNum}</span><span class="line-content">${escapeHtml(c.new)}</span></div>`;
-                    } else if (c.type === 'removed') {
-                        leftNum++;
-                        leftHtml += `<div class="diff-line removed"><span class="line-num">${leftNum}</span><span class="line-content">${escapeHtml(c.old)}</span></div>`;
-                        rightHtml += '<div class="diff-line"><span class="line-num"></span><span class="line-content"></span></div>';
-                    } else {
-                        rightNum++;
-                        leftHtml += '<div class="diff-line"><span class="line-num"></span><span class="line-content"></span></div>';
-                        rightHtml += `<div class="diff-line added"><span class="line-num">${rightNum}</span><span class="line-content">${escapeHtml(c.new)}</span></div>`;
-                    }
-                });
-
-                diffView.innerHTML = `
-                    <div class="diff-side">${leftHtml}</div>
-                    <div class="diff-side">${rightHtml}</div>
-                `;
-            } else {
-                // Word/char diff - show inline
-                const text1 = document.getElementById('text1').value;
-                const text2 = document.getElementById('text2').value;
-                const lines1 = text1.split('\n');
-                const lines2 = text2.split('\n');
-                
-                let leftHtml = '', rightHtml = '';
-                const maxLines = Math.max(lines1.length, lines2.length);
-
-                for (let i = 0; i < maxLines; i++) {
-                    const line1 = lines1[i] || '';
-                    const line2 = lines2[i] || '';
-                    const lineDiff = diff(line1, line2, mode === 'word' ? 'word' : 'char');
-                    
-                    let left = '', right = '';
-                    lineDiff.forEach(c => {
-                        if (c.type === 'unchanged') {
-                            left += escapeHtml(c.old);
-                            right += escapeHtml(c.new);
-                        } else if (c.type === 'removed') {
-                            left += `<span class="char-remove">${escapeHtml(c.old)}</span>`;
-                        } else {
-                            right += `<span class="char-add">${escapeHtml(c.new)}</span>`;
-                        }
-                    });
-
-                    leftHtml += `<div class="diff-line${line1 !== line2 ? ' removed' : ''}"><span class="line-num">${i + 1}</span><span class="line-content">${left || '&nbsp;'}</span></div>`;
-                    rightHtml += `<div class="diff-line${line1 !== line2 ? ' added' : ''}"><span class="line-num">${i + 1}</span><span class="line-content">${right || '&nbsp;'}</span></div>`;
-                }
-
-                diffView.innerHTML = `
-                    <div class="diff-side">${leftHtml}</div>
-                    <div class="diff-side">${rightHtml}</div>
-                `;
-            }
-        }
-
-        function renderUnifiedView(changes, mode) {
-            const diffView = document.getElementById('diffView');
-            diffView.className = 'diff-view unified-view';
-
-            let html = '<div class="diff-side">';
-            let oldNum = 0, newNum = 0;
-
-            changes.forEach(c => {
-                if (c.type === 'unchanged') {
-                    oldNum++; newNum++;
-                    html += `<div class="diff-line unchanged"><span class="line-num"><span class="old">${oldNum}</span><span class="new">${newNum}</span></span><span class="line-content">${escapeHtml(c.old)}</span></div>`;
-                } else if (c.type === 'removed') {
-                    oldNum++;
-                    html += `<div class="diff-line removed"><span class="line-num"><span class="old">${oldNum}</span><span class="new"></span></span><span class="line-content">${escapeHtml(c.old)}</span></div>`;
-                } else {
-                    newNum++;
-                    html += `<div class="diff-line added"><span class="line-num"><span class="old"></span><span class="new">${newNum}</span></span><span class="line-content">${escapeHtml(c.new)}</span></div>`;
-                }
-            });
-
-            html += '</div>';
-            diffView.innerHTML = html;
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        // Load example on init
-        loadExample();
     </script>
 </body>
 </html>

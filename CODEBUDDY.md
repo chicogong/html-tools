@@ -165,6 +165,7 @@ Only use CDN when necessary. Current dependencies:
 - `jsdiff` - Text diff comparison
 - `marked` + `DOMPurify` - Markdown preview
 - `QRCode.js` - QR code generation
+- `pinyin-pro` - Chinese pinyin conversion for search
 
 ## Local Testing
 

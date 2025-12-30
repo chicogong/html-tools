@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>浇水日程 - WebUtils</title>
+  <meta name="description" content="植物浇水提醒,根据植物类型设置浇水频率,帮助您照顾好每一株植物" />
+  <meta name="keywords" content="浇水 植物 园艺 提醒 日程 watering plants garden schedule" />
+  <meta name="author" content="WebUtils" />
+  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/gardening/watering-schedule.html" />
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--accent-yellow:#ffd93d;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
+    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
+    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
+    .container{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
+    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
+    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
+    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
+    .breadcrumb a:hover{color:var(--accent-cyan)}
+    .breadcrumb-separator{color:var(--text-muted)}
+    .breadcrumb-current{color:var(--text-primary);font-weight:500}
+    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
+    .add-form{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+    .form-row{display:grid;grid-template-columns:1fr 120px;gap:1rem;margin-bottom:1rem}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;margin-bottom:.5rem;color:var(--text-secondary);font-size:.9rem}
+    .form-group input,.form-group select{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:inherit}
+    .add-btn{width:100%;padding:.75rem;border:none;border-radius:var(--radius-sm);background:var(--accent-green);color:#000;font-family:inherit;font-weight:600;cursor:pointer;transition:all .2s}
+    .add-btn:hover{background:var(--accent-cyan)}
+    .plants-list{display:grid;gap:1rem}
+    .plant-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;position:relative}
+    .plant-card.urgent{border-color:var(--accent-yellow);background:linear-gradient(135deg,rgba(255,217,61,.05),transparent)}
+    .plant-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+    .plant-name{font-size:1.2rem;font-weight:600;color:var(--accent-cyan)}
+    .plant-delete{padding:.5rem;border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;transition:all .2s}
+    .plant-delete:hover{color:var(--accent-yellow)}
+    .plant-info{display:grid;gap:.5rem;font-size:.9rem}
+    .info-row{display:flex;justify-content:space-between}
+    .info-label{color:var(--text-muted)}
+    .info-value{color:var(--text-primary);font-family:'JetBrains Mono',monospace}
+    .next-watering{margin-top:1rem;padding:1rem;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);text-align:center}
+    .next-watering.today{background:rgba(255,217,61,.1);border-color:var(--accent-yellow)}
+    .next-label{font-size:.85rem;color:var(--text-muted);margin-bottom:.25rem}
+    .next-date{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent-green)}
+    .next-date.urgent{color:var(--accent-yellow)}
+    .watered-btn{width:100%;padding:.75rem;margin-top:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;transition:all .2s}
+    .watered-btn:hover{border-color:var(--accent-green);background:var(--accent-green);color:#000}
+    .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted)}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
+
+    <nav class="breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#gardening">园艺工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">浇水日程</span>
+    </nav>
+
+    <h1>🌱 浇水日程</h1>
+    <p class="subtitle">照顾好每一株植物</p>
+
+    <div class="add-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>植物名称</label>
+          <input type="text" id="plantName" placeholder="例如：绿萝、仙人掌" />
+        </div>
+        <div class="form-group">
+          <label>浇水频率（天）</label>
+          <input type="number" id="frequency" placeholder="7" min="1" value="7" />
+        </div>
+      </div>
+      <button class="add-btn" onclick="addPlant()">➕ 添加植物</button>
+    </div>
+
+    <div class="plants-list" id="plantsList">
+      <div class="empty-state">还没有添加植物<br>点击上方添加您的第一株植物</div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'html_tools_watering_v1';
+    let plants = [];
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        plants = saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        plants = [];
+      }
+      renderPlants();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(plants));
+    }
+
+    function addPlant() {
+      const name = document.getElementById('plantName').value.trim();
+      const frequency = parseInt(document.getElementById('frequency').value);
+
+      if (!name) {
+        alert('请输入植物名称');
+        return;
+      }
+
+      if (!frequency || frequency < 1) {
+        alert('请输入有效的浇水频率');
+        return;
+      }
+
+      plants.push({
+        id: Date.now(),
+        name,
+        frequency,
+        lastWatered: new Date().toISOString().split('T')[0]
+      });
+
+      saveData();
+      renderPlants();
+
+      document.getElementById('plantName').value = '';
+      document.getElementById('frequency').value = '7';
+    }
+
+    function deletePlant(id) {
+      if (!confirm('确定要删除这株植物吗？')) return;
+      plants = plants.filter(p => p.id !== id);
+      saveData();
+      renderPlants();
+    }
+
+    function waterPlant(id) {
+      const plant = plants.find(p => p.id === id);
+      if (plant) {
+        plant.lastWatered = new Date().toISOString().split('T')[0];
+        saveData();
+        renderPlants();
+      }
+    }
+
+    function getNextWatering(lastWatered, frequency) {
+      const last = new Date(lastWatered);
+      const next = new Date(last);
+      next.setDate(next.getDate() + frequency);
+      return next;
+    }
+
+    function getDaysUntil(date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(date);
+      target.setHours(0, 0, 0, 0);
+      const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+      return diff;
+    }
+
+    function renderPlants() {
+      const container = document.getElementById('plantsList');
+
+      if (plants.length === 0) {
+        container.innerHTML = '<div class="empty-state">还没有添加植物<br>点击上方添加您的第一株植物</div>';
+        return;
+      }
+
+      // Sort by next watering date
+      const sorted = plants.sort((a, b) => {
+        const nextA = getNextWatering(a.lastWatered, a.frequency);
+        const nextB = getNextWatering(b.lastWatered, b.frequency);
+        return nextA - nextB;
+      });
+
+      container.innerHTML = sorted.map(plant => {
+        const nextWatering = getNextWatering(plant.lastWatered, plant.frequency);
+        const daysUntil = getDaysUntil(nextWatering);
+        const isUrgent = daysUntil <= 0;
+        const isToday = daysUntil === 0;
+
+        let statusText = '';
+        if (daysUntil < 0) statusText = `需要浇水（已逾期 ${Math.abs(daysUntil)} 天）`;
+        else if (daysUntil === 0) statusText = '今天需要浇水';
+        else if (daysUntil === 1) statusText = '明天需要浇水';
+        else statusText = `${daysUntil} 天后浇水`;
+
+        return `
+          <div class="plant-card ${isUrgent ? 'urgent' : ''}">
+            <div class="plant-header">
+              <div class="plant-name">${plant.name}</div>
+              <button class="plant-delete" onclick="deletePlant(${plant.id})">×</button>
+            </div>
+
+            <div class="plant-info">
+              <div class="info-row">
+                <span class="info-label">浇水频率</span>
+                <span class="info-value">每 ${plant.frequency} 天</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">上次浇水</span>
+                <span class="info-value">${plant.lastWatered}</span>
+              </div>
+            </div>
+
+            <div class="next-watering ${isToday ? 'today' : ''}">
+              <div class="next-label">下次浇水</div>
+              <div class="next-date ${isUrgent ? 'urgent' : ''}">${statusText}</div>
+            </div>
+
+            <button class="watered-btn" onclick="waterPlant(${plant.id})">💧 已浇水</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Initialize
+    loadData();
+
+    window.toggleTheme = function() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      const current = html.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+      localStorage.setItem('theme', next);
+    };
+
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+      }
+    })();
+  </script>
+</body>
+</html>

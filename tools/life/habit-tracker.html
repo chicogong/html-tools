@@ -155,48 +155,87 @@
       render();
     }
 
+    function createHabitElement(habit, days, today, weekDays) {
+      const streak = calculateStreak(habit);
+      const checked = habit.checked || {};
+
+      const item = document.createElement('div');
+      item.className = 'habit-item';
+
+      // Header
+      const header = document.createElement('div');
+      header.className = 'habit-header';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'habit-name';
+      nameSpan.textContent = habit.name;
+
+      const headerRight = document.createElement('div');
+
+      const streakSpan = document.createElement('span');
+      streakSpan.className = 'habit-streak';
+      streakSpan.textContent = '🔥 ' + streak + '天';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = '×';
+      deleteBtn.onclick = () => deleteHabit(habit.id);
+
+      headerRight.appendChild(streakSpan);
+      headerRight.appendChild(deleteBtn);
+      header.appendChild(nameSpan);
+      header.appendChild(headerRight);
+
+      // Week labels
+      const weekLabels = document.createElement('div');
+      weekLabels.className = 'week-labels';
+      days.forEach(d => {
+        const span = document.createElement('span');
+        span.textContent = weekDays[d.getDay()];
+        weekLabels.appendChild(span);
+      });
+
+      // Days
+      const habitDays = document.createElement('div');
+      habitDays.className = 'habit-days';
+      days.forEach(d => {
+        const key = getDateKey(d);
+        const isChecked = checked[key];
+        const isToday = key === today;
+
+        const dayEl = document.createElement('div');
+        dayEl.className = 'day' + (isChecked ? ' checked' : '') + (isToday ? ' today' : '');
+        dayEl.textContent = d.getDate();
+        dayEl.onclick = () => toggleDay(habit.id, key);
+        habitDays.appendChild(dayEl);
+      });
+
+      item.appendChild(header);
+      item.appendChild(weekLabels);
+      item.appendChild(habitDays);
+
+      return item;
+    }
+
     function render() {
       const data = loadData();
       const days = getLast7Days();
       const today = getDateKey(new Date());
       const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
-      const habitsHtml = data.habits.map(habit => {
-        const streak = calculateStreak(habit);
-        const checked = habit.checked || {};
+      const habitsContainer = document.getElementById('habitsList');
+      habitsContainer.textContent = '';
 
-        const daysHtml = days.map(d => {
-          const key = getDateKey(d);
-          const isChecked = checked[key];
-          const isToday = key === today;
-          return `
-            <div class="day ${isChecked ? 'checked' : ''} ${isToday ? 'today' : ''}"
-                 onclick="toggleDay(${habit.id}, '${key}')">
-              ${d.getDate()}
-            </div>
-          `;
-        }).join('');
-
-        const weekLabelsHtml = days.map(d =>
-          `<span>${weekDays[d.getDay()]}</span>`
-        ).join('');
-
-        return `
-          <div class="habit-item">
-            <div class="habit-header">
-              <span class="habit-name">${habit.name}</span>
-              <div>
-                <span class="habit-streak">🔥 ${streak}天</span>
-                <button class="delete-btn" onclick="deleteHabit(${habit.id})">×</button>
-              </div>
-            </div>
-            <div class="week-labels">${weekLabelsHtml}</div>
-            <div class="habit-days">${daysHtml}</div>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('habitsList').innerHTML = habitsHtml || '<p style="text-align:center;color:var(--text-muted)">还没有习惯，添加一个开始吧！</p>';
+      if (data.habits.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.style.cssText = 'text-align:center;color:var(--text-muted)';
+        emptyMsg.textContent = '还没有习惯，添加一个开始吧！';
+        habitsContainer.appendChild(emptyMsg);
+      } else {
+        data.habits.forEach(habit => {
+          habitsContainer.appendChild(createHabitElement(habit, days, today, weekDays));
+        });
+      }
 
       // Stats
       let totalChecks = 0;
@@ -208,20 +247,31 @@
         longestStreak = Math.max(longestStreak, calculateStreak(habit));
       });
 
-      document.getElementById('stats').innerHTML = `
-        <div class="stat">
-          <div class="value">${data.habits.length}</div>
-          <div class="label">习惯数</div>
-        </div>
-        <div class="stat">
-          <div class="value">${totalChecks}</div>
-          <div class="label">总打卡</div>
-        </div>
-        <div class="stat">
-          <div class="value">${longestStreak}</div>
-          <div class="label">最长连续</div>
-        </div>
-      `;
+      const statsContainer = document.getElementById('stats');
+      statsContainer.textContent = '';
+
+      const stats = [
+        { value: data.habits.length, label: '习惯数' },
+        { value: totalChecks, label: '总打卡' },
+        { value: longestStreak, label: '最长连续' }
+      ];
+
+      stats.forEach(s => {
+        const stat = document.createElement('div');
+        stat.className = 'stat';
+
+        const value = document.createElement('div');
+        value.className = 'value';
+        value.textContent = s.value;
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = s.label;
+
+        stat.appendChild(value);
+        stat.appendChild(label);
+        statsContainer.appendChild(stat);
+      });
     }
 
     render();

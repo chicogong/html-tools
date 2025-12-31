@@ -1,275 +1,589 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>颜色混合器 - WebUtils</title>
-  <meta name="description" content="混合两种颜色,实时查看混合结果,支持RGB和HSL模式,适合美术和设计学习" />
-  <meta name="keywords" content="颜色 混合 调色 美术 绘画 color mixer blend art paint" />
-  <meta name="author" content="WebUtils" />
-  <link rel="canonical" href="https://tools.realtime-ai.chat/tools/art/color-mixer.html" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>颜色混合器 - WebUtils</title>
+    <meta
+      name="description"
+      content="混合两种颜色,实时查看混合结果,支持RGB和HSL模式,适合美术和设计学习"
+    />
+    <meta name="keywords" content="颜色 混合 调色 美术 绘画 color mixer blend art paint" />
+    <meta name="author" content="WebUtils" />
+    <link rel="canonical" href="https://tools.realtime-ai.chat/tools/art/color-mixer.html" />
 
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg-deep:#0a0a0f;--bg-surface:#12121a;--bg-card:#1a1a24;--text-primary:#e8e8ed;--text-secondary:#9898a4;--text-muted:#5c5c66;--accent-blue:#4d9fff;--accent-cyan:#00f5d4;--accent-green:#00d26a;--border-subtle:#2a2a36;--radius-sm:6px;--radius-md:10px;--radius-lg:14px}
-    [data-theme="light"]{--bg-deep:#fafafa;--bg-surface:#fff;--bg-card:#fff;--text-primary:#1a1a1a;--text-secondary:#666;--text-muted:#999;--border-subtle:#e5e5e5}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg-deep);color:var(--text-primary);min-height:100vh;line-height:1.6}
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(77,159,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,255,.03) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0}
-    .container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem}
-    .theme-toggle{position:fixed;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);cursor:pointer;font-size:1.2rem;z-index:100;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent-cyan);transform:scale(1.1)}
-    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:8px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:1.5rem;flex-wrap:wrap}
-    .breadcrumb a{color:var(--text-secondary);text-decoration:none}
-    .breadcrumb a:hover{color:var(--accent-cyan)}
-    .breadcrumb-separator{color:var(--text-muted)}
-    .breadcrumb-current{color:var(--text-primary);font-weight:500}
-    h1{font-size:2rem;font-weight:600;margin-bottom:.5rem;background:linear-gradient(135deg,var(--text-primary),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
-    .subtitle{color:var(--text-secondary);margin-bottom:2rem;text-align:center}
-    .mixer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-bottom:2rem}
-    .color-panel{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem;text-align:center}
-    .panel-title{font-weight:600;margin-bottom:1rem;color:var(--text-secondary)}
-    .color-preview{width:100%;height:200px;border-radius:var(--radius-md);border:2px solid var(--border-subtle);margin-bottom:1rem;cursor:pointer;transition:all .2s}
-    .color-preview:hover{transform:scale(1.02)}
-    .color-input{width:100%;padding:.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-primary);font-family:'JetBrains Mono',monospace;text-align:center;margin-bottom:1rem}
-    .color-input:focus{outline:none;border-color:var(--accent-blue)}
-    .ratio-control{margin-top:1rem}
-    .ratio-label{font-size:.9rem;color:var(--text-muted);margin-bottom:.5rem}
-    .ratio-slider{width:100%;height:8px;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,var(--accent-cyan),var(--accent-green));border-radius:4px;outline:none}
-    .ratio-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--text-primary);cursor:pointer;border:3px solid var(--bg-card)}
-    .ratio-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--text-primary);cursor:pointer;border:3px solid var(--bg-card)}
-    .ratio-value{font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-top:.5rem}
-    .info-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:1.5rem}
-    .info-title{font-weight:600;margin-bottom:1rem;color:var(--accent-cyan)}
-    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem}
-    .info-item{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:1rem;text-align:center}
-    .info-value{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--text-primary);margin-bottom:.25rem}
-    .info-label{font-size:.85rem;color:var(--text-muted)}
-    .presets{margin-top:1.5rem}
-    .preset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:.75rem}
-    .preset-btn{padding:.75rem;border:2px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.5rem}
-    .preset-btn:hover{border-color:var(--accent-cyan)}
-    .preset-color{width:40px;height:40px;border-radius:50%;border:2px solid var(--border-subtle)}
-    .preset-name{font-size:.75rem;color:var(--text-muted)}
-    @media(max-width:768px){.mixer-grid{grid-template-columns:1fr}.color-preview{height:150px}}
-  </style>
-</head>
-<body>
-  <div class="bg-grid"></div>
-  <div class="container">
-    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span class="breadcrumb-separator">/</span>
-      <a href="../../index.html#art">艺术工具</a>
-      <span class="breadcrumb-separator">/</span>
-      <span class="breadcrumb-current">颜色混合</span>
-    </nav>
-
-    <h1>🎨 颜色混合器</h1>
-    <p class="subtitle">混合颜色，探索色彩</p>
-
-    <div class="mixer-grid">
-      <div class="color-panel">
-        <div class="panel-title">颜色 A</div>
-        <div class="color-preview" id="colorA" style="background:#ff6b6b" onclick="document.getElementById('inputA').click()"></div>
-        <input type="color" id="inputA" style="display:none" value="#ff6b6b" onchange="updateColor('A', this.value)" />
-        <input type="text" class="color-input" id="textA" value="#ff6b6b" oninput="updateColor('A', this.value)" placeholder="#FF6B6B" />
-      </div>
-
-      <div class="color-panel">
-        <div class="panel-title">混合结果</div>
-        <div class="color-preview" id="colorMix" style="background:#a8e6cf"></div>
-        <div class="ratio-control">
-          <div class="ratio-label">混合比例</div>
-          <input type="range" class="ratio-slider" id="ratio" min="0" max="100" value="50" oninput="mixColors()" />
-          <div class="ratio-value" id="ratioValue">A 50% : B 50%</div>
-        </div>
-      </div>
-
-      <div class="color-panel">
-        <div class="panel-title">颜色 B</div>
-        <div class="color-preview" id="colorB" style="background:#4ecdc4" onclick="document.getElementById('inputB').click()"></div>
-        <input type="color" id="inputB" style="display:none" value="#4ecdc4" onchange="updateColor('B', this.value)" />
-        <input type="text" class="color-input" id="textB" value="#4ecdc4" oninput="updateColor('B', this.value)" placeholder="#4ECDC4" />
-      </div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-title">📊 混合色彩信息</div>
-      <div class="info-grid">
-        <div class="info-item">
-          <div class="info-value" id="hexValue">#A8E6CF</div>
-          <div class="info-label">HEX</div>
-        </div>
-        <div class="info-item">
-          <div class="info-value" id="rgbValue">rgb(168,230,207)</div>
-          <div class="info-label">RGB</div>
-        </div>
-        <div class="info-item">
-          <div class="info-value" id="hslValue">hsl(159,58%,78%)</div>
-          <div class="info-label">HSL</div>
-        </div>
-      </div>
-
-      <div class="presets">
-        <div class="info-title">🌈 预设配色</div>
-        <div class="preset-grid">
-          <button class="preset-btn" onclick="loadPreset('#ff6b6b', '#4ecdc4')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#ff6b6b,#4ecdc4)"></div>
-            <div class="preset-name">珊瑚海</div>
-          </button>
-          <button class="preset-btn" onclick="loadPreset('#ffd93d', '#6bcf7f')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#ffd93d,#6bcf7f)"></div>
-            <div class="preset-name">阳光草地</div>
-          </button>
-          <button class="preset-btn" onclick="loadPreset('#a29bfe', '#fd79a8')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#a29bfe,#fd79a8)"></div>
-            <div class="preset-name">紫粉梦</div>
-          </button>
-          <button class="preset-btn" onclick="loadPreset('#74b9ff', '#a29bfe')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#74b9ff,#a29bfe)"></div>
-            <div class="preset-name">天空渐变</div>
-          </button>
-          <button class="preset-btn" onclick="loadPreset('#ff9ff3', '#feca57')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#ff9ff3,#feca57)"></div>
-            <div class="preset-name">糖果色</div>
-          </button>
-          <button class="preset-btn" onclick="loadPreset('#ee5a6f', '#f29263')">
-            <div class="preset-color" style="background:linear-gradient(135deg,#ee5a6f,#f29263)"></div>
-            <div class="preset-name">日落</div>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let colorA = '#ff6b6b';
-    let colorB = '#4ecdc4';
-
-    function hexToRGB(hex) {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return { r, g, b };
-    }
-
-    function rgbToHex(r, g, b) {
-      return '#' + [r, g, b].map(x => {
-        const hex = Math.round(x).toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-      }).join('');
-    }
-
-    function rgbToHSL(r, g, b) {
-      r /= 255;
-      g /= 255;
-      b /= 255;
-
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      let h, s, l = (max + min) / 2;
-
-      if (max === min) {
-        h = s = 0;
-      } else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-        switch (max) {
-          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-          case g: h = ((b - r) / d + 2) / 6; break;
-          case b: h = ((r - g) / d + 4) / 6; break;
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --text-primary: #e8e8ed;
+        --text-secondary: #9898a4;
+        --text-muted: #5c5c66;
+        --accent-blue: #4d9fff;
+        --accent-cyan: #00f5d4;
+        --accent-green: #00d26a;
+        --border-subtle: #2a2a36;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+      }
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(77, 159, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(77, 159, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .theme-toggle:hover {
+        border-color: var(--accent-cyan);
+        transform: scale(1.1);
+      }
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .breadcrumb a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-cyan);
+      }
+      .breadcrumb-separator {
+        color: var(--text-muted);
+      }
+      .breadcrumb-current {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      .mixer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      .color-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        text-align: center;
+      }
+      .panel-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-secondary);
+      }
+      .color-preview {
+        width: 100%;
+        height: 200px;
+        border-radius: var(--radius-md);
+        border: 2px solid var(--border-subtle);
+        margin-bottom: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .color-preview:hover {
+        transform: scale(1.02);
+      }
+      .color-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font-family: "JetBrains Mono", monospace;
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+      .color-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+      }
+      .ratio-control {
+        margin-top: 1rem;
+      }
+      .ratio-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+      }
+      .ratio-slider {
+        width: 100%;
+        height: 8px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+        border-radius: 4px;
+        outline: none;
+      }
+      .ratio-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--text-primary);
+        cursor: pointer;
+        border: 3px solid var(--bg-card);
+      }
+      .ratio-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--text-primary);
+        cursor: pointer;
+        border: 3px solid var(--bg-card);
+      }
+      .ratio-value {
+        font-family: "JetBrains Mono", monospace;
+        color: var(--accent-cyan);
+        margin-top: 0.5rem;
+      }
+      .info-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+      }
+      .info-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--accent-cyan);
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+      }
+      .info-item {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 1rem;
+        text-align: center;
+      }
+      .info-value {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+      }
+      .info-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .presets {
+        margin-top: 1.5rem;
+      }
+      .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 0.75rem;
+      }
+      .preset-btn {
+        padding: 0.75rem;
+        border: 2px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .preset-btn:hover {
+        border-color: var(--accent-cyan);
+      }
+      .preset-color {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid var(--border-subtle);
+      }
+      .preset-name {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      @media (max-width: 768px) {
+        .mixer-grid {
+          grid-template-columns: 1fr;
+        }
+        .color-preview {
+          height: 150px;
         }
       }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <div class="container">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
 
-      return {
-        h: Math.round(h * 360),
-        s: Math.round(s * 100),
-        l: Math.round(l * 100)
-      };
-    }
+      <nav class="breadcrumb">
+        <a href="../../index.html">首页</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="../../index.html#art">艺术工具</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">颜色混合</span>
+      </nav>
 
-    function updateColor(which, value) {
-      value = value.trim();
+      <h1>🎨 颜色混合器</h1>
+      <p class="subtitle">混合颜色，探索色彩</p>
 
-      if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
-        if (value.match(/^#[0-9A-Fa-f]{3}$/)) {
-          value = '#' + value[1] + value[1] + value[2] + value[2] + value[3] + value[3];
+      <div class="mixer-grid">
+        <div class="color-panel">
+          <div class="panel-title">颜色 A</div>
+          <div
+            class="color-preview"
+            id="colorA"
+            style="background: #ff6b6b"
+            onclick="document.getElementById('inputA').click()"
+          ></div>
+          <input
+            type="color"
+            id="inputA"
+            style="display: none"
+            value="#ff6b6b"
+            onchange="updateColor('A', this.value)"
+          />
+          <input
+            type="text"
+            class="color-input"
+            id="textA"
+            value="#ff6b6b"
+            oninput="updateColor('A', this.value)"
+            placeholder="#FF6B6B"
+          />
+        </div>
+
+        <div class="color-panel">
+          <div class="panel-title">混合结果</div>
+          <div class="color-preview" id="colorMix" style="background: #a8e6cf"></div>
+          <div class="ratio-control">
+            <div class="ratio-label">混合比例</div>
+            <input
+              type="range"
+              class="ratio-slider"
+              id="ratio"
+              min="0"
+              max="100"
+              value="50"
+              oninput="mixColors()"
+            />
+            <div class="ratio-value" id="ratioValue">A 50% : B 50%</div>
+          </div>
+        </div>
+
+        <div class="color-panel">
+          <div class="panel-title">颜色 B</div>
+          <div
+            class="color-preview"
+            id="colorB"
+            style="background: #4ecdc4"
+            onclick="document.getElementById('inputB').click()"
+          ></div>
+          <input
+            type="color"
+            id="inputB"
+            style="display: none"
+            value="#4ecdc4"
+            onchange="updateColor('B', this.value)"
+          />
+          <input
+            type="text"
+            class="color-input"
+            id="textB"
+            value="#4ecdc4"
+            oninput="updateColor('B', this.value)"
+            placeholder="#4ECDC4"
+          />
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-title">📊 混合色彩信息</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-value" id="hexValue">#A8E6CF</div>
+            <div class="info-label">HEX</div>
+          </div>
+          <div class="info-item">
+            <div class="info-value" id="rgbValue">rgb(168,230,207)</div>
+            <div class="info-label">RGB</div>
+          </div>
+          <div class="info-item">
+            <div class="info-value" id="hslValue">hsl(159,58%,78%)</div>
+            <div class="info-label">HSL</div>
+          </div>
+        </div>
+
+        <div class="presets">
+          <div class="info-title">🌈 预设配色</div>
+          <div class="preset-grid">
+            <button class="preset-btn" onclick="loadPreset('#ff6b6b', '#4ecdc4')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #ff6b6b, #4ecdc4)"
+              ></div>
+              <div class="preset-name">珊瑚海</div>
+            </button>
+            <button class="preset-btn" onclick="loadPreset('#ffd93d', '#6bcf7f')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #ffd93d, #6bcf7f)"
+              ></div>
+              <div class="preset-name">阳光草地</div>
+            </button>
+            <button class="preset-btn" onclick="loadPreset('#a29bfe', '#fd79a8')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #a29bfe, #fd79a8)"
+              ></div>
+              <div class="preset-name">紫粉梦</div>
+            </button>
+            <button class="preset-btn" onclick="loadPreset('#74b9ff', '#a29bfe')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #74b9ff, #a29bfe)"
+              ></div>
+              <div class="preset-name">天空渐变</div>
+            </button>
+            <button class="preset-btn" onclick="loadPreset('#ff9ff3', '#feca57')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #ff9ff3, #feca57)"
+              ></div>
+              <div class="preset-name">糖果色</div>
+            </button>
+            <button class="preset-btn" onclick="loadPreset('#ee5a6f', '#f29263')">
+              <div
+                class="preset-color"
+                style="background: linear-gradient(135deg, #ee5a6f, #f29263)"
+              ></div>
+              <div class="preset-name">日落</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let colorA = "#ff6b6b";
+      let colorB = "#4ecdc4";
+
+      function hexToRGB(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+      }
+
+      function rgbToHex(r, g, b) {
+        return (
+          "#" +
+          [r, g, b]
+            .map((x) => {
+              const hex = Math.round(x).toString(16);
+              return hex.length === 1 ? "0" + hex : hex;
+            })
+            .join("")
+        );
+      }
+
+      function rgbToHSL(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h,
+          s,
+          l = (max + min) / 2;
+
+        if (max === min) {
+          h = s = 0;
         } else {
-          return;
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+          switch (max) {
+            case r:
+              h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+              break;
+            case g:
+              h = ((b - r) / d + 2) / 6;
+              break;
+            case b:
+              h = ((r - g) / d + 4) / 6;
+              break;
+          }
         }
+
+        return {
+          h: Math.round(h * 360),
+          s: Math.round(s * 100),
+          l: Math.round(l * 100)
+        };
       }
 
-      if (which === 'A') {
-        colorA = value.toUpperCase();
-        document.getElementById('colorA').style.background = colorA;
-        document.getElementById('inputA').value = colorA;
-        document.getElementById('textA').value = colorA;
-      } else {
-        colorB = value.toUpperCase();
-        document.getElementById('colorB').style.background = colorB;
-        document.getElementById('inputB').value = colorB;
-        document.getElementById('textB').value = colorB;
+      function updateColor(which, value) {
+        value = value.trim();
+
+        if (!value.match(/^#[0-9A-Fa-f]{6}$/)) {
+          if (value.match(/^#[0-9A-Fa-f]{3}$/)) {
+            value = "#" + value[1] + value[1] + value[2] + value[2] + value[3] + value[3];
+          } else {
+            return;
+          }
+        }
+
+        if (which === "A") {
+          colorA = value.toUpperCase();
+          document.getElementById("colorA").style.background = colorA;
+          document.getElementById("inputA").value = colorA;
+          document.getElementById("textA").value = colorA;
+        } else {
+          colorB = value.toUpperCase();
+          document.getElementById("colorB").style.background = colorB;
+          document.getElementById("inputB").value = colorB;
+          document.getElementById("textB").value = colorB;
+        }
+
+        mixColors();
       }
 
+      function mixColors() {
+        const ratio = parseInt(document.getElementById("ratio").value) / 100;
+
+        const rgbA = hexToRGB(colorA);
+        const rgbB = hexToRGB(colorB);
+
+        const mixed = {
+          r: rgbA.r * (1 - ratio) + rgbB.r * ratio,
+          g: rgbA.g * (1 - ratio) + rgbB.g * ratio,
+          b: rgbA.b * (1 - ratio) + rgbB.b * ratio
+        };
+
+        const hexMixed = rgbToHex(mixed.r, mixed.g, mixed.b);
+        const hsl = rgbToHSL(mixed.r, mixed.g, mixed.b);
+
+        document.getElementById("colorMix").style.background = hexMixed;
+        document.getElementById("hexValue").textContent = hexMixed;
+        document.getElementById("rgbValue").textContent =
+          `rgb(${Math.round(mixed.r)},${Math.round(mixed.g)},${Math.round(mixed.b)})`;
+        document.getElementById("hslValue").textContent = `hsl(${hsl.h},${hsl.s}%,${hsl.l}%)`;
+
+        const ratioA = Math.round((1 - ratio) * 100);
+        const ratioB = Math.round(ratio * 100);
+        document.getElementById("ratioValue").textContent = `A ${ratioA}% : B ${ratioB}%`;
+      }
+
+      function loadPreset(a, b) {
+        updateColor("A", a);
+        updateColor("B", b);
+        document.getElementById("ratio").value = 50;
+        mixColors();
+      }
+
+      // Initialize
       mixColors();
-    }
 
-    function mixColors() {
-      const ratio = parseInt(document.getElementById('ratio').value) / 100;
-
-      const rgbA = hexToRGB(colorA);
-      const rgbB = hexToRGB(colorB);
-
-      const mixed = {
-        r: rgbA.r * (1 - ratio) + rgbB.r * ratio,
-        g: rgbA.g * (1 - ratio) + rgbB.g * ratio,
-        b: rgbA.b * (1 - ratio) + rgbB.b * ratio
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const btn = document.querySelector(".theme-toggle");
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", next);
+        btn.textContent = next === "light" ? "☀️" : "🌙";
+        localStorage.setItem("theme", next);
       };
 
-      const hexMixed = rgbToHex(mixed.r, mixed.g, mixed.b);
-      const hsl = rgbToHSL(mixed.r, mixed.g, mixed.b);
-
-      document.getElementById('colorMix').style.background = hexMixed;
-      document.getElementById('hexValue').textContent = hexMixed;
-      document.getElementById('rgbValue').textContent = `rgb(${Math.round(mixed.r)},${Math.round(mixed.g)},${Math.round(mixed.b)})`;
-      document.getElementById('hslValue').textContent = `hsl(${hsl.h},${hsl.s}%,${hsl.l}%)`;
-
-      const ratioA = Math.round((1 - ratio) * 100);
-      const ratioB = Math.round(ratio * 100);
-      document.getElementById('ratioValue').textContent = `A ${ratioA}% : B ${ratioB}%`;
-    }
-
-    function loadPreset(a, b) {
-      updateColor('A', a);
-      updateColor('B', b);
-      document.getElementById('ratio').value = 50;
-      mixColors();
-    }
-
-    // Initialize
-    mixColors();
-
-    window.toggleTheme = function() {
-      const html = document.documentElement;
-      const btn = document.querySelector('.theme-toggle');
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      btn.textContent = next === 'light' ? '☀️' : '🌙';
-      localStorage.setItem('theme', next);
-    };
-
-    (function() {
-      const saved = localStorage.getItem('theme');
-      if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-        document.querySelector('.theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
-      }
-    })();
-  </script>
-</body>
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) {
+          document.documentElement.setAttribute("data-theme", saved);
+          document.querySelector(".theme-toggle").textContent = saved === "light" ? "☀️" : "🌙";
+        }
+      })();
+    </script>
+  </body>
 </html>

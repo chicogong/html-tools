@@ -5,6 +5,7 @@
 将旧模板工具逐步迁移到新的 glassmorphism 设计系统。
 
 **已完成的模板特征**：
+
 - Glassmorphism 导航栏 (`.nav-bar`)
 - 柔和主色 `#00d4aa`（替代刺眼的 `#00f5d4`）
 - Inter + JetBrains Mono 字体
@@ -25,45 +26,55 @@
 
 ---
 
-## P0 - 高优先级（核心开发工具）
+## P0 - 高优先级（核心开发工具） ✅ 已完成
 
-这些是开发者最常用的工具，应优先优化：
+这些是开发者最常用的工具，已完成优化（PR #135）：
 
-### 开发工具 (dev)
-- [ ] `tools/dev/jwt-decoder.html` - JWT 解码
-- [ ] `tools/dev/base64.html` - Base64 编解码
-- [ ] `tools/dev/url-codec.html` - URL 编解码
-- [ ] `tools/dev/json-yaml.html` - JSON/YAML 转换
-- [ ] `tools/dev/clipboard-viewer.html` - 剪贴板查看
+### 开发工具 (dev) - 5/5 ✅
 
-### 时间工具 (time)
-- [ ] `tools/time/timestamp.html` - 时间戳转换
-- [ ] `tools/time/timezone-converter.html` - 时区转换
+- [x] `tools/dev/jwt-decoder.html` - JWT 解码
+- [x] `tools/dev/base64.html` - Base64 编解码
+- [x] `tools/dev/url-codec.html` - URL 编解码
+- [x] `tools/dev/json-yaml.html` - JSON/YAML 转换
+- [x] `tools/dev/clipboard-viewer.html` - 剪贴板查看
 
-### 生成器 (generator)
-- [ ] `tools/generator/uuid-generator.html` - UUID 生成
-- [ ] `tools/generator/qrcode-generator.html` - 二维码生成
-- [ ] `tools/generator/password-generator.html` - 密码生成
+### 时间工具 (time) - 2/2 ✅
+
+- [x] `tools/time/timestamp.html` - 时间戳转换
+- [x] `tools/time/timezone-converter.html` - 时区转换
+
+### 生成器 (generator) - 3/3 ✅
+
+- [x] `tools/generator/uuid-generator.html` - UUID 生成
+- [x] `tools/generator/qrcode-generator.html` - 二维码生成
+- [x] `tools/generator/password-generator.html` - 密码生成
+
+**完成状态**: 10/10 工具 (100%)
+**相关 PR**: [#135 - Migrate all 10 P0 tools to Glassmorphism design](https://github.com/chicogong/html-tools/pull/135)
 
 ---
 
 ## P1 - 中优先级（常用工具）
 
 ### 文本工具 (text)
+
 - [ ] `tools/text/markdown-preview.html` - Markdown 预览
 - [ ] `tools/text/word-counter.html` - 字数统计
 - [ ] `tools/text/case-converter.html` - 大小写转换
 
 ### 媒体工具 (media)
+
 - [ ] `tools/media/image-compressor.html` - 图片压缩
 - [ ] `tools/media/image-resize.html` - 图片缩放
 - [ ] `tools/media/svg-render.html` - SVG 渲染
 
 ### 隐私工具 (privacy)
+
 - [ ] `tools/privacy/log-masker.html` - 日志脱敏
 - [ ] `tools/privacy/hash-generator.html` - 哈希生成
 
 ### 计算器 (calculator)
+
 - [ ] `tools/calculator/percentage-calculator.html` - 百分比计算
 - [ ] `tools/calculator/unit-converter.html` - 单位转换
 - [ ] `tools/calculator/bmi-calculator.html` - BMI 计算
@@ -75,6 +86,7 @@
 其他约 960+ 工具，按使用频率逐步优化。
 
 ### 建议批量处理方式：
+
 1. 按分类逐个目录处理
 2. 每次处理 5-10 个工具
 3. 统一测试后提交

@@ -54,30 +54,33 @@
 
 ---
 
-## P1 - 中优先级（常用工具）
+## P1 - 中优先级（常用工具） ✅ 已完成
 
-### 文本工具 (text)
+### 文本工具 (text) - 3/3 ✅
 
-- [ ] `tools/text/markdown-preview.html` - Markdown 预览
-- [ ] `tools/text/word-counter.html` - 字数统计
-- [ ] `tools/text/case-converter.html` - 大小写转换
+- [x] `tools/text/markdown-preview.html` - Markdown 预览
+- [x] `tools/text/word-counter.html` - 字数统计
+- [x] `tools/text/case-converter.html` - 大小写转换
 
-### 媒体工具 (media)
+### 媒体工具 (media) - 3/3 ✅
 
-- [ ] `tools/media/image-compressor.html` - 图片压缩
-- [ ] `tools/media/image-resize.html` - 图片缩放
-- [ ] `tools/media/svg-render.html` - SVG 渲染
+- [x] `tools/media/image-compressor.html` - 图片压缩
+- [x] `tools/media/image-resize.html` - 图片缩放
+- [x] `tools/media/svg-render.html` - SVG 渲染
 
-### 隐私工具 (privacy)
+### 隐私工具 (privacy) - 2/2 ✅
 
-- [ ] `tools/privacy/log-masker.html` - 日志脱敏
-- [ ] `tools/privacy/hash-generator.html` - 哈希生成
+- [x] `tools/privacy/log-masker.html` - 日志脱敏
+- [x] `tools/privacy/file-hash.html` - 文件哈希校验
 
-### 计算器 (calculator)
+### 计算器 (calculator) - 3/3 ✅
 
-- [ ] `tools/calculator/percentage-calculator.html` - 百分比计算
-- [ ] `tools/calculator/unit-converter.html` - 单位转换
-- [ ] `tools/calculator/bmi-calculator.html` - BMI 计算
+- [x] `tools/calculator/percentage-calculator.html` - 百分比计算
+- [x] `tools/calculator/unit-converter.html` - 单位转换
+- [x] `tools/calculator/bmi-calculator.html` - BMI 计算
+
+**完成状态**: 11/11 工具 (100%)
+**相关提交**: 9632e8c - feat: migrate all 11 P1 tools to Glassmorphism design
 
 ---
 
@@ -110,4 +113,5 @@
 
 ## 更新日志
 
+- 2025-12-31: 完成所有 11 个 P1 工具迁移 (文本/媒体/隐私/计算器)
 - 2024-12-31: 创建计划，完成 text-diff.html 和 regex-tester.html

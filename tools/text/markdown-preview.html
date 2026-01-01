@@ -1,24 +1,22 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Markdown 预览器 - WebUtils</title>
+
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Markdown 预览器 - WebUtils" />
-    <meta name="keywords" content="markdown-preview,text,tools,webutils" />
+    <meta name="description" content="实时 Markdown 预览器，支持分栏编辑、语法渲染和主题切换" />
+    <meta name="keywords" content="markdown markdown-preview text tools webutils editor" />
     <meta name="author" content="WebUtils" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://tools.realtime-ai.chat/tools/text/markdown-preview.html" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="Markdown 预览器 - WebUtils" />
-    <meta property="og:description" content="Markdown 预览器 - WebUtils" />
+    <meta property="og:description" content="实时 Markdown 预览器，支持分栏编辑、语法渲染和主题切换" />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://tools.realtime-ai.chat/tools/text/markdown-preview.html"
-    />
+    <meta property="og:url" content="https://tools.realtime-ai.chat/tools/text/markdown-preview.html" />
     <meta property="og:site_name" content="WebUtils" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
@@ -29,324 +27,863 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Markdown 预览器 - WebUtils" />
-    <meta name="twitter:description" content="Markdown 预览器 - WebUtils" />
+    <meta name="twitter:description" content="实时 Markdown 预览器，支持分栏编辑、语法渲染和主题切换" />
     <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
 
+    <!-- JSON-LD BreadcrumbList Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "首页",
+            "item": "https://tools.realtime-ai.chat/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "文本工具",
+            "item": "https://tools.realtime-ai.chat/#text"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Markdown 预览器",
+            "item": "https://tools.realtime-ai.chat/tools/text/markdown-preview.html"
+          }
+        ]
+      }
+    </script>
+
+    <!-- Preload fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+
+    <!-- Marked library -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify for XSS protection -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
     <style>
+      /* ============================================
+         Design System - CSS Variables
+         ============================================ */
       :root {
-        --bg-deep: #0a0a0f;
-        --bg-surface: #12121a;
-        --bg-card: #1a1a24;
-        --bg-input: #0e0e14;
-        --text-primary: #e8e8ed;
-        --text-secondary: #8888a0;
-        --text-muted: #55556a;
-        --border-subtle: #2a2a3a;
-        --border-strong: #3a3a4a;
-        --accent-cyan: #00f5d4;
-        --accent-green: #10b981;
-        --accent-red: #f43f5e;
-        --accent-yellow: #fbbf24;
-        --accent-purple: #a855f7;
-        --glow-cyan: rgb(0, 245, 212, 0.15);
-        --glow-green: rgb(16, 185, 129, 0.15);
-        --glow-red: rgb(244, 63, 94, 0.15);
-        --radius-sm: 4px;
-        --radius-md: 8px;
-        --radius-lg: 12px;
+        /* Dark Theme (Default) */
+        --color-bg-base: #0a0a0f;
+        --color-bg-elevated: #121218;
+        --color-bg-surface: #1a1a22;
+        --color-bg-subtle: #242430;
+        --color-bg-input: #0e0e14;
+        --color-text-primary: #f5f5f7;
+        --color-text-secondary: #a1a1aa;
+        --color-text-muted: #71717a;
+        --color-border-default: rgba(255, 255, 255, 0.08);
+        --color-border-subtle: rgba(255, 255, 255, 0.04);
+        --color-border-strong: rgba(255, 255, 255, 0.12);
+        --color-accent-primary: #00d4aa;
+        --color-accent-secondary: #8b5cf6;
+        --color-accent-tertiary: #3b82f6;
+        --color-success: #22c55e;
+        --color-warning: #f59e0b;
+        --color-error: #ef4444;
+
+        /* Glassmorphism */
+        --glass-bg: rgba(26, 26, 34, 0.72);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-blur: 24px;
+        --glass-saturate: 180%;
+
+        /* Shadows */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --shadow-glow: 0 0 20px rgba(0, 212, 170, 0.15);
+
+        /* Spacing */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+
+        /* Border Radius */
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 16px;
+        --radius-xl: 24px;
+        --radius-full: 9999px;
+
+        /* Typography */
+        --font-sans: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+
+        /* Transitions */
+        --transition-fast: 150ms ease;
+        --transition-normal: 250ms ease;
+
+        /* Layout */
+        --nav-height: 56px;
+        --container-max: 1200px;
+        --safe-area-top: env(safe-area-inset-top, 0px);
+        --safe-area-bottom: env(safe-area-inset-bottom, 0px);
       }
 
+      /* Light Theme */
       [data-theme="light"] {
-        --bg-deep: #fafafa;
-        --bg-surface: #fff;
-        --bg-card: #fff;
-        --bg-input: #f5f5f5;
-        --bg-hover: #f5f5f5;
-        --text-primary: #1a1a1a;
-        --text-secondary: #666;
-        --text-muted: #999;
-        --border-subtle: #e5e5e5;
-        --border-strong: #d5d5d5;
+        --color-bg-base: #f8fafc;
+        --color-bg-elevated: #fff;
+        --color-bg-surface: #fff;
+        --color-bg-subtle: #f1f5f9;
+        --color-bg-input: #f8fafc;
+        --color-text-primary: #0f172a;
+        --color-text-secondary: #475569;
+        --color-text-muted: #94a3b8;
+        --color-border-default: rgba(0, 0, 0, 0.08);
+        --color-border-subtle: rgba(0, 0, 0, 0.04);
+        --color-border-strong: rgba(0, 0, 0, 0.12);
+        --color-accent-primary: #00b894;
+        --glass-bg: rgba(255, 255, 255, 0.78);
+        --glass-border: rgba(0, 0, 0, 0.06);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+        --shadow-glow: 0 0 20px rgba(0, 184, 148, 0.12);
       }
 
-      * {
+      /* ============================================
+         Base Styles
+         ============================================ */
+      *,
+      *::before,
+      *::after {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-      :root {
-        --bg-primary: #0a0a0f;
-        --bg-secondary: #12121a;
-        --bg-tertiary: #1a1a25;
-        --text-primary: #fff;
-        --text-secondary: #88a;
-        --accent: #6366f1;
-        --border: #2a2a3a;
-        --success: #22c55e;
+
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      [data-theme="light"] {
-        --bg-primary: #f8fafc;
-        --bg-secondary: #fff;
-        --bg-tertiary: #f1f5f9;
-        --text-primary: #1e293b;
-        --text-secondary: #64748b;
-        --border: #e2e8f0;
-      }
+
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: var(--bg-primary);
-        color: var(--text-primary);
+        font-family: var(--font-sans);
+        background: var(--color-bg-base);
+        color: var(--color-text-primary);
         min-height: 100vh;
+        min-height: 100dvh;
+        line-height: 1.5;
+        transition:
+          background-color var(--transition-normal),
+          color var(--transition-normal);
       }
-      .header {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        padding: 1.5rem 2rem;
+
+      /* Subtle background gradient */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
       }
-      .header-content {
-        max-width: 1400px;
-        margin: 0 auto;
+
+      [data-theme="light"] body::before {
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 184, 148, 0.05) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+      }
+
+      /* ============================================
+         Navigation Bar
+         ============================================ */
+      .nav-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: calc(var(--nav-height) + var(--safe-area-top));
+        padding-top: var(--safe-area-top);
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        border-bottom: 1px solid var(--glass-border);
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: center;
+        transition: background var(--transition-normal);
       }
-      .header h1 {
-        font-size: 1.5rem;
+
+      .nav-content {
+        width: 100%;
+        max-width: var(--container-max);
+        height: var(--nav-height);
+        padding: 0 var(--space-6);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: var(--space-4);
       }
-      .header-actions {
+
+      /* Back Button */
+      .nav-back {
         display: flex;
-        gap: 0.5rem;
-      }
-      .btn {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-      }
-      .btn-ghost {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-      }
-      .btn-ghost:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-      .back-link {
-        color: rgba(255, 255, 255, 0.9);
+        align-items: center;
+        gap: var(--space-1);
+        color: var(--color-accent-primary);
         text-decoration: none;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        padding: var(--space-2) var(--space-1);
+        margin-left: calc(var(--space-2) * -1);
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+        justify-self: start;
       }
-      .main {
+
+      .nav-back:hover {
+        background: var(--color-border-subtle);
+      }
+
+      .nav-back-icon {
+        width: 20px;
+        height: 20px;
+        stroke-width: 2.5;
+      }
+
+      .nav-back-text {
+        display: inline;
+      }
+
+      /* Nav Title */
+      .nav-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Nav Actions */
+      .nav-actions {
         display: flex;
-        height: calc(100vh - 80px);
+        align-items: center;
+        gap: var(--space-2);
+        justify-self: end;
       }
-      .panel {
-        flex: 1;
+
+      /* Theme Toggle */
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: var(--radius-full);
+        background: var(--color-bg-subtle);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+
+      .theme-toggle:hover {
+        background: var(--color-border-strong);
+        color: var(--color-text-primary);
+        transform: scale(1.05);
+      }
+
+      .theme-toggle:focus-visible {
+        outline: 2px solid var(--color-accent-primary);
+        outline-offset: 2px;
+      }
+
+      .theme-toggle svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .theme-icon-dark,
+      .theme-icon-light {
+        display: none;
+      }
+
+      [data-theme="dark"] .theme-icon-light,
+      :root:not([data-theme]) .theme-icon-light {
+        display: block;
+      }
+
+      [data-theme="light"] .theme-icon-dark {
+        display: block;
+      }
+
+      /* ============================================
+         Breadcrumb Navigation
+         ============================================ */
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        padding: var(--space-3) var(--space-4);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-sm);
+        margin-top: calc(var(--nav-height) + var(--safe-area-top) + var(--space-4));
+        margin-left: var(--space-6);
+        margin-right: var(--space-6);
+        flex-wrap: wrap;
+        max-width: 90%;
+      }
+
+      .breadcrumb a {
+        color: var(--color-text-secondary);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+      }
+
+      .breadcrumb a:hover {
+        color: var(--color-accent-primary);
+      }
+
+      .breadcrumb-separator {
+        color: var(--color-text-muted);
+        user-select: none;
+      }
+
+      .breadcrumb-current {
+        color: var(--color-text-primary);
+        font-weight: 500;
+      }
+
+      /* ============================================
+         Main Layout
+         ============================================ */
+      .main-container {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding-bottom: var(--safe-area-bottom);
         display: flex;
         flex-direction: column;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: var(--space-3);
+        padding: var(--space-4) var(--space-6);
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      /* View Toggle Buttons */
+      .view-toggle {
+        display: flex;
+        gap: var(--space-2);
+        background: var(--color-bg-subtle);
+        padding: var(--space-2);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border-subtle);
+      }
+
+      .view-btn {
+        padding: var(--space-2) var(--space-4);
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        font-family: var(--font-sans);
+        transition: all var(--transition-fast);
+      }
+
+      .view-btn:hover {
+        color: var(--color-text-primary);
+        background: var(--color-bg-surface);
+      }
+
+      .view-btn.active {
+        background: var(--color-accent-primary);
+        color: #fff;
+      }
+
+      .view-btn:focus-visible {
+        outline: 2px solid var(--color-accent-primary);
+        outline-offset: -2px;
+      }
+
+      /* Editor and Preview Panels */
+      .editor-container {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-4);
+        padding: var(--space-6);
+        max-width: var(--container-max);
+        margin: 0 auto;
+        width: 100%;
         overflow: hidden;
       }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+      }
+
+      .panel.hidden {
+        display: none;
+      }
+
       .panel-header {
-        padding: 0.75rem 1rem;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border);
-        font-size: 0.85rem;
-        color: var(--text-secondary);
+        padding: var(--space-4);
+        background: var(--color-bg-subtle);
+        border-bottom: 1px solid var(--color-border-subtle);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
         display: flex;
         justify-content: space-between;
         align-items: center;
       }
+
+      .panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--space-4);
+      }
+
       .editor {
         flex: 1;
+        width: 100%;
         border: none;
-        border-right: 1px solid var(--border);
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        padding: 1rem;
-        font-family: "Fira Code", Consolas, monospace;
-        font-size: 0.95rem;
+        background: var(--color-bg-input);
+        color: var(--color-text-primary);
+        padding: var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.9375rem;
         line-height: 1.6;
         resize: none;
         outline: none;
+        transition: all var(--transition-fast);
       }
+
+      .editor:focus {
+        box-shadow: inset 0 0 0 2px var(--color-accent-primary);
+      }
+
       .preview {
         flex: 1;
-        padding: 1.5rem;
         overflow-y: auto;
-        background: var(--bg-secondary);
+        font-size: 0.95rem;
+        line-height: 1.7;
       }
+
+      /* Markdown Preview Styles */
       .preview h1 {
         font-size: 2rem;
-        margin: 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        margin: var(--space-5) 0 var(--space-3);
+        padding-bottom: var(--space-3);
+        border-bottom: 1px solid var(--color-border-default);
+        color: var(--color-text-primary);
       }
+
       .preview h2 {
         font-size: 1.5rem;
-        margin: 1rem 0 0.5rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        margin: var(--space-4) 0 var(--space-2);
+        padding-bottom: var(--space-2);
+        border-bottom: 1px solid var(--color-border-subtle);
+        color: var(--color-text-primary);
       }
+
       .preview h3 {
         font-size: 1.25rem;
-        margin: 0.75rem 0;
+        font-weight: 600;
+        margin: var(--space-3) 0 var(--space-2);
+        color: var(--color-text-primary);
       }
+
+      .preview h4,
+      .preview h5,
+      .preview h6 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: var(--space-3) 0 var(--space-1);
+        color: var(--color-text-primary);
+      }
+
       .preview p {
-        margin: 0.75rem 0;
-        line-height: 1.8;
+        margin: var(--space-3) 0;
+        color: var(--color-text-primary);
       }
+
       .preview ul,
       .preview ol {
-        margin: 0.75rem 0;
-        padding-left: 1.5rem;
+        margin: var(--space-3) 0 var(--space-3) var(--space-5);
+        color: var(--color-text-primary);
       }
+
       .preview li {
-        margin: 0.25rem 0;
+        margin: var(--space-1) 0;
       }
+
       .preview code {
-        background: var(--bg-tertiary);
-        padding: 0.125rem 0.375rem;
-        border-radius: 0.25rem;
-        font-family: monospace;
+        background: var(--color-bg-subtle);
+        color: var(--color-accent-primary);
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
         font-size: 0.9em;
       }
+
       .preview pre {
-        background: var(--bg-tertiary);
-        padding: 1rem;
-        border-radius: 0.5rem;
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+        margin: var(--space-3) 0;
         overflow-x: auto;
-        margin: 1rem 0;
       }
+
       .preview pre code {
         background: none;
+        color: var(--color-accent-tertiary);
         padding: 0;
+        border-radius: 0;
       }
+
       .preview blockquote {
-        border-left: 4px solid var(--accent);
-        padding-left: 1rem;
-        margin: 1rem 0;
-        color: var(--text-secondary);
+        border-left: 3px solid var(--color-accent-primary);
+        padding-left: var(--space-4);
+        margin: var(--space-3) 0;
+        color: var(--color-text-secondary);
+        font-style: italic;
       }
+
       .preview a {
-        color: var(--accent);
+        color: var(--color-accent-primary);
+        text-decoration: none;
+        transition: color var(--transition-fast);
       }
+
+      .preview a:hover {
+        color: #00c299;
+        text-decoration: underline;
+      }
+
       .preview table {
         border-collapse: collapse;
         width: 100%;
-        margin: 1rem 0;
+        margin: var(--space-3) 0;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
-      .preview th,
-      .preview td {
-        border: 1px solid var(--border);
-        padding: 0.5rem;
-        text-align: left;
-      }
+
       .preview th {
-        background: var(--bg-tertiary);
+        background: var(--color-bg-subtle);
+        border-bottom: 1px solid var(--color-border-subtle);
+        padding: var(--space-3);
+        text-align: left;
+        font-weight: 600;
+        color: var(--color-text-primary);
       }
+
+      .preview td {
+        border-bottom: 1px solid var(--color-border-subtle);
+        padding: var(--space-3);
+        color: var(--color-text-primary);
+      }
+
+      .preview tr:last-child td {
+        border-bottom: none;
+      }
+
       .preview img {
         max-width: 100%;
-        border-radius: 0.5rem;
+        height: auto;
+        border-radius: var(--radius-md);
+        margin: var(--space-3) 0;
       }
+
       .preview hr {
         border: none;
-        border-top: 1px solid var(--border);
-        margin: 1.5rem 0;
+        border-top: 1px solid var(--color-border-subtle);
+        margin: var(--space-4) 0;
       }
-      .view-toggle {
-        display: flex;
-        gap: 0.25rem;
+
+      /* Char Counter */
+      .char-counter {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
       }
-      .view-btn {
-        padding: 0.25rem 0.75rem;
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border);
-        border-radius: 0.25rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 0.8rem;
-      }
-      .view-btn.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: white;
-      }
-      @media (max-width: 768px) {
-        .main {
-          flex-direction: column;
+
+      /* ============================================
+         Mobile Responsive
+         ============================================ */
+      @media (max-width: 480px) {
+        :root {
+          --nav-height: 52px;
         }
+
+        .nav-content {
+          padding: 0 var(--space-4);
+        }
+
+        .nav-back-text {
+          display: none;
+        }
+
+        .breadcrumb {
+          margin-left: var(--space-4);
+          margin-right: var(--space-4);
+          max-width: calc(100% - var(--space-8));
+        }
+
+        .toolbar {
+          padding: var(--space-3) var(--space-4);
+        }
+
+        .editor-container {
+          grid-template-columns: 1fr;
+          gap: var(--space-3);
+          padding: var(--space-4);
+        }
+
+        .panel.hidden {
+          display: none;
+        }
+
+        .view-toggle {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .view-btn {
+          flex: 1;
+        }
+
         .editor {
-          border-right: none;
-          border-bottom: 1px solid var(--border);
+          min-height: 300px;
+        }
+
+        .preview {
+          min-height: 300px;
         }
       }
 
-      .breadcrumb {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px 15px;
-        border-radius: 20px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        font-size: 0.85rem;
+      /* Tablet */
+      @media (min-width: 481px) and (max-width: 767px) {
+        .editor-container {
+          grid-template-columns: 1fr;
+          gap: var(--space-3);
+          padding: var(--space-5);
+        }
+
+        .panel.hidden {
+          display: none;
+        }
+
+        .editor {
+          min-height: 350px;
+        }
+
+        .preview {
+          min-height: 350px;
+        }
       }
-      .breadcrumb a {
-        color: #667eea;
-        text-decoration: none;
+
+      /* Desktop */
+      @media (min-width: 768px) {
+        .nav-back-text {
+          display: inline;
+        }
+
+        .editor-container {
+          grid-template-columns: 1fr 1fr;
+        }
       }
-      .breadcrumb a:hover {
-        text-decoration: underline;
+
+      @media (min-width: 1024px) {
+        .main-container {
+          padding-top: var(--space-6);
+        }
       }
-      .breadcrumb span {
-        color: #999;
-        margin: 0 5px;
+
+      /* ============================================
+         Accessibility
+         ============================================ */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--color-accent-primary);
+        outline-offset: 2px;
+      }
+
+      button:focus:not(:focus-visible),
+      a:focus:not(:focus-visible),
+      textarea:focus:not(:focus-visible) {
+        outline: none;
       }
     </style>
   </head>
   <body>
-    <nav class="breadcrumb">
-      <a href="../../index.html">首页</a>
-      <span>›</span>
-      Markdown 预览
-    </nav>
-    <div class="header">
-      <div class="header-content">
-        <div style="display: flex; align-items: center; gap: 1rem">
-          <a href="../../index.html" class="back-link">← 返回</a>
-          <h1>📝 Markdown 预览器</h1>
-        </div>
-        <div class="header-actions">
-          <div class="view-toggle">
-            <button class="view-btn active" onclick="setView('split')">分栏</button>
-            <button class="view-btn" onclick="setView('edit')">编辑</button>
-            <button class="view-btn" onclick="setView('preview')">预览</button>
-          </div>
-          <button class="btn btn-ghost" onclick="toggleTheme()">🌓 主题</button>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+      <div class="nav-content">
+        <a href="../../index.html" class="nav-back" aria-label="返回首页">
+          <svg
+            class="nav-back-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span class="nav-back-text">首页</span>
+        </a>
+
+        <h1 class="nav-title">Markdown 预览器</h1>
+
+        <div class="nav-actions">
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">
+            <svg
+              class="theme-icon-light"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg
+              class="theme-icon-dark"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
         </div>
       </div>
-    </div>
-    <div class="main" id="main">
-      <div class="panel" id="editorPanel">
-        <div class="panel-header">
-          <span>Markdown 编辑器</span>
-          <span id="charCount">0 字符</span>
+    </nav>
+
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="../../index.html">首页</a>
+      <span class="breadcrumb-separator">/</span>
+      <a href="../../index.html#text">文本工具</a>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">Markdown 预览器</span>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+      <!-- Toolbar with View Toggle -->
+      <div class="toolbar">
+        <div class="view-toggle">
+          <button class="view-btn active" onclick="setView('split')" aria-label="分栏视图">分栏</button>
+          <button class="view-btn" onclick="setView('edit')" aria-label="编辑视图">编辑</button>
+          <button class="view-btn" onclick="setView('preview')" aria-label="预览视图">预览</button>
         </div>
-        <textarea class="editor" id="editor" oninput="updatePreview()">
-# Hello Markdown!
+      </div>
+
+      <!-- Editor Container -->
+      <div class="editor-container">
+        <!-- Editor Panel -->
+        <div class="panel" id="editorPanel">
+          <div class="panel-header">
+            <span>Markdown 编辑器</span>
+            <span class="char-counter" id="charCount">0 字符</span>
+          </div>
+          <textarea
+            class="editor"
+            id="editor"
+            oninput="updatePreview()"
+            placeholder="在此输入 Markdown 内容..."
+            aria-label="Markdown 编辑器"
+          ># Hello Markdown!
 
 欢迎使用 **Markdown 预览器**。
 
 ## 功能特性
 
 - 实时预览
-- 语法高亮
-- 支持 GFM 扩展
+- 语法渲染
+- 分栏编辑模式
 
 ### 代码示例
 
-```javascript
+\`\`\`javascript
 function greet(name) {
-    return `Hello, ${name}!`;
+    return \`Hello, \${name}!\`;
 }
-```
+\`\`\`
 
 ### 表格示例
 
@@ -361,52 +898,115 @@ function greet(name) {
 
 ### 链接
 
-访问 [HTML Tools](https://example.com) 获取更多工具。
+访问 [WebUtils](https://tools.realtime-ai.chat/) 获取更多工具。
 
 ---
 
-*斜体* 和 **粗体** 和 ~~删除线~~
-</textarea
-        >
-      </div>
-      <div class="panel" id="previewPanel">
-        <div class="panel-header">
-          <span>预览</span>
+*斜体* 和 **粗体** 和 ~~删除线~~</textarea
+          >
         </div>
-        <div class="preview" id="preview"></div>
-      </div>
-    </div>
-    <script>
-      let currentView = "split";
 
+        <!-- Preview Panel -->
+        <div class="panel" id="previewPanel">
+          <div class="panel-header">
+            <span>实时预览</span>
+          </div>
+          <div class="panel-content preview" id="preview"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // ============================================
+      // Variables
+      // ============================================
+      let currentView = "split";
+      const editor = document.getElementById("editor");
+      const preview = document.getElementById("preview");
+      const editorPanel = document.getElementById("editorPanel");
+      const previewPanel = document.getElementById("previewPanel");
+      const charCountEl = document.getElementById("charCount");
+
+      // ============================================
+      // Markdown Preview Update
+      // ============================================
       window.updatePreview = function () {
-        const markdown = document.getElementById("editor").value;
-        document.getElementById("preview").innerHTML = marked.parse(markdown);
-        document.getElementById("charCount").textContent = markdown.length + " 字符";
+        const markdown = editor.value;
+        const html = marked.parse(markdown);
+        const sanitized = DOMPurify.sanitize(html);
+        preview.innerHTML = sanitized;
+        updateCharCount();
       };
 
+      function updateCharCount() {
+        const count = editor.value.length;
+        charCountEl.textContent = count + " 字符";
+      }
+
+      // ============================================
+      // View Mode Toggle
+      // ============================================
       window.setView = function (view) {
         currentView = view;
+
+        // Update button states
         document.querySelectorAll(".view-btn").forEach((btn) => btn.classList.remove("active"));
         document
-          .querySelector(`.view-btn:nth-child(${view === "split" ? 1 : view === "edit" ? 2 : 3})`)
+          .querySelector(
+            `.view-btn:nth-child(${view === "split" ? 1 : view === "edit" ? 2 : 3})`
+          )
           .classList.add("active");
 
-        const editorPanel = document.getElementById("editorPanel");
-        const previewPanel = document.getElementById("previewPanel");
+        // Update panel visibility
+        editorPanel.classList.toggle("hidden", view === "preview");
+        previewPanel.classList.toggle("hidden", view === "edit");
 
-        editorPanel.style.display = view === "preview" ? "none" : "flex";
-        previewPanel.style.display = view === "edit" ? "none" : "flex";
+        // Adjust grid for single panel
+        const container = document.querySelector(".editor-container");
+        if (view === "split") {
+          container.style.gridTemplateColumns = window.innerWidth >= 768 ? "1fr 1fr" : "1fr";
+        } else {
+          container.style.gridTemplateColumns = "1fr";
+        }
       };
 
+      // ============================================
+      // Theme Management
+      // ============================================
       window.toggleTheme = function () {
-        const t = document.body.getAttribute("data-theme") === "light" ? "dark" : "light";
-        document.body.setAttribute("data-theme", t);
-        localStorage.setItem("theme", t);
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
       };
 
-      document.body.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+      function initTheme() {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = savedTheme || (prefersDark ? "dark" : "light");
+
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+
+      // ============================================
+      // Initialize
+      // ============================================
+      initTheme();
       updatePreview();
+
+      // Handle resize for responsive view
+      window.addEventListener("resize", function () {
+        if (currentView === "split" && window.innerWidth >= 768) {
+          document.querySelector(".editor-container").style.gridTemplateColumns = "1fr 1fr";
+        } else if (currentView === "split" && window.innerWidth < 768) {
+          document.querySelector(".editor-container").style.gridTemplateColumns = "1fr";
+          // Show both panels stacked
+          editorPanel.classList.remove("hidden");
+          previewPanel.classList.remove("hidden");
+        }
+      });
     </script>
   </body>
 </html>

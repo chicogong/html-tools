@@ -72,10 +72,12 @@
 **两阶段优化策略**:
 
 **第一阶段 (batch-optimize.cjs)**: 优化259个工具
+
 - ✅ 添加 `font-size: 16px` 和 `line-height: 1.6`（缺少两者的工具）
 - ✅ 添加 `.visually-hidden` 无障碍样式类
 
 **第二阶段 (batch-enhance.cjs)**: 优化110个额外工具
+
 - ✅ 只有 `line-height` 缺少 `font-size` → 添加 `font-size: 16px`
 - ✅ 两者都缺少 → 添加 `font-size: 16px` 和 `line-height: 1.6`
 - 使用多行正则表达式 (`/s` flag) 匹配各种CSS格式

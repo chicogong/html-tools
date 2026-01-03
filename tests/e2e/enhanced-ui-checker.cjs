@@ -11,6 +11,9 @@ const handler = require('serve-handler');
 const toolsJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../../tools.json'), 'utf8'));
 const tools = Object.values(toolsJson.tools);
 
+// 全局服务器端口
+let SERVER_PORT = 8890;
+
 // 启动服务器
 function startServer(port = 8890) {
   const server = http.createServer((request, response) => {
@@ -20,10 +23,19 @@ function startServer(port = 8890) {
     });
   });
 
-  return new Promise((resolve) => {
-    server.listen(port, () => {
+  return new Promise((resolve, reject) => {
+    server.listen(port, '127.0.0.1', () => {
+      SERVER_PORT = port;
       console.log(`📡 测试服务器运行在 http://localhost:${port}`);
       resolve(server);
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`⚠️ 端口 ${port} 被占用，尝试 ${port + 1}...`);
+        startServer(port + 1).then(resolve).catch(reject);
+      } else {
+        reject(err);
+      }
     });
   });
 }
@@ -40,13 +52,13 @@ async function enhancedEvaluation(page, toolPath, toolName) {
     suggestions: []
   };
 
-  const url = `http://localhost:8890/${toolPath}`;
+  const url = `http://127.0.0.1:${SERVER_PORT}/${toolPath}`;
 
   try {
     // ============ 桌面端测试 ============
     console.log(`   📱 桌面端测试...`);
     await page.setViewport({ width: 1920, height: 1080 });
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     scores.desktop = await evaluateBasicUI(page);
@@ -54,7 +66,7 @@ async function enhancedEvaluation(page, toolPath, toolName) {
     // ============ 移动端测试 ============
     console.log(`   📱 移动端测试...`);
     await page.setViewport({ width: 375, height: 667 }); // iPhone SE
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     scores.mobile = await evaluateMobileUI(page);
@@ -62,7 +74,7 @@ async function enhancedEvaluation(page, toolPath, toolName) {
     // ============ 性能测试 ============
     console.log(`   ⚡ 性能测试...`);
     await page.setViewport({ width: 1920, height: 1080 });
-    const performanceMetrics = await page.goto(url, { waitUntil: 'load', timeout: 15000 });
+    const performanceMetrics = await page.goto(url, { waitUntil: 'load', timeout: 30000 });
 
     scores.performance = await evaluatePerformance(page, performanceMetrics);
 
@@ -436,10 +448,18 @@ async function analyzeToolEnhanced(browser, toolPath, toolName) {
     return {
       name: toolName,
       path: toolPath,
-      error: error.message
+      error: error.message,
+      score: 0,
+      details: {}
     };
   } finally {
-    await page.close();
+    try {
+      if (page && !page.isClosed()) {
+        await page.close();
+      }
+    } catch (closeError) {
+      console.log(`   ⚠️ 页面关闭失败: ${closeError.message}`);
+    }
   }
 }
 
@@ -456,15 +476,56 @@ async function runEnhancedTests() {
 
   console.log('🌐 浏览器已启动');
 
-  const maxTools = process.env.MAX_TOOLS ? parseInt(process.env.MAX_TOOLS) : 20;
-  const toolsToTest = tools.slice(0, Math.min(maxTools, tools.length));
+  // 解析命令行参数
+  let startIdx = 0;
+  let endIdx = tools.length;
+  let outputFile = null;
 
-  console.log(`\n将分析 ${toolsToTest.length} 个工具\n`);
+  for (let i = 2; i < process.argv.length; i++) {
+    if (process.argv[i].startsWith('--start=')) {
+      startIdx = parseInt(process.argv[i].split('=')[1]) || 0;
+    } else if (process.argv[i].startsWith('--end=')) {
+      endIdx = parseInt(process.argv[i].split('=')[1]) || tools.length;
+    } else if (process.argv[i].startsWith('--output=')) {
+      outputFile = process.argv[i].split('=')[1];
+    }
+  }
+
+  // 优先使用环境变量
+  const maxTools = process.env.MAX_TOOLS ? parseInt(process.env.MAX_TOOLS) : null;
+  if (maxTools) {
+    endIdx = Math.min(maxTools, tools.length);
+    startIdx = 0;
+  }
+
+  const toolsToTest = tools.slice(startIdx, Math.min(endIdx, tools.length));
+
+  console.log(`\n将分析工具 ${startIdx} 至 ${Math.min(endIdx, tools.length) - 1}，共 ${toolsToTest.length} 个工具\n`);
+
+  // 添加定期保存机制
+  const CHECKPOINT_INTERVAL = 50; // 每50个工具保存一次
 
   const results = [];
-  for (const tool of toolsToTest) {
-    const result = await analyzeToolEnhanced(browser, tool.path, tool.name);
-    results.push(result);
+  for (let i = 0; i < toolsToTest.length; i++) {
+    const tool = toolsToTest[i];
+    try {
+      const result = await analyzeToolEnhanced(browser, tool.path, tool.name);
+      results.push(result);
+    } catch (toolError) {
+      console.error(`❌ 工具 ${tool.name} 处理出错: ${toolError.message}`);
+      results.push({
+        name: tool.name,
+        path: tool.path,
+        error: toolError.message
+      });
+    }
+
+    // 定期保存检查点
+    if ((i + 1) % 50 === 0) {
+      const checkpointPath = path.join(__dirname, `checkpoint-${startIdx}-${startIdx + i + 1}.json`);
+      fs.writeFileSync(checkpointPath, JSON.stringify(results, null, 2));
+      console.log(`\n✅ 检查点已保存: ${checkpointPath} (${i + 1}/${toolsToTest.length})`);
+    }
   }
 
   // 生成报告
@@ -487,7 +548,9 @@ async function runEnhancedTests() {
   console.log(`  🚨 急需优化 (<60分): ${poor.length} 个`);
 
   // 保存JSON报告
-  const reportPath = path.join(__dirname, 'enhanced-report.json');
+  const reportPath = outputFile
+    ? path.join(__dirname, outputFile)
+    : path.join(__dirname, 'enhanced-report.json');
   fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
   console.log(`\n📄 详细报告已保存: ${reportPath}`);
 

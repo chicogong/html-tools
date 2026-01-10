@@ -514,8 +514,20 @@
       .countdown {
         margin-top: var(--space-6);
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: var(--space-4);
+      }
+
+      @media (max-width: 600px) {
+        .countdown {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      @media (max-width: 400px) {
+        .countdown {
+          grid-template-columns: repeat(2, 1fr);
+        }
       }
 
       .tile {
@@ -780,6 +792,12 @@
               </div>
             </div>
             <div class="actions">
+              <button class="btn btn-secondary" type="button" onclick="testCelebration()">
+                🎆 测试庆祝
+              </button>
+              <button class="btn btn-secondary" type="button" onclick="resetToNextYear()">
+                🔄 重置到下一年
+              </button>
               <button class="btn btn-secondary" type="button" onclick="toggleFullscreen()">
                 全屏
               </button>
@@ -825,6 +843,10 @@
               <div class="value" id="seconds">--</div>
               <div class="label">秒</div>
             </div>
+            <div class="tile">
+              <div class="value" id="milliseconds">--</div>
+              <div class="label">毫秒</div>
+            </div>
           </div>
 
           <div class="subline">
@@ -865,6 +887,7 @@
         hours: document.getElementById("hours"),
         minutes: document.getElementById("minutes"),
         seconds: document.getElementById("seconds"),
+        milliseconds: document.getElementById("milliseconds"),
         subtitle: document.getElementById("subtitle"),
         progressBar: document.getElementById("progressBar"),
         toast: document.getElementById("toast"),
@@ -1000,11 +1023,12 @@
         els.progressBar.style.width = `${Math.round(progress * 100)}%`;
       }
 
-      function setTiles({ d, h, m, s }) {
+      function setTiles({ d, h, m, s, ms }) {
         els.days.textContent = String(d);
         els.hours.textContent = pad2(h);
         els.minutes.textContent = pad2(m);
         els.seconds.textContent = pad2(s);
+        els.milliseconds.textContent = String(ms).padStart(3, "0");
       }
 
       function tick() {
@@ -1013,7 +1037,7 @@
         const diffMs = target.getTime() - now.getTime();
 
         if (diffMs <= 0) {
-          setTiles({ d: 0, h: 0, m: 0, s: 0 });
+          setTiles({ d: 0, h: 0, m: 0, s: 0, ms: 0 });
           els.subtitle.textContent = `新年快乐！欢迎来到 ${state.year}。`;
           maybeCelebrate();
           return;
@@ -1024,8 +1048,9 @@
         const h = Math.floor((totalSeconds % 86400) / 3600);
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
+        const ms = diffMs % 1000;
 
-        setTiles({ d, h, m, s });
+        setTiles({ d, h, m, s, ms });
         els.subtitle.textContent = `还剩 ${d} 天 ${pad2(h)}:${pad2(m)}:${pad2(s)}`;
       }
 
@@ -1034,9 +1059,7 @@
 
         const loop = () => {
           tick();
-          const now = Date.now();
-          const next = 1000 - (now % 1000) + 5;
-          timerId = window.setTimeout(loop, next);
+          timerId = requestAnimationFrame(loop);
         };
 
         loop();
@@ -1044,7 +1067,7 @@
 
       function stopTimer() {
         if (timerId) {
-          window.clearTimeout(timerId);
+          cancelAnimationFrame(timerId);
           timerId = null;
         }
       }
@@ -1088,6 +1111,26 @@
         } finally {
           ta.remove();
         }
+      }
+
+      function testCelebration() {
+        showToast("测试庆祝效果 🎆");
+        startFireworks();
+        window.setTimeout(() => {
+          stopFireworks();
+        }, 5000);
+      }
+
+      function resetToNextYear() {
+        const now = new Date();
+        const nextYear = now.getFullYear() + 1;
+        state.year = nextYear;
+        els.yearSelect.value = String(nextYear);
+        saveState();
+        syncHash();
+        renderStatic();
+        tick();
+        showToast(`已重置到 ${nextYear} 年`);
       }
 
       function toggleTheme() {

@@ -233,6 +233,15 @@ function updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount) {
 
   if (updated) {
     fs.writeFileSync(INDEX_HTML, html);
+    // 运行 prettier 格式化，确保与项目代码风格一致
+    try {
+      execFileSync('npx', ['prettier', '--write', INDEX_HTML], {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    } catch {
+      // prettier 不可用时静默失败
+    }
     console.log(`✅ index.html: ${toolCount} 工具, ${categoryCount} 分类`);
     return true;
   }

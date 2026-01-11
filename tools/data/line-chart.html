@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>折线图生成器 - WebUtils</title>
     <!-- SEO Meta Tags -->
-    <meta name="description" content="创建折线图和曲线图" />
-    <meta name="keywords" content="line chart 折线图 曲线图" />
+    <meta name="description" content="创建折线图和曲线图，支持多数据系列、自定义标题和轴标签、导出PNG" />
+    <meta name="keywords" content="line chart 折线图 曲线图 chart.js 数据可视化" />
     <meta name="author" content="WebUtils" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://tools.realtime-ai.chat/tools/data/line-chart.html" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="折线图生成器 - WebUtils" />
-    <meta property="og:description" content="创建折线图和曲线图" />
+    <meta property="og:description" content="创建折线图和曲线图，支持多数据系列、自定义标题和轴标签、导出PNG" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://tools.realtime-ai.chat/tools/data/line-chart.html" />
     <meta property="og:site_name" content="WebUtils" />
@@ -22,7 +22,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="折线图生成器 - WebUtils" />
-    <meta name="twitter:description" content="创建折线图和曲线图" />
+    <meta name="twitter:description" content="创建折线图和曲线图，支持多数据系列、自定义标题和轴标签、导出PNG" />
     <!-- OG Image -->
     <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
     <meta property="og:image:width" content="1280" />
@@ -64,6 +64,8 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       :root {
         --color-bg-deep: #0a0a0f;
@@ -229,6 +231,18 @@
         flex: 1;
       }
 
+      .tool-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      @media (max-width: 900px) {
+        .tool-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .tool-section {
         margin-bottom: 24px;
       }
@@ -257,6 +271,12 @@
         margin-bottom: 8px;
       }
 
+      .input-hint {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-top: 4px;
+      }
+
       input[type="text"],
       input[type="number"],
       select,
@@ -280,8 +300,20 @@
       }
 
       textarea {
-        min-height: 120px;
+        min-height: 180px;
         resize: vertical;
+      }
+
+      .input-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 600px) {
+        .input-row {
+          grid-template-columns: 1fr;
+        }
       }
 
       .btn-row {
@@ -328,17 +360,103 @@
         color: var(--color-accent-cyan);
       }
 
-      .result-box {
-        background: var(--bg-input);
+      .btn-success {
+        background: var(--accent-green);
+        color: white;
+      }
+
+      .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px var(--glow-green);
+      }
+
+      .chart-container {
+        background: var(--color-bg-surface);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
-        padding: 16px;
+        padding: 20px;
+        min-height: 400px;
+        position: relative;
+      }
+
+      .chart-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 360px;
+        color: var(--color-text-muted);
         font-family: var(--font-mono);
         font-size: 0.9rem;
+      }
+
+      .series-manager {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .series-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+      }
+
+      .series-color {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .series-name {
+        flex: 1;
+        padding: 8px 12px;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        background: var(--color-bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-primary);
+      }
+
+      .series-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        background: transparent;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .series-btn:hover {
+        border-color: var(--accent-red);
+        color: var(--accent-red);
+      }
+
+      .add-series-btn {
+        padding: 10px;
+        background: transparent;
+        border: 1px dashed var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+
+      .add-series-btn:hover {
+        border-color: var(--color-accent-cyan);
         color: var(--color-accent-cyan);
-        min-height: 60px;
-        white-space: pre-wrap;
-        word-break: break-all;
       }
 
       .toast {
@@ -363,6 +481,11 @@
         opacity: 1;
       }
 
+      .toast.error {
+        background: var(--accent-red);
+        color: white;
+      }
+
       @media (max-width: 600px) {
         .container {
           padding: 16px;
@@ -374,6 +497,10 @@
 
         .btn {
           width: 100%;
+        }
+
+        .series-item {
+          flex-wrap: wrap;
         }
       }
     </style>
@@ -394,28 +521,99 @@
             <span class="icon">📈</span>
             折线图生成器
           </h1>
-          <p>创建折线图和曲线图</p>
+          <p>创建折线图和曲线图，支持多数据系列</p>
         </div>
       </header>
 
       <main class="main-content">
-        <div class="tool-section">
-          <div class="section-title">工具功能</div>
-          <div class="input-group">
-            <label class="input-label">输入内容</label>
-            <textarea id="input" placeholder="在此输入..."></textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="processData()">📋 处理</button>
-            <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
-          </div>
-        </div>
+        <div class="tool-layout">
+          <!-- 左侧：数据输入 -->
+          <div class="input-panel">
+            <div class="tool-section">
+              <div class="section-title">图表设置</div>
+              <div class="input-group">
+                <label class="input-label">图表标题</label>
+                <input type="text" id="chartTitle" placeholder="我的折线图" value="折线图" />
+              </div>
+              <div class="input-row">
+                <div class="input-group">
+                  <label class="input-label">X 轴标签</label>
+                  <input type="text" id="xAxisLabel" placeholder="X 轴" />
+                </div>
+                <div class="input-group">
+                  <label class="input-label">Y 轴标签</label>
+                  <input type="text" id="yAxisLabel" placeholder="Y 轴" />
+                </div>
+              </div>
+              <div class="input-row">
+                <div class="input-group">
+                  <label class="input-label">线条样式</label>
+                  <select id="lineStyle">
+                    <option value="smooth">平滑曲线</option>
+                    <option value="linear">直线</option>
+                    <option value="stepped">阶梯</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label class="input-label">显示数据点</label>
+                  <select id="showPoints">
+                    <option value="true">显示</option>
+                    <option value="false">隐藏</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-        <div class="tool-section">
-          <div class="section-title">处理结果</div>
-          <div class="result-box" id="result">处理结果将显示在这里...</div>
-          <div class="btn-row" style="margin-top: 16px">
-            <button class="btn btn-primary" onclick="copyResult()">📋 复制结果</button>
+            <div class="tool-section">
+              <div class="section-title">数据系列</div>
+              <div class="series-manager" id="seriesManager">
+                <!-- 动态添加的系列 -->
+              </div>
+              <button class="add-series-btn" onclick="addSeries()">+ 添加数据系列</button>
+            </div>
+
+            <div class="tool-section">
+              <div class="section-title">数据输入</div>
+              <div class="input-group">
+                <label class="input-label">输入数据（每行一个点）</label>
+                <textarea id="dataInput" placeholder="格式：X,Y 或 X,Y1,Y2,Y3...
+
+示例（单系列）：
+1,10
+2,25
+3,18
+4,32
+5,28
+
+示例（多系列）：
+Jan,65,28
+Feb,59,48
+Mar,80,40
+Apr,81,19
+May,56,86"></textarea>
+                <div class="input-hint">提示：第一列为X轴标签，后续列对应各数据系列的Y值</div>
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-primary" onclick="generateChart()">📊 生成图表</button>
+                <button class="btn btn-secondary" onclick="loadSampleData()">📝 示例数据</button>
+                <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：图表显示 -->
+          <div class="output-panel">
+            <div class="tool-section">
+              <div class="section-title">图表预览</div>
+              <div class="chart-container">
+                <canvas id="lineChart"></canvas>
+                <div class="chart-placeholder" id="chartPlaceholder">输入数据后生成图表</div>
+              </div>
+              <div class="btn-row" style="margin-top: 16px">
+                <button class="btn btn-success" onclick="exportPNG()">📥 导出 PNG</button>
+                <button class="btn btn-secondary" onclick="shareChart()">🔗 分享</button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -424,63 +622,511 @@
     <div class="toast" id="toast">操作成功</div>
 
     <script>
+      // 全局变量
+      let chart = null;
+      let seriesCount = 0;
+      const defaultColors = [
+        '#00f5d4', // cyan
+        '#f72585', // magenta
+        '#fbbf24', // yellow
+        '#a855f7', // purple
+        '#10b981', // green
+        '#3b82f6', // blue
+        '#f43f5e', // red
+        '#06b6d4', // teal
+      ];
+
+      const LS_KEY = 'line-chart-data';
+
       // 主题切换
       function toggleTheme() {
         const body = document.body;
-        const isDark = body.getAttribute("data-theme") !== "light";
-        body.setAttribute("data-theme", isDark ? "light" : "dark");
-        localStorage.setItem("theme", isDark ? "light" : "dark");
+        const isDark = body.getAttribute('data-theme') !== 'light';
+        body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        // 重新生成图表以更新主题
+        if (chart) {
+          generateChart();
+        }
       }
 
       // 加载主题
       (function () {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light") {
-          document.body.setAttribute("data-theme", "light");
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.body.setAttribute('data-theme', 'light');
         }
       })();
 
-      // 处理数据
-      function processData() {
-        const input = document.getElementById("input").value;
-        if (!input.trim()) {
-          showToast("请输入内容");
-          return;
-        }
+      // 创建系列元素
+      function createSeriesElement(name, color, id) {
+        const item = document.createElement('div');
+        item.className = 'series-item';
+        item.dataset.seriesId = id;
 
-        // 这里添加具体的处理逻辑
-        const result = `输入: ${input}\n\n处理结果: ${input.length} 个字符`;
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.className = 'series-color';
+        colorInput.value = color;
+        colorInput.title = '选择颜色';
 
-        document.getElementById("result").textContent = result;
-        showToast("处理完成");
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'series-name';
+        nameInput.value = name;
+        nameInput.placeholder = '系列名称';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'series-btn';
+        removeBtn.title = '删除系列';
+        removeBtn.textContent = '✕';
+        removeBtn.onclick = function() { removeSeries(this); };
+
+        item.appendChild(colorInput);
+        item.appendChild(nameInput);
+        item.appendChild(removeBtn);
+
+        // 绑定事件
+        colorInput.addEventListener('input', saveToStorage);
+        colorInput.addEventListener('change', saveToStorage);
+        nameInput.addEventListener('input', saveToStorage);
+        nameInput.addEventListener('change', saveToStorage);
+
+        return item;
       }
 
-      // 复制结果
-      function copyResult() {
-        const result = document.getElementById("result").textContent;
-        if (!result || result === "处理结果将显示在这里...") {
-          showToast("没有可复制的内容");
+      // 初始化
+      document.addEventListener('DOMContentLoaded', function () {
+        // 添加默认数据系列
+        addSeries('系列 1', defaultColors[0]);
+
+        // 从 localStorage 加载
+        loadFromStorage();
+
+        // 从 URL hash 加载
+        loadFromUrl();
+
+        // 自动保存
+        document.querySelectorAll('input, textarea, select').forEach((el) => {
+          el.addEventListener('input', saveToStorage);
+          el.addEventListener('change', saveToStorage);
+        });
+      });
+
+      // 添加数据系列
+      function addSeries(name, color) {
+        seriesCount++;
+        const seriesName = name || ('系列 ' + seriesCount);
+        const seriesColor = color || defaultColors[(seriesCount - 1) % defaultColors.length];
+
+        const container = document.getElementById('seriesManager');
+        const item = createSeriesElement(seriesName, seriesColor, seriesCount);
+        container.appendChild(item);
+      }
+
+      // 移除数据系列
+      function removeSeries(btn) {
+        const items = document.querySelectorAll('.series-item');
+        if (items.length <= 1) {
+          showToast('至少保留一个数据系列', 'error');
+          return;
+        }
+        btn.closest('.series-item').remove();
+        saveToStorage();
+      }
+
+      // 获取所有系列配置
+      function getSeriesConfig() {
+        const items = document.querySelectorAll('.series-item');
+        return Array.from(items).map(function(item) {
+          return {
+            name: item.querySelector('.series-name').value || '未命名',
+            color: item.querySelector('.series-color').value
+          };
+        });
+      }
+
+      // 解析数据
+      function parseData(input) {
+        const lines = input.trim().split('\n').filter(function(line) { return line.trim(); });
+        if (lines.length === 0) return null;
+
+        const labels = [];
+        const datasets = [];
+        const seriesConfig = getSeriesConfig();
+
+        // 解析每行数据
+        lines.forEach(function(line) {
+          const parts = line.split(',').map(function(s) { return s.trim(); });
+          if (parts.length < 2) return;
+
+          labels.push(parts[0]);
+
+          // 解析 Y 值
+          for (let i = 1; i < parts.length; i++) {
+            const value = parseFloat(parts[i]);
+            if (!isNaN(value)) {
+              if (!datasets[i - 1]) {
+                datasets[i - 1] = [];
+              }
+              datasets[i - 1].push(value);
+            }
+          }
+        });
+
+        if (labels.length === 0 || datasets.length === 0) return null;
+
+        // 确保有足够的系列配置
+        while (seriesConfig.length < datasets.length) {
+          const idx = seriesConfig.length;
+          seriesConfig.push({
+            name: '系列 ' + (idx + 1),
+            color: defaultColors[idx % defaultColors.length]
+          });
+          // 添加 UI
+          addSeries(seriesConfig[idx].name, seriesConfig[idx].color);
+        }
+
+        return { labels: labels, datasets: datasets, seriesConfig: seriesConfig };
+      }
+
+      // 生成图表
+      function generateChart() {
+        const input = document.getElementById('dataInput').value;
+        if (!input.trim()) {
+          showToast('请输入数据', 'error');
           return;
         }
 
-        navigator.clipboard.writeText(result).then(() => {
-          showToast("已复制到剪贴板");
+        const parsed = parseData(input);
+        if (!parsed) {
+          showToast('数据格式错误，请检查输入', 'error');
+          return;
+        }
+
+        const labels = parsed.labels;
+        const datasets = parsed.datasets;
+        const seriesConfig = parsed.seriesConfig;
+        const chartTitle = document.getElementById('chartTitle').value || '折线图';
+        const xAxisLabel = document.getElementById('xAxisLabel').value;
+        const yAxisLabel = document.getElementById('yAxisLabel').value;
+        const lineStyle = document.getElementById('lineStyle').value;
+        const showPoints = document.getElementById('showPoints').value === 'true';
+
+        // 判断当前主题
+        const isLight = document.body.getAttribute('data-theme') === 'light';
+        const gridColor = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+        const textColor = isLight ? '#1a1a1a' : '#e8e8ed';
+
+        // 隐藏占位符
+        document.getElementById('chartPlaceholder').style.display = 'none';
+
+        // 销毁旧图表
+        if (chart) {
+          chart.destroy();
+        }
+
+        // 构建数据集
+        const chartDatasets = datasets.map(function(data, index) {
+          const config = seriesConfig[index] || {
+            name: '系列 ' + (index + 1),
+            color: defaultColors[index % defaultColors.length]
+          };
+
+          return {
+            label: config.name,
+            data: data,
+            borderColor: config.color,
+            backgroundColor: config.color + '20',
+            borderWidth: 2,
+            fill: false,
+            tension: lineStyle === 'smooth' ? 0.4 : 0,
+            stepped: lineStyle === 'stepped',
+            pointRadius: showPoints ? 4 : 0,
+            pointHoverRadius: showPoints ? 6 : 4,
+            pointBackgroundColor: config.color,
+            pointBorderColor: config.color
+          };
         });
+
+        // 创建图表
+        const ctx = document.getElementById('lineChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: chartDatasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+              mode: 'index',
+              intersect: false
+            },
+            plugins: {
+              title: {
+                display: !!chartTitle,
+                text: chartTitle,
+                color: textColor,
+                font: {
+                  size: 16,
+                  weight: '600',
+                  family: "'Space Grotesk', sans-serif"
+                },
+                padding: { bottom: 20 }
+              },
+              legend: {
+                display: datasets.length > 1,
+                position: 'top',
+                labels: {
+                  color: textColor,
+                  font: {
+                    family: "'Space Grotesk', sans-serif"
+                  },
+                  usePointStyle: true,
+                  padding: 15
+                }
+              },
+              tooltip: {
+                backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(26, 26, 36, 0.95)',
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: isLight ? '#e5e5e5' : '#3a3a4a',
+                borderWidth: 1,
+                cornerRadius: 8,
+                titleFont: {
+                  family: "'Space Grotesk', sans-serif",
+                  weight: '600'
+                },
+                bodyFont: {
+                  family: "'JetBrains Mono', monospace"
+                },
+                padding: 12
+              }
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: !!xAxisLabel,
+                  text: xAxisLabel,
+                  color: textColor,
+                  font: {
+                    family: "'Space Grotesk', sans-serif",
+                    weight: '500'
+                  }
+                },
+                grid: {
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 11
+                  }
+                }
+              },
+              y: {
+                display: true,
+                title: {
+                  display: !!yAxisLabel,
+                  text: yAxisLabel,
+                  color: textColor,
+                  font: {
+                    family: "'Space Grotesk', sans-serif",
+                    weight: '500'
+                  }
+                },
+                grid: {
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 11
+                  }
+                },
+                beginAtZero: true
+              }
+            }
+          }
+        });
+
+        showToast('图表生成成功');
+        saveToStorage();
+      }
+
+      // 导出 PNG
+      function exportPNG() {
+        if (!chart) {
+          showToast('请先生成图表', 'error');
+          return;
+        }
+
+        const canvas = document.getElementById('lineChart');
+        const link = document.createElement('a');
+        link.download = 'line-chart.png';
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+
+        showToast('图表已导出');
+      }
+
+      // 分享图表
+      function shareChart() {
+        const data = {
+          title: document.getElementById('chartTitle').value,
+          xAxis: document.getElementById('xAxisLabel').value,
+          yAxis: document.getElementById('yAxisLabel').value,
+          style: document.getElementById('lineStyle').value,
+          points: document.getElementById('showPoints').value,
+          series: getSeriesConfig(),
+          data: document.getElementById('dataInput').value
+        };
+
+        const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+        const url = window.location.href.split('#')[0] + '#' + encoded;
+
+        navigator.clipboard.writeText(url).then(function() {
+          showToast('分享链接已复制到剪贴板');
+        }).catch(function() {
+          showToast('复制失败，请手动复制地址栏链接', 'error');
+        });
+      }
+
+      // 从 URL 加载
+      function loadFromUrl() {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return;
+
+        try {
+          const data = JSON.parse(decodeURIComponent(atob(hash)));
+
+          if (data.title) document.getElementById('chartTitle').value = data.title;
+          if (data.xAxis) document.getElementById('xAxisLabel').value = data.xAxis;
+          if (data.yAxis) document.getElementById('yAxisLabel').value = data.yAxis;
+          if (data.style) document.getElementById('lineStyle').value = data.style;
+          if (data.points) document.getElementById('showPoints').value = data.points;
+          if (data.data) document.getElementById('dataInput').value = data.data;
+
+          // 恢复系列配置
+          if (data.series && data.series.length > 0) {
+            document.getElementById('seriesManager').textContent = '';
+            seriesCount = 0;
+            data.series.forEach(function(s) { addSeries(s.name, s.color); });
+          }
+
+          // 自动生成图表
+          if (data.data) {
+            setTimeout(generateChart, 100);
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+
+      // 保存到 localStorage
+      function saveToStorage() {
+        const data = {
+          title: document.getElementById('chartTitle').value,
+          xAxis: document.getElementById('xAxisLabel').value,
+          yAxis: document.getElementById('yAxisLabel').value,
+          style: document.getElementById('lineStyle').value,
+          points: document.getElementById('showPoints').value,
+          series: getSeriesConfig(),
+          data: document.getElementById('dataInput').value
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+
+      // 从 localStorage 加载
+      function loadFromStorage() {
+        // 如果有 URL hash，优先使用 URL
+        if (window.location.hash) return;
+
+        const saved = localStorage.getItem(LS_KEY);
+        if (!saved) return;
+
+        try {
+          const data = JSON.parse(saved);
+
+          if (data.title) document.getElementById('chartTitle').value = data.title;
+          if (data.xAxis) document.getElementById('xAxisLabel').value = data.xAxis;
+          if (data.yAxis) document.getElementById('yAxisLabel').value = data.yAxis;
+          if (data.style) document.getElementById('lineStyle').value = data.style;
+          if (data.points) document.getElementById('showPoints').value = data.points;
+          if (data.data) document.getElementById('dataInput').value = data.data;
+
+          // 恢复系列配置
+          if (data.series && data.series.length > 0) {
+            document.getElementById('seriesManager').textContent = '';
+            seriesCount = 0;
+            data.series.forEach(function(s) { addSeries(s.name, s.color); });
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+
+      // 加载示例数据
+      function loadSampleData() {
+        const sampleData = 'Jan,65,28,45\nFeb,59,48,52\nMar,80,40,61\nApr,81,19,73\nMay,56,86,42\nJun,55,27,58\nJul,40,90,35';
+
+        document.getElementById('dataInput').value = sampleData;
+        document.getElementById('chartTitle').value = '月度数据对比';
+        document.getElementById('xAxisLabel').value = '月份';
+        document.getElementById('yAxisLabel').value = '数值';
+
+        // 确保有 3 个系列
+        const manager = document.getElementById('seriesManager');
+        manager.textContent = '';
+        seriesCount = 0;
+        addSeries('销售额', '#00f5d4');
+        addSeries('成本', '#f72585');
+        addSeries('利润', '#fbbf24');
+
+        generateChart();
       }
 
       // 清空所有内容
       function clearAll() {
-        document.getElementById("input").value = "";
-        document.getElementById("result").textContent = "处理结果将显示在这里...";
-        showToast("已清空");
+        document.getElementById('chartTitle').value = '折线图';
+        document.getElementById('xAxisLabel').value = '';
+        document.getElementById('yAxisLabel').value = '';
+        document.getElementById('lineStyle').value = 'smooth';
+        document.getElementById('showPoints').value = 'true';
+        document.getElementById('dataInput').value = '';
+
+        // 重置系列
+        document.getElementById('seriesManager').textContent = '';
+        seriesCount = 0;
+        addSeries('系列 1', defaultColors[0]);
+
+        // 销毁图表
+        if (chart) {
+          chart.destroy();
+          chart = null;
+        }
+        document.getElementById('chartPlaceholder').style.display = 'flex';
+
+        // 清除存储
+        localStorage.removeItem(LS_KEY);
+        window.location.hash = '';
+
+        showToast('已清空');
       }
 
       // 显示提示
-      function showToast(msg) {
-        const toast = document.getElementById("toast");
+      function showToast(msg, type) {
+        type = type || 'success';
+        const toast = document.getElementById('toast');
         toast.textContent = msg;
-        toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2000);
+        toast.className = 'toast' + (type === 'error' ? ' error' : '');
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 2000);
       }
     </script>
   </body>

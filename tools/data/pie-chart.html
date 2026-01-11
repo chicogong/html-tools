@@ -64,6 +64,8 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       :root {
         --color-bg-deep: #0a0a0f;
@@ -229,6 +231,18 @@
         flex: 1;
       }
 
+      .tool-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      @media (max-width: 900px) {
+        .tool-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .tool-section {
         margin-bottom: 24px;
       }
@@ -259,6 +273,7 @@
 
       input[type="text"],
       input[type="number"],
+      input[type="color"],
       select,
       textarea {
         width: 100%;
@@ -280,8 +295,75 @@
       }
 
       textarea {
-        min-height: 120px;
+        min-height: 180px;
         resize: vertical;
+      }
+
+      .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 600px) {
+        .options-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--color-accent-cyan);
+      }
+
+      .checkbox-group label {
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+      }
+
+      .color-picker-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .color-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+      }
+
+      .color-item input[type="color"] {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        cursor: pointer;
+      }
+
+      .color-item span {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
       }
 
       .btn-row {
@@ -328,17 +410,70 @@
         color: var(--color-accent-cyan);
       }
 
-      .result-box {
+      .btn-success {
+        background: var(--accent-green);
+        color: #fff;
+      }
+
+      .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px var(--glow-green);
+      }
+
+      .chart-container {
         background: var(--bg-input);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
-        padding: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        position: relative;
+      }
+
+      .chart-placeholder {
+        color: var(--color-text-muted);
         font-family: var(--font-mono);
         font-size: 0.9rem;
+        text-align: center;
+      }
+
+      #chartCanvas {
+        max-width: 100%;
+        max-height: 400px;
+      }
+
+      .data-preview {
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+        max-height: 120px;
+        overflow-y: auto;
+      }
+
+      .data-preview-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .data-preview-item:last-child {
+        border-bottom: none;
+      }
+
+      .data-preview-label {
+        color: var(--color-text-primary);
+      }
+
+      .data-preview-value {
         color: var(--color-accent-cyan);
-        min-height: 60px;
-        white-space: pre-wrap;
-        word-break: break-all;
       }
 
       .toast {
@@ -361,6 +496,11 @@
       .toast.show {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
+      }
+
+      .toast.error {
+        background: var(--accent-red);
+        color: #fff;
       }
 
       @media (max-width: 600px) {
@@ -394,28 +534,107 @@
             <span class="icon">🥧</span>
             饼图生成器
           </h1>
-          <p>创建饼图和环形图</p>
+          <p>创建饼图和环形图，支持导出为PNG图片</p>
         </div>
       </header>
 
       <main class="main-content">
-        <div class="tool-section">
-          <div class="section-title">工具功能</div>
-          <div class="input-group">
-            <label class="input-label">输入内容</label>
-            <textarea id="input" placeholder="在此输入..."></textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="processData()">📋 处理</button>
-            <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
-          </div>
-        </div>
+        <div class="tool-layout">
+          <!-- 左侧：输入和配置 -->
+          <div class="input-panel">
+            <div class="tool-section">
+              <div class="section-title">数据输入</div>
+              <div class="input-group">
+                <label class="input-label">数据格式：每行一条 "标签,数值"</label>
+                <textarea id="input" placeholder="苹果,30&#10;香蕉,25&#10;橙子,20&#10;葡萄,15&#10;其他,10"></textarea>
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-secondary" onclick="loadSampleData()">📝 示例数据</button>
+                <button class="btn btn-secondary" onclick="pasteData()">📋 粘贴</button>
+              </div>
+            </div>
 
-        <div class="tool-section">
-          <div class="section-title">处理结果</div>
-          <div class="result-box" id="result">处理结果将显示在这里...</div>
-          <div class="btn-row" style="margin-top: 16px">
-            <button class="btn btn-primary" onclick="copyResult()">📋 复制结果</button>
+            <div class="tool-section">
+              <div class="section-title">图表配置</div>
+              <div class="input-group">
+                <label class="input-label">图表标题</label>
+                <input type="text" id="chartTitle" placeholder="输入图表标题（可选）" />
+              </div>
+              <div class="options-grid">
+                <div class="input-group">
+                  <label class="input-label">图表类型</label>
+                  <select id="chartType">
+                    <option value="pie">饼图 (Pie)</option>
+                    <option value="doughnut">环形图 (Doughnut)</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label class="input-label">配色方案</label>
+                  <select id="colorScheme">
+                    <option value="default">默认配色</option>
+                    <option value="pastel">柔和色系</option>
+                    <option value="vibrant">鲜艳色系</option>
+                    <option value="ocean">海洋色系</option>
+                    <option value="sunset">日落色系</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </div>
+              </div>
+              <div class="options-grid">
+                <div class="checkbox-group" onclick="toggleCheckbox('showLabels')">
+                  <input type="checkbox" id="showLabels" checked />
+                  <label for="showLabels">显示标签</label>
+                </div>
+                <div class="checkbox-group" onclick="toggleCheckbox('showPercentage')">
+                  <input type="checkbox" id="showPercentage" checked />
+                  <label for="showPercentage">显示百分比</label>
+                </div>
+                <div class="checkbox-group" onclick="toggleCheckbox('showLegend')">
+                  <input type="checkbox" id="showLegend" checked />
+                  <label for="showLegend">显示图例</label>
+                </div>
+                <div class="checkbox-group" onclick="toggleCheckbox('showValues')">
+                  <input type="checkbox" id="showValues" />
+                  <label for="showValues">显示数值</label>
+                </div>
+              </div>
+              <div class="input-group" id="customColorsSection" style="display: none">
+                <label class="input-label">自定义颜色（最多8个）</label>
+                <div class="color-picker-group" id="colorPickers">
+                  <!-- 动态生成颜色选择器 -->
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="generateChart()">📊 生成图表</button>
+              <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
+            </div>
+
+            <!-- 数据预览 -->
+            <div class="data-preview" id="dataPreview" style="display: none">
+              <div style="margin-bottom: 8px; color: var(--color-text-muted)">数据预览：</div>
+              <div id="previewContent"></div>
+            </div>
+          </div>
+
+          <!-- 右侧：图表展示 -->
+          <div class="chart-panel">
+            <div class="tool-section">
+              <div class="section-title">图表预览</div>
+              <div class="chart-container" id="chartContainer">
+                <div class="chart-placeholder" id="chartPlaceholder">
+                  输入数据后点击"生成图表"<br />
+                  支持饼图和环形图
+                </div>
+                <canvas id="chartCanvas" style="display: none"></canvas>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-success" onclick="exportPNG()">💾 导出PNG</button>
+              <button class="btn btn-secondary" onclick="shareChart()">🔗 分享链接</button>
+            </div>
           </div>
         </div>
       </main>
@@ -424,12 +643,84 @@
     <div class="toast" id="toast">操作成功</div>
 
     <script>
+      // 全局变量
+      let chartInstance = null;
+      const LS_KEY = "pie-chart-data";
+
+      // 配色方案
+      const colorSchemes = {
+        default: [
+          "#00f5d4",
+          "#f72585",
+          "#fbbf24",
+          "#a855f7",
+          "#10b981",
+          "#3b82f6",
+          "#ef4444",
+          "#8b5cf6",
+        ],
+        pastel: [
+          "#a8e6cf",
+          "#dcedc1",
+          "#ffd3b6",
+          "#ffaaa5",
+          "#ff8b94",
+          "#b5ead7",
+          "#c7ceea",
+          "#e2f0cb",
+        ],
+        vibrant: [
+          "#ff6b6b",
+          "#feca57",
+          "#48dbfb",
+          "#ff9ff3",
+          "#54a0ff",
+          "#5f27cd",
+          "#00d2d3",
+          "#1dd1a1",
+        ],
+        ocean: [
+          "#0077b6",
+          "#00b4d8",
+          "#90e0ef",
+          "#caf0f8",
+          "#03045e",
+          "#023e8a",
+          "#0096c7",
+          "#48cae4",
+        ],
+        sunset: [
+          "#f72585",
+          "#b5179e",
+          "#7209b7",
+          "#560bad",
+          "#480ca8",
+          "#3a0ca3",
+          "#3f37c9",
+          "#4361ee",
+        ],
+        custom: [
+          "#00f5d4",
+          "#f72585",
+          "#fbbf24",
+          "#a855f7",
+          "#10b981",
+          "#3b82f6",
+          "#ef4444",
+          "#8b5cf6",
+        ],
+      };
+
       // 主题切换
       function toggleTheme() {
         const body = document.body;
         const isDark = body.getAttribute("data-theme") !== "light";
         body.setAttribute("data-theme", isDark ? "light" : "dark");
         localStorage.setItem("theme", isDark ? "light" : "dark");
+        // 重新生成图表以适应主题
+        if (chartInstance) {
+          generateChart();
+        }
       }
 
       // 加载主题
@@ -440,48 +731,563 @@
         }
       })();
 
-      // 处理数据
-      function processData() {
-        const input = document.getElementById("input").value;
-        if (!input.trim()) {
-          showToast("请输入内容");
-          return;
+      // 切换复选框
+      function toggleCheckbox(id) {
+        const checkbox = document.getElementById(id);
+        checkbox.checked = !checkbox.checked;
+        if (chartInstance) {
+          generateChart();
         }
-
-        // 这里添加具体的处理逻辑
-        const result = `输入: ${input}\n\n处理结果: ${input.length} 个字符`;
-
-        document.getElementById("result").textContent = result;
-        showToast("处理完成");
       }
 
-      // 复制结果
-      function copyResult() {
-        const result = document.getElementById("result").textContent;
-        if (!result || result === "处理结果将显示在这里...") {
-          showToast("没有可复制的内容");
+      // 加载示例数据
+      function loadSampleData() {
+        const sampleData = "销售额,35\n市场营销,25\n研发,20\n运营,12\n其他,8";
+        document.getElementById("input").value = sampleData;
+        document.getElementById("chartTitle").value = "部门预算分配";
+        showToast("已加载示例数据");
+        updateDataPreview();
+      }
+
+      // 粘贴数据
+      async function pasteData() {
+        try {
+          const text = await navigator.clipboard.readText();
+          document.getElementById("input").value = text;
+          showToast("已粘贴数据");
+          updateDataPreview();
+        } catch (e) {
+          showToast("无法访问剪贴板", true);
+        }
+      }
+
+      // 解析数据
+      function parseData(input) {
+        const lines = input.trim().split("\n");
+        const labels = [];
+        const values = [];
+        const errors = [];
+
+        lines.forEach((line, index) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+
+          // 支持多种分隔符：逗号、制表符、空格
+          const parts = trimmed.split(/[,\t]+/);
+          if (parts.length < 2) {
+            errors.push("第 " + (index + 1) + " 行格式错误: \"" + trimmed + "\"");
+            return;
+          }
+
+          const label = parts[0].trim();
+          const value = parseFloat(parts[1].trim());
+
+          if (isNaN(value) || value < 0) {
+            errors.push("第 " + (index + 1) + " 行数值无效: \"" + parts[1] + "\"");
+            return;
+          }
+
+          labels.push(label);
+          values.push(value);
+        });
+
+        return { labels: labels, values: values, errors: errors };
+      }
+
+      // 更新数据预览
+      function updateDataPreview() {
+        const input = document.getElementById("input").value;
+        const preview = document.getElementById("dataPreview");
+        const content = document.getElementById("previewContent");
+
+        if (!input.trim()) {
+          preview.style.display = "none";
           return;
         }
 
-        navigator.clipboard.writeText(result).then(() => {
-          showToast("已复制到剪贴板");
+        const parsed = parseData(input);
+        const labels = parsed.labels;
+        const values = parsed.values;
+        const errors = parsed.errors;
+
+        if (labels.length === 0) {
+          preview.style.display = "none";
+          return;
+        }
+
+        const total = values.reduce(function (a, b) {
+          return a + b;
+        }, 0);
+
+        // Clear existing content
+        while (content.firstChild) {
+          content.removeChild(content.firstChild);
+        }
+
+        labels.forEach(function (label, i) {
+          const percentage = ((values[i] / total) * 100).toFixed(1);
+          const item = document.createElement("div");
+          item.className = "data-preview-item";
+
+          const labelSpan = document.createElement("span");
+          labelSpan.className = "data-preview-label";
+          labelSpan.textContent = label;
+
+          const valueSpan = document.createElement("span");
+          valueSpan.className = "data-preview-value";
+          valueSpan.textContent = values[i] + " (" + percentage + "%)";
+
+          item.appendChild(labelSpan);
+          item.appendChild(valueSpan);
+          content.appendChild(item);
         });
+
+        if (errors.length > 0) {
+          const errorDiv = document.createElement("div");
+          errorDiv.style.color = "var(--accent-red)";
+          errorDiv.style.marginTop = "8px";
+          errorDiv.textContent = errors.join("; ");
+          content.appendChild(errorDiv);
+        }
+
+        preview.style.display = "block";
+      }
+
+      // 获取颜色
+      function getColors(count) {
+        const scheme = document.getElementById("colorScheme").value;
+        let baseColors = colorSchemes[scheme] || colorSchemes.default;
+
+        if (scheme === "custom") {
+          baseColors = [];
+          const pickers = document.querySelectorAll("#colorPickers input[type='color']");
+          pickers.forEach(function (picker) {
+            baseColors.push(picker.value);
+          });
+        }
+
+        // 如果数据项超过颜色数量，循环使用颜色
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+          colors.push(baseColors[i % baseColors.length]);
+        }
+        return colors;
+      }
+
+      // 生成图表
+      function generateChart() {
+        const input = document.getElementById("input").value;
+        if (!input.trim()) {
+          showToast("请输入数据", true);
+          return;
+        }
+
+        const parsed = parseData(input);
+        const labels = parsed.labels;
+        const values = parsed.values;
+        const errors = parsed.errors;
+
+        if (labels.length === 0) {
+          showToast("没有有效数据", true);
+          return;
+        }
+
+        if (errors.length > 0) {
+          showToast(errors.length + " 行数据有问题，已跳过", true);
+        }
+
+        // 获取配置
+        const chartType = document.getElementById("chartType").value;
+        const chartTitle = document.getElementById("chartTitle").value;
+        const showLabels = document.getElementById("showLabels").checked;
+        const showPercentage = document.getElementById("showPercentage").checked;
+        const showLegend = document.getElementById("showLegend").checked;
+        const showValues = document.getElementById("showValues").checked;
+        const colors = getColors(labels.length);
+
+        // 销毁旧图表
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        // 显示画布，隐藏占位符
+        const canvas = document.getElementById("chartCanvas");
+        const placeholder = document.getElementById("chartPlaceholder");
+        canvas.style.display = "block";
+        placeholder.style.display = "none";
+
+        // 获取主题色
+        const isDark = document.body.getAttribute("data-theme") !== "light";
+        const textColor = isDark ? "#e8e8ed" : "#1a1a1a";
+
+        // 计算总和用于百分比
+        const total = values.reduce(function (a, b) {
+          return a + b;
+        }, 0);
+
+        // 创建图表
+        const ctx = canvas.getContext("2d");
+        chartInstance = new Chart(ctx, {
+          type: chartType,
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: values,
+                backgroundColor: colors,
+                borderColor: isDark ? "#1a1a24" : "#fff",
+                borderWidth: 2,
+                hoverOffset: 10,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              title: {
+                display: !!chartTitle,
+                text: chartTitle,
+                color: textColor,
+                font: {
+                  size: 16,
+                  weight: "bold",
+                  family: "'Space Grotesk', sans-serif",
+                },
+                padding: { bottom: 20 },
+              },
+              legend: {
+                display: showLegend,
+                position: "bottom",
+                labels: {
+                  color: textColor,
+                  padding: 15,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 12,
+                  },
+                  usePointStyle: true,
+                  pointStyle: "circle",
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const value = context.raw;
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    let label = context.label || "";
+                    if (showValues && showPercentage) {
+                      return label + ": " + value + " (" + percentage + "%)";
+                    } else if (showValues) {
+                      return label + ": " + value;
+                    } else if (showPercentage) {
+                      return label + ": " + percentage + "%";
+                    }
+                    return label;
+                  },
+                },
+              },
+              datalabels: false,
+            },
+            layout: {
+              padding: 20,
+            },
+          },
+          plugins: showLabels
+            ? [
+                {
+                  id: "customLabels",
+                  afterDraw: function (chart) {
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.font = "12px 'JetBrains Mono', monospace";
+                    ctx.fillStyle = textColor;
+
+                    chart.data.datasets.forEach(function (dataset, datasetIndex) {
+                      const meta = chart.getDatasetMeta(datasetIndex);
+                      meta.data.forEach(function (element, index) {
+                        const value = dataset.data[index];
+                        const percentage = ((value / total) * 100).toFixed(1);
+
+                        // 只显示大于3%的标签，避免重叠
+                        if (parseFloat(percentage) < 3) return;
+
+                        const midAngle = (element.startAngle + element.endAngle) / 2;
+                        const radius = (element.outerRadius + element.innerRadius) / 2;
+                        const x = element.x + Math.cos(midAngle) * radius * 0.7;
+                        const y = element.y + Math.sin(midAngle) * radius * 0.7;
+
+                        let labelText = "";
+                        if (showPercentage && showValues) {
+                          labelText = percentage + "%";
+                        } else if (showPercentage) {
+                          labelText = percentage + "%";
+                        } else if (showValues) {
+                          labelText = String(value);
+                        }
+
+                        if (labelText) {
+                          // 绘制背景
+                          const textWidth = ctx.measureText(labelText).width;
+                          ctx.fillStyle = isDark
+                            ? "rgba(26, 26, 36, 0.8)"
+                            : "rgba(255, 255, 255, 0.8)";
+                          ctx.fillRect(x - textWidth / 2 - 4, y - 8, textWidth + 8, 16);
+
+                          // 绘制文字
+                          ctx.fillStyle = textColor;
+                          ctx.fillText(labelText, x, y);
+                        }
+                      });
+                    });
+                    ctx.restore();
+                  },
+                },
+              ]
+            : [],
+        });
+
+        // 保存到 localStorage
+        saveToLocalStorage();
+        updateDataPreview();
+        showToast("图表已生成");
+      }
+
+      // 导出PNG
+      function exportPNG() {
+        if (!chartInstance) {
+          showToast("请先生成图表", true);
+          return;
+        }
+
+        const canvas = document.getElementById("chartCanvas");
+
+        // 创建临时画布添加白色背景（用于导出）
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+
+        // 填充背景色
+        const isDark = document.body.getAttribute("data-theme") !== "light";
+        tempCtx.fillStyle = isDark ? "#1a1a24" : "#ffffff";
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        // 绘制图表
+        tempCtx.drawImage(canvas, 0, 0);
+
+        // 下载
+        const link = document.createElement("a");
+        const title = document.getElementById("chartTitle").value || "pie-chart";
+        link.download = title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_") + ".png";
+        link.href = tempCanvas.toDataURL("image/png", 1.0);
+        link.click();
+
+        showToast("图片已导出");
+      }
+
+      // 分享链接
+      function shareChart() {
+        const input = document.getElementById("input").value;
+        if (!input.trim()) {
+          showToast("请先输入数据", true);
+          return;
+        }
+
+        const config = {
+          data: input,
+          title: document.getElementById("chartTitle").value,
+          type: document.getElementById("chartType").value,
+          scheme: document.getElementById("colorScheme").value,
+          showLabels: document.getElementById("showLabels").checked,
+          showPercentage: document.getElementById("showPercentage").checked,
+          showLegend: document.getElementById("showLegend").checked,
+          showValues: document.getElementById("showValues").checked,
+        };
+
+        const hash = btoa(encodeURIComponent(JSON.stringify(config)));
+        const url = window.location.origin + window.location.pathname + "#" + hash;
+
+        navigator.clipboard.writeText(url).then(function () {
+          showToast("分享链接已复制");
+        });
+      }
+
+      // 从URL加载
+      function loadFromUrl() {
+        if (window.location.hash) {
+          try {
+            const hash = window.location.hash.slice(1);
+            const config = JSON.parse(decodeURIComponent(atob(hash)));
+
+            document.getElementById("input").value = config.data || "";
+            document.getElementById("chartTitle").value = config.title || "";
+            document.getElementById("chartType").value = config.type || "pie";
+            document.getElementById("colorScheme").value = config.scheme || "default";
+            document.getElementById("showLabels").checked = config.showLabels !== false;
+            document.getElementById("showPercentage").checked = config.showPercentage !== false;
+            document.getElementById("showLegend").checked = config.showLegend !== false;
+            document.getElementById("showValues").checked = config.showValues === true;
+
+            updateColorPickers();
+            if (config.data) {
+              generateChart();
+            }
+            return true;
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+        return false;
+      }
+
+      // 保存到 localStorage
+      function saveToLocalStorage() {
+        const config = {
+          data: document.getElementById("input").value,
+          title: document.getElementById("chartTitle").value,
+          type: document.getElementById("chartType").value,
+          scheme: document.getElementById("colorScheme").value,
+          showLabels: document.getElementById("showLabels").checked,
+          showPercentage: document.getElementById("showPercentage").checked,
+          showLegend: document.getElementById("showLegend").checked,
+          showValues: document.getElementById("showValues").checked,
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(config));
+      }
+
+      // 从 localStorage 加载
+      function loadFromLocalStorage() {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          try {
+            const config = JSON.parse(saved);
+            document.getElementById("input").value = config.data || "";
+            document.getElementById("chartTitle").value = config.title || "";
+            document.getElementById("chartType").value = config.type || "pie";
+            document.getElementById("colorScheme").value = config.scheme || "default";
+            document.getElementById("showLabels").checked = config.showLabels !== false;
+            document.getElementById("showPercentage").checked = config.showPercentage !== false;
+            document.getElementById("showLegend").checked = config.showLegend !== false;
+            document.getElementById("showValues").checked = config.showValues === true;
+            updateDataPreview();
+            return true;
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+        return false;
       }
 
       // 清空所有内容
       function clearAll() {
         document.getElementById("input").value = "";
-        document.getElementById("result").textContent = "处理结果将显示在这里...";
+        document.getElementById("chartTitle").value = "";
+        document.getElementById("chartType").value = "pie";
+        document.getElementById("colorScheme").value = "default";
+        document.getElementById("showLabels").checked = true;
+        document.getElementById("showPercentage").checked = true;
+        document.getElementById("showLegend").checked = true;
+        document.getElementById("showValues").checked = false;
+
+        if (chartInstance) {
+          chartInstance.destroy();
+          chartInstance = null;
+        }
+
+        document.getElementById("chartCanvas").style.display = "none";
+        document.getElementById("chartPlaceholder").style.display = "block";
+        document.getElementById("dataPreview").style.display = "none";
+
+        localStorage.removeItem(LS_KEY);
+        window.location.hash = "";
+
+        updateColorPickers();
         showToast("已清空");
       }
 
+      // 更新颜色选择器
+      function updateColorPickers() {
+        const scheme = document.getElementById("colorScheme").value;
+        const section = document.getElementById("customColorsSection");
+        const container = document.getElementById("colorPickers");
+
+        if (scheme === "custom") {
+          section.style.display = "block";
+          // Clear existing pickers
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+
+          const baseColors = colorSchemes.custom;
+          for (let i = 0; i < 8; i++) {
+            const item = document.createElement("div");
+            item.className = "color-item";
+
+            const colorInput = document.createElement("input");
+            colorInput.type = "color";
+            colorInput.value = baseColors[i];
+            colorInput.setAttribute("data-index", i);
+            colorInput.addEventListener("change", function () {
+              updateCustomColor(parseInt(this.getAttribute("data-index")), this.value);
+            });
+
+            const span = document.createElement("span");
+            span.textContent = String(i + 1);
+
+            item.appendChild(colorInput);
+            item.appendChild(span);
+            container.appendChild(item);
+          }
+        } else {
+          section.style.display = "none";
+        }
+      }
+
+      // 更新自定义颜色
+      function updateCustomColor(index, color) {
+        colorSchemes.custom[index] = color;
+        if (chartInstance) {
+          generateChart();
+        }
+      }
+
       // 显示提示
-      function showToast(msg) {
+      function showToast(msg, isError) {
         const toast = document.getElementById("toast");
         toast.textContent = msg;
+        toast.className = "toast" + (isError ? " error" : "");
         toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2000);
+        setTimeout(function () {
+          toast.classList.remove("show");
+        }, 2000);
       }
+
+      // 事件监听
+      document.getElementById("input").addEventListener("input", updateDataPreview);
+      document.getElementById("colorScheme").addEventListener("change", function () {
+        updateColorPickers();
+        if (chartInstance) {
+          generateChart();
+        }
+      });
+      document.getElementById("chartType").addEventListener("change", function () {
+        if (chartInstance) {
+          generateChart();
+        }
+      });
+
+      // 初始化
+      (function init() {
+        // 优先从 URL 加载
+        if (!loadFromUrl()) {
+          // 否则从 localStorage 加载
+          loadFromLocalStorage();
+        }
+        updateColorPickers();
+      })();
     </script>
   </body>
 </html>

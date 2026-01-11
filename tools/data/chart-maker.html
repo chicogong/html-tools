@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>图表生成器 - WebUtils</title>
     <!-- SEO Meta Tags -->
-    <meta name="description" content="在线数据可视化图表生成工具" />
-    <meta name="keywords" content="chart 图表 可视化 visualization" />
+    <meta name="description" content="通用图表生成工具，支持柱状图、折线图、饼图、环形图、雷达图、极地图，可自定义样式并导出PNG" />
+    <meta name="keywords" content="chart 图表 可视化 visualization bar line pie doughnut radar polar 柱状图 折线图 饼图" />
     <meta name="author" content="WebUtils" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://tools.realtime-ai.chat/tools/data/chart-maker.html" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="图表生成器 - WebUtils" />
-    <meta property="og:description" content="在线数据可视化图表生成工具" />
+    <meta property="og:description" content="通用图表生成工具，支持柱状图、折线图、饼图、环形图、雷达图、极地图" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://tools.realtime-ai.chat/tools/data/chart-maker.html" />
     <meta property="og:site_name" content="WebUtils" />
@@ -22,7 +22,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="图表生成器 - WebUtils" />
-    <meta name="twitter:description" content="在线数据可视化图表生成工具" />
+    <meta name="twitter:description" content="通用图表生成工具，支持柱状图、折线图、饼图、环形图、雷达图、极地图" />
     <!-- OG Image -->
     <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
     <meta property="og:image:width" content="1280" />
@@ -64,6 +64,8 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
       :root {
         --color-bg-deep: #0a0a0f;
@@ -85,8 +87,6 @@
         --radius-sm: 4px;
         --radius-md: 8px;
         --radius-lg: 12px;
-
-        /* 字体变量 */
         --font-sans:
           "Space Grotesk", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, sans-serif;
         --font-mono: "JetBrains Mono", "Courier New", monospace;
@@ -149,7 +149,7 @@
       .container {
         position: relative;
         z-index: 1;
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 24px;
         min-height: 100vh;
@@ -229,47 +229,71 @@
         flex: 1;
       }
 
+      .tool-layout {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 24px;
+      }
+
+      @media (max-width: 1000px) {
+        .tool-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .tool-section {
-        margin-bottom: 24px;
+        margin-bottom: 20px;
+      }
+
+      .tool-section:last-child {
+        margin-bottom: 0;
       }
 
       .section-title {
         font-family: var(--font-mono);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--color-text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         padding-bottom: 8px;
         border-bottom: 1px solid var(--border-subtle);
       }
 
       .input-group {
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
 
       .input-label {
         display: block;
         font-family: var(--font-mono);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--color-text-secondary);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
 
       input[type="text"],
       input[type="number"],
+      input[type="color"],
       select,
       textarea {
         width: 100%;
-        padding: 10px 14px;
+        padding: 8px 12px;
         font-family: var(--font-mono);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         background: var(--bg-input);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-sm);
         color: var(--color-text-primary);
         transition: border-color 0.2s;
+      }
+
+      input[type="color"] {
+        width: 40px;
+        height: 36px;
+        padding: 2px;
+        cursor: pointer;
       }
 
       input:focus,
@@ -280,22 +304,120 @@
       }
 
       textarea {
-        min-height: 120px;
+        min-height: 140px;
         resize: vertical;
+        line-height: 1.5;
+      }
+
+      .inline-group {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+
+      .inline-group .input-group {
+        flex: 1;
+        margin-bottom: 0;
+      }
+
+      .chart-type-selector {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .chart-type-btn {
+        padding: 10px 8px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-input);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .chart-type-btn .icon {
+        font-size: 1.2rem;
+      }
+
+      .chart-type-btn:hover {
+        border-color: var(--color-accent-cyan);
+        color: var(--color-accent-cyan);
+      }
+
+      .chart-type-btn.active {
+        background: var(--color-accent-cyan);
+        color: var(--color-bg-deep);
+        border-color: var(--color-accent-cyan);
+      }
+
+      .color-inputs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .color-input-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .color-input-wrap span {
+        font-size: 0.65rem;
+        color: var(--color-text-muted);
+      }
+
+      .color-input-wrap input[type="color"] {
+        width: 32px;
+        height: 32px;
+      }
+
+      .settings-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--color-accent-cyan);
+        cursor: pointer;
       }
 
       .btn-row {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
       }
 
       .btn {
         flex: 1;
-        min-width: 120px;
-        padding: 12px 20px;
+        min-width: 100px;
+        padding: 10px 16px;
         font-family: var(--font-mono);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 500;
         border: none;
         border-radius: var(--radius-sm);
@@ -304,7 +426,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
       }
 
       .btn-primary {
@@ -328,17 +450,50 @@
         color: var(--color-accent-cyan);
       }
 
-      .result-box {
+      .chart-container {
         background: var(--bg-input);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
-        padding: 16px;
+        padding: 20px;
+        min-height: 450px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .chart-placeholder {
+        color: var(--color-text-muted);
         font-family: var(--font-mono);
         font-size: 0.9rem;
-        color: var(--color-accent-cyan);
-        min-height: 60px;
-        white-space: pre-wrap;
-        word-break: break-all;
+        text-align: center;
+      }
+
+      .chart-placeholder .icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        opacity: 0.5;
+      }
+
+      #chartCanvas {
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      .output-panel {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .output-panel .tool-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .output-panel .chart-container {
+        flex: 1;
       }
 
       .toast {
@@ -363,6 +518,67 @@
         opacity: 1;
       }
 
+      .toast.error {
+        background: var(--accent-red);
+      }
+
+      .example-data {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-top: 6px;
+        font-family: var(--font-mono);
+        line-height: 1.4;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+        background: var(--bg-input);
+        border-radius: var(--radius-sm);
+        padding: 4px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 8px 12px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .tab:hover {
+        color: var(--color-text-primary);
+      }
+
+      .tab.active {
+        background: var(--color-bg-card);
+        color: var(--color-accent-cyan);
+      }
+
+      .sample-btn {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        background: var(--color-bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .sample-btn:hover {
+        border-color: var(--color-accent-cyan);
+        color: var(--color-accent-cyan);
+      }
+
       @media (max-width: 600px) {
         .container {
           padding: 16px;
@@ -374,6 +590,15 @@
 
         .btn {
           width: 100%;
+        }
+
+        .inline-group {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .chart-type-selector {
+          grid-template-columns: repeat(2, 1fr);
         }
       }
     </style>
@@ -394,28 +619,173 @@
             <span class="icon">📊</span>
             图表生成器
           </h1>
-          <p>在线数据可视化图表生成工具</p>
+          <p>支持柱状图、折线图、饼图、环形图、雷达图、极地图，可自定义样式并导出PNG</p>
         </div>
       </header>
 
       <main class="main-content">
-        <div class="tool-section">
-          <div class="section-title">工具功能</div>
-          <div class="input-group">
-            <label class="input-label">输入内容</label>
-            <textarea id="input" placeholder="在此输入..."></textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="processData()">📋 处理</button>
-            <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
-          </div>
-        </div>
+        <div class="tool-layout">
+          <!-- Left Panel: Input & Settings -->
+          <div class="input-panel">
+            <div class="tool-section">
+              <div class="section-title">数据输入</div>
+              <div class="tabs">
+                <button class="tab active" data-tab="simple" onclick="switchTab('simple')">简单模式</button>
+                <button class="tab" data-tab="multi" onclick="switchTab('multi')">多数据集</button>
+              </div>
+              <div class="input-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label class="input-label" style="margin-bottom: 0;">CSV 数据</label>
+                  <button class="sample-btn" onclick="loadSampleData()">加载示例</button>
+                </div>
+                <textarea id="dataInput" placeholder="标签,数值
+苹果,120
+香蕉,85
+橙子,95
+葡萄,70
+西瓜,150"></textarea>
+                <div class="example-data" id="dataHint">
+                  简单模式: 每行 "标签,数值"<br>
+                  多数据集: 首行为标签，后续行为 "系列名,值1,值2,..."
+                </div>
+              </div>
+            </div>
 
-        <div class="tool-section">
-          <div class="section-title">处理结果</div>
-          <div class="result-box" id="result">处理结果将显示在这里...</div>
-          <div class="btn-row" style="margin-top: 16px">
-            <button class="btn btn-primary" onclick="copyResult()">📋 复制结果</button>
+            <div class="tool-section">
+              <div class="section-title">图表类型</div>
+              <div class="chart-type-selector">
+                <button class="chart-type-btn active" data-type="bar" onclick="selectChartType('bar')">
+                  <span class="icon">📊</span>
+                  柱状图
+                </button>
+                <button class="chart-type-btn" data-type="line" onclick="selectChartType('line')">
+                  <span class="icon">📈</span>
+                  折线图
+                </button>
+                <button class="chart-type-btn" data-type="pie" onclick="selectChartType('pie')">
+                  <span class="icon">🥧</span>
+                  饼图
+                </button>
+                <button class="chart-type-btn" data-type="doughnut" onclick="selectChartType('doughnut')">
+                  <span class="icon">🍩</span>
+                  环形图
+                </button>
+                <button class="chart-type-btn" data-type="radar" onclick="selectChartType('radar')">
+                  <span class="icon">🕸️</span>
+                  雷达图
+                </button>
+                <button class="chart-type-btn" data-type="polarArea" onclick="selectChartType('polarArea')">
+                  <span class="icon">🎯</span>
+                  极地图
+                </button>
+              </div>
+            </div>
+
+            <div class="tool-section">
+              <div class="section-title">图表设置</div>
+              <div class="input-group">
+                <label class="input-label">图表标题</label>
+                <input type="text" id="chartTitle" placeholder="图表标题" value="数据统计" />
+              </div>
+              <div class="inline-group" id="axisLabels">
+                <div class="input-group">
+                  <label class="input-label">X轴标签</label>
+                  <input type="text" id="xAxisLabel" placeholder="X轴" value="" />
+                </div>
+                <div class="input-group">
+                  <label class="input-label">Y轴标签</label>
+                  <input type="text" id="yAxisLabel" placeholder="Y轴" value="" />
+                </div>
+              </div>
+              <div class="input-group">
+                <label class="input-label">图例位置</label>
+                <select id="legendPosition">
+                  <option value="top">顶部</option>
+                  <option value="bottom">底部</option>
+                  <option value="left">左侧</option>
+                  <option value="right">右侧</option>
+                  <option value="none">隐藏</option>
+                </select>
+              </div>
+              <div class="settings-row" style="margin-top: 12px;">
+                <label class="checkbox-group">
+                  <input type="checkbox" id="showAnimation" checked />
+                  动画效果
+                </label>
+                <label class="checkbox-group">
+                  <input type="checkbox" id="showGrid" checked />
+                  显示网格
+                </label>
+                <label class="checkbox-group">
+                  <input type="checkbox" id="fillArea" />
+                  填充区域
+                </label>
+              </div>
+            </div>
+
+            <div class="tool-section">
+              <div class="section-title">颜色方案</div>
+              <div class="input-group">
+                <div class="color-inputs" id="colorInputs">
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#00f5d4" />
+                    <span>1</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#f72585" />
+                    <span>2</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#fbbf24" />
+                    <span>3</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#10b981" />
+                    <span>4</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#a855f7" />
+                    <span>5</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#3b82f6" />
+                    <span>6</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#f43f5e" />
+                    <span>7</span>
+                  </div>
+                  <div class="color-input-wrap">
+                    <input type="color" class="chart-color" value="#8b5cf6" />
+                    <span>8</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="generateChart()">📊 生成图表</button>
+              <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
+            </div>
+          </div>
+
+          <!-- Right Panel: Chart Output -->
+          <div class="output-panel">
+            <div class="tool-section">
+              <div class="section-title">图表预览</div>
+              <div class="chart-container" id="chartContainer">
+                <canvas id="chartCanvas"></canvas>
+                <div class="chart-placeholder" id="chartPlaceholder">
+                  <span class="icon">📊</span>
+                  输入数据后点击"生成图表"
+                </div>
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top: 16px;">
+              <button class="btn btn-primary" onclick="exportPNG()">📥 导出PNG</button>
+              <button class="btn btn-secondary" onclick="copyToClipboard()">📋 复制图片</button>
+              <button class="btn btn-secondary" onclick="shareChart()">🔗 分享</button>
+            </div>
           </div>
         </div>
       </main>
@@ -424,12 +794,36 @@
     <div class="toast" id="toast">操作成功</div>
 
     <script>
+      let chartInstance = null;
+      let currentChartType = 'bar';
+      let currentDataMode = 'simple';
+
+      // 示例数据
+      const sampleData = {
+        simple: {
+          bar: '类别,销量\n苹果,120\n香蕉,85\n橙子,95\n葡萄,70\n西瓜,150',
+          line: '月份,访问量\n1月,1200\n2月,1900\n3月,1500\n4月,2100\n5月,2400\n6月,1800',
+          pie: '浏览器,市场份额\nChrome,65\nSafari,19\nFirefox,8\nEdge,5\n其他,3',
+          doughnut: '支出,金额\n餐饮,800\n交通,300\n购物,500\n娱乐,400\n其他,200',
+          radar: '技能,得分\nHTML,90\nCSS,85\nJavaScript,80\nReact,75\nNode.js,70\nPython,65',
+          polarArea: '季度,收入\nQ1,2500\nQ2,3200\nQ3,2800\nQ4,3800'
+        },
+        multi: {
+          bar: '月份,1月,2月,3月,4月,5月,6月\n产品A,65,59,80,81,56,55\n产品B,28,48,40,19,86,27\n产品C,45,25,60,70,45,80',
+          line: '月份,1月,2月,3月,4月,5月,6月\n收入,4000,4500,5200,4800,5800,6200\n支出,3200,3500,3800,3600,4000,4200\n利润,800,1000,1400,1200,1800,2000',
+          radar: '维度,沟通,技术,领导,创新,执行\n员工A,80,90,70,85,75\n员工B,70,75,85,80,90\n员工C,85,70,80,90,70'
+        }
+      };
+
       // 主题切换
       function toggleTheme() {
         const body = document.body;
         const isDark = body.getAttribute("data-theme") !== "light";
         body.setAttribute("data-theme", isDark ? "light" : "dark");
         localStorage.setItem("theme", isDark ? "light" : "dark");
+        if (chartInstance) {
+          generateChart();
+        }
       }
 
       // 加载主题
@@ -440,48 +834,608 @@
         }
       })();
 
-      // 处理数据
-      function processData() {
-        const input = document.getElementById("input").value;
-        if (!input.trim()) {
-          showToast("请输入内容");
-          return;
+      // 切换数据模式
+      function switchTab(mode) {
+        currentDataMode = mode;
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelector('.tab[data-tab="' + mode + '"]').classList.add('active');
+        
+        var hint = document.getElementById('dataHint');
+        // Clear existing content
+        while (hint.firstChild) {
+          hint.removeChild(hint.firstChild);
         }
-
-        // 这里添加具体的处理逻辑
-        const result = `输入: ${input}\n\n处理结果: ${input.length} 个字符`;
-
-        document.getElementById("result").textContent = result;
-        showToast("处理完成");
+        
+        if (mode === 'simple') {
+          hint.appendChild(document.createTextNode('简单模式: 每行 "标签,数值"'));
+          hint.appendChild(document.createElement('br'));
+          hint.appendChild(document.createTextNode('支持逗号、制表符、分号分隔'));
+        } else {
+          hint.appendChild(document.createTextNode('多数据集: 首行为标签列表'));
+          hint.appendChild(document.createElement('br'));
+          hint.appendChild(document.createTextNode('后续行为 "系列名,值1,值2,..."'));
+        }
+        saveState();
       }
 
-      // 复制结果
-      function copyResult() {
-        const result = document.getElementById("result").textContent;
-        if (!result || result === "处理结果将显示在这里...") {
-          showToast("没有可复制的内容");
+      // 选择图表类型
+      function selectChartType(type) {
+        currentChartType = type;
+        document.querySelectorAll('.chart-type-btn').forEach(function(btn) { btn.classList.remove('active'); });
+        document.querySelector('.chart-type-btn[data-type="' + type + '"]').classList.add('active');
+        
+        // 显示/隐藏轴标签设置
+        var axisLabels = document.getElementById('axisLabels');
+        var fillArea = document.getElementById('fillArea').parentElement;
+        var showGrid = document.getElementById('showGrid').parentElement;
+        
+        if (['pie', 'doughnut', 'polarArea'].indexOf(type) !== -1) {
+          axisLabels.style.display = 'none';
+          showGrid.style.display = 'none';
+        } else {
+          axisLabels.style.display = 'flex';
+          showGrid.style.display = 'flex';
+        }
+        
+        fillArea.style.display = (type === 'line' || type === 'radar') ? 'flex' : 'none';
+        
+        saveState();
+      }
+
+      // 加载示例数据
+      function loadSampleData() {
+        var data = sampleData[currentDataMode];
+        var sample = data[currentChartType] || data.bar || Object.values(data)[0];
+        document.getElementById('dataInput').value = sample;
+        saveState();
+        showToast('示例数据已加载');
+      }
+
+      // 解析简单数据 (标签,数值)
+      function parseSimpleData(input) {
+        var lines = input.trim().split('\n').filter(function(line) { return line.trim(); });
+        if (lines.length === 0) return null;
+
+        var data = { labels: [], datasets: [{ data: [] }] };
+        var hasHeader = false;
+        
+        // 检查第一行是否为表头
+        var firstLine = lines[0].split(/[,\t;]/).map(function(p) { return p.trim(); });
+        if (firstLine.length >= 2 && isNaN(parseFloat(firstLine[1]))) {
+          hasHeader = true;
+        }
+        
+        var startIdx = hasHeader ? 1 : 0;
+        
+        for (var i = startIdx; i < lines.length; i++) {
+          var parts = lines[i].split(/[,\t;]/).map(function(p) { return p.trim(); });
+          if (parts.length >= 2) {
+            var label = parts[0];
+            var value = parseFloat(parts[1]);
+            if (label && !isNaN(value)) {
+              data.labels.push(label);
+              data.datasets[0].data.push(value);
+            }
+          }
+        }
+
+        return data.labels.length > 0 ? data : null;
+      }
+
+      // 解析多数据集 (首行标签，后续行为系列)
+      function parseMultiData(input) {
+        var lines = input.trim().split('\n').filter(function(line) { return line.trim(); });
+        if (lines.length < 2) return null;
+
+        // 首行为标签
+        var headerParts = lines[0].split(/[,\t;]/).map(function(p) { return p.trim(); });
+        var labels = headerParts.slice(1); // 跳过第一列(列名标题)
+        
+        if (labels.length === 0) return null;
+
+        var data = { labels: labels, datasets: [] };
+        
+        for (var i = 1; i < lines.length; i++) {
+          var parts = lines[i].split(/[,\t;]/).map(function(p) { return p.trim(); });
+          if (parts.length >= 2) {
+            var seriesName = parts[0];
+            var values = parts.slice(1).map(function(v) { return parseFloat(v); }).filter(function(v) { return !isNaN(v); });
+            if (seriesName && values.length > 0) {
+              data.datasets.push({
+                label: seriesName,
+                data: values
+              });
+            }
+          }
+        }
+
+        return data.datasets.length > 0 ? data : null;
+      }
+
+      // 获取颜色数组
+      function getColors() {
+        var colorInputs = document.querySelectorAll('.chart-color');
+        return Array.from(colorInputs).map(function(input) { return input.value; });
+      }
+
+      // 添加透明度到颜色
+      function addAlpha(hex, alpha) {
+        var r = parseInt(hex.slice(1, 3), 16);
+        var g = parseInt(hex.slice(3, 5), 16);
+        var b = parseInt(hex.slice(5, 7), 16);
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+      }
+
+      // 生成图表
+      function generateChart() {
+        var input = document.getElementById("dataInput").value;
+        var data = currentDataMode === 'simple' ? parseSimpleData(input) : parseMultiData(input);
+
+        if (!data) {
+          showToast("请输入有效的数据格式", true);
           return;
         }
 
-        navigator.clipboard.writeText(result).then(() => {
-          showToast("已复制到剪贴板");
+        var chartTitle = document.getElementById("chartTitle").value || "";
+        var xAxisLabel = document.getElementById("xAxisLabel").value || "";
+        var yAxisLabel = document.getElementById("yAxisLabel").value || "";
+        var legendPosition = document.getElementById("legendPosition").value;
+        var showAnimation = document.getElementById("showAnimation").checked;
+        var showGrid = document.getElementById("showGrid").checked;
+        var fillArea = document.getElementById("fillArea").checked;
+        var colors = getColors();
+
+        // 隐藏占位符
+        document.getElementById("chartPlaceholder").style.display = "none";
+        document.getElementById("chartCanvas").style.display = "block";
+
+        // 销毁旧图表
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        var ctx = document.getElementById("chartCanvas").getContext("2d");
+        
+        // 获取当前主题
+        var isLight = document.body.getAttribute("data-theme") === "light";
+        var textColor = isLight ? "#1a1a1a" : "#e8e8ed";
+        var gridColor = isLight ? "#e5e5e5" : "#2a2a3a";
+
+        // 准备数据集
+        var datasets = data.datasets.map(function(ds, i) {
+          var color = colors[i % colors.length];
+          var isPieType = ['pie', 'doughnut', 'polarArea'].indexOf(currentChartType) !== -1;
+          
+          var baseConfig = {
+            label: ds.label || chartTitle || '数据',
+            data: ds.data,
+            backgroundColor: isPieType 
+              ? data.labels.map(function(_, j) { return addAlpha(colors[j % colors.length], 0.8); })
+              : addAlpha(color, currentChartType === 'line' && fillArea ? 0.2 : 0.8),
+            borderColor: isPieType
+              ? data.labels.map(function(_, j) { return colors[j % colors.length]; })
+              : color,
+            borderWidth: 2
+          };
+
+          // 类型特定配置
+          if (currentChartType === 'bar') {
+            baseConfig.borderRadius = 4;
+            baseConfig.borderSkipped = false;
+          } else if (currentChartType === 'line') {
+            baseConfig.tension = 0.3;
+            baseConfig.fill = fillArea;
+            baseConfig.pointRadius = 4;
+            baseConfig.pointHoverRadius = 6;
+          } else if (currentChartType === 'radar') {
+            baseConfig.fill = fillArea;
+            baseConfig.pointRadius = 4;
+          }
+
+          return baseConfig;
         });
+
+        // 图表配置
+        var config = {
+          type: currentChartType,
+          data: {
+            labels: data.labels,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: showAnimation ? {
+              duration: 800,
+              easing: 'easeOutQuart'
+            } : false,
+            plugins: {
+              title: {
+                display: !!chartTitle,
+                text: chartTitle,
+                color: textColor,
+                font: {
+                  size: 16,
+                  weight: 'bold',
+                  family: "'Space Grotesk', sans-serif"
+                },
+                padding: {
+                  top: 10,
+                  bottom: 20
+                }
+              },
+              legend: {
+                display: legendPosition !== 'none',
+                position: legendPosition === 'none' ? 'top' : legendPosition,
+                labels: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 12
+                  },
+                  usePointStyle: true,
+                  padding: 16
+                }
+              },
+              tooltip: {
+                backgroundColor: isLight ? '#fff' : '#1a1a24',
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: gridColor,
+                borderWidth: 1,
+                cornerRadius: 4,
+                titleFont: {
+                  family: "'JetBrains Mono', monospace"
+                },
+                bodyFont: {
+                  family: "'JetBrains Mono', monospace"
+                }
+              }
+            }
+          }
+        };
+
+        // 添加轴配置 (非饼图/环形图)
+        var isPieType = ['pie', 'doughnut', 'polarArea'].indexOf(currentChartType) !== -1;
+        if (!isPieType) {
+          if (currentChartType === 'radar') {
+            config.options.scales = {
+              r: {
+                angleLines: {
+                  color: gridColor
+                },
+                grid: {
+                  color: gridColor,
+                  display: showGrid
+                },
+                pointLabels: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 11
+                  }
+                },
+                ticks: {
+                  color: textColor,
+                  backdropColor: 'transparent',
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 10
+                  }
+                }
+              }
+            };
+          } else {
+            config.options.scales = {
+              x: {
+                title: {
+                  display: !!xAxisLabel,
+                  text: xAxisLabel,
+                  color: textColor,
+                  font: {
+                    family: "'Space Grotesk', sans-serif",
+                    weight: '500'
+                  }
+                },
+                ticks: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 11
+                  }
+                },
+                grid: {
+                  color: gridColor,
+                  display: showGrid,
+                  drawBorder: false
+                }
+              },
+              y: {
+                title: {
+                  display: !!yAxisLabel,
+                  text: yAxisLabel,
+                  color: textColor,
+                  font: {
+                    family: "'Space Grotesk', sans-serif",
+                    weight: '500'
+                  }
+                },
+                ticks: {
+                  color: textColor,
+                  font: {
+                    family: "'JetBrains Mono', monospace",
+                    size: 11
+                  }
+                },
+                grid: {
+                  color: gridColor,
+                  display: showGrid,
+                  drawBorder: false
+                },
+                beginAtZero: true
+              }
+            };
+          }
+        }
+
+        chartInstance = new Chart(ctx, config);
+
+        // 保存状态
+        saveState();
+        showToast("图表生成成功");
+      }
+
+      // 导出PNG
+      function exportPNG() {
+        if (!chartInstance) {
+          showToast("请先生成图表", true);
+          return;
+        }
+
+        var canvas = document.getElementById("chartCanvas");
+        
+        // 创建临时canvas以添加背景
+        var tempCanvas = document.createElement('canvas');
+        var tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        
+        // 填充背景色
+        var isLight = document.body.getAttribute("data-theme") === "light";
+        tempCtx.fillStyle = isLight ? '#ffffff' : '#1a1a24';
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // 绘制图表
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        var link = document.createElement('a');
+        link.download = 'chart-' + currentChartType + '-' + Date.now() + '.png';
+        link.href = tempCanvas.toDataURL('image/png', 1.0);
+        link.click();
+        showToast("PNG已下载");
+      }
+
+      // 复制图片到剪贴板
+      function copyToClipboard() {
+        if (!chartInstance) {
+          showToast("请先生成图表", true);
+          return;
+        }
+
+        try {
+          var canvas = document.getElementById("chartCanvas");
+          
+          // 创建临时canvas
+          var tempCanvas = document.createElement('canvas');
+          var tempCtx = tempCanvas.getContext('2d');
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = canvas.height;
+          
+          var isLight = document.body.getAttribute("data-theme") === "light";
+          tempCtx.fillStyle = isLight ? '#ffffff' : '#1a1a24';
+          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          tempCtx.drawImage(canvas, 0, 0);
+          
+          tempCanvas.toBlob(function(blob) {
+            try {
+              navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+              ]).then(function() {
+                showToast("图片已复制到剪贴板");
+              }).catch(function() {
+                showToast("复制失败，请使用导出功能", true);
+              });
+            } catch (e) {
+              showToast("复制失败，请使用导出功能", true);
+            }
+          }, 'image/png');
+        } catch (e) {
+          showToast("复制失败", true);
+        }
+      }
+
+      // 分享功能
+      function shareChart() {
+        var state = getState();
+        var encoded = btoa(encodeURIComponent(JSON.stringify(state)));
+        var url = window.location.href.split('#')[0] + '#' + encoded;
+        
+        navigator.clipboard.writeText(url).then(function() {
+          showToast("分享链接已复制到剪贴板");
+        }).catch(function() {
+          showToast("复制失败，请手动复制URL", true);
+        });
+      }
+
+      // 获取当前状态
+      function getState() {
+        return {
+          data: document.getElementById("dataInput").value,
+          type: currentChartType,
+          mode: currentDataMode,
+          title: document.getElementById("chartTitle").value,
+          xAxis: document.getElementById("xAxisLabel").value,
+          yAxis: document.getElementById("yAxisLabel").value,
+          legend: document.getElementById("legendPosition").value,
+          animation: document.getElementById("showAnimation").checked,
+          grid: document.getElementById("showGrid").checked,
+          fill: document.getElementById("fillArea").checked,
+          colors: getColors()
+        };
+      }
+
+      // 从URL加载状态
+      function loadFromUrl() {
+        var hash = window.location.hash.slice(1);
+        if (!hash) return false;
+
+        try {
+          var state = JSON.parse(decodeURIComponent(atob(hash)));
+          applyState(state);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // 应用状态
+      function applyState(state) {
+        if (state.data) document.getElementById("dataInput").value = state.data;
+        if (state.type) {
+          currentChartType = state.type;
+          selectChartType(state.type);
+        }
+        if (state.mode) {
+          currentDataMode = state.mode;
+          switchTab(state.mode);
+        }
+        if (state.title !== undefined) document.getElementById("chartTitle").value = state.title;
+        if (state.xAxis !== undefined) document.getElementById("xAxisLabel").value = state.xAxis;
+        if (state.yAxis !== undefined) document.getElementById("yAxisLabel").value = state.yAxis;
+        if (state.legend) document.getElementById("legendPosition").value = state.legend;
+        if (state.animation !== undefined) document.getElementById("showAnimation").checked = state.animation;
+        if (state.grid !== undefined) document.getElementById("showGrid").checked = state.grid;
+        if (state.fill !== undefined) document.getElementById("fillArea").checked = state.fill;
+        if (state.colors && Array.isArray(state.colors)) {
+          var colorInputs = document.querySelectorAll('.chart-color');
+          state.colors.forEach(function(color, i) {
+            if (colorInputs[i]) colorInputs[i].value = color;
+          });
+        }
+      }
+
+      // 保存状态到 localStorage
+      function saveState() {
+        localStorage.setItem('chart-maker-state', JSON.stringify(getState()));
+      }
+
+      // 从 localStorage 加载状态
+      function loadState() {
+        var saved = localStorage.getItem('chart-maker-state');
+        if (!saved) return false;
+
+        try {
+          var state = JSON.parse(saved);
+          applyState(state);
+          return true;
+        } catch (e) {
+          return false;
+        }
       }
 
       // 清空所有内容
       function clearAll() {
-        document.getElementById("input").value = "";
-        document.getElementById("result").textContent = "处理结果将显示在这里...";
+        document.getElementById("dataInput").value = "";
+        document.getElementById("chartTitle").value = "数据统计";
+        document.getElementById("xAxisLabel").value = "";
+        document.getElementById("yAxisLabel").value = "";
+        document.getElementById("legendPosition").value = "top";
+        document.getElementById("showAnimation").checked = true;
+        document.getElementById("showGrid").checked = true;
+        document.getElementById("fillArea").checked = false;
+        
+        currentChartType = 'bar';
+        currentDataMode = 'simple';
+        selectChartType('bar');
+        switchTab('simple');
+        
+        // 重置颜色
+        var defaultColors = ['#00f5d4', '#f72585', '#fbbf24', '#10b981', '#a855f7', '#3b82f6', '#f43f5e', '#8b5cf6'];
+        var colorInputs = document.querySelectorAll('.chart-color');
+        defaultColors.forEach(function(color, i) {
+          if (colorInputs[i]) colorInputs[i].value = color;
+        });
+
+        // 销毁图表
+        if (chartInstance) {
+          chartInstance.destroy();
+          chartInstance = null;
+        }
+        document.getElementById("chartPlaceholder").style.display = "flex";
+        document.getElementById("chartCanvas").style.display = "none";
+
+        // 清除 localStorage
+        localStorage.removeItem('chart-maker-state');
+        
+        // 清除 URL hash
+        history.replaceState(null, '', window.location.pathname);
+
         showToast("已清空");
       }
 
       // 显示提示
-      function showToast(msg) {
-        const toast = document.getElementById("toast");
+      function showToast(msg, isError) {
+        var toast = document.getElementById("toast");
         toast.textContent = msg;
+        if (isError) {
+          toast.classList.add('error');
+        } else {
+          toast.classList.remove('error');
+        }
         toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2000);
+        setTimeout(function() { toast.classList.remove("show"); }, 2000);
       }
+
+      // 初始化
+      (function init() {
+        // 初始化UI状态
+        selectChartType('bar');
+        
+        // 优先从URL加载，否则从localStorage加载
+        var loadedFromUrl = loadFromUrl();
+        if (!loadedFromUrl) {
+          loadState();
+        }
+
+        // 如果有数据，自动生成图表
+        var dataInput = document.getElementById("dataInput").value;
+        if (dataInput.trim()) {
+          setTimeout(function() { generateChart(); }, 100);
+        }
+
+        // 监听输入变化保存状态
+        var inputs = ['dataInput', 'chartTitle', 'xAxisLabel', 'yAxisLabel', 'legendPosition', 'showAnimation', 'showGrid', 'fillArea'];
+        inputs.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', saveState);
+            el.addEventListener('change', saveState);
+          }
+        });
+
+        // 监听颜色变化
+        document.querySelectorAll('.chart-color').forEach(function(input) {
+          input.addEventListener('change', saveState);
+        });
+
+        // 快捷键
+        document.addEventListener('keydown', function(e) {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            generateChart();
+          }
+        });
+      })();
     </script>
   </body>
 </html>

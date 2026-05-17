@@ -3,7 +3,7 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tools](https://img.shields.io/badge/Tools-999+-blue.svg)](https://tools.realtime-ai.chat)
+[![Tools](https://img.shields.io/badge/Tools-998+-blue.svg)](https://tools.realtime-ai.chat)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
 [![Vercel](https://img.shields.io/badge/Vercel-deployed-black?logo=vercel)](https://html-tools-jade.vercel.app)
@@ -14,13 +14,13 @@
 [![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
 
-### 🚀 999+ 纯前端在线工具集
+### 🚀 998+ 纯前端在线工具集
 
 **单文件 · 零构建 · 可离线 · 隐私优先 · 数据不上传**
 
 一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告、无追踪。
 
-[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-999-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
+[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-998-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
 
 </div>
 
@@ -36,7 +36,7 @@
 | **离线使用** | ✅ 下载 HTML 即可离线用      | ❌ 必须联网               |
 | **无需构建** | ✅ 单文件架构，直接打开      | ❌ 需要 npm/webpack 构建  |
 | **加载速度** | ✅ 极快（无框架开销）        | ⚠️ 较慢（React/Vue 加载） |
-| **工具数量** | ✅ 999+ 个工具               | ⚠️ 通常 50-80 个          |
+| **工具数量** | ✅ 998+ 个工具               | ⚠️ 通常 50-80 个          |
 | **开源免费** | ✅ MIT 协议，完全开源        | ⚠️ 部分闭源或有限制       |
 
 ## 📸 预览
@@ -93,7 +93,7 @@
 </tr>
 </table>
 
-[**查看全部 999+ 个工具 ↓**](#工具列表-999-个)
+[**查看全部 998+ 个工具 ↓**](#工具列表-998-个)
 
 ---
 
@@ -109,7 +109,7 @@
 | Surge             | https://webutils.surge.sh               | ✅      |
 | Netlify           | https://localtools.netlify.app          | ⏸️ 暂停 |
 
-## 工具列表 (999 个)
+## 工具列表 (998 个)
 
 ### 开发工具 (61 个)
 

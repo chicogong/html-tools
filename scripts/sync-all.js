@@ -294,6 +294,15 @@ function updateReadme(toolCount, categoryCount) {
 
     if (readme !== original) {
       fs.writeFileSync(README_MD, readme);
+      // 运行 prettier 格式化，确保表格列宽等与项目代码风格一致
+      try {
+        execFileSync('npx', ['prettier', '--write', README_MD], {
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      } catch {
+        // prettier 不可用时静默失败
+      }
       console.log(`✅ README.md: ${toolCount}+ 工具`);
       return true;
     }
@@ -338,13 +347,11 @@ function updateSitemap(tools, toolCount) {
 </urlset>
 `;
 
-  // 检查是否有变化
+  // 检查是否有变化（按内容整体比对，而非仅按 URL 数量 —— 数量相同但内容不同时不能漏更新）
   if (fs.existsSync(SITEMAP_XML)) {
     const existing = fs.readFileSync(SITEMAP_XML, 'utf8');
-    const existingCount = (existing.match(/<loc>/g) || []).length;
-
-    if (existingCount === toolCount + 1) {
-      console.log(`⏭️  sitemap.xml: 无需更新 (${existingCount} URLs)`);
+    if (existing === xml) {
+      console.log('⏭️  sitemap.xml: 无需更新');
       return false;
     }
   }

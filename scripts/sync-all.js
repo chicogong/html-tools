@@ -27,6 +27,8 @@ const README_MD = path.join(ROOT_DIR, 'README.md');
 const SITEMAP_XML = path.join(ROOT_DIR, 'sitemap.xml');
 const MANIFEST_JSON = path.join(ROOT_DIR, 'manifest.json');
 const LLMS_TXT = path.join(ROOT_DIR, 'llms.txt');
+const EN_JSON = path.join(ROOT_DIR, 'i18n', 'en.json');
+const ZH_JSON = path.join(ROOT_DIR, 'i18n', 'zh-CN.json');
 
 // 网站域名 (不带尾部斜杠)
 const SITE_URL = 'https://tools.realtime-ai.chat';
@@ -171,6 +173,7 @@ function main() {
     readme: updateReadme(toolCount, categoryCount),
     sitemap: updateSitemap(tools, toolCount),
     manifest: updateManifest(toolCount),
+    i18n: updateI18n(toolCount),
     llmsTxt: updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories),
     github: updateGitHubDescription(toolCount)
   };
@@ -193,6 +196,7 @@ function main() {
   console.log(`   README.md:     ${results.readme ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   sitemap.xml:   ${results.sitemap ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   manifest.json: ${results.manifest ? '✅ 已更新' : '⏭️  无变化'}`);
+  console.log(`   i18n:          ${results.i18n ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   llms.txt:      ${results.llmsTxt ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   GitHub 描述:   ${results.github ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log('='.repeat(50));
@@ -380,6 +384,31 @@ function updateManifest(toolCount) {
     console.log(`⚠️  manifest.json: ${err.message}`);
     return false;
   }
+}
+
+/**
+ * 更新 i18n 翻译文件中的工具数
+ *
+ * en.json / zh-CN.json 的 subtitle 含 "N+ ..." 形式的工具数，
+ * 这里只替换数字，保留各语言原有措辞。
+ */
+function updateI18n(toolCount) {
+  let changed = false;
+  for (const file of [EN_JSON, ZH_JSON]) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const original = fs.readFileSync(file, 'utf8');
+      const updated = original.replace(/("subtitle"\s*:\s*")\d+(\+)/, `$1${toolCount}$2`);
+      if (updated !== original) {
+        fs.writeFileSync(file, updated);
+        changed = true;
+      }
+    } catch (err) {
+      console.log(`⚠️  ${path.basename(file)}: ${err.message}`);
+    }
+  }
+  console.log(changed ? `✅ i18n: ${toolCount}+ 工具` : '⏭️  i18n: 无需更新');
+  return changed;
 }
 
 /**

@@ -86,3 +86,13 @@ test(`README.md 徽章为 Tools-${toolCount}+`, () => {
     `README.md 徽章不是 Tools-${toolCount}+ —— 请运行 npm run sync:tools`
   );
 });
+
+test(`i18n 副标题工具数为 "${toolCount}+"`, () => {
+  for (const file of ['i18n/en.json', 'i18n/zh-CN.json']) {
+    const json = readText(file);
+    assert(
+      new RegExp(`"subtitle"\\s*:\\s*"${toolCount}\\+`).test(json),
+      `${file} 副标题工具数不是 ${toolCount}+ —— 请运行 npm run sync:tools`
+    );
+  }
+});

@@ -44,6 +44,8 @@ npm test                   # 运行测试套件（tools.json/数据质量/同步
 - `README.md` 中的工具数量
 - `sitemap.xml` 中的 URL 列表
 - `manifest.json` 中的描述
+- `llms.txt` 工具列表
+- `i18n/*.json` 副标题中的工具数
 
 **CI 会检查同步状态，不同步则构建失败。**
 

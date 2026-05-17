@@ -1,126 +1,71 @@
 /**
- * Tools.json validation tests
- * Run: node tests/tools-json.test.js
+ * tools.json 结构校验：确保数据源本身结构完整、字段齐全、引用有效。
  */
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { section, test, assert, loadToolsData, fileExists } from './_harness.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const TOOLS_JSON_PATH = path.join(__dirname, '..', 'tools.json');
+section('tools.json 结构');
 
-// Test utilities
-let passCount = 0;
-let failCount = 0;
+let data;
 
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`✓ ${name}`);
-    passCount++;
-  } catch (e) {
-    console.log(`✗ ${name}`);
-    console.log(`  Error: ${e.message}`);
-    failCount++;
-  }
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message || 'Assertion failed');
-}
-
-// Tests
-console.log('\n=== Tools.json Tests ===\n');
-
-let toolsData;
-
-test('tools.json file exists', () => {
-  assert(fs.existsSync(TOOLS_JSON_PATH), 'tools.json not found');
+test('tools.json 存在且为合法 JSON', () => {
+  data = loadToolsData();
+  assert(data && typeof data === 'object', '应解析为对象');
 });
 
-test('tools.json is valid JSON', () => {
-  const content = fs.readFileSync(TOOLS_JSON_PATH, 'utf8');
-  toolsData = JSON.parse(content);
-  assert(typeof toolsData === 'object', 'Should be an object');
+test('包含非空 categories 对象', () => {
+  assert(data.categories && typeof data.categories === 'object', 'categories 缺失');
+  assert(Object.keys(data.categories).length > 0, 'categories 为空');
 });
 
-test('has categories object', () => {
-  assert(toolsData.categories, 'categories object missing');
-  assert(typeof toolsData.categories === 'object', 'categories should be an object');
+test('包含非空 tools 对象', () => {
+  assert(data.tools && typeof data.tools === 'object', 'tools 缺失');
+  assert(Object.keys(data.tools).length > 0, 'tools 为空');
 });
 
-test('has tools object', () => {
-  assert(toolsData.tools, 'tools object missing');
-  assert(typeof toolsData.tools === 'object', 'tools should be an object');
-});
-
-test('each category has required fields', () => {
-  const categories = toolsData.categories;
-  for (const [key, cat] of Object.entries(categories)) {
-    assert(cat.name, `Category ${key} missing name`);
-    assert(cat.icon, `Category ${key} missing icon`);
-    assert(cat.color, `Category ${key} missing color`);
+test('每个分类都有 name / icon / color', () => {
+  for (const [key, cat] of Object.entries(data.categories)) {
+    assert(cat.name, `分类 ${key} 缺少 name`);
+    assert(cat.icon, `分类 ${key} 缺少 icon`);
+    assert(cat.color, `分类 ${key} 缺少 color`);
   }
 });
 
-test('each tool has required fields', () => {
-  const tools = toolsData.tools;
-  for (const [key, tool] of Object.entries(tools)) {
-    assert(tool.path, `Tool ${key} missing path`);
-    assert(tool.name, `Tool ${key} missing name`);
-    assert(tool.category, `Tool ${key} missing category`);
-    assert(tool.keywords, `Tool ${key} missing keywords`);
-    assert(tool.icon, `Tool ${key} missing icon`);
-    assert(tool.description, `Tool ${key} missing description`);
-  }
-});
-
-test('tool categories reference valid categories', () => {
-  const categories = Object.keys(toolsData.categories);
-  const tools = toolsData.tools;
-  for (const [key, tool] of Object.entries(tools)) {
-    assert(
-      categories.includes(tool.category),
-      `Tool ${key} has invalid category: ${tool.category}`
-    );
-  }
-});
-
-test('tool files exist', () => {
-  const tools = toolsData.tools;
-  const missing = [];
-  for (const [key, tool] of Object.entries(tools)) {
-    const filePath = path.join(__dirname, '..', tool.path);
-    if (!fs.existsSync(filePath)) {
-      missing.push(`${key}: ${tool.path}`);
+test('每个工具都有必填字段', () => {
+  const required = ['path', 'name', 'category', 'keywords', 'icon', 'description'];
+  for (const [key, tool] of Object.entries(data.tools)) {
+    for (const field of required) {
+      assert(tool[field], `工具 ${key} 缺少 ${field}`);
     }
   }
-  assert(missing.length === 0, `Missing files:\n  ${missing.join('\n  ')}`);
 });
 
-test('tool paths are unique', () => {
-  const tools = toolsData.tools;
-  const paths = Object.values(tools).map((t) => t.path);
-  const uniquePaths = [...new Set(paths)];
-  assert(paths.length === uniquePaths.length, 'Duplicate paths found');
-});
-
-test('tool IDs are sequential', () => {
-  const ids = Object.keys(toolsData.tools).map(Number);
-  ids.sort((a, b) => a - b);
-  for (let i = 0; i < ids.length; i++) {
-    assert(ids[i] === i + 1, `Missing or out of sequence ID around ${ids[i]}`);
+test('工具的 category 都指向已定义分类', () => {
+  const cats = Object.keys(data.categories);
+  for (const [key, tool] of Object.entries(data.tools)) {
+    assert(cats.includes(tool.category), `工具 ${key} 的分类无效: ${tool.category}`);
   }
 });
 
-// Summary
-console.log('\n=== Summary ===');
-console.log(`Passed: ${passCount}`);
-console.log(`Failed: ${failCount}`);
-console.log(`Total:  ${passCount + failCount}`);
-console.log(`Tools:  ${Object.keys(toolsData.tools).length}`);
-console.log(`Categories: ${Object.keys(toolsData.categories).length}`);
+test('所有工具文件都存在于磁盘', () => {
+  const missing = [];
+  for (const [key, tool] of Object.entries(data.tools)) {
+    if (!fileExists(tool.path)) missing.push(`${key}: ${tool.path}`);
+  }
+  assert(missing.length === 0, `缺失文件:\n${missing.join('\n')}`);
+});
 
-process.exit(failCount > 0 ? 1 : 0);
+test('工具 path 唯一', () => {
+  const paths = Object.values(data.tools).map((t) => t.path);
+  const dup = [...new Set(paths.filter((p, i) => paths.indexOf(p) !== i))];
+  assert(dup.length === 0, `重复 path:\n${dup.join('\n')}`);
+});
+
+test('工具 ID 从 1 开始连续编号', () => {
+  const ids = Object.keys(data.tools)
+    .map(Number)
+    .sort((a, b) => a - b);
+  for (let i = 0; i < ids.length; i++) {
+    assert(ids[i] === i + 1, `ID 不连续：位置 ${i} 期望 ${i + 1}，实际 ${ids[i]}`);
+  }
+});

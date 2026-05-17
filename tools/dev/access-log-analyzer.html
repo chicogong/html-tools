@@ -1,0 +1,1855 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Nginx / Apache 访问日志分析器 - WebUtils</title>
+    <meta
+      name="description"
+      content="粘贴 Nginx 或 Apache 访问日志，自动解析并统计 Top IP、路径、状态码、带宽，可视化展示流量模式。"
+    />
+    <meta
+      name="keywords"
+      content="nginx log apache access log analyzer parser top ip status code 访问日志 流量分析"
+    />
+    <meta name="author" content="WebUtils" />
+    <meta name="robots" content="index, follow" />
+    <link
+      rel="canonical"
+      href="https://tools.realtime-ai.chat/tools/dev/access-log-analyzer.html"
+    />
+    <meta property="og:title" content="Nginx / Apache 访问日志分析器 - WebUtils" />
+    <meta
+      property="og:description"
+      content="粘贴 Nginx 或 Apache 访问日志，自动解析并统计 Top IP、路径、状态码、带宽，可视化展示流量模式。"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://tools.realtime-ai.chat/tools/dev/access-log-analyzer.html"
+    />
+    <meta property="og:site_name" content="WebUtils" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Nginx / Apache 访问日志分析器 - WebUtils" />
+    <meta
+      name="twitter:description"
+      content="粘贴 Nginx 或 Apache 访问日志，自动解析并统计 Top IP、路径、状态码、带宽，可视化展示流量模式。"
+    />
+    <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "首页",
+            "item": "https://tools.realtime-ai.chat/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "开发工具",
+            "item": "https://tools.realtime-ai.chat/#dev"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Nginx / Apache 访问日志分析器",
+            "item": "https://tools.realtime-ai.chat/tools/dev/access-log-analyzer.html"
+          }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS 变量兼容垫片 (修复 d03c9548 改名遗留) */
+      :root {
+        /* color-* 家族 → 新设计系统 */
+        --color-bg-deep: var(--bg-deep, #0a0a0f);
+        --color-bg-surface: var(--bg-surface, #12121a);
+        --color-bg-subtle: var(--bg-card, #1a1a24);
+        --color-bg-card: var(--bg-card, #1a1a24);
+        --color-bg-input: var(--bg-input, #0e0e14);
+        --color-text-primary: var(--text-primary, #e8e8ed);
+        --color-text-secondary: var(--text-secondary, #8888a0);
+        --color-text-muted: var(--text-muted, #55556a);
+        --color-border-default: var(--border-subtle, #2a2a3a);
+        --color-border-subtle: var(--border-subtle, #2a2a3a);
+        --color-border-strong: var(--border-strong, #3a3a4a);
+        --color-accent-primary: var(--accent-cyan, #00f5d4);
+        --color-accent-secondary: var(--accent-magenta, #f72585);
+        --color-accent-tertiary: var(--accent-blue, #4cc9f0);
+        --color-accent-cyan: var(--accent-cyan, #00f5d4);
+        --color-accent-purple: var(--accent-purple, #8b5cf6);
+        --color-accent-pink: var(--accent-magenta, #f72585);
+        --color-accent-orange: #ff9f1c;
+        --color-success: var(--accent-green, #10b981);
+        --color-warning: var(--accent-yellow, #fbbf24);
+        --color-error: var(--accent-red, #f43f5e);
+        --color-danger: var(--accent-red, #f43f5e);
+        --color-info: var(--accent-blue, #4cc9f0);
+        --color-safe: var(--accent-green, #10b981);
+
+        /* 玻璃拟态 */
+        --glass-bg: rgba(26, 26, 36, 0.72);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-blur: 24px;
+        --glass-saturate: 180%;
+        --glass-radius: 16px;
+        --glass-border-width: 1px;
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+        /* 间距尺度 */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --spacing-sm: 8px;
+        --spacing-md: 16px;
+        --spacing-lg: 24px;
+        --spacing-card: 16px;
+
+        /* 阴影 */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --shadow-glow: 0 0 20px rgba(0, 245, 212, 0.15);
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+        /* 辉光 */
+        --glow-cyan: 0 0 20px rgba(0, 245, 212, 0.4);
+        --glow-purple: 0 0 20px rgba(139, 92, 246, 0.4);
+        --glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
+        --glow-red: 0 0 20px rgba(244, 63, 94, 0.4);
+        --glow-magenta: 0 0 20px rgba(247, 37, 133, 0.4);
+        --accent-glow: 0 0 20px rgba(0, 245, 212, 0.4);
+
+        /* 过渡 */
+        --transition-fast: 150ms ease;
+        --transition-normal: 250ms ease;
+        --transition: 200ms ease;
+
+        /* 圆角 */
+        --radius-full: 9999px;
+        --radius-xl: 24px;
+        --border-radius: 8px;
+
+        /* 布局 */
+        --nav-height: 56px;
+        --container-max: 1400px;
+        --container-bg: var(--bg-card, #1a1a24);
+        --safe-area-top: env(safe-area-inset-top, 0px);
+        --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+        /* 单名旧约定 */
+        --bg-color: var(--bg-deep, #0a0a0f);
+        --bg-secondary: var(--bg-surface, #12121a);
+        --bg-tertiary: var(--bg-card, #1a1a24);
+        --bg-elevated: var(--bg-card-hover, #22222e);
+        --bg-hover: var(--bg-card-hover, #22222e);
+        --bg-card-hover: #22222e;
+        --bg-gradient: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%);
+        --primary-gradient: linear-gradient(135deg, #00f5d4 0%, #4cc9f0 100%);
+        --text-color: var(--text-primary, #e8e8ed);
+        --primary-color: var(--accent-cyan, #00f5d4);
+        --primary-focus: rgba(0, 245, 212, 0.25);
+        --secondary-color: var(--accent-magenta, #f72585);
+        --tertiary-color: var(--text-muted, #55556a);
+        --accent-color: var(--accent-cyan, #00f5d4);
+        --accent-hover: #2dffe2;
+        --accent-light: rgba(0, 245, 212, 0.15);
+        --accent-pink: var(--accent-magenta, #f72585);
+        --accent-orange: #ff9f1c;
+        --accent-gold: #ffd166;
+        --accent-brown: #a0522d;
+        --success-color: var(--accent-green, #10b981);
+        --good-color: var(--accent-green, #10b981);
+        --warning-color: var(--accent-yellow, #fbbf24);
+        --error-color: var(--accent-red, #f43f5e);
+        --danger-color: var(--accent-red, #f43f5e);
+        --info-color: var(--accent-blue, #4cc9f0);
+        --muted-color: var(--text-muted, #55556a);
+        --muted-border-color: var(--border-subtle, #2a2a3a);
+        --hover-color: var(--accent-cyan, #00f5d4);
+        --border-default: var(--border-subtle, #2a2a3a);
+        --border-focus: var(--accent-cyan, #00f5d4);
+        --border-accent: var(--accent-cyan, #00f5d4);
+        --card-background-color: var(--bg-card, #1a1a24);
+        --code-background-color: var(--bg-input, #0e0e14);
+
+        /* Pico CSS 框架默认 */
+        --pico-background-color: var(--bg-deep, #0a0a0f);
+        --pico-color: var(--text-primary, #e8e8ed);
+        --pico-muted-color: var(--text-muted, #55556a);
+        --pico-muted-border-color: var(--border-subtle, #2a2a3a);
+        --pico-muted-background: var(--bg-surface, #12121a);
+        --pico-card-background-color: var(--bg-card, #1a1a24);
+        --pico-code-background-color: var(--bg-input, #0e0e14);
+        --pico-primary: var(--accent-cyan, #00f5d4);
+        --pico-primary-background: var(--accent-cyan, #00f5d4);
+        --pico-primary-inverse: #0a0a0f;
+        --pico-primary-focus: rgba(0, 245, 212, 0.25);
+        --pico-primary-rgb: 0, 245, 212;
+        --pico-secondary: var(--text-secondary, #8888a0);
+        --pico-secondary-background: var(--bg-card, #1a1a24);
+        --pico-border-radius: 8px;
+        --pico-contrast: var(--text-primary, #e8e8ed);
+        --pico-contrast-background: var(--bg-card-hover, #22222e);
+        --pico-del-color: var(--accent-red, #f43f5e);
+        --pico-ins-color: var(--accent-green, #10b981);
+        --pico-form-element-border-color: var(--border-strong, #3a3a4a);
+        --pico-form-element-background-color: var(--bg-input, #0e0e14);
+      }
+
+      /* 浅色主题覆盖：glass/shadow/glow 等主题敏感变量 */
+      [data-theme="light"] {
+        /* 玻璃拟态 — 浅色版（半透明白） */
+        --glass-bg: rgba(255, 255, 255, 0.78);
+        --glass-border: rgba(0, 0, 0, 0.06);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+        /* 阴影 — 浅色版（更淡） */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+        --shadow-glow: 0 0 20px rgba(0, 184, 148, 0.12);
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+        /* 辉光 — 浅色版（透明度降低） */
+        --glow-cyan: 0 0 16px rgba(0, 184, 148, 0.18);
+        --glow-purple: 0 0 16px rgba(139, 92, 246, 0.18);
+        --glow-green: 0 0 16px rgba(16, 185, 129, 0.18);
+        --glow-red: 0 0 16px rgba(244, 63, 94, 0.18);
+        --glow-magenta: 0 0 16px rgba(247, 37, 133, 0.18);
+        --accent-glow: 0 0 16px rgba(0, 184, 148, 0.18);
+
+        /* 渐变 — 浅色版 */
+        --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+
+        /* hover/elevated 替换为浅色调 */
+        --bg-card-hover: #f1f5f9;
+        --bg-elevated: #fff;
+        --bg-hover: #f1f5f9;
+        --accent-light: rgba(0, 184, 148, 0.12);
+        --accent-hover: #00d4aa;
+
+        /* Pico 浅色覆盖（默认 Pico 行为） */
+        --pico-primary-inverse: #fff;
+        --pico-contrast-background: #f1f5f9;
+      }
+
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --bg-input: #0e0e14;
+        --text-primary: #e8e8ed;
+        --text-secondary: #8888a0;
+        --text-muted: #55556a;
+        --border-subtle: #2a2a3a;
+        --border-strong: #3a3a4a;
+        --accent-cyan: #00f5d4;
+        --accent-magenta: #f72585;
+        --accent-green: #10b981;
+        --accent-red: #f43f5e;
+        --accent-yellow: #fbbf24;
+        --accent-blue: #4cc9f0;
+        --accent-purple: #7b2cbf;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --font-sans:
+          "Space Grotesk", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, sans-serif;
+        --font-mono: "JetBrains Mono", "Courier New", monospace;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --bg-input: #f5f5f5;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+        --border-strong: #d5d5d5;
+        --accent-cyan: #00d4b8;
+        --accent-magenta: #e63975;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      body {
+        font-family: var(--font-sans);
+        background: var(--color-bg-deep);
+        color: var(--color-text-primary);
+        min-height: 100vh;
+        min-height: 100dvh;
+        line-height: 1.5;
+        transition:
+          background-color var(--transition-normal),
+          color var(--transition-normal);
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+      }
+      [data-theme="light"] body::before {
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 184, 148, 0.05) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+      }
+      .nav-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: calc(var(--nav-height) + var(--safe-area-top));
+        padding-top: var(--safe-area-top);
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition-normal);
+      }
+      .nav-content {
+        width: 100%;
+        max-width: var(--container-max);
+        height: var(--nav-height);
+        padding: 0 var(--space-6);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .nav-back {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        color: var(--color-accent-primary);
+        text-decoration: none;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        padding: var(--space-2) var(--space-1);
+        margin-left: calc(var(--space-2) * -1);
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+        justify-self: start;
+      }
+      .nav-back:hover {
+        background: var(--color-border-subtle);
+      }
+      .nav-back-icon {
+        width: 20px;
+        height: 20px;
+        stroke-width: 2.5;
+      }
+      .nav-back-text {
+        display: inline;
+      }
+      .nav-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        justify-self: end;
+      }
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: var(--radius-full);
+        background: var(--color-bg-subtle);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+      .theme-toggle:hover {
+        background: var(--color-border-strong);
+        color: var(--color-text-primary);
+        transform: scale(1.05);
+      }
+      .theme-toggle svg {
+        width: 18px;
+        height: 18px;
+      }
+      .theme-icon-dark,
+      .theme-icon-light {
+        display: none;
+      }
+      [data-theme="dark"] .theme-icon-light,
+      :root:not([data-theme]) .theme-icon-light {
+        display: block;
+      }
+      [data-theme="light"] .theme-icon-dark {
+        display: block;
+      }
+      .main-content {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding-top: calc(var(--nav-height) + var(--safe-area-top) + var(--space-5));
+        padding-bottom: calc(var(--space-6) + var(--safe-area-bottom));
+        padding-left: var(--space-6);
+        padding-right: var(--space-6);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .tool-card {
+        width: 100%;
+        max-width: var(--container-max);
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(16px);
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        box-shadow: var(--shadow-lg);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        transition: all var(--transition-normal);
+        animation: fade-in-up 0.4s ease-out;
+      }
+      @keyframes fade-in-up {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .tool-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        margin-bottom: var(--space-5);
+        padding-bottom: var(--space-5);
+        border-bottom: 1px solid var(--color-border-subtle);
+      }
+      .tool-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          135deg,
+          var(--color-accent-primary),
+          var(--color-accent-tertiary)
+        );
+        border-radius: var(--radius-md);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-bg-deep);
+        box-shadow: 0 4px 12px rgba(0, 212, 170, 0.25);
+        font-family: var(--font-mono);
+      }
+      .tool-info h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-primary);
+      }
+      .tool-info .desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-top: var(--space-1);
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-bottom: var(--space-5);
+      }
+      .btn-group {
+        display: flex;
+        gap: 2px;
+        background: var(--color-bg-subtle);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        height: 36px;
+        padding: 0 var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--color-bg-surface);
+        color: var(--color-text-primary);
+      }
+      .btn-primary {
+        background: var(--color-accent-primary);
+        color: var(--color-bg-deep);
+      }
+      .btn-primary:hover {
+        background: #00b894;
+        box-shadow: var(--shadow-glow);
+      }
+      .options-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-5);
+        align-items: center;
+        margin-bottom: var(--space-5);
+        font-size: 0.875rem;
+      }
+      .option-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        color: var(--color-text-secondary);
+      }
+      .option-item select {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        padding: var(--space-2) var(--space-3);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-primary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+      .option-item select:focus {
+        outline: none;
+        border-color: var(--color-accent-primary);
+      }
+      .option-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--color-accent-primary);
+        cursor: pointer;
+      }
+      .option-item label {
+        cursor: pointer;
+      }
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-5);
+        flex: 1;
+        min-height: 400px;
+      }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+      }
+      .panel-label {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .panel-textarea {
+        flex: 1;
+        width: 100%;
+        min-height: 350px;
+        padding: var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--color-text-primary);
+        background: var(--color-bg-input);
+        border: 2px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        resize: vertical;
+        tab-size: 2;
+        transition: all var(--transition-fast);
+      }
+      .panel-textarea::placeholder {
+        color: var(--text-muted);
+      }
+      .panel-textarea:hover {
+        border-color: var(--color-border-strong);
+      }
+      .panel-textarea:focus {
+        outline: none;
+        border-color: var(--color-accent-primary);
+        box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.15);
+      }
+      .panel-textarea.error {
+        border-color: var(--color-error);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+      }
+      .panel-textarea[readonly] {
+        background: var(--color-bg-subtle);
+      }
+      .error-detail {
+        display: none;
+        margin-top: var(--space-4);
+        padding: var(--space-4);
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid var(--color-error);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--color-error);
+      }
+      .error-detail.show {
+        display: block;
+      }
+      .error-detail p {
+        margin-bottom: var(--space-2);
+      }
+      .error-detail p:last-child {
+        margin-bottom: 0;
+      }
+      .error-detail code {
+        background: rgba(239, 68, 68, 0.15);
+        padding: 2px var(--space-2);
+        border-radius: var(--radius-sm);
+      }
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--space-4);
+        margin-top: var(--space-5);
+        padding-top: var(--space-5);
+        border-top: 1px solid var(--color-border-subtle);
+      }
+      .status {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .status.success {
+        color: var(--color-success);
+      }
+      .status.success::before {
+        content: "✓";
+      }
+      .status.error {
+        color: var(--color-error);
+      }
+      .status.error::before {
+        content: "✗";
+      }
+      .stats {
+        display: none;
+        gap: var(--space-6);
+        flex-wrap: wrap;
+      }
+      .stats.show {
+        display: flex;
+      }
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .stat-value {
+        font-family: var(--font-mono);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-accent-primary);
+      }
+      .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .footer {
+        text-align: center;
+        margin-top: var(--space-5);
+        padding-top: var(--space-4);
+      }
+      .footer p {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+      }
+      .footer a {
+        color: var(--color-accent-primary);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+      }
+      .footer a:hover {
+        color: var(--color-text-primary);
+      }
+      @media (max-width: 900px) {
+        .panels {
+          grid-template-columns: 1fr;
+          gap: var(--space-4);
+        }
+        .panel-textarea {
+          min-height: 250px;
+        }
+      }
+      @media (max-width: 640px) {
+        :root {
+          --nav-height: 52px;
+        }
+        .nav-content {
+          padding: 0 var(--space-4);
+        }
+        .nav-back-text {
+          display: none;
+        }
+        .main-content {
+          padding: calc(var(--nav-height) + var(--safe-area-top) + var(--space-4)) var(--space-4)
+            calc(var(--space-5) + var(--safe-area-bottom));
+        }
+        .tool-card {
+          padding: var(--space-4);
+          border-radius: var(--radius-md);
+        }
+        .tool-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+          margin-bottom: var(--space-4);
+          padding-bottom: var(--space-4);
+        }
+        .tool-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1rem;
+        }
+        .tool-info h1 {
+          font-size: 1.125rem;
+        }
+        .toolbar {
+          gap: var(--space-2);
+          margin-bottom: var(--space-4);
+        }
+        .btn-group {
+          flex-wrap: wrap;
+        }
+        .btn {
+          height: 34px;
+          padding: 0 var(--space-3);
+          font-size: 0.75rem;
+        }
+        .options-bar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+          margin-bottom: var(--space-4);
+        }
+        .panels {
+          min-height: auto;
+        }
+        .panel-textarea {
+          min-height: 180px;
+        }
+        .status-bar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+        }
+        .stats.show {
+          gap: var(--space-4);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      :focus-visible {
+        outline: 2px solid var(--color-accent-primary);
+        outline-offset: 2px;
+      }
+      button:focus:not(:focus-visible),
+      a:focus:not(:focus-visible),
+      input:focus:not(:focus-visible),
+      select:focus:not(:focus-visible),
+      textarea:focus:not(:focus-visible) {
+        outline: none;
+      }
+
+      /* ===== 访问日志分析器专用样式 ===== */
+      .log-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+        flex: 1;
+      }
+
+      .input-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      .results-section {
+        display: none;
+        flex-direction: column;
+        gap: var(--space-5);
+      }
+
+      .results-section.show {
+        display: flex;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: var(--space-4);
+      }
+
+      .summary-card {
+        background: var(--color-bg-input);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+
+      .summary-card-value {
+        font-family: var(--font-mono);
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-accent-primary);
+        line-height: 1;
+      }
+
+      .summary-card-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .tables-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-5);
+      }
+
+      .data-table-wrapper {
+        background: var(--color-bg-input);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .data-table-title {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--color-border-default);
+        background: var(--color-bg-subtle);
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+      }
+
+      .data-table th {
+        text-align: left;
+        padding: var(--space-2) var(--space-4);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 500;
+        border-bottom: 1px solid var(--color-border-default);
+      }
+
+      .data-table td {
+        padding: var(--space-2) var(--space-4);
+        color: var(--color-text-primary);
+        border-bottom: 1px solid var(--color-border-subtle);
+        vertical-align: middle;
+      }
+
+      .data-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .data-table tr:hover td {
+        background: var(--color-bg-subtle);
+      }
+
+      .bar-cell {
+        position: relative;
+        min-width: 80px;
+      }
+
+      .bar-bg {
+        position: absolute;
+        inset: 4px 0;
+        background: rgba(0, 245, 212, 0.1);
+        border-radius: 2px;
+        transform-origin: left;
+      }
+
+      .bar-text {
+        position: relative;
+        z-index: 1;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .status-2xx {
+        background: rgba(16, 185, 129, 0.15);
+        color: var(--accent-green);
+      }
+
+      .status-3xx {
+        background: rgba(251, 191, 36, 0.15);
+        color: var(--accent-yellow);
+      }
+
+      .status-4xx {
+        background: rgba(244, 63, 94, 0.15);
+        color: var(--accent-red);
+      }
+
+      .status-5xx {
+        background: rgba(247, 37, 133, 0.15);
+        color: var(--accent-magenta);
+      }
+
+      .status-other {
+        background: rgba(136, 136, 160, 0.15);
+        color: var(--text-secondary);
+      }
+
+      .timeline-section {
+        background: var(--color-bg-input);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .timeline-title {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--color-border-default);
+        background: var(--color-bg-subtle);
+      }
+
+      .timeline-chart {
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+
+      .timeline-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 80px;
+      }
+
+      .timeline-bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+        justify-content: flex-end;
+        cursor: default;
+        position: relative;
+      }
+
+      .timeline-bar-fill {
+        width: 100%;
+        background: var(--color-accent-primary);
+        border-radius: 2px 2px 0 0;
+        opacity: 0.7;
+        transition: opacity var(--transition-fast);
+        min-height: 2px;
+      }
+
+      .timeline-bar-col:hover .timeline-bar-fill {
+        opacity: 1;
+      }
+
+      .timeline-labels {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        color: var(--text-muted);
+        padding: 0 2px;
+      }
+
+      .path-truncate {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+        vertical-align: middle;
+      }
+
+      .parse-error-box {
+        display: none;
+        padding: var(--space-3) var(--space-4);
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--accent-yellow);
+      }
+
+      .parse-error-box.show {
+        display: block;
+      }
+
+      @media (max-width: 900px) {
+        .tables-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .summary-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .summary-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .summary-card-value {
+          font-size: 1.25rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav-bar">
+      <div class="nav-content">
+        <a href="../../index.html" class="nav-back" aria-label="返回首页">
+          <svg
+            class="nav-back-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span class="nav-back-text">首页</span>
+        </a>
+        <h1 class="nav-title">Nginx / Apache 访问日志分析器</h1>
+        <div class="nav-actions">
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">
+            <svg
+              class="theme-icon-light"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg
+              class="theme-icon-dark"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon">📊</div>
+          <div class="tool-info">
+            <h1>Nginx / Apache 访问日志分析器</h1>
+            <p class="desc">粘贴访问日志，统计 Top IP、路径、状态码、带宽，纯本地处理</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="btn-group">
+            <button id="btnAnalyze" class="btn btn-primary">分析日志</button>
+            <button id="btnPaste" class="btn">粘贴</button>
+            <button id="btnSample" class="btn">示例数据</button>
+          </div>
+          <div class="btn-group">
+            <button id="btnClear" class="btn">清空</button>
+            <button id="btnCopyReport" class="btn">复制报告</button>
+          </div>
+        </div>
+
+        <div class="options-bar">
+          <div class="option-item">
+            <span>日志格式:</span>
+            <select id="logFormat">
+              <option value="auto">自动识别</option>
+              <option value="nginx_combined">Nginx Combined</option>
+              <option value="apache_combined">Apache Combined</option>
+              <option value="nginx_common">Nginx Common</option>
+            </select>
+          </div>
+          <div class="option-item">
+            <span>Top N:</span>
+            <select id="topN">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+          <div class="option-item">
+            <input type="checkbox" id="filterBots" />
+            <label for="filterBots">过滤常见爬虫</label>
+          </div>
+        </div>
+
+        <div class="log-layout">
+          <div class="input-section">
+            <div class="panel-header">
+              <span class="panel-label">访问日志（粘贴或拖入）</span>
+              <span id="lineCount" class="status"></span>
+            </div>
+            <textarea
+              id="logInput"
+              class="panel-textarea"
+              style="min-height: 200px"
+              placeholder='将 Nginx 或 Apache access.log 内容粘贴到这里...
+
+示例格式 (Nginx combined):
+192.168.1.1 - - [10/May/2025:12:00:01 +0800] "GET /index.html HTTP/1.1" 200 1234 "-" "Mozilla/5.0"
+
+示例格式 (Apache combined):
+10.0.0.1 - frank [10/May/2025:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326 "http://example.com/" "Mozilla/5.0"'
+              spellcheck="false"
+            ></textarea>
+            <div id="parseErrorBox" class="parse-error-box"></div>
+          </div>
+
+          <div id="resultsSection" class="results-section">
+            <div class="summary-grid">
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumTotalReqs">0</span>
+                <span class="summary-card-label">总请求数</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumUniqueIPs">0</span>
+                <span class="summary-card-label">唯一 IP</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumBandwidth">0</span>
+                <span class="summary-card-label">总流量</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumErrorRate">0%</span>
+                <span class="summary-card-label">错误率(4xx+5xx)</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumAvgSize">0</span>
+                <span class="summary-card-label">平均响应大小</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-card-value" id="sumParsed">0</span>
+                <span class="summary-card-label">解析成功行</span>
+              </div>
+            </div>
+
+            <div class="timeline-section">
+              <div class="timeline-title">每小时请求量分布</div>
+              <div class="timeline-chart">
+                <div class="timeline-bars" id="timelineBars"></div>
+                <div class="timeline-labels" id="timelineLabels"></div>
+              </div>
+            </div>
+
+            <div class="tables-grid">
+              <div class="data-table-wrapper">
+                <div class="data-table-title">Top IP 地址</div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>IP 地址</th>
+                      <th>请求数</th>
+                      <th>占比</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableIPs"></tbody>
+                </table>
+              </div>
+
+              <div class="data-table-wrapper">
+                <div class="data-table-title">Top 请求路径</div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>路径</th>
+                      <th>请求数</th>
+                      <th>占比</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablePaths"></tbody>
+                </table>
+              </div>
+
+              <div class="data-table-wrapper">
+                <div class="data-table-title">状态码分布</div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>状态码</th>
+                      <th>含义</th>
+                      <th>请求数</th>
+                      <th>占比</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableStatus"></tbody>
+                </table>
+              </div>
+
+              <div class="data-table-wrapper">
+                <div class="data-table-title">Top User-Agent</div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>User-Agent</th>
+                      <th>请求数</th>
+                      <th>占比</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableUAs"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-bar">
+          <div id="status" class="status"></div>
+          <div id="stats" class="stats">
+            <div class="stat-item">
+              <span class="stat-value" id="statReqs">0</span>
+              <span class="stat-label">请求</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="statIPs">0</span>
+              <span class="stat-label">唯一IP</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="statBw">0</span>
+              <span class="stat-label">流量</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <p>
+          <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <span>·</span>
+          <span>纯前端 · 无服务器</span>
+          <span>·</span>
+          <a href="../../index.html">WebUtils</a>
+        </p>
+      </footer>
+    </main>
+    <script>
+      var logInputEl = document.getElementById("logInput");
+      var statusEl = document.getElementById("status");
+      var statsEl = document.getElementById("stats");
+      var resultsSectionEl = document.getElementById("resultsSection");
+      var parseErrorBoxEl = document.getElementById("parseErrorBox");
+      var lineCountEl = document.getElementById("lineCount");
+
+      // ——— Log format patterns ———
+      // Nginx/Apache Combined: IP - user [date] "METHOD path proto" status bytes "referer" "ua"
+      var COMBINED_RE =
+        /^(\S+)\s+\S+\s+\S+\s+\[([^\]]+)\]\s+"([A-Z-]+)\s+(\S+)\s+\S+"\s+(\d{3})\s+(\d+|-)\s+"[^"]*"\s+"([^"]*)"/;
+      // Common log (no referer/ua): IP - user [date] "METHOD path proto" status bytes
+      var COMMON_RE =
+        /^(\S+)\s+\S+\s+\S+\s+\[([^\]]+)\]\s+"([A-Z-]+)\s+(\S+)\s+\S+"\s+(\d{3})\s+(\d+|-)/;
+
+      var BOT_PATTERNS = [
+        "googlebot",
+        "bingbot",
+        "baiduspider",
+        "yandexbot",
+        "duckduckbot",
+        "slurp",
+        "sogou",
+        "semrushbot",
+        "ahrefsbot",
+        "mj12bot",
+        "dotbot",
+        "rogerbot",
+        "facebookexternalhit",
+        "twitterbot",
+        "linkedinbot",
+        "applebot",
+        "petalbot",
+        "bytespider",
+        "amazonbot",
+        "anthropic",
+        "gptbot"
+      ];
+
+      var STATUS_DESC = {
+        100: "Continue",
+        200: "OK",
+        201: "Created",
+        204: "No Content",
+        206: "Partial Content",
+        301: "Moved Permanently",
+        302: "Found",
+        304: "Not Modified",
+        307: "Temp Redirect",
+        308: "Perm Redirect",
+        400: "Bad Request",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        405: "Method Not Allowed",
+        429: "Too Many Requests",
+        499: "Client Closed",
+        500: "Internal Error",
+        502: "Bad Gateway",
+        503: "Service Unavail",
+        504: "Gateway Timeout"
+      };
+
+      var SAMPLE_LOG = [
+        '192.168.1.10 - - [10/May/2025:08:00:01 +0000] "GET /index.html HTTP/1.1" 200 4523 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"',
+        '192.168.1.20 - - [10/May/2025:08:01:15 +0000] "GET /api/users HTTP/1.1" 200 1234 "https://example.com/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"',
+        '10.0.0.5 - - [10/May/2025:08:02:33 +0000] "POST /api/login HTTP/1.1" 401 234 "-" "curl/7.68.0"',
+        '192.168.1.10 - - [10/May/2025:08:03:44 +0000] "GET /static/app.js HTTP/1.1" 200 89234 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"',
+        '172.16.0.1 - - [10/May/2025:09:10:05 +0000] "GET /admin HTTP/1.1" 403 512 "-" "python-requests/2.28.0"',
+        '192.168.1.30 - - [10/May/2025:09:15:22 +0000] "GET /favicon.ico HTTP/1.1" 404 0 "-" "Mozilla/5.0"',
+        '192.168.1.10 - - [10/May/2025:09:20:11 +0000] "GET /api/data HTTP/1.1" 200 5678 "-" "Mozilla/5.0 (Windows NT 10.0)"',
+        '10.0.0.5 - - [10/May/2025:09:25:30 +0000] "GET /index.html HTTP/1.1" 200 4523 "-" "Googlebot/2.1 (+http://www.google.com/bot.html)"',
+        '192.168.1.20 - - [10/May/2025:10:00:01 +0000] "GET /blog/post-1 HTTP/1.1" 301 0 "-" "Mozilla/5.0"',
+        '192.168.1.50 - - [10/May/2025:10:05:10 +0000] "GET /blog/post-1/ HTTP/1.1" 200 12345 "https://google.com/" "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0)"',
+        '192.168.1.10 - - [10/May/2025:10:10:55 +0000] "DELETE /api/item/42 HTTP/1.1" 204 0 "-" "Mozilla/5.0"',
+        '10.0.0.1 - - [10/May/2025:10:30:01 +0000] "GET /api/users HTTP/1.1" 500 234 "-" "Mozilla/5.0"',
+        '192.168.1.30 - - [10/May/2025:11:00:05 +0000] "GET /static/style.css HTTP/1.1" 304 0 "https://example.com/" "Mozilla/5.0"',
+        '172.16.0.2 - - [10/May/2025:11:05:30 +0000] "GET /api/health HTTP/1.1" 200 28 "-" "kube-probe/1.27"',
+        '192.168.1.10 - - [10/May/2025:11:15:44 +0000] "GET /index.html HTTP/1.1" 200 4523 "-" "Mozilla/5.0 (X11; Linux x86_64)"',
+        '192.168.1.20 - - [10/May/2025:12:00:01 +0000] "PUT /api/profile HTTP/1.1" 200 890 "-" "Mozilla/5.0"',
+        '10.0.0.5 - - [10/May/2025:12:10:10 +0000] "GET /sitemap.xml HTTP/1.1" 200 34567 "-" "Bingbot/2.0"',
+        '192.168.1.60 - - [10/May/2025:13:00:00 +0000] "GET /api/data HTTP/1.1" 429 88 "-" "python-requests/2.28.0"',
+        '192.168.1.10 - - [10/May/2025:14:05:15 +0000] "GET /blog/post-2 HTTP/1.1" 200 9870 "https://twitter.com/" "Mozilla/5.0"',
+        '172.16.0.3 - - [10/May/2025:15:30:20 +0000] "GET /index.html HTTP/1.1" 502 0 "-" "Mozilla/5.0"'
+      ].join("\n");
+
+      function parseLine(line, filterBots) {
+        line = line.trim();
+        if (!line) return null;
+
+        var m = COMBINED_RE.exec(line);
+        var hasCombined = !!m;
+        if (!m) {
+          m = COMMON_RE.exec(line);
+        }
+        if (!m) return null;
+
+        var ip = m[1];
+        var dateStr = m[2];
+        var path = m[4];
+        var status = parseInt(m[5], 10);
+        var bytes = m[6] === "-" ? 0 : parseInt(m[6], 10);
+        var ua = hasCombined ? m[7] : "";
+
+        if (filterBots && ua) {
+          var uaLower = ua.toLowerCase();
+          for (var bi = 0; bi < BOT_PATTERNS.length; bi++) {
+            if (uaLower.indexOf(BOT_PATTERNS[bi]) !== -1) return null;
+          }
+        }
+
+        // Parse hour from date like "10/May/2025:08:00:01 +0000"
+        var hour = -1;
+        var hourMatch = /\d{2}\/\w+\/\d{4}:(\d{2})/.exec(dateStr);
+        if (hourMatch) hour = parseInt(hourMatch[1], 10);
+
+        return {
+          ip: ip,
+          dateStr: dateStr,
+          hour: hour,
+          path: path,
+          status: status,
+          bytes: bytes,
+          ua: ua
+        };
+      }
+
+      function formatBytes(b) {
+        if (b < 1024) return b + " B";
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
+        if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(2) + " MB";
+        return (b / 1024 / 1024 / 1024).toFixed(2) + " GB";
+      }
+
+      function topNEntries(map, n) {
+        var arr = [];
+        map.forEach(function (val, key) {
+          arr.push([key, val]);
+        });
+        arr.sort(function (a, b) {
+          return b[1] - a[1];
+        });
+        return arr.slice(0, n);
+      }
+
+      function pct(count, total) {
+        if (total === 0) return "0%";
+        return ((count / total) * 100).toFixed(1) + "%";
+      }
+
+      function statusClass(code) {
+        if (code >= 500) return "status-5xx";
+        if (code >= 400) return "status-4xx";
+        if (code >= 300) return "status-3xx";
+        if (code >= 200) return "status-2xx";
+        return "status-other";
+      }
+
+      function makeBarCell(count, maxVal) {
+        var td = document.createElement("td");
+        td.className = "bar-cell";
+        var bg = document.createElement("div");
+        bg.className = "bar-bg";
+        bg.style.width = maxVal > 0 ? Math.max(4, (count / maxVal) * 100) + "%" : "0%";
+        var txt = document.createElement("span");
+        txt.className = "bar-text";
+        txt.textContent = pct(count, maxVal);
+        td.appendChild(bg);
+        td.appendChild(txt);
+        return td;
+      }
+
+      function renderTable(tbodyId, rows, total, renderKey) {
+        var tbody = document.getElementById(tbodyId);
+        tbody.textContent = "";
+        var maxCount = rows.length > 0 ? rows[0][1] : 0;
+
+        rows.forEach(function (rowData, i) {
+          var key = rowData[0];
+          var count = rowData[1];
+          var tr = document.createElement("tr");
+
+          if (tbodyId === "tableStatus") {
+            var tdCode = document.createElement("td");
+            var badge = document.createElement("span");
+            badge.className = "status-badge " + statusClass(parseInt(key, 10));
+            badge.textContent = key;
+            tdCode.appendChild(badge);
+            tr.appendChild(tdCode);
+
+            var tdDesc = document.createElement("td");
+            tdDesc.textContent = STATUS_DESC[parseInt(key, 10)] || "";
+            tr.appendChild(tdDesc);
+
+            var tdCount = document.createElement("td");
+            tdCount.textContent = count.toLocaleString();
+            tr.appendChild(tdCount);
+
+            tr.appendChild(makeBarCell(count, total));
+          } else {
+            var tdRank = document.createElement("td");
+            tdRank.style.color = "var(--text-muted)";
+            tdRank.textContent = i + 1;
+            tr.appendChild(tdRank);
+
+            var tdKey = document.createElement("td");
+            var displayKey = renderKey ? renderKey(key) : key;
+            var span = document.createElement("span");
+            span.className = "path-truncate";
+            span.title = key;
+            span.textContent = typeof displayKey === "string" ? displayKey : key;
+            tdKey.appendChild(span);
+            tr.appendChild(tdKey);
+
+            var tdCountR = document.createElement("td");
+            tdCountR.textContent = count.toLocaleString();
+            tr.appendChild(tdCountR);
+
+            tr.appendChild(makeBarCell(count, maxCount));
+          }
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderTimeline(hourMap) {
+        var barsEl = document.getElementById("timelineBars");
+        var labelsEl = document.getElementById("timelineLabels");
+        barsEl.textContent = "";
+        labelsEl.textContent = "";
+
+        var maxCount = 1;
+        for (var h = 0; h < 24; h++) {
+          var c = hourMap.get(h) || 0;
+          if (c > maxCount) maxCount = c;
+        }
+
+        for (var hi = 0; hi < 24; hi++) {
+          var cnt = hourMap.get(hi) || 0;
+          var col = document.createElement("div");
+          col.className = "timeline-bar-col";
+          col.title = hi + ":00 — " + cnt + " 请求";
+
+          var fill = document.createElement("div");
+          fill.className = "timeline-bar-fill";
+          fill.style.height = Math.max(2, (cnt / maxCount) * 100) + "%";
+
+          col.appendChild(fill);
+          barsEl.appendChild(col);
+        }
+
+        // Label at 0, 6, 12, 18, 23
+        var labelPositions = [0, 6, 12, 18, 23];
+        labelsEl.style.display = "flex";
+        labelsEl.style.justifyContent = "space-between";
+        labelPositions.forEach(function (lh) {
+          var span = document.createElement("span");
+          span.textContent = lh + ":00";
+          labelsEl.appendChild(span);
+        });
+      }
+
+      function analyze() {
+        var raw = logInputEl.value;
+        var lines = raw.split("\n");
+        var filterBots = document.getElementById("filterBots").checked;
+        var n = parseInt(document.getElementById("topN").value, 10);
+
+        var ipMap = new Map();
+        var pathMap = new Map();
+        var statusMap = new Map();
+        var uaMap = new Map();
+        var hourMap = new Map();
+
+        var totalReqs = 0;
+        var totalBytes = 0;
+        var errorReqs = 0;
+        var parsedLines = 0;
+        var failedLines = 0;
+
+        lines.forEach(function (line) {
+          var entry = parseLine(line, filterBots);
+          if (!entry) {
+            if (line.trim()) failedLines++;
+            return;
+          }
+          parsedLines++;
+          totalReqs++;
+          totalBytes += entry.bytes;
+          if (entry.status >= 400) errorReqs++;
+
+          ipMap.set(entry.ip, (ipMap.get(entry.ip) || 0) + 1);
+          pathMap.set(entry.path, (pathMap.get(entry.path) || 0) + 1);
+
+          var sc = String(entry.status);
+          statusMap.set(sc, (statusMap.get(sc) || 0) + 1);
+
+          if (entry.ua) {
+            var uaKey = entry.ua.slice(0, 80);
+            uaMap.set(uaKey, (uaMap.get(uaKey) || 0) + 1);
+          }
+
+          if (entry.hour >= 0) {
+            hourMap.set(entry.hour, (hourMap.get(entry.hour) || 0) + 1);
+          }
+        });
+
+        if (parsedLines === 0) {
+          showStatus("无法解析日志，请检查格式", "error");
+          resultsSectionEl.classList.remove("show");
+          statsEl.classList.remove("show");
+          if (failedLines > 0) {
+            parseErrorBoxEl.textContent =
+              "共 " +
+              lines.filter(function (l) {
+                return l.trim();
+              }).length +
+              " 行，全部解析失败。请确认日志为 Nginx/Apache Combined 或 Common 格式。";
+            parseErrorBoxEl.classList.add("show");
+          }
+          return;
+        }
+
+        parseErrorBoxEl.classList.remove("show");
+
+        // Summary cards
+        document.getElementById("sumTotalReqs").textContent = totalReqs.toLocaleString();
+        document.getElementById("sumUniqueIPs").textContent = ipMap.size.toLocaleString();
+        document.getElementById("sumBandwidth").textContent = formatBytes(totalBytes);
+        document.getElementById("sumErrorRate").textContent =
+          totalReqs > 0 ? ((errorReqs / totalReqs) * 100).toFixed(1) + "%" : "0%";
+        document.getElementById("sumAvgSize").textContent =
+          totalReqs > 0 ? formatBytes(Math.round(totalBytes / totalReqs)) : "0 B";
+        document.getElementById("sumParsed").textContent =
+          parsedLines.toLocaleString() + (failedLines > 0 ? " (" + failedLines + " 行跳过)" : "");
+
+        // Tables
+        renderTable("tableIPs", topNEntries(ipMap, n), totalReqs, null);
+        renderTable("tablePaths", topNEntries(pathMap, n), totalReqs, null);
+
+        var statusRows = [];
+        statusMap.forEach(function (val, key) {
+          statusRows.push([key, val]);
+        });
+        statusRows.sort(function (a, b) {
+          return parseInt(a[0]) - parseInt(b[0]);
+        });
+        renderTable("tableStatus", statusRows, totalReqs, null);
+
+        renderTable("tableUAs", topNEntries(uaMap, n), totalReqs, function (ua) {
+          return ua.length > 60 ? ua.slice(0, 57) + "..." : ua;
+        });
+
+        renderTimeline(hourMap);
+
+        // Bottom stats
+        document.getElementById("statReqs").textContent = totalReqs.toLocaleString();
+        document.getElementById("statIPs").textContent = ipMap.size.toLocaleString();
+        document.getElementById("statBw").textContent = formatBytes(totalBytes);
+        statsEl.classList.add("show");
+
+        resultsSectionEl.classList.add("show");
+        showStatus("分析完成 · " + parsedLines + " 条记录", "success");
+      }
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function buildTextReport() {
+        var lines = [];
+        lines.push("=== Nginx / Apache 访问日志分析报告 ===");
+        lines.push("总请求数: " + document.getElementById("sumTotalReqs").textContent);
+        lines.push("唯一 IP: " + document.getElementById("sumUniqueIPs").textContent);
+        lines.push("总流量: " + document.getElementById("sumBandwidth").textContent);
+        lines.push("错误率: " + document.getElementById("sumErrorRate").textContent);
+        lines.push("平均响应大小: " + document.getElementById("sumAvgSize").textContent);
+        lines.push("解析成功行: " + document.getElementById("sumParsed").textContent);
+        lines.push("");
+
+        function tableToText(tbodyId, title) {
+          var tbody = document.getElementById(tbodyId);
+          if (!tbody) return;
+          lines.push("--- " + title + " ---");
+          Array.from(tbody.querySelectorAll("tr")).forEach(function (tr) {
+            var cells = Array.from(tr.querySelectorAll("td")).map(function (td) {
+              var pt = td.querySelector(".path-truncate");
+              return (pt || td).textContent.trim();
+            });
+            lines.push(cells.join(" | "));
+          });
+          lines.push("");
+        }
+
+        tableToText("tableIPs", "Top IP 地址");
+        tableToText("tablePaths", "Top 请求路径");
+        tableToText("tableStatus", "状态码分布");
+        tableToText("tableUAs", "Top User-Agent");
+
+        return lines.join("\n");
+      }
+
+      logInputEl.addEventListener("input", function () {
+        var lc = logInputEl.value.split("\n").filter(function (l) {
+          return l.trim();
+        }).length;
+        lineCountEl.textContent = lc > 0 ? lc + " 行" : "";
+        lineCountEl.className = "status";
+      });
+
+      document.getElementById("btnAnalyze").onclick = analyze;
+
+      document.getElementById("btnPaste").onclick = async function () {
+        try {
+          var text = await navigator.clipboard.readText();
+          logInputEl.value = text;
+          logInputEl.dispatchEvent(new Event("input"));
+          showStatus("已粘贴", "success");
+        } catch (e) {
+          showStatus("无法访问剪贴板", "error");
+        }
+      };
+
+      document.getElementById("btnSample").onclick = function () {
+        logInputEl.value = SAMPLE_LOG;
+        logInputEl.dispatchEvent(new Event("input"));
+        showStatus("已加载示例数据", "success");
+      };
+
+      document.getElementById("btnClear").onclick = function () {
+        logInputEl.value = "";
+        lineCountEl.textContent = "";
+        lineCountEl.className = "status";
+        resultsSectionEl.classList.remove("show");
+        statsEl.classList.remove("show");
+        parseErrorBoxEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      };
+
+      document.getElementById("btnCopyReport").onclick = async function () {
+        if (!resultsSectionEl.classList.contains("show")) {
+          showStatus("请先分析日志", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(buildTextReport());
+          showStatus("报告已复制", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      };
+
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          analyze();
+        }
+      });
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+    </script>
+  </body>
+</html>

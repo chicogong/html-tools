@@ -1,0 +1,1687 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>CSS 选择器权重计算器 - WebUtils</title>
+    <meta
+      name="description"
+      content="输入任意 CSS 选择器，实时计算其优先级权重（a-b-c 三元组），并可视化比较多个选择器的层叠顺序。"
+    />
+    <meta name="keywords" content="css specificity 选择器 权重 优先级 层叠 a-b-c selector" />
+    <meta name="author" content="WebUtils" />
+    <meta name="robots" content="index, follow" />
+    <link
+      rel="canonical"
+      href="https://tools.realtime-ai.chat/tools/dev/css-specificity-calculator.html"
+    />
+    <meta property="og:title" content="CSS 选择器权重计算器 - WebUtils" />
+    <meta
+      property="og:description"
+      content="输入任意 CSS 选择器，实时计算其优先级权重（a-b-c 三元组），并可视化比较多个选择器的层叠顺序。"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://tools.realtime-ai.chat/tools/dev/css-specificity-calculator.html"
+    />
+    <meta property="og:site_name" content="WebUtils" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="CSS 选择器权重计算器 - WebUtils" />
+    <meta
+      name="twitter:description"
+      content="输入任意 CSS 选择器，实时计算其优先级权重（a-b-c 三元组），并可视化比较多个选择器的层叠顺序。"
+    />
+    <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "首页",
+            "item": "https://tools.realtime-ai.chat/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "开发工具",
+            "item": "https://tools.realtime-ai.chat/#dev"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "CSS 选择器权重计算器",
+            "item": "https://tools.realtime-ai.chat/tools/dev/css-specificity-calculator.html"
+          }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS 变量兼容垫片 (修复 d03c9548 改名遗留) */
+      :root {
+        /* color-* 家族 → 新设计系统 */
+        --color-bg-deep: var(--bg-deep, #0a0a0f);
+        --color-bg-surface: var(--bg-surface, #12121a);
+        --color-bg-subtle: var(--bg-card, #1a1a24);
+        --color-bg-card: var(--bg-card, #1a1a24);
+        --color-bg-input: var(--bg-input, #0e0e14);
+        --color-text-primary: var(--text-primary, #e8e8ed);
+        --color-text-secondary: var(--text-secondary, #8888a0);
+        --color-text-muted: var(--text-muted, #55556a);
+        --color-border-default: var(--border-subtle, #2a2a3a);
+        --color-border-subtle: var(--border-subtle, #2a2a3a);
+        --color-border-strong: var(--border-strong, #3a3a4a);
+        --color-accent-primary: var(--accent-cyan, #00f5d4);
+        --color-accent-secondary: var(--accent-magenta, #f72585);
+        --color-accent-tertiary: var(--accent-blue, #4cc9f0);
+        --color-accent-cyan: var(--accent-cyan, #00f5d4);
+        --color-accent-purple: var(--accent-purple, #8b5cf6);
+        --color-accent-pink: var(--accent-magenta, #f72585);
+        --color-accent-orange: #ff9f1c;
+        --color-success: var(--accent-green, #10b981);
+        --color-warning: var(--accent-yellow, #fbbf24);
+        --color-error: var(--accent-red, #f43f5e);
+        --color-danger: var(--accent-red, #f43f5e);
+        --color-info: var(--accent-blue, #4cc9f0);
+        --color-safe: var(--accent-green, #10b981);
+
+        /* 玻璃拟态 */
+        --glass-bg: rgba(26, 26, 36, 0.72);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-blur: 24px;
+        --glass-saturate: 180%;
+        --glass-radius: 16px;
+        --glass-border-width: 1px;
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+        /* 间距尺度 */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --spacing-sm: 8px;
+        --spacing-md: 16px;
+        --spacing-lg: 24px;
+        --spacing-card: 16px;
+
+        /* 阴影 */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --shadow-glow: 0 0 20px rgba(0, 245, 212, 0.15);
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+        /* 辉光 */
+        --glow-cyan: 0 0 20px rgba(0, 245, 212, 0.4);
+        --glow-purple: 0 0 20px rgba(139, 92, 246, 0.4);
+        --glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
+        --glow-red: 0 0 20px rgba(244, 63, 94, 0.4);
+        --glow-magenta: 0 0 20px rgba(247, 37, 133, 0.4);
+        --accent-glow: 0 0 20px rgba(0, 245, 212, 0.4);
+
+        /* 过渡 */
+        --transition-fast: 150ms ease;
+        --transition-normal: 250ms ease;
+        --transition: 200ms ease;
+
+        /* 圆角 */
+        --radius-full: 9999px;
+        --radius-xl: 24px;
+        --border-radius: 8px;
+
+        /* 布局 */
+        --nav-height: 56px;
+        --container-max: 1400px;
+        --container-bg: var(--bg-card, #1a1a24);
+        --safe-area-top: env(safe-area-inset-top, 0px);
+        --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+        /* 单名旧约定 */
+        --bg-color: var(--bg-deep, #0a0a0f);
+        --bg-secondary: var(--bg-surface, #12121a);
+        --bg-tertiary: var(--bg-card, #1a1a24);
+        --bg-elevated: var(--bg-card-hover, #22222e);
+        --bg-hover: var(--bg-card-hover, #22222e);
+        --bg-card-hover: #22222e;
+        --bg-gradient: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%);
+        --primary-gradient: linear-gradient(135deg, #00f5d4 0%, #4cc9f0 100%);
+        --text-color: var(--text-primary, #e8e8ed);
+        --primary-color: var(--accent-cyan, #00f5d4);
+        --primary-focus: rgba(0, 245, 212, 0.25);
+        --secondary-color: var(--accent-magenta, #f72585);
+        --tertiary-color: var(--text-muted, #55556a);
+        --accent-color: var(--accent-cyan, #00f5d4);
+        --accent-hover: #2dffe2;
+        --accent-light: rgba(0, 245, 212, 0.15);
+        --accent-pink: var(--accent-magenta, #f72585);
+        --accent-orange: #ff9f1c;
+        --accent-gold: #ffd166;
+        --accent-brown: #a0522d;
+        --success-color: var(--accent-green, #10b981);
+        --good-color: var(--accent-green, #10b981);
+        --warning-color: var(--accent-yellow, #fbbf24);
+        --error-color: var(--accent-red, #f43f5e);
+        --danger-color: var(--accent-red, #f43f5e);
+        --info-color: var(--accent-blue, #4cc9f0);
+        --muted-color: var(--text-muted, #55556a);
+        --muted-border-color: var(--border-subtle, #2a2a3a);
+        --hover-color: var(--accent-cyan, #00f5d4);
+        --border-default: var(--border-subtle, #2a2a3a);
+        --border-focus: var(--accent-cyan, #00f5d4);
+        --border-accent: var(--accent-cyan, #00f5d4);
+        --card-background-color: var(--bg-card, #1a1a24);
+        --code-background-color: var(--bg-input, #0e0e14);
+
+        /* Pico CSS 框架默认 */
+        --pico-background-color: var(--bg-deep, #0a0a0f);
+        --pico-color: var(--text-primary, #e8e8ed);
+        --pico-muted-color: var(--text-muted, #55556a);
+        --pico-muted-border-color: var(--border-subtle, #2a2a3a);
+        --pico-muted-background: var(--bg-surface, #12121a);
+        --pico-card-background-color: var(--bg-card, #1a1a24);
+        --pico-code-background-color: var(--bg-input, #0e0e14);
+        --pico-primary: var(--accent-cyan, #00f5d4);
+        --pico-primary-background: var(--accent-cyan, #00f5d4);
+        --pico-primary-inverse: #0a0a0f;
+        --pico-primary-focus: rgba(0, 245, 212, 0.25);
+        --pico-primary-rgb: 0, 245, 212;
+        --pico-secondary: var(--text-secondary, #8888a0);
+        --pico-secondary-background: var(--bg-card, #1a1a24);
+        --pico-border-radius: 8px;
+        --pico-contrast: var(--text-primary, #e8e8ed);
+        --pico-contrast-background: var(--bg-card-hover, #22222e);
+        --pico-del-color: var(--accent-red, #f43f5e);
+        --pico-ins-color: var(--accent-green, #10b981);
+        --pico-form-element-border-color: var(--border-strong, #3a3a4a);
+        --pico-form-element-background-color: var(--bg-input, #0e0e14);
+      }
+
+      /* 浅色主题覆盖：glass/shadow/glow 等主题敏感变量 */
+      [data-theme="light"] {
+        /* 玻璃拟态 — 浅色版（半透明白） */
+        --glass-bg: rgba(255, 255, 255, 0.78);
+        --glass-border: rgba(0, 0, 0, 0.06);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+        /* 阴影 — 浅色版（更淡） */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+        --shadow-glow: 0 0 20px rgba(0, 184, 148, 0.12);
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+        /* 辉光 — 浅色版（透明度降低） */
+        --glow-cyan: 0 0 16px rgba(0, 184, 148, 0.18);
+        --glow-purple: 0 0 16px rgba(139, 92, 246, 0.18);
+        --glow-green: 0 0 16px rgba(16, 185, 129, 0.18);
+        --glow-red: 0 0 16px rgba(244, 63, 94, 0.18);
+        --glow-magenta: 0 0 16px rgba(247, 37, 133, 0.18);
+        --accent-glow: 0 0 16px rgba(0, 184, 148, 0.18);
+
+        /* 渐变 — 浅色版 */
+        --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+
+        /* hover/elevated 替换为浅色调 */
+        --bg-card-hover: #f1f5f9;
+        --bg-elevated: #fff;
+        --bg-hover: #f1f5f9;
+        --accent-light: rgba(0, 184, 148, 0.12);
+        --accent-hover: #00d4aa;
+
+        /* Pico 浅色覆盖（默认 Pico 行为） */
+        --pico-primary-inverse: #fff;
+        --pico-contrast-background: #f1f5f9;
+      }
+
+      :root {
+        --bg-deep: #0a0a0f;
+        --bg-surface: #12121a;
+        --bg-card: #1a1a24;
+        --bg-input: #0e0e14;
+        --text-primary: #e8e8ed;
+        --text-secondary: #8888a0;
+        --text-muted: #55556a;
+        --border-subtle: #2a2a3a;
+        --border-strong: #3a3a4a;
+        --accent-cyan: #00f5d4;
+        --accent-magenta: #f72585;
+        --accent-green: #10b981;
+        --accent-red: #f43f5e;
+        --accent-yellow: #fbbf24;
+        --accent-blue: #4cc9f0;
+        --accent-purple: #7b2cbf;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --font-sans:
+          "Space Grotesk", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, sans-serif;
+        --font-mono: "JetBrains Mono", "Courier New", monospace;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      [data-theme="light"] {
+        --bg-deep: #fafafa;
+        --bg-surface: #fff;
+        --bg-card: #fff;
+        --bg-input: #f5f5f5;
+        --text-primary: #1a1a1a;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-subtle: #e5e5e5;
+        --border-strong: #d5d5d5;
+        --accent-cyan: #00d4b8;
+        --accent-magenta: #e63975;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      body {
+        font-family: var(--font-sans);
+        background: var(--color-bg-deep);
+        color: var(--color-text-primary);
+        min-height: 100vh;
+        min-height: 100dvh;
+        line-height: 1.5;
+        transition:
+          background-color var(--transition-normal),
+          color var(--transition-normal);
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+      }
+      [data-theme="light"] body::before {
+        background:
+          radial-gradient(circle at 20% 20%, rgba(0, 184, 148, 0.05) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+      }
+      .nav-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: calc(var(--nav-height) + var(--safe-area-top));
+        padding-top: var(--safe-area-top);
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(var(--glass-blur));
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition-normal);
+      }
+      .nav-content {
+        width: 100%;
+        max-width: var(--container-max);
+        height: var(--nav-height);
+        padding: 0 var(--space-6);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .nav-back {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        color: var(--color-accent-primary);
+        text-decoration: none;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        padding: var(--space-2) var(--space-1);
+        margin-left: calc(var(--space-2) * -1);
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+        justify-self: start;
+      }
+      .nav-back:hover {
+        background: var(--color-border-subtle);
+      }
+      .nav-back-icon {
+        width: 20px;
+        height: 20px;
+        stroke-width: 2.5;
+      }
+      .nav-back-text {
+        display: inline;
+      }
+      .nav-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        justify-self: end;
+      }
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: var(--radius-full);
+        background: var(--color-bg-subtle);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+      .theme-toggle:hover {
+        background: var(--color-border-strong);
+        color: var(--color-text-primary);
+        transform: scale(1.05);
+      }
+      .theme-toggle svg {
+        width: 18px;
+        height: 18px;
+      }
+      .theme-icon-dark,
+      .theme-icon-light {
+        display: none;
+      }
+      [data-theme="dark"] .theme-icon-light,
+      :root:not([data-theme]) .theme-icon-light {
+        display: block;
+      }
+      [data-theme="light"] .theme-icon-dark {
+        display: block;
+      }
+      .main-content {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding-top: calc(var(--nav-height) + var(--safe-area-top) + var(--space-5));
+        padding-bottom: calc(var(--space-6) + var(--safe-area-bottom));
+        padding-left: var(--space-6);
+        padding-right: var(--space-6);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .tool-card {
+        width: 100%;
+        max-width: var(--container-max);
+        background: var(--glass-bg);
+        backdrop-filter: saturate(var(--glass-saturate)) blur(16px);
+        -webkit-backdrop-filter: saturate(var(--glass-saturate)) blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        box-shadow: var(--shadow-lg);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        transition: all var(--transition-normal);
+        animation: fade-in-up 0.4s ease-out;
+      }
+      @keyframes fade-in-up {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .tool-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        margin-bottom: var(--space-5);
+        padding-bottom: var(--space-5);
+        border-bottom: 1px solid var(--color-border-subtle);
+      }
+      .tool-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          135deg,
+          var(--color-accent-primary),
+          var(--color-accent-tertiary)
+        );
+        border-radius: var(--radius-md);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-bg-deep);
+        box-shadow: 0 4px 12px rgba(0, 212, 170, 0.25);
+        font-family: var(--font-mono);
+      }
+      .tool-info h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-primary);
+      }
+      .tool-info .desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-top: var(--space-1);
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-bottom: var(--space-5);
+      }
+      .btn-group {
+        display: flex;
+        gap: 2px;
+        background: var(--color-bg-subtle);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        height: 36px;
+        padding: 0 var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--color-bg-surface);
+        color: var(--color-text-primary);
+      }
+      .btn-primary {
+        background: var(--color-accent-primary);
+        color: var(--color-bg-deep);
+      }
+      .btn-primary:hover {
+        background: #00b894;
+        box-shadow: var(--shadow-glow);
+      }
+      .options-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-5);
+        align-items: center;
+        margin-bottom: var(--space-5);
+        font-size: 0.875rem;
+      }
+      .option-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        color: var(--color-text-secondary);
+      }
+      .option-item select {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        padding: var(--space-2) var(--space-3);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-primary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+      .option-item select:focus {
+        outline: none;
+        border-color: var(--color-accent-primary);
+      }
+      .option-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--color-accent-primary);
+        cursor: pointer;
+      }
+      .option-item label {
+        cursor: pointer;
+      }
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-5);
+        flex: 1;
+        min-height: 400px;
+      }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+      }
+      .panel-label {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .panel-textarea {
+        flex: 1;
+        width: 100%;
+        min-height: 350px;
+        padding: var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--color-text-primary);
+        background: var(--color-bg-input);
+        border: 2px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        resize: vertical;
+        tab-size: 2;
+        transition: all var(--transition-fast);
+      }
+      .panel-textarea::placeholder {
+        color: var(--text-muted);
+      }
+      .panel-textarea:hover {
+        border-color: var(--color-border-strong);
+      }
+      .panel-textarea:focus {
+        outline: none;
+        border-color: var(--color-accent-primary);
+        box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.15);
+      }
+      .panel-textarea.error {
+        border-color: var(--color-error);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+      }
+      .panel-textarea[readonly] {
+        background: var(--color-bg-subtle);
+      }
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--space-4);
+        margin-top: var(--space-5);
+        padding-top: var(--space-5);
+        border-top: 1px solid var(--color-border-subtle);
+      }
+      .status {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .status.success {
+        color: var(--color-success);
+      }
+      .status.success::before {
+        content: "✓";
+      }
+      .status.error {
+        color: var(--color-error);
+      }
+      .status.error::before {
+        content: "✗";
+      }
+      .footer {
+        text-align: center;
+        margin-top: var(--space-5);
+        padding-top: var(--space-4);
+      }
+      .footer p {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+      }
+      .footer a {
+        color: var(--color-accent-primary);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+      }
+      .footer a:hover {
+        color: var(--color-text-primary);
+      }
+      @media (max-width: 900px) {
+        .panels {
+          grid-template-columns: 1fr;
+          gap: var(--space-4);
+        }
+        .panel-textarea {
+          min-height: 250px;
+        }
+      }
+      @media (max-width: 640px) {
+        :root {
+          --nav-height: 52px;
+        }
+        .nav-content {
+          padding: 0 var(--space-4);
+        }
+        .nav-back-text {
+          display: none;
+        }
+        .main-content {
+          padding: calc(var(--nav-height) + var(--safe-area-top) + var(--space-4)) var(--space-4)
+            calc(var(--space-5) + var(--safe-area-bottom));
+        }
+        .tool-card {
+          padding: var(--space-4);
+          border-radius: var(--radius-md);
+        }
+        .tool-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+          margin-bottom: var(--space-4);
+          padding-bottom: var(--space-4);
+        }
+        .tool-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1rem;
+        }
+        .tool-info h1 {
+          font-size: 1.125rem;
+        }
+        .toolbar {
+          gap: var(--space-2);
+          margin-bottom: var(--space-4);
+        }
+        .btn-group {
+          flex-wrap: wrap;
+        }
+        .btn {
+          height: 34px;
+          padding: 0 var(--space-3);
+          font-size: 0.75rem;
+        }
+        .options-bar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+          margin-bottom: var(--space-4);
+        }
+        .panels {
+          min-height: auto;
+        }
+        .panel-textarea {
+          min-height: 180px;
+        }
+        .status-bar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--space-3);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      :focus-visible {
+        outline: 2px solid var(--color-accent-primary);
+        outline-offset: 2px;
+      }
+      button:focus:not(:focus-visible),
+      a:focus:not(:focus-visible),
+      input:focus:not(:focus-visible),
+      select:focus:not(:focus-visible),
+      textarea:focus:not(:focus-visible) {
+        outline: none;
+      }
+
+      /* ── Tool-specific styles ── */
+      .selector-input-row {
+        display: flex;
+        gap: var(--space-3);
+        align-items: center;
+        margin-bottom: var(--space-4);
+      }
+      .selector-input {
+        flex: 1;
+        height: 40px;
+        padding: 0 var(--space-4);
+        font-family: var(--font-mono);
+        font-size: 0.9375rem;
+        color: var(--color-text-primary);
+        background: var(--color-bg-input);
+        border: 2px solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        transition: all var(--transition-fast);
+      }
+      .selector-input::placeholder {
+        color: var(--text-muted);
+      }
+      .selector-input:hover {
+        border-color: var(--color-border-strong);
+      }
+      .selector-input:focus {
+        outline: none;
+        border-color: var(--color-accent-primary);
+        box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.15);
+      }
+      .selector-input.invalid {
+        border-color: var(--color-error);
+      }
+      .specificity-display {
+        background: var(--color-bg-input);
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        margin-bottom: var(--space-5);
+      }
+      .spec-title {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: var(--space-4);
+      }
+      .spec-abc {
+        display: flex;
+        align-items: center;
+        gap: var(--space-6);
+        margin-bottom: var(--space-5);
+      }
+      .spec-part {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .spec-value {
+        font-family: var(--font-mono);
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+        min-width: 60px;
+        text-align: center;
+      }
+      .spec-value.spec-a {
+        color: var(--color-error);
+      }
+      .spec-value.spec-b {
+        color: var(--color-accent-cyan);
+      }
+      .spec-value.spec-c {
+        color: var(--color-accent-tertiary);
+      }
+      .spec-part-label {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .spec-separator {
+        font-family: var(--font-mono);
+        font-size: 2rem;
+        color: var(--color-border-strong);
+        line-height: 1;
+        margin-top: -8px;
+      }
+      .spec-total {
+        font-family: var(--font-mono);
+        font-size: 0.9375rem;
+        color: var(--color-text-secondary);
+        margin-left: auto;
+      }
+      .spec-total strong {
+        color: var(--color-text-primary);
+        font-size: 1.125rem;
+      }
+      .spec-breakdown {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+      .spec-token {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+        padding: 2px var(--space-2);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        font-weight: 500;
+      }
+      .spec-token.type-id {
+        background: rgba(244, 63, 94, 0.15);
+        color: var(--color-error);
+        border: 1px solid rgba(244, 63, 94, 0.25);
+      }
+      .spec-token.type-class {
+        background: rgba(0, 245, 212, 0.1);
+        color: var(--color-accent-cyan);
+        border: 1px solid rgba(0, 245, 212, 0.2);
+      }
+      .spec-token.type-attr {
+        background: rgba(0, 245, 212, 0.1);
+        color: var(--color-accent-cyan);
+        border: 1px solid rgba(0, 245, 212, 0.2);
+      }
+      .spec-token.type-pseudo-class {
+        background: rgba(0, 245, 212, 0.1);
+        color: var(--color-accent-cyan);
+        border: 1px solid rgba(0, 245, 212, 0.2);
+      }
+      .spec-token.type-element {
+        background: rgba(76, 201, 240, 0.1);
+        color: var(--color-accent-tertiary);
+        border: 1px solid rgba(76, 201, 240, 0.2);
+      }
+      .spec-token.type-pseudo-element {
+        background: rgba(76, 201, 240, 0.1);
+        color: var(--color-accent-tertiary);
+        border: 1px solid rgba(76, 201, 240, 0.2);
+      }
+      .spec-token.type-universal {
+        background: rgba(136, 136, 160, 0.1);
+        color: var(--text-muted);
+        border: 1px solid rgba(136, 136, 160, 0.15);
+      }
+      .compare-section {
+        margin-bottom: var(--space-5);
+      }
+      .compare-title {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: var(--space-3);
+      }
+      .compare-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+      .compare-item {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-md);
+        transition: all var(--transition-fast);
+      }
+      .compare-item:hover {
+        border-color: var(--color-border-strong);
+      }
+      .compare-item.highest {
+        border-color: var(--color-accent-primary);
+        background: rgba(0, 245, 212, 0.05);
+      }
+      .compare-selector {
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        color: var(--color-text-primary);
+        word-break: break-all;
+      }
+      .compare-spec {
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        color: var(--color-accent-primary);
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .compare-badge {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        padding: 2px var(--space-2);
+        border-radius: var(--radius-full);
+        background: var(--color-accent-primary);
+        color: var(--color-bg-deep);
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+      }
+      .compare-item.highest .compare-badge {
+        opacity: 1;
+      }
+      .compare-bar-wrap {
+        margin-top: var(--space-1);
+        height: 4px;
+        background: var(--color-border-subtle);
+        border-radius: 2px;
+        overflow: hidden;
+        grid-column: 1 / -1;
+      }
+      .compare-bar {
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(
+          90deg,
+          var(--color-accent-primary),
+          var(--color-accent-tertiary)
+        );
+        transition: width 0.4s ease;
+      }
+      .compare-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--space-2);
+        margin-top: var(--space-2);
+      }
+      .compare-item-delete {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        padding: 2px var(--space-2);
+        border-radius: var(--radius-sm);
+        transition: all var(--transition-fast);
+        font-family: var(--font-mono);
+      }
+      .compare-item-delete:hover {
+        color: var(--color-error);
+        background: rgba(244, 63, 94, 0.1);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+        font-size: 0.8125rem;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        color: var(--color-text-secondary);
+      }
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .legend-dot.id {
+        background: var(--color-error);
+      }
+      .legend-dot.class {
+        background: var(--color-accent-cyan);
+      }
+      .legend-dot.element {
+        background: var(--color-accent-tertiary);
+      }
+      .legend-dot.universal {
+        background: var(--text-muted);
+      }
+      .empty-compare {
+        text-align: center;
+        padding: var(--space-6);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+      }
+      .examples-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-bottom: var(--space-4);
+      }
+      .example-chip {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        padding: var(--space-1) var(--space-3);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-full);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+      }
+      .example-chip:hover {
+        border-color: var(--color-accent-primary);
+        color: var(--color-accent-primary);
+      }
+      .warning-box {
+        display: none;
+        padding: var(--space-3) var(--space-4);
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--color-warning);
+        margin-bottom: var(--space-4);
+      }
+      .warning-box.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav-bar">
+      <div class="nav-content">
+        <a href="../../index.html" class="nav-back" aria-label="返回首页">
+          <svg
+            class="nav-back-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span class="nav-back-text">首页</span>
+        </a>
+        <h1 class="nav-title">CSS 选择器权重计算器</h1>
+        <div class="nav-actions">
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">
+            <svg
+              class="theme-icon-light"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg
+              class="theme-icon-dark"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon">⚖️</div>
+          <div class="tool-info">
+            <h1>CSS 选择器权重计算器</h1>
+            <p class="desc">实时计算 a-b-c 三元组权重，可视化比较多个选择器层叠顺序，纯本地处理</p>
+          </div>
+        </div>
+
+        <!-- Example chips -->
+        <div class="examples-bar" id="examplesBar"></div>
+
+        <!-- Selector input -->
+        <div class="selector-input-row">
+          <input
+            id="selectorInput"
+            class="selector-input"
+            type="text"
+            placeholder="输入 CSS 选择器，如 #nav .item > a:hover"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <div class="btn-group">
+            <button id="btnAdd" class="btn btn-primary">添加到比较</button>
+            <button id="btnClear" class="btn">清空</button>
+          </div>
+        </div>
+
+        <!-- Warning box -->
+        <div id="warningBox" class="warning-box"></div>
+
+        <!-- Specificity display -->
+        <div class="specificity-display" id="specDisplay">
+          <div class="spec-title">当前选择器权重</div>
+          <div class="spec-abc" id="specAbc">
+            <div class="spec-part">
+              <span class="spec-value spec-a" id="specA">0</span>
+              <span class="spec-part-label">ID (a)</span>
+            </div>
+            <span class="spec-separator">-</span>
+            <div class="spec-part">
+              <span class="spec-value spec-b" id="specB">0</span>
+              <span class="spec-part-label">类/属性/伪类 (b)</span>
+            </div>
+            <span class="spec-separator">-</span>
+            <div class="spec-part">
+              <span class="spec-value spec-c" id="specC">0</span>
+              <span class="spec-part-label">元素/伪元素 (c)</span>
+            </div>
+            <div class="spec-total" id="specTotal"></div>
+          </div>
+          <div class="spec-breakdown" id="specBreakdown"></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot id"></div>
+            <span>ID 选择器（a+1）</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot class"></div>
+            <span>类 / 属性 / 伪类（b+1）</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot element"></div>
+            <span>元素 / 伪元素（c+1）</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot universal"></div>
+            <span>通配符 / 组合符（不计入）</span>
+          </div>
+        </div>
+
+        <!-- Compare section -->
+        <div class="compare-section">
+          <div class="compare-title">
+            选择器比较
+            <span id="compareCount"></span>
+          </div>
+          <div class="compare-list" id="compareList">
+            <div class="empty-compare" id="emptyCompare">
+              点击「添加到比较」将选择器加入对比列表
+            </div>
+          </div>
+        </div>
+
+        <div class="status-bar">
+          <div id="status" class="status"></div>
+        </div>
+      </div>
+      <footer class="footer">
+        <p>
+          <a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <span>·</span>
+          <span>纯前端 · 无服务器</span>
+          <span>·</span>
+          <a href="../../index.html">WebUtils</a>
+        </p>
+      </footer>
+    </main>
+    <script>
+      var statusEl = document.getElementById("status");
+      var selectorInput = document.getElementById("selectorInput");
+      var warningBox = document.getElementById("warningBox");
+      var specAEl = document.getElementById("specA");
+      var specBEl = document.getElementById("specB");
+      var specCEl = document.getElementById("specC");
+      var specTotalEl = document.getElementById("specTotal");
+      var specBreakdownEl = document.getElementById("specBreakdown");
+      var compareListEl = document.getElementById("compareList");
+      var emptyCompareEl = document.getElementById("emptyCompare");
+      var compareCountEl = document.getElementById("compareCount");
+
+      var compareItems = [];
+
+      var EXAMPLES = [
+        "*",
+        "div",
+        ".class",
+        "#id",
+        "div p",
+        ".nav > a",
+        "a:hover",
+        "input[type='text']",
+        "#header .nav li a",
+        "div#app .item:first-child::before",
+        ":not(.foo)",
+        "::before"
+      ];
+
+      function buildExamples() {
+        var bar = document.getElementById("examplesBar");
+        EXAMPLES.forEach(function (ex) {
+          var chip = document.createElement("button");
+          chip.className = "example-chip";
+          chip.textContent = ex;
+          chip.addEventListener("click", function () {
+            selectorInput.value = ex;
+            selectorInput.dispatchEvent(new Event("input"));
+          });
+          bar.appendChild(chip);
+        });
+      }
+
+      /**
+       * Calculate CSS specificity for a single simple selector token.
+       * Returns {a, b, c} delta for that token.
+       */
+      function tokenSpecificity(token) {
+        // Inline style: not handled here (a=1 would need special input)
+        if (!token || token === "*" || token === ">" || token === "+" || token === "~") {
+          return { a: 0, b: 0, c: 0, kind: "universal" };
+        }
+        // ID selector
+        if (token.startsWith("#")) {
+          return { a: 1, b: 0, c: 0, kind: "id" };
+        }
+        // Class selector
+        if (token.startsWith(".")) {
+          return { a: 0, b: 1, c: 0, kind: "class" };
+        }
+        // Attribute selector
+        if (token.startsWith("[")) {
+          return { a: 0, b: 1, c: 0, kind: "attr" };
+        }
+        // Pseudo-element (double colon or single-colon legacy)
+        if (/^::/.test(token)) {
+          return { a: 0, b: 0, c: 1, kind: "pseudo-element" };
+        }
+        // :not(), :is(), :has(), :where() — special
+        var notMatch = token.match(/^:(not|is|has|where)\((.+)\)$/i);
+        if (notMatch) {
+          var inner = notMatch[2];
+          var fnName = notMatch[1].toLowerCase();
+          // :where() has zero specificity for its argument
+          if (fnName === "where") {
+            return { a: 0, b: 0, c: 0, kind: "pseudo-class" };
+          }
+          // :not/:is/:has — use highest specificity of arguments (simplified: sum)
+          var innerSpec = parseSpecificity(inner);
+          return { a: innerSpec.a, b: innerSpec.b, c: innerSpec.c, kind: "pseudo-class" };
+        }
+        // Pseudo-class (single colon)
+        if (token.startsWith(":")) {
+          return { a: 0, b: 1, c: 0, kind: "pseudo-class" };
+        }
+        // Element type selector
+        if (/^[a-z_-][a-z0-9_-]*/i.test(token)) {
+          return { a: 0, b: 0, c: 1, kind: "element" };
+        }
+        return { a: 0, b: 0, c: 0, kind: "universal" };
+      }
+
+      /**
+       * Tokenize a selector into meaningful parts.
+       * Handles complex selectors with combinators, :not(), attribute selectors, etc.
+       */
+      function tokenizeSelector(selector) {
+        var tokens = [];
+        var i = 0;
+        var s = selector.trim();
+
+        while (i < s.length) {
+          // Skip whitespace combinators
+          if (/\s/.test(s[i])) {
+            i++;
+            tokens.push({ raw: " ", kind: "universal" });
+            // Skip consecutive spaces
+            while (i < s.length && /\s/.test(s[i])) i++;
+            continue;
+          }
+          // Combinator > + ~
+          if (s[i] === ">" || s[i] === "+" || s[i] === "~") {
+            tokens.push({ raw: s[i], kind: "universal" });
+            i++;
+            continue;
+          }
+          // Universal
+          if (s[i] === "*") {
+            tokens.push({ raw: "*", kind: "universal" });
+            i++;
+            continue;
+          }
+          // Attribute selector [...]
+          if (s[i] === "[") {
+            var end = s.indexOf("]", i);
+            if (end === -1) end = s.length - 1;
+            var attrToken = s.slice(i, end + 1);
+            tokens.push({ raw: attrToken, kind: "attr" });
+            i = end + 1;
+            continue;
+          }
+          // ID selector #foo
+          if (s[i] === "#") {
+            var j = i + 1;
+            while (j < s.length && /[\w-]/.test(s[j])) j++;
+            tokens.push({ raw: s.slice(i, j), kind: "id" });
+            i = j;
+            continue;
+          }
+          // Class selector .foo
+          if (s[i] === ".") {
+            var k = i + 1;
+            while (k < s.length && /[\w-]/.test(s[k])) k++;
+            tokens.push({ raw: s.slice(i, k), kind: "class" });
+            i = k;
+            continue;
+          }
+          // Pseudo-element ::before OR :not(...) etc.
+          if (s[i] === ":") {
+            // Check ::
+            var isPseudoElement = s[i + 1] === ":";
+            var m = i + (isPseudoElement ? 2 : 1);
+            // Read pseudo name
+            while (m < s.length && /[\w-]/.test(s[m])) m++;
+            // Check for functional pseudo :foo(...)
+            if (m < s.length && s[m] === "(") {
+              var depth = 1;
+              m++;
+              while (m < s.length && depth > 0) {
+                if (s[m] === "(") depth++;
+                else if (s[m] === ")") depth--;
+                m++;
+              }
+            }
+            var pseudoRaw = s.slice(i, m);
+            var pseudoKind = isPseudoElement ? "pseudo-element" : "pseudo-class";
+            tokens.push({ raw: pseudoRaw, kind: pseudoKind });
+            i = m;
+            continue;
+          }
+          // Element type selector
+          if (/[a-z_-]/i.test(s[i])) {
+            var n = i;
+            while (n < s.length && /[\w-]/.test(s[n])) n++;
+            tokens.push({ raw: s.slice(i, n), kind: "element" });
+            i = n;
+            continue;
+          }
+          // Unknown char — skip
+          i++;
+        }
+        return tokens;
+      }
+
+      /**
+       * Parse full specificity for a selector string.
+       * Returns {a, b, c, tokens, warning}.
+       */
+      function parseSpecificity(selector) {
+        if (!selector || !selector.trim()) {
+          return { a: 0, b: 0, c: 0, tokens: [], warning: "" };
+        }
+        var s = selector.trim();
+        var warning = "";
+
+        // Detect !important (not a specificity concept, but worth flagging)
+        if (/!important/i.test(s)) {
+          warning = "!important 不属于选择器权重范畴，它会覆盖所有正常声明权重。";
+          s = s.replace(/!important/gi, "").trim();
+        }
+
+        var tokens = tokenizeSelector(s);
+        var a = 0;
+        var b = 0;
+        var c = 0;
+        var processed = [];
+
+        tokens.forEach(function (tok) {
+          var spec = tokenSpecificity(tok.raw);
+          a += spec.a;
+          b += spec.b;
+          c += spec.c;
+          if (
+            tok.kind !== "universal" ||
+            (tok.raw !== " " && tok.raw !== ">" && tok.raw !== "+" && tok.raw !== "~")
+          ) {
+            processed.push({ raw: tok.raw, kind: spec.kind });
+          }
+        });
+
+        return { a: a, b: b, c: c, tokens: processed, warning: warning };
+      }
+
+      function formatScore(a, b, c) {
+        return a + "-" + b + "-" + c;
+      }
+
+      function numericScore(a, b, c) {
+        // Compare lexicographically as (a,b,c) tuples
+        return a * 1000000 + b * 1000 + c;
+      }
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function renderCurrentSpec() {
+        var sel = selectorInput.value;
+        if (!sel.trim()) {
+          specAEl.textContent = "0";
+          specBEl.textContent = "0";
+          specCEl.textContent = "0";
+          specTotalEl.innerHTML = "";
+          specBreakdownEl.innerHTML = "";
+          warningBox.textContent = "";
+          warningBox.classList.remove("show");
+          selectorInput.classList.remove("invalid");
+          showStatus("", "");
+          return;
+        }
+
+        var result = parseSpecificity(sel);
+        specAEl.textContent = String(result.a);
+        specBEl.textContent = String(result.b);
+        specCEl.textContent = String(result.c);
+        specTotalEl.innerHTML =
+          "权重值 <strong>" + formatScore(result.a, result.b, result.c) + "</strong>";
+
+        // Breakdown tokens
+        specBreakdownEl.innerHTML = "";
+        result.tokens.forEach(function (tok) {
+          if (tok.raw === " " || tok.raw === ">" || tok.raw === "+" || tok.raw === "~") return;
+          var span = document.createElement("span");
+          span.className = "spec-token type-" + tok.kind;
+          span.textContent = tok.raw;
+          specBreakdownEl.appendChild(span);
+        });
+
+        if (result.warning) {
+          warningBox.textContent = "⚠ " + result.warning;
+          warningBox.classList.add("show");
+        } else {
+          warningBox.textContent = "";
+          warningBox.classList.remove("show");
+        }
+
+        selectorInput.classList.remove("invalid");
+        showStatus("", "");
+      }
+
+      function renderCompareList() {
+        if (compareItems.length === 0) {
+          compareListEl.innerHTML = "";
+          compareListEl.appendChild(emptyCompareEl);
+          compareCountEl.textContent = "";
+          return;
+        }
+
+        // Find max numeric score for bar widths
+        var maxScore = 0;
+        compareItems.forEach(function (item) {
+          var s = numericScore(item.a, item.b, item.c);
+          if (s > maxScore) maxScore = s;
+        });
+
+        // Sort by score descending (for ranking)
+        var ranked = compareItems.slice().sort(function (x, y) {
+          return numericScore(y.a, y.b, y.c) - numericScore(x.a, x.b, x.c);
+        });
+        var highestScore = ranked.length ? numericScore(ranked[0].a, ranked[0].b, ranked[0].c) : 0;
+
+        compareListEl.innerHTML = "";
+
+        compareItems.forEach(function (item, idx) {
+          var myScore = numericScore(item.a, item.b, item.c);
+          var isHighest = myScore === highestScore;
+          var barPct = maxScore > 0 ? Math.round((myScore / maxScore) * 100) : 0;
+
+          var row = document.createElement("div");
+          row.className = "compare-item" + (isHighest ? " highest" : "");
+
+          var selSpan = document.createElement("span");
+          selSpan.className = "compare-selector";
+          selSpan.textContent = item.selector;
+
+          var specSpan = document.createElement("span");
+          specSpan.className = "compare-spec";
+          specSpan.textContent = formatScore(item.a, item.b, item.c);
+
+          var badge = document.createElement("span");
+          badge.className = "compare-badge";
+          badge.textContent = "最高";
+
+          var delBtn = document.createElement("button");
+          delBtn.className = "compare-item-delete";
+          delBtn.textContent = "✕";
+          delBtn.setAttribute("aria-label", "删除");
+          (function (i) {
+            delBtn.addEventListener("click", function () {
+              compareItems.splice(i, 1);
+              renderCompareList();
+            });
+          })(idx);
+
+          var barWrap = document.createElement("div");
+          barWrap.className = "compare-bar-wrap";
+          var bar = document.createElement("div");
+          bar.className = "compare-bar";
+          bar.style.width = barPct + "%";
+          barWrap.appendChild(bar);
+
+          row.appendChild(selSpan);
+          row.appendChild(specSpan);
+          row.appendChild(badge);
+          row.appendChild(delBtn);
+          row.appendChild(barWrap);
+
+          compareListEl.appendChild(row);
+        });
+
+        compareCountEl.textContent = "（" + compareItems.length + " 个）";
+      }
+
+      document.getElementById("btnAdd").addEventListener("click", function () {
+        var sel = selectorInput.value.trim();
+        if (!sel) {
+          showStatus("请先输入选择器", "error");
+          return;
+        }
+        // Avoid exact duplicate
+        var exists = compareItems.some(function (item) {
+          return item.selector === sel;
+        });
+        if (exists) {
+          showStatus("该选择器已在列表中", "error");
+          return;
+        }
+        var result = parseSpecificity(sel);
+        compareItems.push({ selector: sel, a: result.a, b: result.b, c: result.c });
+        renderCompareList();
+        showStatus("已添加到比较", "success");
+      });
+
+      document.getElementById("btnClear").addEventListener("click", function () {
+        selectorInput.value = "";
+        compareItems = [];
+        renderCurrentSpec();
+        renderCompareList();
+        showStatus("已清空", "success");
+      });
+
+      selectorInput.addEventListener("input", renderCurrentSpec);
+
+      selectorInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          document.getElementById("btnAdd").click();
+        }
+      });
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+      buildExamples();
+    </script>
+  </body>
+</html>

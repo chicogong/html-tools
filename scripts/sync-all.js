@@ -27,6 +27,8 @@ const README_MD = path.join(ROOT_DIR, 'README.md');
 const SITEMAP_XML = path.join(ROOT_DIR, 'sitemap.xml');
 const MANIFEST_JSON = path.join(ROOT_DIR, 'manifest.json');
 const LLMS_TXT = path.join(ROOT_DIR, 'llms.txt');
+const EN_JSON = path.join(ROOT_DIR, 'i18n', 'en.json');
+const ZH_JSON = path.join(ROOT_DIR, 'i18n', 'zh-CN.json');
 
 // 网站域名 (不带尾部斜杠)
 const SITE_URL = 'https://tools.realtime-ai.chat';
@@ -171,6 +173,7 @@ function main() {
     readme: updateReadme(toolCount, categoryCount),
     sitemap: updateSitemap(tools, toolCount),
     manifest: updateManifest(toolCount),
+    i18n: updateI18n(toolCount),
     llmsTxt: updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories),
     github: updateGitHubDescription(toolCount)
   };
@@ -193,6 +196,7 @@ function main() {
   console.log(`   README.md:     ${results.readme ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   sitemap.xml:   ${results.sitemap ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   manifest.json: ${results.manifest ? '✅ 已更新' : '⏭️  无变化'}`);
+  console.log(`   i18n:          ${results.i18n ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   llms.txt:      ${results.llmsTxt ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   GitHub 描述:   ${results.github ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log('='.repeat(50));
@@ -290,6 +294,15 @@ function updateReadme(toolCount, categoryCount) {
 
     if (readme !== original) {
       fs.writeFileSync(README_MD, readme);
+      // 运行 prettier 格式化，确保表格列宽等与项目代码风格一致
+      try {
+        execFileSync('npx', ['prettier', '--write', README_MD], {
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      } catch {
+        // prettier 不可用时静默失败
+      }
       console.log(`✅ README.md: ${toolCount}+ 工具`);
       return true;
     }
@@ -334,13 +347,11 @@ function updateSitemap(tools, toolCount) {
 </urlset>
 `;
 
-  // 检查是否有变化
+  // 检查是否有变化（按内容整体比对，而非仅按 URL 数量 —— 数量相同但内容不同时不能漏更新）
   if (fs.existsSync(SITEMAP_XML)) {
     const existing = fs.readFileSync(SITEMAP_XML, 'utf8');
-    const existingCount = (existing.match(/<loc>/g) || []).length;
-
-    if (existingCount === toolCount + 1) {
-      console.log(`⏭️  sitemap.xml: 无需更新 (${existingCount} URLs)`);
+    if (existing === xml) {
+      console.log('⏭️  sitemap.xml: 无需更新');
       return false;
     }
   }
@@ -380,6 +391,31 @@ function updateManifest(toolCount) {
     console.log(`⚠️  manifest.json: ${err.message}`);
     return false;
   }
+}
+
+/**
+ * 更新 i18n 翻译文件中的工具数
+ *
+ * en.json / zh-CN.json 的 subtitle 含 "N+ ..." 形式的工具数，
+ * 这里只替换数字，保留各语言原有措辞。
+ */
+function updateI18n(toolCount) {
+  let changed = false;
+  for (const file of [EN_JSON, ZH_JSON]) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const original = fs.readFileSync(file, 'utf8');
+      const updated = original.replace(/("subtitle"\s*:\s*")\d+(\+)/, `$1${toolCount}$2`);
+      if (updated !== original) {
+        fs.writeFileSync(file, updated);
+        changed = true;
+      }
+    } catch (err) {
+      console.log(`⚠️  ${path.basename(file)}: ${err.message}`);
+    }
+  }
+  console.log(changed ? `✅ i18n: ${toolCount}+ 工具` : '⏭️  i18n: 无需更新');
+  return changed;
 }
 
 /**

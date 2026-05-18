@@ -18,10 +18,10 @@ npm run lint:fix           # 自动修复 CSS 问题
 npm run format             # Prettier 格式化
 npm run format:check       # 检查格式（不修改）
 npm run sync:tools         # 将 tools.json 同步到 index.html/README/sitemap/manifest
-npm test                   # 验证 tools.json 完整性
+npm test                   # 运行测试套件（tools.json/数据质量/同步/HTML 结构/重定向）
 ```
 
-**没有** `npm run build` 或 `npm start`。提交前必须通过：`npm run lint && npm run format:check`
+**没有** `npm run build` 或 `npm start`。提交前必须通过：`npm run lint && npm run format:check && npm test`
 
 ## 核心架构
 
@@ -44,6 +44,8 @@ npm test                   # 验证 tools.json 完整性
 - `README.md` 中的工具数量
 - `sitemap.xml` 中的 URL 列表
 - `manifest.json` 中的描述
+- `llms.txt` 工具列表
+- `i18n/*.json` 副标题中的工具数
 
 **CI 会检查同步状态，不同步则构建失败。**
 
@@ -77,7 +79,7 @@ JavaScript 从内联的 TOOLS/CATEGORIES 数组动态渲染工具卡片（`rende
 1. 在 `tools/<category>/` 下创建 `.html` 文件（复制 `tools/dev/json-formatter.html` 作模板，包含最新设计系统、面包屑导航、SEO Schema）
 2. 在 `tools.json` 的 `tools` 对象中添加条目（key 为下一个数字）
 3. 运行 `npm run sync:tools`
-4. 运行 `npm run lint && npm run format:check` 确认通过
+4. 运行 `npm run lint && npm run format:check && npm test` 确认通过
 
 ## 样式约定
 
@@ -87,7 +89,7 @@ JavaScript 从内联的 TOOLS/CATEGORIES 数组动态渲染工具卡片（`rende
 
 ## CI/CD
 
-- PR 触发：HTMLHint + Stylelint + ESLint + Prettier check + tools.json 同步检查
+- PR 触发：HTMLHint + Stylelint + ESLint + Prettier check + 测试套件（`npm test`）+ tools.json 同步检查
 - 推送 master：自动部署到 GitHub Pages、Vercel、Netlify、Cloudflare Pages
 
 ## 常见陷阱

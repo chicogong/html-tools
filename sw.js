@@ -1,5 +1,5 @@
 // Service Worker for WebUtils PWA
-const CACHE_NAME = 'webutils-v3';
+const CACHE_NAME = 'webutils-v4';
 const OFFLINE_URL = './offline.html';
 
 // Assets to cache immediately on install
@@ -13,7 +13,9 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png',
   '/manifest.json',
   '/assets/css/main.css',
-  '/assets/js/main.js'
+  '/assets/js/main.js',
+  '/assets/css/tool-base.css',
+  '/assets/js/tool-chrome.js'
 ];
 
 // Install event - precache core assets

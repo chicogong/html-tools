@@ -70,9 +70,34 @@ JavaScript 从内联的 TOOLS/CATEGORIES 数组动态渲染工具卡片（`rende
 
 每个工具文件包含：
 
-- 内联 `<style>`（CSS 变量定义主题）+ 内联 `<script>`（工具逻辑）
+- 内联 `<style>`（工具专属样式）+ 内联 `<script>`（工具逻辑）
 - 字体从 Google Fonts CDN 加载，外部库从 jsDelivr 等 CDN 加载
 - 通用功能模式：URL Hash 持久化输入、剪贴板读写、分享链接、清空重置
+
+### 共享基座（迁移进行中）
+
+为消除「改一处设计要改 1086 个文件」的问题，工具页通过相对路径引用两个共享文件
+（仍可 `file://` 直接打开、PWA 离线缓存，无构建步骤）：
+
+- `assets/css/tool-base.css` — 设计 token、兼容垫片、明暗主题、`.tb-*` 组件、悬浮外壳样式。
+  在工具内联 `<style>` **之前**引入，工具自身样式仍可覆盖。
+- `assets/js/tool-chrome.js` — 运行时注入悬浮「返回全部工具」胶囊 + 主题切换，
+  并注入 `SoftwareApplication` 结构化数据。在 `<head>` 内引入（**不要加 defer**）。
+
+旧版页内 `.breadcrumb` / `nav.nav-bar` / `.theme-toggle` 由 `tool-base.css` 隐藏，
+统一由悬浮外壳取代。主题状态共用 `localStorage` 的 `theme` 键。
+
+**迁移状态**：全部 1086 个工具已接入基座。重新迁移（幂等）：
+
+```bash
+node scripts/migrate-category-chrome.cjs --all      # 全部
+node scripts/migrate-category-chrome.cjs <分类名>   # 单个分类
+```
+
+新工具按模板创建后会自带 `<link>`/`<script>` 引用，无需再跑此脚本。
+
+新工具应直接引用基座、用 token 与 `.tb-*` 组件，不要再硬编码颜色/间距。
+showcase 范例见 `tools/calculator/tip-calculator.html`。
 
 ## 添加新工具
 

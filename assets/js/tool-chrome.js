@@ -39,6 +39,8 @@
   }
 
   function applyTheme(theme) {
+    // 切换瞬间关闭全页过渡，避免大面积颜色渐变造成的卡顿
+    root.classList.add('tb-anim-off');
     root.setAttribute('data-theme', theme);
     try {
       localStorage.setItem(THEME_KEY, theme);
@@ -49,6 +51,11 @@
     if (btn) {
       btn.setAttribute('aria-label', theme === 'light' ? '切换到暗色主题' : '切换到亮色主题');
     }
+    // 提交无过渡状态后，下一帧恢复过渡
+    void root.offsetWidth;
+    requestAnimationFrame(function () {
+      root.classList.remove('tb-anim-off');
+    });
   }
 
   /* ---------- 2. 注入悬浮外壳 ---------- */
@@ -149,7 +156,12 @@
   /* ---------- 启动 ---------- */
   function start() {
     injectChrome();
-    injectSchema();
+    // 结构化数据非关键路径，放到空闲时再注入，避免占用首屏主线程
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(injectSchema);
+    } else {
+      window.setTimeout(injectSchema, 200);
+    }
   }
 
   if (doc.readyState === 'loading') {

@@ -5,6 +5,27 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.1.0] - 2026-05-19
+
+工具规模 999 → 1086，抽出共享设计基座并完成全站统一。
+
+### 新增
+
+- 工具集扩展到 1086 个
+- 共享设计基座：`assets/css/tool-base.css`（设计 token / 明暗主题 / `.tb-*` 组件 / 悬浮外壳样式）+ `assets/js/tool-chrome.js`（运行时注入悬浮「返回全部工具」胶囊、主题切换与 `SoftwareApplication` 结构化数据）
+- 测试套件扩建至 53 项并接入 CI（tools.json / 数据质量 / 同步 / HTML 结构 / 重定向 / 静态资源与 i18n）
+
+### 变更
+
+- 全站 1086 个工具统一接入共享基座，消除「改一处设计要改 1086 个文件」的问题；旧版页内 `.breadcrumb` / `nav.nav-bar` / `.theme-toggle` 由悬浮外壳取代
+- 优化悬浮外壳渲染开销，消除点击 / 主题切换卡顿（#155）
+
+### 修复
+
+- `_redirects` 补全裸 URL（cleanURL 形式）的 301 规则
+
+---
+
 ## [2.0.0] - 2026-05-07
 
 工具规模从 161 扩展到 999，并完成全站设计系统统一与 SEO 治理。

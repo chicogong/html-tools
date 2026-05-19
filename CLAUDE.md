@@ -74,7 +74,7 @@ JavaScript 从内联的 TOOLS/CATEGORIES 数组动态渲染工具卡片（`rende
 - 字体从 Google Fonts CDN 加载，外部库从 jsDelivr 等 CDN 加载
 - 通用功能模式：URL Hash 持久化输入、剪贴板读写、分享链接、清空重置
 
-### 共享基座（迁移进行中）
+### 共享基座
 
 为消除「改一处设计要改 1086 个文件」的问题，工具页通过相对路径引用两个共享文件
 （仍可 `file://` 直接打开、PWA 离线缓存，无构建步骤）：
@@ -87,7 +87,7 @@ JavaScript 从内联的 TOOLS/CATEGORIES 数组动态渲染工具卡片（`rende
 旧版页内 `.breadcrumb` / `nav.nav-bar` / `.theme-toggle` 由 `tool-base.css` 隐藏，
 统一由悬浮外壳取代。主题状态共用 `localStorage` 的 `theme` 键。
 
-**迁移状态**：全部 1086 个工具已接入基座。重新迁移（幂等）：
+**迁移状态**：已完成，全部 1086 个工具均已接入基座。如需重新迁移（幂等）：
 
 ```bash
 node scripts/migrate-category-chrome.cjs --all      # 全部

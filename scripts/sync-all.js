@@ -94,6 +94,276 @@ function getSortedCategories(categories) {
   return sorted;
 }
 
+/* ---------- 分类落地页 ---------- */
+
+/** HTML 文本转义 */
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** HTML 属性值转义 */
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;');
+}
+
+/** 把对象序列化为可安全内嵌 <script> 的 JSON-LD 文本 */
+function toJsonLd(obj) {
+  return JSON.stringify(obj, null, 2).replace(/</g, '\\u003c');
+}
+
+/** 分类落地页的内联样式（与 tool-base.css 设计 token 一致） */
+const CATEGORY_PAGE_CSS = `
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      .cat-main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: calc(var(--nav-height) + var(--space-6)) var(--space-5) var(--space-10);
+      }
+      .cat-hero {
+        text-align: center;
+        margin-bottom: var(--space-8);
+      }
+      .cat-hero-icon {
+        font-size: 3rem;
+        line-height: 1;
+      }
+      .cat-hero h1 {
+        font-size: 1.9rem;
+        margin: var(--space-3) 0 var(--space-2);
+      }
+      .cat-intro {
+        max-width: 640px;
+        margin: 0 auto var(--space-3);
+        color: var(--text-secondary);
+        line-height: 1.7;
+      }
+      .cat-meta {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      .cat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: var(--space-3);
+      }
+      .cat-card {
+        display: flex;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card);
+        color: inherit;
+        text-decoration: none;
+        transition:
+          border-color var(--transition),
+          transform var(--transition);
+      }
+      .cat-card:hover {
+        border-color: var(--accent-cyan);
+        transform: translateY(-2px);
+      }
+      .cat-card-icon {
+        flex-shrink: 0;
+        font-size: 1.5rem;
+        line-height: 1.2;
+      }
+      .cat-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .cat-card-name {
+        font-weight: 600;
+      }
+      .cat-card-desc {
+        font-size: 0.82rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+      .cat-faq {
+        margin-top: var(--space-10);
+      }
+      .cat-faq h2 {
+        font-size: 1.1rem;
+        margin-bottom: var(--space-3);
+      }
+      .cat-footer {
+        margin-top: var(--space-8);
+        text-align: center;
+      }
+      .cat-footer a {
+        font-size: 0.9rem;
+        color: var(--accent-cyan);
+        text-decoration: none;
+      }
+      .cat-footer a:hover {
+        text-decoration: underline;
+      }
+`;
+
+/** 计算从 tools/<catId>/index.html 到目标工具的相对链接 */
+function relToolHref(catId, toolPath) {
+  return path.posix.relative('tools/' + catId, toolPath);
+}
+
+/**
+ * 生成单个分类落地页 HTML
+ */
+function categoryPageHtml(catId, cat, catTools) {
+  const name = cat.name;
+  const intro = cat.intro || `${name}相关的在线工具集合。`;
+  const icon = cat.icon || '📦';
+  const count = catTools.length;
+  const canonical = `${SITE_URL}/tools/${catId}/index.html`;
+  const title = `${name} - 在线工具合集（${count}个）| WebUtils`;
+
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: '首页', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: name, item: canonical }
+    ]
+  };
+  const collection = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description: intro,
+    url: canonical,
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: count,
+      itemListElement: catTools.map((t, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: t.name,
+        url: `${SITE_URL}/${t.path}`
+      }))
+    }
+  };
+
+  const cards = catTools
+    .map((t) => {
+      const href = escapeAttr(relToolHref(catId, t.path));
+      return `        <a class="cat-card" href="${href}">
+          <span class="cat-card-icon">${escapeHtml(t.icon || '🔧')}</span>
+          <span class="cat-card-body">
+            <span class="cat-card-name">${escapeHtml(t.name)}</span>
+            <span class="cat-card-desc">${escapeHtml(t.description || t.name)}</span>
+          </span>
+        </a>`;
+    })
+    .join('\n');
+
+  return `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeAttr(intro)}" />
+    <meta name="keywords" content="${escapeAttr(name + ',在线工具,免费工具,' + name + '大全')}" />
+    <meta name="author" content="WebUtils" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="${canonical}" />
+    <meta property="og:title" content="${escapeAttr(title)}" />
+    <meta property="og:description" content="${escapeAttr(intro)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${canonical}" />
+    <meta property="og:site_name" content="WebUtils" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content="${SITE_URL}/social-preview.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${escapeAttr(title)}" />
+    <meta name="twitter:description" content="${escapeAttr(intro)}" />
+    <meta name="twitter:image" content="${SITE_URL}/social-preview.png" />
+    <script type="application/ld+json">
+${toJsonLd(breadcrumb)}
+    </script>
+    <script type="application/ld+json">
+${toJsonLd(collection)}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/tool-base.css" />
+    <style>${CATEGORY_PAGE_CSS}    </style>
+    <script src="../../assets/js/tool-chrome.js"></script>
+  </head>
+  <body>
+    <main class="cat-main">
+      <header class="cat-hero">
+        <div class="cat-hero-icon">${escapeHtml(icon)}</div>
+        <h1>${escapeHtml(name)}</h1>
+        <p class="cat-intro">${escapeHtml(intro)}</p>
+        <p class="cat-meta">${count} 个工具 · 纯本地运行 · 免费 · 无广告</p>
+      </header>
+      <section class="cat-grid">
+${cards}
+      </section>
+      <footer class="cat-footer">
+        <a href="../../index.html">← 返回 WebUtils 全部工具</a>
+      </footer>
+    </main>
+  </body>
+</html>
+`;
+}
+
+/**
+ * 生成全部分类落地页 tools/<cat>/index.html
+ * 已作为工具登记的分类首页（如 ai-coding 的手工导航页）不覆盖。
+ * @returns {string[]} 生成的页面相对路径列表
+ */
+function generateCategoryPages(categories, groupedTools, registeredPaths) {
+  const generated = [];
+  for (const catId of Object.keys(categories)) {
+    const rel = `tools/${catId}/index.html`;
+    if (registeredPaths.has(rel)) continue;
+    const catTools = groupedTools[catId] || [];
+    if (catTools.length === 0) continue;
+    const html = categoryPageHtml(catId, categories[catId], catTools);
+    const abs = path.join(ROOT_DIR, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, html);
+    generated.push(rel);
+  }
+  // 统一用 prettier 格式化，确保与项目代码风格一致、且每次输出稳定（CI 同步检查依赖此稳定性）
+  if (generated.length > 0) {
+    try {
+      execFileSync(
+        'npx',
+        ['prettier', '--write', ...generated.map((p) => path.join(ROOT_DIR, p))],
+        {
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        }
+      );
+    } catch {
+      // prettier 不可用时静默失败
+    }
+  }
+  console.log(`✅ 分类落地页: ${generated.length} 个`);
+  return generated;
+}
+
 /**
  * 主函数
  */
@@ -167,11 +437,15 @@ function main() {
 
   const toolsJs = `const TOOLS = [\n${toolsLines.join('\n')}\n    ];`;
 
+  // 生成分类落地页（须在 sitemap 之前，sitemap 要纳入这些页面的 URL）
+  const registeredPaths = new Set(tools.map((t) => t.path));
+  const categoryPages = generateCategoryPages(categories, groupedTools, registeredPaths);
+
   // 执行所有同步
   const results = {
     indexHtml: updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount),
     readme: updateReadme(toolCount, categoryCount),
-    sitemap: updateSitemap(tools, toolCount),
+    sitemap: updateSitemap(tools, toolCount, categoryPages),
     manifest: updateManifest(toolCount),
     i18n: updateI18n(toolCount),
     llmsTxt: updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories),
@@ -318,7 +592,7 @@ function updateReadme(toolCount, categoryCount) {
 /**
  * 更新 sitemap.xml
  */
-function updateSitemap(tools, toolCount) {
+function updateSitemap(tools, toolCount, categoryPages = []) {
   const today = new Date().toISOString().split('T')[0];
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -331,6 +605,17 @@ function updateSitemap(tools, toolCount) {
     <priority>1.0</priority>
   </url>
 `;
+
+  // 分类落地页
+  for (const page of categoryPages) {
+    xml += `
+  <url>
+    <loc>${SITE_URL}/${page}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>`;
+  }
 
   // 添加每个工具页面
   for (const tool of tools) {
@@ -357,7 +642,7 @@ function updateSitemap(tools, toolCount) {
   }
 
   fs.writeFileSync(SITEMAP_XML, xml);
-  console.log(`✅ sitemap.xml: ${toolCount + 1} URLs`);
+  console.log(`✅ sitemap.xml: ${toolCount + 1 + categoryPages.length} URLs`);
   return true;
 }
 

@@ -116,6 +116,9 @@ test('popularity 若存在则为非负有限数', () => {
 
 test('tools/ 下的 .html 文件都已登记在 tools.json（无游离文件）', () => {
   const registered = new Set(entries.map(([, t]) => t.path));
-  const orphans = listToolHtmlFiles().filter((f) => !registered.has(f));
+  // 分类落地页 tools/<cat>/index.html 由 sync 脚本生成，是独立页面类型，不登记为工具
+  const orphans = listToolHtmlFiles().filter(
+    (f) => !registered.has(f) && !/\/index\.html$/.test(f)
+  );
   assert(orphans.length === 0, `未登记的文件:\n${orphans.join('\n')}`);
 });

@@ -46,8 +46,10 @@ npm test                   # 运行测试套件（tools.json/数据质量/同步
 - `manifest.json` 中的描述
 - `llms.txt` 工具列表
 - `i18n/*.json` 副标题中的工具数
+- `tools/<分类>/index.html` 分类落地页（从 `tools.json` 的 `categories[].intro` + 工具列表用模板生成；已登记为工具的分类首页如 `ai-coding` 不覆盖）
 
-**CI 会检查同步状态，不同步则构建失败。**
+**CI 会检查同步状态，不同步则构建失败。** 分类落地页是生成产物、不登记进 `tools.json`，
+故测试对 `tools/*/index.html` 跳过「游离文件」检查。
 
 ### index.html 主页
 

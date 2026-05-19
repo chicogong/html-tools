@@ -54,11 +54,18 @@ test(`index.html category-count 数字与活跃分类数一致 (${activeCategory
   assert(Number(m[1]) === activeCategoryCount, `显示 ${m[1]}，应为 ${activeCategoryCount}`);
 });
 
-test(`sitemap.xml <loc> 数量为 工具数 + 首页 (${toolCount + 1})`, () => {
+// 分类落地页：每个分类生成 tools/<cat>/index.html，已登记为工具的分类首页（如 ai-coding）除外
+const registeredPaths = new Set(toolPaths);
+const categoryPagePaths = Object.keys(data.categories)
+  .map((c) => `tools/${c}/index.html`)
+  .filter((p) => !registeredPaths.has(p));
+const expectedLocs = toolCount + 1 + categoryPagePaths.length;
+
+test(`sitemap.xml <loc> 数量为 工具数 + 首页 + 分类落地页 (${expectedLocs})`, () => {
   const locs = sitemap.match(/<loc>/g) || [];
   assert(
-    locs.length === toolCount + 1,
-    `sitemap 有 ${locs.length} 个 <loc>，应为 ${toolCount + 1} —— 请运行 npm run sync:tools`
+    locs.length === expectedLocs,
+    `sitemap 有 ${locs.length} 个 <loc>，应为 ${expectedLocs} —— 请运行 npm run sync:tools`
   );
 });
 
@@ -69,6 +76,11 @@ test('sitemap.xml 含首页 URL', () => {
 test('每个工具 path 都出现在 sitemap.xml 中', () => {
   const missing = toolPaths.filter((p) => !sitemap.includes(`<loc>${SITE}/${p}</loc>`));
   assert(missing.length === 0, `sitemap.xml 缺少:\n${missing.slice(0, 20).join('\n')}`);
+});
+
+test('每个分类落地页都出现在 sitemap.xml 中', () => {
+  const missing = categoryPagePaths.filter((p) => !sitemap.includes(`<loc>${SITE}/${p}</loc>`));
+  assert(missing.length === 0, `sitemap.xml 缺少分类落地页:\n${missing.join('\n')}`);
 });
 
 test(`manifest.json 描述含工具数 "${toolCount}+"`, () => {

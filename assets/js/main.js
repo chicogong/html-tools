@@ -10,6 +10,61 @@ const searchResultsCount = document.getElementById('search-results-count');
 
 let currentCategory = 'all';
 let toolCards = [];
+let toolRenderOrder = [];
+
+const CATEGORY_PARAM = 'category';
+
+function isKnownCategory(category) {
+  return CATEGORIES.some((cat) => cat.id === category);
+}
+
+function getCategoryFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get(CATEGORY_PARAM);
+  if (category && isKnownCategory(category)) {
+    return category;
+  }
+
+  const hashCategory = window.location.hash.slice(1);
+  if (hashCategory && isKnownCategory(hashCategory)) {
+    return hashCategory;
+  }
+
+  return 'all';
+}
+
+function updateCategoryUrl(category) {
+  const url = new URL(window.location.href);
+  const hashCategory = url.hash.slice(1);
+  if (hashCategory && isKnownCategory(hashCategory)) {
+    url.hash = '';
+  }
+
+  if (category === 'all') {
+    url.searchParams.delete(CATEGORY_PARAM);
+  } else {
+    url.searchParams.set(CATEGORY_PARAM, category);
+  }
+
+  if (url.href !== window.location.href) {
+    history.pushState({ category }, '', url);
+  }
+}
+
+function setCategory(category, options = {}) {
+  const selectedCategory = isKnownCategory(category) ? category : 'all';
+  const selectedButton = categoriesContainer.querySelector(
+    '.category-btn[data-category="' + selectedCategory + '"]'
+  );
+  currentCategory = selectedButton ? selectedCategory : 'all';
+  document.querySelectorAll('.category-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.category === currentCategory);
+  });
+  if (options.updateUrl) {
+    updateCategoryUrl(currentCategory);
+  }
+  filterTools();
+}
 
 // ==================== 主题管理 ====================
 const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -58,6 +113,25 @@ function isFavorite(url) {
   return favorites.includes(url);
 }
 
+function updateToolRenderOrder() {
+  toolRenderOrder = TOOLS.map((_, index) => index).sort((a, b) => {
+    const aFavorite = isFavorite(TOOLS[a].url);
+    const bFavorite = isFavorite(TOOLS[b].url);
+    if (aFavorite !== bFavorite) {
+      return aFavorite ? -1 : 1;
+    }
+    return a - b;
+  });
+}
+
+function refreshToolsAfterFavoriteChange() {
+  updateToolRenderOrder();
+  renderTools();
+  if (searchInput.value.trim() || currentCategory !== 'all') {
+    filterTools();
+  }
+}
+
 function toggleFavorite(url, btn, event) {
   event.preventDefault();
   event.stopPropagation();
@@ -73,10 +147,7 @@ function toggleFavorite(url, btn, event) {
     btn.textContent = '★';
   }
   saveFavorites();
-
-  if (currentCategory === 'favorites') {
-    filterTools();
-  }
+  refreshToolsAfterFavoriteChange();
 }
 
 // ==================== 渲染分类按钮 ====================
@@ -90,13 +161,17 @@ function renderCategories() {
     (cat) => cat.id === 'all' || cat.id === 'favorites' || categoryCounts[cat.id]
   );
 
+  if (!activeCategories.some((cat) => cat.id === currentCategory)) {
+    currentCategory = 'all';
+  }
+
   // Update stats
   document.getElementById('tool-count').textContent = TOOLS.length;
   document.getElementById('category-count').textContent = activeCategories.length - 2; // Exclude 'all' and 'favorites'
 
   activeCategories.forEach((cat) => {
     const btn = document.createElement('button');
-    btn.className = 'category-btn' + (cat.id === 'all' ? ' active' : '');
+    btn.className = 'category-btn' + (cat.id === currentCategory ? ' active' : '');
     btn.dataset.category = cat.id;
 
     const icon = document.createElement('span');
@@ -116,10 +191,7 @@ function renderCategories() {
     }
 
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.category-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCategory = cat.id;
-      filterTools();
+      setCategory(cat.id, { updateUrl: true });
     });
     categoriesContainer.appendChild(btn);
   });
@@ -228,7 +300,8 @@ function renderBatch() {
   const end = Math.min(renderedCount + BATCH_SIZE, TOOLS.length);
 
   for (let i = renderedCount; i < end; i++) {
-    fragment.appendChild(createToolCard(TOOLS[i], i));
+    const toolIndex = toolRenderOrder[i];
+    fragment.appendChild(createToolCard(TOOLS[toolIndex], toolIndex));
   }
 
   toolsGrid.appendChild(fragment);
@@ -270,7 +343,8 @@ function renderTools() {
   const initialEnd = Math.min(INITIAL_LOAD, TOOLS.length);
 
   for (let i = 0; i < initialEnd; i++) {
-    fragment.appendChild(createToolCard(TOOLS[i], i));
+    const toolIndex = toolRenderOrder[i];
+    fragment.appendChild(createToolCard(TOOLS[toolIndex], toolIndex));
   }
 
   toolsGrid.appendChild(fragment);
@@ -580,7 +654,8 @@ function filterTools() {
     // 一次性渲染所有剩余工具
     const fragment = document.createDocumentFragment();
     for (let i = renderedCount; i < TOOLS.length; i++) {
-      fragment.appendChild(createToolCard(TOOLS[i], i));
+      const toolIndex = toolRenderOrder[i];
+      fragment.appendChild(createToolCard(TOOLS[toolIndex], toolIndex));
     }
     toolsGrid.appendChild(fragment);
     renderedCount = TOOLS.length;
@@ -619,7 +694,12 @@ function filterTools() {
       card.classList.remove('hidden');
       visibleCount++;
       if (query) {
-        toolsWithScores.push({ card, score: searchScore });
+        toolsWithScores.push({
+          card,
+          score: searchScore,
+          toolIndex,
+          isFav: isFavorite(tool.url)
+        });
       }
     } else {
       card.classList.add('hidden');
@@ -628,7 +708,15 @@ function filterTools() {
 
   // 如果有搜索词，按评分重新排序卡片
   if (query && toolsWithScores.length > 0) {
-    toolsWithScores.sort((a, b) => b.score - a.score);
+    toolsWithScores.sort((a, b) => {
+      if (a.isFav !== b.isFav) {
+        return a.isFav ? -1 : 1;
+      }
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      return a.toolIndex - b.toolIndex;
+    });
     toolsWithScores.forEach(({ card }) => {
       toolsGrid.appendChild(card);
     });
@@ -659,6 +747,10 @@ function filterTools() {
 
 // ==================== 事件绑定 ====================
 searchInput.addEventListener('input', filterTools);
+
+window.addEventListener('popstate', () => {
+  setCategory(getCategoryFromUrl());
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.key === '/' && document.activeElement !== searchInput) {
@@ -727,7 +819,12 @@ function setupCategoriesExpand() {
 }
 
 // ==================== 初始化 ====================
+currentCategory = getCategoryFromUrl();
+updateToolRenderOrder();
 setupLazyLoading();
 renderCategories();
 renderTools();
+if (currentCategory !== 'all') {
+  filterTools();
+}
 setupCategoriesExpand();

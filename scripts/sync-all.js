@@ -305,6 +305,12 @@ ${toJsonLd(collection)}
     />
     <link rel="stylesheet" href="../../assets/css/tool-base.css" />
     <style>${CATEGORY_PAGE_CSS}    </style>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/images/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/assets/images/icons/icon-192x192.png" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
     <script src="../../assets/js/tool-chrome.js"></script>
   </head>
   <body>

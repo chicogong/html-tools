@@ -27,10 +27,13 @@ for (const dir of copyDirs) {
     execSync(`cp -r ${path.join(ROOT_DIR, dir)} ${path.join(DIST_DIR, dir)}`);
   }
 }
-const copyFiles = ['index.html', 'sitemap.xml', 'manifest.json', 'robots.txt', 'favicon.ico', 'llms.txt', 'social-preview.png'];
-for (const file of copyFiles) {
-  if (fs.existsSync(path.join(ROOT_DIR, file))) {
-    fs.copyFileSync(path.join(ROOT_DIR, file), path.join(DIST_DIR, file));
+
+// PWA and root assets
+const rootAssets = ['sw.js', 'manifest.json', 'favicon.ico', 'favicon.svg', 'social-preview.png', 'sitemap.xml', 'robots.txt', 'llms.txt', 'index.html', 'tools.json'];
+for (const asset of rootAssets) {
+  const src = path.join(ROOT_DIR, asset);
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, path.join(DIST_DIR, asset));
   }
 }
 

@@ -28,8 +28,13 @@ for (const dir of copyDirs) {
   }
 }
 
-// PWA and root assets
-const rootAssets = ['sw.js', 'manifest.json', 'favicon.ico', 'favicon.svg', 'social-preview.png', 'sitemap.xml', 'robots.txt', 'llms.txt', 'index.html', 'tools.json'];
+// PWA, Icons, and Deployment Configs
+const rootAssets = [
+  'sw.js', 'manifest.json', 'favicon.ico', 'favicon.svg', 'social-preview.png', 
+  'sitemap.xml', 'robots.txt', 'llms.txt', 'index.html', 'tools.json',
+  'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'offline.html',
+  '_headers', '_redirects'
+];
 for (const asset of rootAssets) {
   const src = path.join(ROOT_DIR, asset);
   if (fs.existsSync(src)) {

@@ -102,6 +102,9 @@ for (const tool of tools) {
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }
   };
 
+  const depth = tool.path.split('/').length - 1;
+  const relativeRoot = '../'.repeat(depth) || './';
+
   const templateData = {
     title: tool.name,
     description: tool.description || tool.name,
@@ -111,7 +114,8 @@ for (const tool of tools) {
     softwareApp,
     styles,
     scripts,
-    bodyContent
+    bodyContent,
+    relativeRoot
   };
 
   const fullHtml = ejs.render(layoutEjs, templateData);

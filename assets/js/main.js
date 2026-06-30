@@ -723,10 +723,10 @@ function filterTools() {
   } else if (!query && renderedCount === TOOLS.length) {
     // 清除搜索词或切换分类时，恢复到原始分类/收藏顺序
     const cardsByIndex = {};
-    toolCards.forEach(card => {
+    toolCards.forEach((card) => {
       cardsByIndex[card.dataset.index] = card;
     });
-    toolRenderOrder.forEach(toolIndex => {
+    toolRenderOrder.forEach((toolIndex) => {
       const card = cardsByIndex[toolIndex];
       if (card) {
         toolsGrid.appendChild(card);

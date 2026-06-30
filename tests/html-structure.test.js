@@ -13,7 +13,7 @@ const data = loadToolsData();
 const tools = Object.entries(data.tools).map(([id, t]) => {
   let head = null;
   try {
-    head = readHead(t.path);
+    head = readHead('dist/' + t.path);
   } catch {
     head = null;
   }

@@ -21,7 +21,7 @@ fs.mkdirSync(DIST_DIR, { recursive: true });
 
 // 2. Copy static assets
 console.log('Copying static assets...');
-const copyDirs = ['assets', 'i18n'];
+const copyDirs = ['assets', 'i18n', 'screenshots'];
 for (const dir of copyDirs) {
   if (fs.existsSync(path.join(ROOT_DIR, dir))) {
     execSync(`cp -r ${path.join(ROOT_DIR, dir)} ${path.join(DIST_DIR, dir)}`);
@@ -33,7 +33,9 @@ const rootAssets = [
   'sw.js', 'manifest.json', 'favicon.ico', 'favicon.svg', 'social-preview.png', 
   'sitemap.xml', 'robots.txt', 'llms.txt', 'index.html', 'tools.json',
   'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'offline.html',
-  '_headers', '_redirects'
+  '_headers', '_redirects',
+  'baidu_verify_codeva-L08oitvCVO.html', 'BingSiteAuth.xml',
+  'ByteDanceVerify.html', 'sogousiteverification.txt'
 ];
 for (const asset of rootAssets) {
   const src = path.join(ROOT_DIR, asset);

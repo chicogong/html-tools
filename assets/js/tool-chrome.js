@@ -195,6 +195,14 @@
     } else {
       window.setTimeout(injectSchema, 200);
     }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+          console.log('SW registration failed:', err);
+        });
+      });
+    }
   }
 
   if (doc.readyState === 'loading') {

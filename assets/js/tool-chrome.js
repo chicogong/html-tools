@@ -19,6 +19,16 @@
   var THEME_KEY = 'theme';
   var HOME_HREF = '../../index.html';
 
+  /* ---------- Analytics 配置 ----------
+   * 使用 Umami（开源 · 无 Cookie · GDPR 合规 · 隐私友好）
+   * 注册: https://cloud.umami.is → 添加网站 → 复制 Website ID
+   * 填入下方 UMAMI_SITE_ID 即可启用，留空则不加载（零副作用）
+   * 免费额度：100K 页面浏览/月
+   * ---------- */
+  var ANALYTICS_ENABLED = true;
+  var UMAMI_SITE_ID     = '';  // ← 填入 Umami Website ID 即可启用
+  var UMAMI_SRC         = 'https://analytics.umami.is/script.js';
+
   /* ---------- 1. 尽早应用主题，避免首屏闪烁 ---------- */
   function readTheme() {
     try {
@@ -56,6 +66,17 @@
     requestAnimationFrame(function () {
       root.classList.remove('tb-anim-off');
     });
+  }
+
+  function injectAnalytics() {
+    if (!ANALYTICS_ENABLED || !UMAMI_SITE_ID) return;
+    var s = doc.createElement('script');
+    s.async = true;
+    s.defer = true;
+    s.src = UMAMI_SRC;
+    s.setAttribute('data-website-id', UMAMI_SITE_ID);
+    s.setAttribute('data-domains', location.hostname);
+    doc.head.appendChild(s);
   }
 
   /* ---------- 2. 注入悬浮外壳 ---------- */
@@ -101,8 +122,19 @@
       '</button>';
     doc.body.appendChild(wrap);
 
+    // 注入底部署名（防搬运）
+    var credit = doc.createElement('div');
+    credit.id = 'tbCredit';
+    credit.innerHTML =
+      '<a href="https://github.com/chicogong/html-tools" target="_blank" rel="noreferrer">' +
+      'Powered by WebUtils · chicogong</a>';
+    doc.body.appendChild(credit);
+
     doc.getElementById('tbThemeToggle').addEventListener('click', function () {
       applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+      if (typeof umami !== 'undefined') {
+        umami.track('theme_toggle', currentTheme());
+      }
     });
     applyTheme(currentTheme());
   }
@@ -156,6 +188,7 @@
   /* ---------- 启动 ---------- */
   function start() {
     injectChrome();
+    injectAnalytics();
     // 结构化数据非关键路径，放到空闲时再注入，避免占用首屏主线程
     if (window.requestIdleCallback) {
       window.requestIdleCallback(injectSchema);

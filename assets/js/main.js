@@ -4,7 +4,16 @@ const toolsGrid = document.getElementById('tools-grid');
 const categoriesContainer = document.getElementById('categories');
 const noResults = document.getElementById('no-results');
 const themeToggle = document.getElementById('theme-toggle');
-const themeIcon = themeToggle.querySelector('.theme-icon');
+let themeIcon = null;
+
+if (themeToggle) {
+  themeIcon = themeToggle.querySelector('.theme-icon');
+  
+  // Create tooltip element
+  const tooltip = document.createElement('div');
+  tooltip.className = 'theme-tooltip';
+  themeToggle.appendChild(tooltip);
+}
 const htmlElement = document.documentElement;
 const searchResultsCount = document.getElementById('search-results-count');
 
@@ -67,24 +76,32 @@ function setCategory(category, options = {}) {
 }
 
 // ==================== 主题管理 ====================
-const savedTheme = localStorage.getItem('theme') || 'dark';
-if (savedTheme === 'light') {
-  htmlElement.setAttribute('data-theme', 'light');
-  themeIcon.textContent = '☀️';
-}
-
-themeToggle.addEventListener('click', () => {
-  const currentTheme = htmlElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  if (newTheme === 'light') {
-    htmlElement.setAttribute('data-theme', 'light');
+if (themeIcon) {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const current = savedTheme || (prefersDark ? 'dark' : 'light');
+  if (current === 'light') {
     themeIcon.textContent = '☀️';
   } else {
-    htmlElement.removeAttribute('data-theme');
     themeIcon.textContent = '🌙';
   }
-  localStorage.setItem('theme', newTheme);
-});
+}
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const currentTheme = htmlElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    if (newTheme === 'light') {
+      htmlElement.setAttribute('data-theme', 'light');
+      themeIcon.textContent = '☀️';
+    } else {
+      htmlElement.removeAttribute('data-theme');
+      themeIcon.textContent = '🌙';
+    }
+    localStorage.setItem('theme', newTheme);
+  });
+}
 
 // ==================== 收藏管理 ====================
 const FAVORITES_KEY = 'html_tools_favorites_v1';

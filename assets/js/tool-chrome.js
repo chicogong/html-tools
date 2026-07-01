@@ -48,13 +48,16 @@
     doc.head.appendChild(s);
   }
 
+  var scriptSrc = document.currentScript ? document.currentScript.src : window.location.href;
+
   /* ---------- 2. 注册 Service Worker ---------- */
   function start() {
     injectAnalytics();
     
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+        var swUrl = new URL('../../sw.js', scriptSrc).href;
+        navigator.serviceWorker.register(swUrl).catch(function(err) {
           console.log('SW registration failed:', err);
         });
       });

@@ -4,18 +4,18 @@ const OFFLINE_URL = './offline.html';
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/offline.html',
-  '/favicon.svg',
-  '/favicon-32x32.png',
-  '/favicon-16x16.png',
-  '/apple-touch-icon.png',
-  '/manifest.json',
-  '/assets/css/main.css',
-  '/assets/js/main.js',
-  '/assets/css/tool-base.css',
-  '/assets/js/tool-chrome.js'
+  './',
+  './index.html',
+  './offline.html',
+  './favicon.svg',
+  './favicon-32x32.png',
+  './favicon-16x16.png',
+  './apple-touch-icon.png',
+  './manifest.json',
+  './assets/css/main.css',
+  './assets/js/main.js',
+  './assets/css/tool-base.css',
+  './assets/js/tool-chrome.js'
 ];
 
 // Install event - precache core assets

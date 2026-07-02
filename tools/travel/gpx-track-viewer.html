@@ -989,3 +989,741 @@
         ]
       }
 </script>
+
+<script>
+/* global L */
+
+      // ── Colour palette for multiple tracks ──────────────────────────────
+      var TRACK_COLORS = [
+        "#00f5d4",
+        "#f72585",
+        "#4cc9f0",
+        "#fbbf24",
+        "#10b981",
+        "#8b5cf6",
+        "#ff9f1c",
+        "#f43f5e"
+      ];
+
+      // ── State ────────────────────────────────────────────────────────────
+      var map = null;
+      var trackLayers = [];
+      var waypointMarkers = [];
+      var allTracks = []; // parsed track objects
+
+      // ── DOM refs ─────────────────────────────────────────────────────────
+      var dropZoneEl = document.getElementById("dropZone");
+      var fileInputEl = document.getElementById("fileInput");
+      var mapContainerEl = document.getElementById("mapContainer");
+      var statusEl = document.getElementById("status");
+      var statsGridEl = document.getElementById("statsGrid");
+      var elevationSectionEl = document.getElementById("elevationSection");
+      var elevationCanvasEl = document.getElementById("elevationCanvas");
+      var waypointsSectionEl = document.getElementById("waypointsSection");
+      var waypointsListEl = document.getElementById("waypointsList");
+      var trackSelectorEl = document.getElementById("trackSelector");
+
+      // ── Leaflet init (lazy) ──────────────────────────────────────────────
+      function ensureMap() {
+        if (map) return;
+        map = L.map("map").setView([30, 110], 4);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+          maxZoom: 19
+        }).addTo(map);
+      }
+
+      // ── Distance helpers (Haversine) ─────────────────────────────────────
+      function toRad(deg) {
+        return (deg * Math.PI) / 180;
+      }
+      function haversine(lat1, lon1, lat2, lon2) {
+        var R = 6371000; // metres
+        var dLat = toRad(lat2 - lat1);
+        var dLon = toRad(lon2 - lon1);
+        var a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      // ── GPX Parser ───────────────────────────────────────────────────────
+      function parseGpx(xmlText) {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(xmlText, "application/xml");
+
+        var result = {
+          name: "",
+          tracks: [],
+          routes: [],
+          waypoints: []
+        };
+
+        // metadata name
+        var metaName = doc.querySelector("metadata > name");
+        if (metaName) result.name = metaName.textContent.trim();
+
+        // Waypoints
+        var wpts = doc.querySelectorAll("wpt");
+        wpts.forEach(function (wpt) {
+          var lat = parseFloat(wpt.getAttribute("lat"));
+          var lon = parseFloat(wpt.getAttribute("lon"));
+          var nameEl = wpt.querySelector("name");
+          var symEl = wpt.querySelector("sym");
+          var eleEl = wpt.querySelector("ele");
+          result.waypoints.push({
+            lat: lat,
+            lon: lon,
+            name: nameEl ? nameEl.textContent.trim() : "",
+            sym: symEl ? symEl.textContent.trim() : "",
+            ele: eleEl ? parseFloat(eleEl.textContent) : null
+          });
+        });
+
+        // Helper: parse trkpts / rtepts
+        function parsePoints(ptElements) {
+          var pts = [];
+          ptElements.forEach(function (pt) {
+            var lat = parseFloat(pt.getAttribute("lat"));
+            var lon = parseFloat(pt.getAttribute("lon"));
+            var eleEl = pt.querySelector("ele");
+            var timeEl = pt.querySelector("time");
+            pts.push({
+              lat: lat,
+              lon: lon,
+              ele: eleEl ? parseFloat(eleEl.textContent) : null,
+              time: timeEl ? new Date(timeEl.textContent) : null
+            });
+          });
+          return pts;
+        }
+
+        // Tracks (trk > trkseg > trkpt)
+        var trks = doc.querySelectorAll("trk");
+        trks.forEach(function (trk) {
+          var nameEl = trk.querySelector("name");
+          var trkName = nameEl ? nameEl.textContent.trim() : "轨迹";
+          var segments = [];
+          var segs = trk.querySelectorAll("trkseg");
+          segs.forEach(function (seg) {
+            var pts = parsePoints(seg.querySelectorAll("trkpt"));
+            if (pts.length) segments.push(pts);
+          });
+          if (segments.length) {
+            result.tracks.push({ name: trkName, segments: segments, type: "track" });
+          }
+        });
+
+        // Routes (rte > rtept)
+        var rtes = doc.querySelectorAll("rte");
+        rtes.forEach(function (rte) {
+          var nameEl = rte.querySelector("name");
+          var rteName = nameEl ? nameEl.textContent.trim() : "路线";
+          var pts = parsePoints(rte.querySelectorAll("rtept"));
+          if (pts.length) {
+            result.routes.push({ name: rteName, segments: [pts], type: "route" });
+          }
+        });
+
+        return result;
+      }
+
+      // ── Statistics ───────────────────────────────────────────────────────
+      function calcTrackStats(segments) {
+        var totalDist = 0;
+        var totalEleGain = 0;
+        var totalEleLoss = 0;
+        var minEle = Infinity;
+        var maxEle = -Infinity;
+        var firstTime = null;
+        var lastTime = null;
+        var allPts = [];
+
+        segments.forEach(function (pts) {
+          for (var i = 0; i < pts.length; i++) {
+            allPts.push(pts[i]);
+            var pt = pts[i];
+            if (i > 0) {
+              totalDist += haversine(pts[i - 1].lat, pts[i - 1].lon, pt.lat, pt.lon);
+              if (pt.ele !== null && pts[i - 1].ele !== null) {
+                var diff = pt.ele - pts[i - 1].ele;
+                if (diff > 0) totalEleGain += diff;
+                else totalEleLoss += -diff;
+              }
+            }
+            if (pt.ele !== null) {
+              if (pt.ele < minEle) minEle = pt.ele;
+              if (pt.ele > maxEle) maxEle = pt.ele;
+            }
+            if (pt.time) {
+              if (!firstTime) firstTime = pt.time;
+              lastTime = pt.time;
+            }
+          }
+        });
+
+        var durationSec = firstTime && lastTime ? (lastTime - firstTime) / 1000 : null;
+        var avgSpeedKmh =
+          durationSec && durationSec > 0
+            ? (totalDist / 1000 / (durationSec / 3600)).toFixed(1)
+            : null;
+
+        return {
+          distKm: (totalDist / 1000).toFixed(2),
+          eleGainM: Math.round(totalEleGain),
+          eleLossM: Math.round(totalEleLoss),
+          minEleM: minEle === Infinity ? null : Math.round(minEle),
+          maxEleM: maxEle === -Infinity ? null : Math.round(maxEle),
+          durationSec: durationSec,
+          avgSpeedKmh: avgSpeedKmh,
+          points: allPts.length,
+          allPts: allPts
+        };
+      }
+
+      function fmtDuration(sec) {
+        if (sec === null) return "—";
+        var h = Math.floor(sec / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        var s = Math.floor(sec % 60);
+        return (h > 0 ? h + "h " : "") + (m > 0 || h > 0 ? m + "m " : "") + s + "s";
+      }
+
+      // ── Elevation canvas draw ────────────────────────────────────────────
+      function drawElevation(allPts) {
+        var canvas = elevationCanvasEl;
+        var W = canvas.offsetWidth || 800;
+        var H = canvas.offsetHeight || 140;
+        canvas.width = W;
+        canvas.height = H;
+        var ctx = canvas.getContext("2d");
+
+        var eles = allPts.map(function (p) {
+          return p.ele;
+        });
+        var hasEle = eles.some(function (e) {
+          return e !== null;
+        });
+        if (!hasEle) {
+          ctx.fillStyle = getComputedStyle(document.documentElement)
+            .getPropertyValue("--text-muted")
+            .trim();
+          ctx.font = "13px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("无海拔数据", W / 2, H / 2);
+          return;
+        }
+
+        var validEles = eles.filter(function (e) {
+          return e !== null;
+        });
+        var minE = Math.min.apply(null, validEles);
+        var maxE = Math.max.apply(null, validEles);
+        var rangeE = maxE - minE || 1;
+        var pad = 24;
+
+        // gradient fill
+        var grad = ctx.createLinearGradient(0, pad, 0, H - pad);
+        grad.addColorStop(0, "rgba(0,245,212,0.6)");
+        grad.addColorStop(1, "rgba(0,245,212,0.05)");
+
+        ctx.beginPath();
+        var step = (W - pad * 2) / (allPts.length - 1);
+        var firstValid = true;
+        allPts.forEach(function (pt, i) {
+          if (pt.ele === null) return;
+          var x = pad + i * step;
+          var y = pad + ((maxE - pt.ele) / rangeE) * (H - pad * 2);
+          if (firstValid) {
+            ctx.moveTo(x, H - pad);
+            ctx.lineTo(x, y);
+            firstValid = false;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.lineTo(pad + (allPts.length - 1) * step, H - pad);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // line
+        ctx.beginPath();
+        firstValid = true;
+        allPts.forEach(function (pt, i) {
+          if (pt.ele === null) return;
+          var x = pad + i * step;
+          var y = pad + ((maxE - pt.ele) / rangeE) * (H - pad * 2);
+          if (firstValid) {
+            ctx.moveTo(x, y);
+            firstValid = false;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.strokeStyle = "#00f5d4";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // labels
+        ctx.fillStyle = "#8888a0";
+        ctx.font = "11px 'JetBrains Mono', monospace";
+        ctx.textAlign = "left";
+        ctx.fillText(Math.round(maxE) + " m", 2, pad + 4);
+        ctx.fillText(Math.round(minE) + " m", 2, H - pad - 2);
+      }
+
+      // ── Render stats cards ───────────────────────────────────────────────
+      function renderStats(stats, name) {
+        var items = [
+          {
+            v: stats.distKm + " km",
+            l: "总距离"
+          },
+          {
+            v: stats.eleGainM !== null ? "+" + stats.eleGainM + " m" : "—",
+            l: "爬升"
+          },
+          {
+            v: stats.eleLossM !== null ? "-" + stats.eleLossM + " m" : "—",
+            l: "下降"
+          },
+          {
+            v: stats.minEleM !== null ? stats.minEleM + " m" : "—",
+            l: "最低海拔"
+          },
+          {
+            v: stats.maxEleM !== null ? stats.maxEleM + " m" : "—",
+            l: "最高海拔"
+          },
+          {
+            v: fmtDuration(stats.durationSec),
+            l: "时长"
+          },
+          {
+            v: stats.avgSpeedKmh !== null ? stats.avgSpeedKmh + " km/h" : "—",
+            l: "平均速度"
+          },
+          {
+            v: stats.points.toString(),
+            l: "轨迹点"
+          }
+        ];
+
+        var html = "";
+        if (name) {
+          html +=
+            '<div style="grid-column:1/-1;font-size:0.8125rem;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px;">' +
+            escHtml(name) +
+            "</div>";
+        }
+        items.forEach(function (item) {
+          html +=
+            '<div class="stat-card"><div class="stat-card-value">' +
+            escHtml(item.v) +
+            '</div><div class="stat-card-label">' +
+            escHtml(item.l) +
+            "</div></div>";
+        });
+        statsGridEl.innerHTML = html;
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // ── Render waypoints list ────────────────────────────────────────────
+      function renderWaypoints(waypoints) {
+        if (!waypoints.length) {
+          waypointsSectionEl.style.display = "none";
+          return;
+        }
+        waypointsSectionEl.style.display = "flex";
+        waypointsListEl.innerHTML = "";
+        waypoints.forEach(function (wpt, idx) {
+          var div = document.createElement("div");
+          div.className = "waypoint-item";
+          div.dataset.idx = idx;
+          div.innerHTML =
+            '<span class="waypoint-sym">' +
+            (wpt.sym ? "📍" : "📍") +
+            "</span>" +
+            '<span class="waypoint-name">' +
+            escHtml(wpt.name || "Waypoint " + (idx + 1)) +
+            "</span>" +
+            '<span class="waypoint-coords">' +
+            wpt.lat.toFixed(5) +
+            ", " +
+            wpt.lon.toFixed(5) +
+            "</span>";
+          div.addEventListener("click", function () {
+            if (map && waypointMarkers[idx]) {
+              map.setView([wpt.lat, wpt.lon], 14);
+              waypointMarkers[idx].openPopup();
+            }
+          });
+          waypointsListEl.appendChild(div);
+        });
+      }
+
+      // ── Main render ──────────────────────────────────────────────────────
+      function renderGpxData(gpxData) {
+        ensureMap();
+
+        // Clear previous
+        trackLayers.forEach(function (l) {
+          map.removeLayer(l);
+        });
+        waypointMarkers.forEach(function (m) {
+          map.removeLayer(m);
+        });
+        trackLayers = [];
+        waypointMarkers = [];
+        trackSelectorEl.innerHTML = "";
+        trackSelectorEl.style.display = "none";
+
+        var combined = gpxData.tracks.concat(gpxData.routes);
+        var bounds = [];
+
+        // Draw tracks / routes
+        combined.forEach(function (trk, colorIdx) {
+          var color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
+          var allLatLons = [];
+
+          trk.segments.forEach(function (seg) {
+            var latlngs = seg.map(function (p) {
+              return [p.lat, p.lon];
+            });
+            allLatLons = allLatLons.concat(latlngs);
+            var poly = L.polyline(latlngs, {
+              color: color,
+              weight: 3,
+              opacity: 0.9
+            }).addTo(map);
+            trackLayers.push(poly);
+            bounds = bounds.concat(latlngs);
+          });
+
+          // Start / end markers
+          if (allLatLons.length > 0) {
+            var startPt = allLatLons[0];
+            var endPt = allLatLons[allLatLons.length - 1];
+
+            var startMarker = L.circleMarker(startPt, {
+              radius: 7,
+              fillColor: color,
+              color: "#fff",
+              weight: 2,
+              fillOpacity: 1
+            })
+              .addTo(map)
+              .bindPopup(
+                "<b>起点</b><br>" +
+                  escHtml(trk.name) +
+                  "<br>" +
+                  startPt[0].toFixed(5) +
+                  ", " +
+                  startPt[1].toFixed(5)
+              );
+            trackLayers.push(startMarker);
+
+            if (startPt[0] !== endPt[0] || startPt[1] !== endPt[1]) {
+              var endMarker = L.circleMarker(endPt, {
+                radius: 7,
+                fillColor: "#f72585",
+                color: "#fff",
+                weight: 2,
+                fillOpacity: 1
+              })
+                .addTo(map)
+                .bindPopup(
+                  "<b>终点</b><br>" +
+                    escHtml(trk.name) +
+                    "<br>" +
+                    endPt[0].toFixed(5) +
+                    ", " +
+                    endPt[1].toFixed(5)
+                );
+              trackLayers.push(endMarker);
+            }
+          }
+        });
+
+        // Draw waypoints
+        gpxData.waypoints.forEach(function (wpt) {
+          var marker = L.circleMarker([wpt.lat, wpt.lon], {
+            radius: 6,
+            fillColor: "#fbbf24",
+            color: "#fff",
+            weight: 2,
+            fillOpacity: 1
+          })
+            .addTo(map)
+            .bindPopup(
+              "<b>" +
+                escHtml(wpt.name || "Waypoint") +
+                "</b>" +
+                (wpt.ele !== null ? "<br>海拔: " + Math.round(wpt.ele) + " m" : "") +
+                "<br>" +
+                wpt.lat.toFixed(5) +
+                ", " +
+                wpt.lon.toFixed(5)
+            );
+          waypointMarkers.push(marker);
+          bounds.push([wpt.lat, wpt.lon]);
+        });
+
+        // Fit map
+        if (bounds.length) {
+          map.fitBounds(bounds, { padding: [30, 30] });
+        }
+
+        // Stats: merge all tracks for summary
+        var allSegments = [];
+        combined.forEach(function (trk) {
+          trk.segments.forEach(function (s) {
+            allSegments.push(s);
+          });
+        });
+
+        var trkName =
+          combined.length === 1
+            ? combined[0].name
+            : combined.length > 1
+              ? combined.length + " 个轨迹"
+              : "";
+
+        if (allSegments.length) {
+          var stats = calcTrackStats(allSegments);
+          renderStats(stats, trkName);
+
+          // Elevation chart
+          var collectPts = [];
+          allSegments.forEach(function (seg) {
+            collectPts = collectPts.concat(seg);
+          });
+          // Downsample if too many
+          var MAX_CHART_PTS = 1000;
+          if (collectPts.length > MAX_CHART_PTS) {
+            var step = Math.ceil(collectPts.length / MAX_CHART_PTS);
+            var sampled = [];
+            for (var i = 0; i < collectPts.length; i += step) {
+              sampled.push(collectPts[i]);
+            }
+            collectPts = sampled;
+          }
+          elevationSectionEl.style.display = "flex";
+          requestAnimationFrame(function () {
+            drawElevation(collectPts);
+          });
+        }
+
+        // Track selector (multiple tracks)
+        if (combined.length > 1) {
+          trackSelectorEl.style.display = "flex";
+          combined.forEach(function (trk, colorIdx) {
+            var color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
+            var span = document.createElement("span");
+            span.style.display = "flex";
+            span.style.alignItems = "center";
+            span.style.gap = "6px";
+            span.style.fontSize = "0.8125rem";
+            span.style.color = "var(--color-text-secondary)";
+            span.innerHTML =
+              '<span class="track-color-dot" style="background:' +
+              color +
+              '"></span>' +
+              escHtml(trk.name);
+            trackSelectorEl.appendChild(span);
+          });
+        }
+
+        // Waypoints
+        renderWaypoints(gpxData.waypoints);
+
+        // Show map
+        mapContainerEl.classList.add("visible");
+        dropZoneEl.style.display = "none";
+
+        // Invalidate map size after display
+        setTimeout(function () {
+          map.invalidateSize();
+          if (bounds.length) {
+            map.fitBounds(bounds, { padding: [30, 30] });
+          }
+        }, 100);
+      }
+
+      // ── File handling ────────────────────────────────────────────────────
+      function handleFile(file) {
+        if (!file.name.toLowerCase().endsWith(".gpx") && file.type !== "application/gpx+xml") {
+          showStatus("请选择 .gpx 格式的文件", "error");
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            var gpxData = parseGpx(e.target.result);
+            var total = gpxData.tracks.length + gpxData.routes.length + gpxData.waypoints.length;
+            if (total === 0) {
+              showStatus("文件中未找到轨迹或航点数据", "error");
+              return;
+            }
+            allTracks = gpxData;
+            renderGpxData(gpxData);
+            showStatus(
+              "已加载: " +
+                (gpxData.tracks.length + gpxData.routes.length) +
+                " 条轨迹, " +
+                gpxData.waypoints.length +
+                " 个航点",
+              "success"
+            );
+          } catch (err) {
+            showStatus("解析失败: " + err.message, "error");
+          }
+        };
+        reader.readAsText(file, "utf-8");
+      }
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      // ── Events ───────────────────────────────────────────────────────────
+      dropZoneEl.addEventListener("click", function () {
+        fileInputEl.click();
+      });
+      fileInputEl.addEventListener("change", function () {
+        if (fileInputEl.files.length) {
+          handleFile(fileInputEl.files[0]);
+        }
+      });
+      dropZoneEl.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        dropZoneEl.classList.add("drag-over");
+      });
+      dropZoneEl.addEventListener("dragleave", function () {
+        dropZoneEl.classList.remove("drag-over");
+      });
+      dropZoneEl.addEventListener("drop", function (e) {
+        e.preventDefault();
+        dropZoneEl.classList.remove("drag-over");
+        var files = e.dataTransfer.files;
+        if (files.length) handleFile(files[0]);
+      });
+
+      document.getElementById("btnFit").addEventListener("click", function () {
+        if (!map || !trackLayers.length) return;
+        var allBounds = [];
+        trackLayers.forEach(function (l) {
+          if (l.getLatLng) {
+            allBounds.push([l.getLatLng().lat, l.getLatLng().lng]);
+          } else if (l.getLatLngs) {
+            var coords = l.getLatLngs();
+            if (Array.isArray(coords[0])) {
+              coords.forEach(function (sub) {
+                sub.forEach(function (ll) {
+                  allBounds.push([ll.lat, ll.lng]);
+                });
+              });
+            } else {
+              coords.forEach(function (ll) {
+                allBounds.push([ll.lat, ll.lng]);
+              });
+            }
+          }
+        });
+        if (allBounds.length) map.fitBounds(allBounds, { padding: [30, 30] });
+      });
+
+      document.getElementById("btnClear").addEventListener("click", function () {
+        if (map) {
+          trackLayers.forEach(function (l) {
+            map.removeLayer(l);
+          });
+          waypointMarkers.forEach(function (m) {
+            map.removeLayer(m);
+          });
+        }
+        trackLayers = [];
+        waypointMarkers = [];
+        allTracks = [];
+        statsGridEl.innerHTML = "";
+        waypointsListEl.innerHTML = "";
+        trackSelectorEl.innerHTML = "";
+        trackSelectorEl.style.display = "none";
+        elevationSectionEl.style.display = "none";
+        waypointsSectionEl.style.display = "none";
+        mapContainerEl.classList.remove("visible");
+        dropZoneEl.style.display = "";
+        fileInputEl.value = "";
+        showStatus("已清除", "");
+      });
+
+      document.getElementById("btnDownload").addEventListener("click", function () {
+        if (!allTracks || !allTracks.tracks) {
+          showStatus("无数据可导出", "error");
+          return;
+        }
+        var combined = allTracks.tracks.concat(allTracks.routes);
+        var rows = [
+          "轨迹名称,距离(km),爬升(m),下降(m),最低海拔(m),最高海拔(m),时长,平均速度(km/h),轨迹点数"
+        ];
+        combined.forEach(function (trk) {
+          var stats = calcTrackStats(trk.segments);
+          rows.push(
+            [
+              trk.name,
+              stats.distKm,
+              stats.eleGainM,
+              stats.eleLossM,
+              stats.minEleM !== null ? stats.minEleM : "",
+              stats.maxEleM !== null ? stats.maxEleM : "",
+              fmtDuration(stats.durationSec),
+              stats.avgSpeedKmh !== null ? stats.avgSpeedKmh : "",
+              stats.points
+            ]
+              .map(function (v) {
+                return '"' + String(v).replace(/"/g, '""') + '"';
+              })
+              .join(",")
+          );
+        });
+        var csv = "﻿" + rows.join("\r\n");
+        var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "gpx-stats.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+        showStatus("CSV 已下载", "success");
+      });
+
+      // ── Theme ────────────────────────────────────────────────────────────
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

@@ -662,3 +662,266 @@
         </p>
       </footer>
     </main>
+
+<script>
+var totalSeconds = 0;
+      var remainingSeconds = 0;
+      var timerInterval = null;
+      var isRunning = false;
+      var audioContext = null;
+      var isFullscreen = false;
+
+      var timerTimeEl = document.getElementById("timerTime");
+      var timerStatusEl = document.getElementById("timerStatus");
+      var timerDisplayEl = document.getElementById("timerDisplay");
+      var minutesEl = document.getElementById("minutes");
+      var startBtn = document.getElementById("startBtn");
+      var pauseBtn = document.getElementById("pauseBtn");
+      var resumeBtn = document.getElementById("resumeBtn");
+      var soundAlertEl = document.getElementById("soundAlert");
+      var progressFillEl = document.getElementById("progressFill");
+      var elapsedLabelEl = document.getElementById("elapsedLabel");
+      var totalLabelEl = document.getElementById("totalLabel");
+      var fullscreenBtn = document.getElementById("fullscreenBtn");
+
+      function formatTime(seconds) {
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        return String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+      }
+
+      function updateDisplay() {
+        timerTimeEl.textContent = formatTime(remainingSeconds);
+
+        // Update progress bar
+        var elapsed = totalSeconds - remainingSeconds;
+        var progress = totalSeconds > 0 ? (elapsed / totalSeconds) * 100 : 0;
+        progressFillEl.style.width = progress + "%";
+        elapsedLabelEl.textContent = "已用 " + formatTime(elapsed);
+        totalLabelEl.textContent = "总计 " + formatTime(totalSeconds);
+
+        // Reset classes
+        timerTimeEl.classList.remove("warning", "danger", "finished");
+        timerDisplayEl.classList.remove("warning-bg", "danger-bg");
+        progressFillEl.classList.remove("warning", "danger");
+
+        if (remainingSeconds === 0 && totalSeconds > 0) {
+          timerTimeEl.classList.add("finished");
+          timerDisplayEl.classList.add("danger-bg");
+          progressFillEl.classList.add("danger");
+          timerStatusEl.textContent = "时间到！";
+        } else if (remainingSeconds <= 60 && remainingSeconds > 0) {
+          timerTimeEl.classList.add("danger");
+          timerDisplayEl.classList.add("danger-bg");
+          progressFillEl.classList.add("danger");
+          timerStatusEl.textContent = "最后 1 分钟！";
+        } else if (remainingSeconds <= 300 && remainingSeconds > 0) {
+          timerTimeEl.classList.add("warning");
+          timerDisplayEl.classList.add("warning-bg");
+          progressFillEl.classList.add("warning");
+          timerStatusEl.textContent = "剩余 5 分钟";
+        } else if (isRunning) {
+          timerStatusEl.textContent = "进行中...";
+        }
+      }
+
+      function startTimer() {
+        var minutes = parseInt(minutesEl.value) || 10;
+        totalSeconds = minutes * 60;
+        remainingSeconds = totalSeconds;
+
+        isRunning = true;
+        startBtn.style.display = "none";
+        pauseBtn.style.display = "inline-flex";
+        resumeBtn.style.display = "none";
+        minutesEl.disabled = true;
+
+        updateDisplay();
+        timerInterval = setInterval(tick, 1000);
+      }
+
+      function tick() {
+        if (remainingSeconds > 0) {
+          remainingSeconds--;
+          updateDisplay();
+        } else {
+          clearInterval(timerInterval);
+          isRunning = false;
+          if (soundAlertEl.checked) {
+            playAlert();
+          }
+        }
+      }
+
+      function pauseTimer() {
+        clearInterval(timerInterval);
+        isRunning = false;
+        pauseBtn.style.display = "none";
+        resumeBtn.style.display = "inline-flex";
+        timerStatusEl.textContent = "已暂停";
+      }
+
+      function resumeTimer() {
+        isRunning = true;
+        pauseBtn.style.display = "inline-flex";
+        resumeBtn.style.display = "none";
+        timerInterval = setInterval(tick, 1000);
+        updateDisplay();
+      }
+
+      function resetTimer() {
+        clearInterval(timerInterval);
+        isRunning = false;
+        remainingSeconds = 0;
+        totalSeconds = 0;
+
+        startBtn.style.display = "inline-flex";
+        pauseBtn.style.display = "none";
+        resumeBtn.style.display = "none";
+        minutesEl.disabled = false;
+
+        timerTimeEl.textContent = "00:00";
+        timerTimeEl.classList.remove("warning", "danger", "finished");
+        timerDisplayEl.classList.remove("warning-bg", "danger-bg");
+        progressFillEl.classList.remove("warning", "danger");
+        progressFillEl.style.width = "0%";
+        elapsedLabelEl.textContent = "已用 00:00";
+        totalLabelEl.textContent = "总计 00:00";
+        timerStatusEl.textContent = "设置时间开始";
+      }
+
+      function setQuickTime(minutes) {
+        minutesEl.value = minutes;
+        if (!isRunning) {
+          timerTimeEl.textContent = formatTime(minutes * 60);
+          totalLabelEl.textContent = "总计 " + formatTime(minutes * 60);
+        }
+      }
+
+      function toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        document.body.classList.toggle("fullscreen-mode", isFullscreen);
+
+        if (isFullscreen) {
+          // Request browser fullscreen
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+          }
+        } else {
+          // Exit browser fullscreen
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        }
+      }
+
+      // Listen for fullscreen change events (e.g., pressing Escape)
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+      function handleFullscreenChange() {
+        var isNowFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+        if (!isNowFullscreen && isFullscreen) {
+          isFullscreen = false;
+          document.body.classList.remove("fullscreen-mode");
+        }
+      }
+
+      function playAlert() {
+        try {
+          if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          }
+
+          // Resume audio context if suspended (required by browsers)
+          if (audioContext.state === "suspended") {
+            audioContext.resume();
+          }
+
+          var oscillator = audioContext.createOscillator();
+          var gainNode = audioContext.createGain();
+
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          oscillator.frequency.value = 880;
+          oscillator.type = "sine";
+
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.5);
+
+          setTimeout(function () {
+            var osc2 = audioContext.createOscillator();
+            var gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.frequency.value = 880;
+            osc2.type = "sine";
+            gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            osc2.start(audioContext.currentTime);
+            osc2.stop(audioContext.currentTime + 0.5);
+          }, 600);
+
+          setTimeout(function () {
+            var osc3 = audioContext.createOscillator();
+            var gain3 = audioContext.createGain();
+            osc3.connect(gain3);
+            gain3.connect(audioContext.destination);
+            osc3.frequency.value = 1100;
+            osc3.type = "sine";
+            gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+            osc3.start(audioContext.currentTime);
+            osc3.stop(audioContext.currentTime + 0.8);
+          }, 1200);
+        } catch (e) {
+          console.log("Audio not supported");
+        }
+      }
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "Space" && e.target.tagName !== "INPUT") {
+          e.preventDefault();
+          if (!isRunning && remainingSeconds === 0) {
+            startTimer();
+          } else if (isRunning) {
+            pauseTimer();
+          } else {
+            resumeTimer();
+          }
+        } else if (e.code === "Escape") {
+          if (isFullscreen) {
+            toggleFullscreen();
+          } else {
+            resetTimer();
+          }
+        } else if (e.code === "KeyF") {
+          toggleFullscreen();
+        }
+      });
+
+      initTheme();
+</script>

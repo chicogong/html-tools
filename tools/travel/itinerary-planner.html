@@ -750,3 +750,374 @@
         ]
       }
 </script>
+
+<script>
+(function () {
+        var LS_KEY = "itinerary_planner_v1";
+        var tripNameEl = document.getElementById("tripName");
+        var itineraryEl = document.getElementById("itinerary");
+        var emptyStateEl = document.getElementById("emptyState");
+        var toastEl = document.getElementById("toast");
+
+        var itinerary = {
+          name: "",
+          days: []
+        };
+
+        function generateId() {
+          return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+
+        function showToast(msg, type) {
+          toastEl.textContent = msg;
+          toastEl.className = "toast show" + (type ? " " + type : "");
+          setTimeout(function () {
+            toastEl.classList.remove("show");
+          }, 2000);
+        }
+
+        function saveToStorage() {
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(itinerary));
+          } catch (e) {
+            console.error("Save failed:", e);
+          }
+        }
+
+        function loadFromStorage() {
+          try {
+            var saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+              itinerary = JSON.parse(saved);
+              return true;
+            }
+          } catch (e) {
+            console.error("Load failed:", e);
+          }
+          return false;
+        }
+
+        function createSvgIcon(pathD, size) {
+          var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.setAttribute("width", size || "16");
+          svg.setAttribute("height", size || "16");
+          svg.setAttribute("viewBox", "0 0 24 24");
+          svg.setAttribute("fill", "none");
+          svg.setAttribute("stroke", "currentColor");
+          svg.setAttribute("stroke-width", "2");
+          if (Array.isArray(pathD)) {
+            pathD.forEach(function (d) {
+              var el;
+              if (d.type === "line") {
+                el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                el.setAttribute("x1", d.x1);
+                el.setAttribute("y1", d.y1);
+                el.setAttribute("x2", d.x2);
+                el.setAttribute("y2", d.y2);
+              } else if (d.type === "path") {
+                el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                el.setAttribute("d", d.d);
+              } else if (d.type === "polyline") {
+                el = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+                el.setAttribute("points", d.points);
+              }
+              if (el) svg.appendChild(el);
+            });
+          }
+          return svg;
+        }
+
+        function createActivityElement(day, activity) {
+          var item = document.createElement("div");
+          item.className = "activity-item";
+          item.setAttribute("data-activity-id", activity.id);
+
+          var timeDiv = document.createElement("div");
+          timeDiv.className = "activity-time";
+          var timeInput = document.createElement("input");
+          timeInput.type = "time";
+          timeInput.value = activity.time || "09:00";
+          timeInput.addEventListener("change", function () {
+            activity.time = this.value;
+            saveToStorage();
+          });
+          timeDiv.appendChild(timeInput);
+
+          var descDiv = document.createElement("div");
+          descDiv.className = "activity-desc";
+          var descInput = document.createElement("input");
+          descInput.type = "text";
+          descInput.value = activity.description || "";
+          descInput.placeholder = "描述活动内容...";
+          descInput.addEventListener("input", function () {
+            activity.description = this.value;
+            saveToStorage();
+          });
+          descDiv.appendChild(descInput);
+
+          var actionsDiv = document.createElement("div");
+          actionsDiv.className = "activity-actions";
+          var deleteBtn = document.createElement("button");
+          deleteBtn.className = "btn btn-icon btn-danger";
+          deleteBtn.title = "删除活动";
+          deleteBtn.appendChild(
+            createSvgIcon([
+              { type: "line", x1: "18", y1: "6", x2: "6", y2: "18" },
+              { type: "line", x1: "6", y1: "6", x2: "18", y2: "18" }
+            ])
+          );
+          deleteBtn.addEventListener("click", function () {
+            deleteActivity(day.id, activity.id);
+          });
+          actionsDiv.appendChild(deleteBtn);
+
+          item.appendChild(timeDiv);
+          item.appendChild(descDiv);
+          item.appendChild(actionsDiv);
+
+          return item;
+        }
+
+        function createDayCard(day) {
+          var card = document.createElement("div");
+          card.className = "day-card";
+          card.setAttribute("data-day-id", day.id);
+
+          var header = document.createElement("div");
+          header.className = "day-header";
+
+          var titleDiv = document.createElement("div");
+          var title = document.createElement("span");
+          title.className = "day-title";
+          title.textContent = "第 " + day.dayNum + " 天";
+          titleDiv.appendChild(title);
+
+          var actionsDiv = document.createElement("div");
+          actionsDiv.className = "day-actions";
+
+          var addBtn = document.createElement("button");
+          addBtn.className = "btn btn-icon";
+          addBtn.title = "添加活动";
+          addBtn.appendChild(
+            createSvgIcon([
+              { type: "line", x1: "12", y1: "5", x2: "12", y2: "19" },
+              { type: "line", x1: "5", y1: "12", x2: "19", y2: "12" }
+            ])
+          );
+          addBtn.addEventListener("click", function () {
+            addActivity(day.id);
+          });
+
+          var deleteBtn = document.createElement("button");
+          deleteBtn.className = "btn btn-icon btn-danger";
+          deleteBtn.title = "删除这天";
+          deleteBtn.appendChild(
+            createSvgIcon([
+              { type: "polyline", points: "3 6 5 6 21 6" },
+              {
+                type: "path",
+                d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              }
+            ])
+          );
+          deleteBtn.addEventListener("click", function () {
+            deleteDay(day.id);
+          });
+
+          actionsDiv.appendChild(addBtn);
+          actionsDiv.appendChild(deleteBtn);
+
+          header.appendChild(titleDiv);
+          header.appendChild(actionsDiv);
+
+          var activitiesList = document.createElement("div");
+          activitiesList.className = "activities-list";
+
+          day.activities.forEach(function (activity) {
+            activitiesList.appendChild(createActivityElement(day, activity));
+          });
+
+          var addActivityBtn = document.createElement("button");
+          addActivityBtn.className = "add-activity-btn";
+          addActivityBtn.textContent = "+ 添加活动";
+          addActivityBtn.addEventListener("click", function () {
+            addActivity(day.id);
+          });
+          activitiesList.appendChild(addActivityBtn);
+
+          card.appendChild(header);
+          card.appendChild(activitiesList);
+
+          return card;
+        }
+
+        function render() {
+          tripNameEl.value = itinerary.name || "";
+
+          var existingCards = itineraryEl.querySelectorAll(".day-card");
+          existingCards.forEach(function (c) {
+            c.remove();
+          });
+
+          if (itinerary.days.length === 0) {
+            emptyStateEl.style.display = "block";
+            return;
+          }
+
+          emptyStateEl.style.display = "none";
+
+          itinerary.days.forEach(function (day) {
+            itineraryEl.appendChild(createDayCard(day));
+          });
+        }
+
+        function addDay() {
+          var dayNum = itinerary.days.length + 1;
+          var day = {
+            id: generateId(),
+            dayNum: dayNum,
+            activities: []
+          };
+          itinerary.days.push(day);
+          saveToStorage();
+          render();
+          showToast("已添加第 " + dayNum + " 天", "success");
+        }
+
+        function deleteDay(dayId) {
+          if (!confirm("确定删除这一天的行程吗？")) return;
+          itinerary.days = itinerary.days.filter(function (d) {
+            return d.id !== dayId;
+          });
+          itinerary.days.forEach(function (d, i) {
+            d.dayNum = i + 1;
+          });
+          saveToStorage();
+          render();
+          showToast("已删除", "success");
+        }
+
+        function addActivity(dayId) {
+          var day = itinerary.days.find(function (d) {
+            return d.id === dayId;
+          });
+          if (!day) return;
+          var activity = {
+            id: generateId(),
+            time: "09:00",
+            description: ""
+          };
+          day.activities.push(activity);
+          saveToStorage();
+          render();
+          var input = document.querySelector(
+            '[data-activity-id="' + activity.id + '"] .activity-desc input'
+          );
+          if (input) input.focus();
+        }
+
+        function deleteActivity(dayId, activityId) {
+          var day = itinerary.days.find(function (d) {
+            return d.id === dayId;
+          });
+          if (!day) return;
+          day.activities = day.activities.filter(function (a) {
+            return a.id !== activityId;
+          });
+          saveToStorage();
+          render();
+        }
+
+        function updateTripName(value) {
+          itinerary.name = value;
+          saveToStorage();
+        }
+
+        function clearAll() {
+          if (!confirm("确定清空所有行程吗？此操作不可恢复。")) return;
+          itinerary = { name: "", days: [] };
+          saveToStorage();
+          render();
+          showToast("已清空", "success");
+        }
+
+        function printItinerary() {
+          window.print();
+        }
+
+        function exportItinerary() {
+          if (itinerary.days.length === 0) {
+            showToast("没有行程可导出");
+            return;
+          }
+          var text = "";
+          if (itinerary.name) {
+            text += "# " + itinerary.name + "\n\n";
+          }
+          itinerary.days.forEach(function (day) {
+            text += "## 第 " + day.dayNum + " 天\n\n";
+            if (day.activities.length === 0) {
+              text += "暂无活动安排\n\n";
+            } else {
+              day.activities.forEach(function (activity) {
+                text +=
+                  "- " +
+                  (activity.time || "--:--") +
+                  " " +
+                  (activity.description || "（无描述）") +
+                  "\n";
+              });
+              text += "\n";
+            }
+          });
+          navigator.clipboard
+            .writeText(text)
+            .then(function () {
+              showToast("已复制到剪贴板", "success");
+            })
+            .catch(function () {
+              var blob = new Blob([text], { type: "text/plain" });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement("a");
+              a.href = url;
+              a.download = (itinerary.name || "行程") + ".txt";
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast("已下载", "success");
+            });
+        }
+
+        window.toggleTheme = function () {
+          var html = document.documentElement;
+          var currentTheme = html.getAttribute("data-theme") || "dark";
+          var newTheme = currentTheme === "light" ? "dark" : "light";
+          html.setAttribute("data-theme", newTheme);
+          localStorage.setItem("theme", newTheme);
+        };
+
+        function initTheme() {
+          var savedTheme = localStorage.getItem("theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = savedTheme || (prefersDark ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+          if (!localStorage.getItem("theme"))
+            document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+        });
+
+        document.getElementById("btnAddDay").addEventListener("click", addDay);
+        document.getElementById("btnEmptyAdd").addEventListener("click", addDay);
+        document.getElementById("btnPrint").addEventListener("click", printItinerary);
+        document.getElementById("btnExport").addEventListener("click", exportItinerary);
+        document.getElementById("btnClear").addEventListener("click", clearAll);
+        tripNameEl.addEventListener("input", function () {
+          updateTripName(this.value);
+        });
+
+        initTheme();
+        loadFromStorage();
+        render();
+      })();
+</script>

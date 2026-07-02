@@ -704,3 +704,269 @@
         ]
       }
 </script>
+
+<script>
+// ============================================
+      // Elements
+      // ============================================
+      const pasteZone = document.getElementById("pasteZone");
+      const resultsCard = document.getElementById("resultsCard");
+      const resultsEl = document.getElementById("results");
+
+      // ============================================
+      // Utility Functions
+      // ============================================
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      // ============================================
+      // Result Item Creation
+      // ============================================
+      function createResultItem(type, content, isImage) {
+        const item = document.createElement("div");
+        item.className = "result-item";
+
+        const header = document.createElement("div");
+        header.className = "result-header";
+
+        const typeSpan = document.createElement("span");
+        typeSpan.className = "result-type";
+        typeSpan.textContent = type;
+
+        const sizeSpan = document.createElement("span");
+        sizeSpan.className = "result-size";
+        sizeSpan.textContent = isImage ? "" : formatSize(content.length);
+
+        header.appendChild(typeSpan);
+        header.appendChild(sizeSpan);
+        item.appendChild(header);
+
+        if (isImage) {
+          const img = document.createElement("img");
+          img.className = "result-image";
+          img.src = content;
+          img.alt = "粘贴的图片";
+          item.appendChild(img);
+        } else {
+          const contentDiv = document.createElement("div");
+          contentDiv.className = "result-content";
+          const displayContent =
+            content.length > 5000
+              ? content.substring(0, 5000) + "\n\n... (截断显示，共 " + content.length + " 字符)"
+              : content;
+          contentDiv.textContent = displayContent;
+          item.appendChild(contentDiv);
+        }
+
+        const btnRow = document.createElement("div");
+        btnRow.className = "btn-row";
+
+        const copyBtn = document.createElement("button");
+        copyBtn.textContent = "复制";
+        copyBtn.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(content);
+            copyBtn.textContent = "已复制";
+            setTimeout(() => {
+              copyBtn.textContent = "复制";
+            }, 1500);
+          } catch (e) {
+            alert("复制失败");
+          }
+        };
+
+        btnRow.appendChild(copyBtn);
+        item.appendChild(btnRow);
+
+        return item;
+      }
+
+      function showEmpty(msg) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = msg;
+        resultsEl.appendChild(empty);
+      }
+
+      // ============================================
+      // Paste Handler
+      // ============================================
+      async function handlePaste(e) {
+        e.preventDefault();
+        resultsEl.textContent = "";
+
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData) {
+          showEmpty("无法访问剪贴板");
+          resultsCard.style.display = "block";
+          return;
+        }
+
+        const types = clipboardData.types;
+        let hasContent = false;
+
+        for (const type of types) {
+          if (type === "Files") {
+            const files = clipboardData.files;
+            for (let i = 0; i < files.length; i++) {
+              const file = files[i];
+              hasContent = true;
+
+              if (file.type.startsWith("image/")) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  resultsEl.appendChild(
+                    createResultItem(
+                      "File: " + file.name + " (" + file.type + ")",
+                      ev.target.result,
+                      true
+                    )
+                  );
+                };
+                reader.readAsDataURL(file);
+              } else {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  resultsEl.appendChild(
+                    createResultItem(
+                      "File: " + file.name + " (" + file.type + ")",
+                      ev.target.result,
+                      false
+                    )
+                  );
+                };
+                reader.readAsText(file);
+              }
+            }
+          } else {
+            const data = clipboardData.getData(type);
+            if (data) {
+              hasContent = true;
+              resultsEl.appendChild(createResultItem(type, data, false));
+            }
+          }
+        }
+
+        if (clipboardData.items) {
+          for (const item of clipboardData.items) {
+            if (item.type.startsWith("image/") && item.kind === "file") {
+              const file = item.getAsFile();
+              if (file) {
+                hasContent = true;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const existing = resultsEl.querySelector("img");
+                  if (!existing) {
+                    resultsEl.appendChild(
+                      createResultItem("image (" + item.type + ")", ev.target.result, true)
+                    );
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }
+          }
+        }
+
+        if (!hasContent) {
+          showEmpty("剪贴板为空或无法读取");
+        }
+
+        resultsCard.style.display = "block";
+      }
+
+      // ============================================
+      // Drag and Drop Handlers
+      // ============================================
+      pasteZone.onclick = () => {
+        pasteZone.focus();
+      };
+
+      pasteZone.ondragover = (e) => {
+        e.preventDefault();
+        pasteZone.classList.add("dragover");
+      };
+
+      pasteZone.ondragleave = () => {
+        pasteZone.classList.remove("dragover");
+      };
+
+      pasteZone.ondrop = (e) => {
+        e.preventDefault();
+        pasteZone.classList.remove("dragover");
+
+        resultsEl.textContent = "";
+        const files = e.dataTransfer.files;
+
+        if (files.length === 0) {
+          showEmpty("没有检测到文件");
+          resultsCard.style.display = "block";
+          return;
+        }
+
+        for (const file of files) {
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              resultsEl.appendChild(
+                createResultItem(
+                  "File: " + file.name + " (" + file.type + ")",
+                  ev.target.result,
+                  true
+                )
+              );
+            };
+            reader.readAsDataURL(file);
+          } else {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              resultsEl.appendChild(
+                createResultItem(
+                  "File: " + file.name + " (" + file.type + ")",
+                  ev.target.result,
+                  false
+                )
+              );
+            };
+            reader.readAsText(file);
+          }
+        }
+
+        resultsCard.style.display = "block";
+      };
+
+      // ============================================
+      // Event Listeners
+      // ============================================
+      document.addEventListener("paste", handlePaste);
+
+      // ============================================
+      // Theme Management
+      // ============================================
+      function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      }
+
+      function initTheme() {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = savedTheme || (prefersDark ? "dark" : "light");
+
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+
+      // ============================================
+      // Initialize
+      // ============================================
+      initTheme();
+
+      window.toggleTheme = toggleTheme;
+</script>

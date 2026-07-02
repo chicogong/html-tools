@@ -990,3 +990,240 @@
         ]
       }
 </script>
+
+<script>
+/* global openpgp */
+      var statusEl = document.getElementById("status");
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function setLoading(btn, loading) {
+        if (loading) {
+          btn.dataset.origText = btn.textContent;
+          btn.textContent = "处理中...";
+          btn.classList.add("btn-loading");
+        } else {
+          btn.textContent = btn.dataset.origText || btn.textContent;
+          btn.classList.remove("btn-loading");
+        }
+      }
+
+      // Tab switching
+      var tabs = [
+        { tab: "tabEncrypt", section: "sectionEncrypt" },
+        { tab: "tabDecrypt", section: "sectionDecrypt" },
+        { tab: "tabKeygen", section: "sectionKeygen" }
+      ];
+
+      tabs.forEach(function (item) {
+        document.getElementById(item.tab).addEventListener("click", function () {
+          tabs.forEach(function (t) {
+            document.getElementById(t.tab).classList.remove("active");
+            document.getElementById(t.tab).setAttribute("aria-selected", "false");
+            document.getElementById(t.section).classList.remove("active");
+          });
+          document.getElementById(item.tab).classList.add("active");
+          document.getElementById(item.tab).setAttribute("aria-selected", "true");
+          document.getElementById(item.section).classList.add("active");
+          showStatus("", "");
+        });
+      });
+
+      // Encrypt
+      document.getElementById("btnEncrypt").addEventListener("click", async function () {
+        var pubKeyArmored = document.getElementById("encPublicKey").value.trim();
+        var plaintext = document.getElementById("encPlaintext").value;
+        if (!pubKeyArmored) {
+          showStatus("请粘贴接收方公钥", "error");
+          return;
+        }
+        if (!plaintext) {
+          showStatus("请输入要加密的消息", "error");
+          return;
+        }
+        var btn = this;
+        setLoading(btn, true);
+        showStatus("正在加密...", "");
+        try {
+          var publicKey = await openpgp.readKey({ armoredKey: pubKeyArmored });
+          var message = await openpgp.createMessage({ text: plaintext });
+          var encrypted = await openpgp.encrypt({
+            message: message,
+            encryptionKeys: publicKey
+          });
+          document.getElementById("encResult").value = encrypted;
+          showStatus("加密成功", "success");
+        } catch (e) {
+          showStatus("加密失败：" + e.message, "error");
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+
+      document.getElementById("btnEncCopy").addEventListener("click", async function () {
+        var result = document.getElementById("encResult").value;
+        if (!result) {
+          showStatus("没有内容可复制", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(result);
+          showStatus("已复制到剪贴板", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      });
+
+      document.getElementById("btnEncClear").addEventListener("click", function () {
+        document.getElementById("encPublicKey").value = "";
+        document.getElementById("encPlaintext").value = "";
+        document.getElementById("encResult").value = "";
+        showStatus("", "");
+      });
+
+      // Decrypt
+      document.getElementById("btnDecrypt").addEventListener("click", async function () {
+        var privKeyArmored = document.getElementById("decPrivateKey").value.trim();
+        var ciphertext = document.getElementById("decCiphertext").value.trim();
+        var passphrase = document.getElementById("decPassphrase").value;
+        if (!privKeyArmored) {
+          showStatus("请粘贴私钥", "error");
+          return;
+        }
+        if (!ciphertext) {
+          showStatus("请粘贴要解密的 PGP 密文", "error");
+          return;
+        }
+        var btn = this;
+        setLoading(btn, true);
+        showStatus("正在解密...", "");
+        try {
+          var privateKey = await openpgp.readPrivateKey({ armoredKey: privKeyArmored });
+          if (passphrase) {
+            privateKey = await openpgp.decryptKey({
+              privateKey: privateKey,
+              passphrase: passphrase
+            });
+          }
+          var message = await openpgp.readMessage({ armoredMessage: ciphertext });
+          var result = await openpgp.decrypt({
+            message: message,
+            decryptionKeys: privateKey
+          });
+          document.getElementById("decResult").value = result.data;
+          showStatus("解密成功", "success");
+        } catch (e) {
+          showStatus("解密失败：" + e.message, "error");
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+
+      document.getElementById("btnDecCopy").addEventListener("click", async function () {
+        var result = document.getElementById("decResult").value;
+        if (!result) {
+          showStatus("没有内容可复制", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(result);
+          showStatus("已复制到剪贴板", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      });
+
+      document.getElementById("btnDecClear").addEventListener("click", function () {
+        document.getElementById("decPrivateKey").value = "";
+        document.getElementById("decCiphertext").value = "";
+        document.getElementById("decPassphrase").value = "";
+        document.getElementById("decResult").value = "";
+        showStatus("", "");
+      });
+
+      // Keygen
+      document.getElementById("btnGenKey").addEventListener("click", async function () {
+        var name = document.getElementById("keyName").value.trim() || "User";
+        var email = document.getElementById("keyEmail").value.trim() || "user@example.com";
+        var keyType = document.getElementById("keyType").value;
+        var passphrase = document.getElementById("keyPassphrase").value;
+        var btn = this;
+        setLoading(btn, true);
+        showStatus("正在生成密钥对，请稍候...", "");
+        try {
+          var options = {
+            userIDs: [{ name: name, email: email }],
+            passphrase: passphrase || undefined
+          };
+          if (keyType === "rsa") {
+            options.type = "rsa";
+            options.rsaBits = 4096;
+          } else {
+            options.type = "ecc";
+            options.curve = "curve25519";
+          }
+          var key = await openpgp.generateKey(options);
+          document.getElementById("genPublicKey").value = key.publicKey;
+          document.getElementById("genPrivateKey").value = key.privateKey;
+          showStatus(
+            "密钥对生成成功（" + (keyType === "rsa" ? "RSA 4096" : "ECC curve25519") + "）",
+            "success"
+          );
+        } catch (e) {
+          showStatus("生成失败：" + e.message, "error");
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+
+      document.getElementById("btnCopyPubKey").addEventListener("click", async function () {
+        var val = document.getElementById("genPublicKey").value;
+        if (!val) {
+          showStatus("尚未生成密钥", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(val);
+          showStatus("公钥已复制", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      });
+
+      document.getElementById("btnCopyPrivKey").addEventListener("click", async function () {
+        var val = document.getElementById("genPrivateKey").value;
+        if (!val) {
+          showStatus("尚未生成密钥", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(val);
+          showStatus("私钥已复制（请妥善保管）", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      });
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

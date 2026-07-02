@@ -1360,3 +1360,270 @@
         ]
       }
 </script>
+
+<script>
+// ===== 排放因子（单位：kg CO₂e） =====
+      // 数据来源：IPCC、IEA、中国生态环境部等公开报告
+      var EF = {
+        // 交通：每公里 kg CO₂e
+        car: { petrol: 0.21, diesel: 0.17, hybrid: 0.11, ev: 0.07 },
+        flightShort: 255, // 每次短途航班（含辐射强迫系数）
+        flightLong: 1100, // 每次长途航班
+        publicTransport: 0.04, // 地铁/公交 每公里
+
+        // 家庭能源：中国电网平均排放因子
+        electricity: 0.581, // kg CO₂e / kWh（中国均值）
+        naturalGas: 2.0, // kg CO₂e / m³
+
+        // 饮食：年均 kg CO₂e
+        diet: {
+          vegan: 1000,
+          vegetarian: 1400,
+          fish: 1700,
+          low_meat: 2100,
+          medium_meat: 2700,
+          high_meat: 3300
+        },
+        foodWaste: { low: 1.0, medium: 1.12, high: 1.25 },
+
+        // 消费：每件 kg CO₂e
+        clothing: 10,
+        electronics: 200
+      };
+
+      // 基准对比（吨 CO₂e）
+      var BENCHMARKS = { china: 8.4, world: 4.7, target: 2.0 };
+
+      var statusEl = document.getElementById("status");
+      var statsEl = document.getElementById("stats");
+      var statTotalEl = document.getElementById("statTotal");
+      var statVsWorldEl = document.getElementById("statVsWorld");
+
+      function getNum(id, def) {
+        var v = parseFloat(document.getElementById(id).value);
+        return isNaN(v) || v < 0 ? def : v;
+      }
+      function getStr(id) {
+        return document.getElementById(id).value;
+      }
+
+      function calcCarbon() {
+        var carKm = getNum("carKm", 0);
+        var carType = getStr("carType");
+        var flightShort = getNum("flightShort", 0);
+        var flightLong = getNum("flightLong", 0);
+        var publicKm = getNum("publicKm", 0);
+        var electricity = getNum("electricity", 0);
+        var naturalGas = getNum("naturalGas", 0);
+        var householdSize = parseInt(getStr("householdSize"), 10) || 1;
+        var dietType = getStr("dietType");
+        var foodWaste = getStr("foodWaste");
+        var clothingBuy = getNum("clothingBuy", 0);
+        var electronicsNew = getNum("electronicsNew", 0);
+
+        // 交通（kg）
+        var tCar = carKm * EF.car[carType];
+        var tFlightS = flightShort * EF.flightShort;
+        var tFlightL = flightLong * EF.flightLong;
+        var tPublic = publicKm * EF.publicTransport;
+        var transport = tCar + tFlightS + tFlightL + tPublic;
+
+        // 家庭能源（分摊后，kg）
+        var eElec = electricity * 12 * EF.electricity;
+        var eGas = naturalGas * 12 * EF.naturalGas;
+        var energy = (eElec + eGas) / householdSize;
+
+        // 饮食（kg）
+        var diet = EF.diet[dietType] * EF.foodWaste[foodWaste];
+
+        // 消费（kg）
+        var goods = clothingBuy * EF.clothing + electronicsNew * EF.electronics;
+
+        var totalKg = transport + energy + diet + goods;
+        var totalT = totalKg / 1000;
+
+        return {
+          transport: transport / 1000,
+          energy: energy / 1000,
+          diet: diet / 1000,
+          goods: goods / 1000,
+          total: totalT
+        };
+      }
+
+      function pct(part, maxVal) {
+        if (maxVal === 0) return 0;
+        return Math.min(100, (part / maxVal) * 100).toFixed(1);
+      }
+
+      function diffBadge(userVal, ref) {
+        var diff = userVal - ref;
+        var sign = diff >= 0 ? "+" : "";
+        var cls = diff >= 0 ? "cf-diff-above" : "cf-diff-below";
+        return '<span class="cf-compare-diff ' + cls + '">' + sign + diff.toFixed(1) + " t</span>";
+      }
+
+      function buildTips(res) {
+        var tips = [];
+        if (res.transport > 2) {
+          if (getNum("carKm", 0) > 10000) {
+            tips.push({
+              icon: "🚌",
+              text: "您的驾车里程较高，尝试将部分短途出行换成公共交通或骑行，可显著减少交通碳排。"
+            });
+          }
+          if (getNum("flightLong", 0) > 2) {
+            tips.push({
+              icon: "✈️",
+              text: "长途飞行是碳排的大头，考虑减少不必要的长途飞行，或选择直飞（中转更耗油）。"
+            });
+          }
+          if (getStr("carType") === "petrol" || getStr("carType") === "diesel") {
+            tips.push({
+              icon: "⚡",
+              text: "换购混合动力或纯电动车可将行驶碳排降低 40%–70%。"
+            });
+          }
+        }
+        if (res.energy > 1.5) {
+          tips.push({
+            icon: "💡",
+            text: "减少家庭能耗：使用 LED 灯、提高空调温度设定（夏天 26°C 以上）、购买高能效家电。"
+          });
+        }
+        if (res.diet > 2) {
+          tips.push({
+            icon: "🥗",
+            text: "饮食碳排偏高，减少红肉（尤其是牛肉）摄入，增加蔬菜、豆类比例，可减少 20%–50% 饮食排放。"
+          });
+        }
+        if (getStr("foodWaste") === "high") {
+          tips.push({
+            icon: "🗑️",
+            text: "减少食物浪费是简单有效的减排方式，按需采购、合理规划膳食。"
+          });
+        }
+        if (res.goods > 0.5) {
+          tips.push({
+            icon: "♻️",
+            text: "购买二手衣物或选择可持续品牌，延长电子产品使用寿命，可大幅降低消费碳排。"
+          });
+        }
+        if (tips.length === 0) {
+          tips.push({ icon: "🌟", text: "您的碳排放已较低，继续保持绿色生活方式，为地球减负！" });
+        }
+        return tips;
+      }
+
+      function renderResult(res) {
+        document.getElementById("cfPlaceholder").style.display = "none";
+        var cfResult = document.getElementById("cfResult");
+        cfResult.style.display = "flex";
+
+        document.getElementById("totalValue").textContent = res.total.toFixed(2);
+        document.getElementById("valTransport").textContent = res.transport.toFixed(2) + " t";
+        document.getElementById("valEnergy").textContent = res.energy.toFixed(2) + " t";
+        document.getElementById("valDiet").textContent = res.diet.toFixed(2) + " t";
+        document.getElementById("valGoods").textContent = res.goods.toFixed(2) + " t";
+
+        // 进度条（以各分项最大值为基准）
+        var maxSection = Math.max(res.transport, res.energy, res.diet, res.goods, 0.001);
+        document.getElementById("barTransport").style.width = pct(res.transport, maxSection) + "%";
+        document.getElementById("barEnergy").style.width = pct(res.energy, maxSection) + "%";
+        document.getElementById("barDiet").style.width = pct(res.diet, maxSection) + "%";
+        document.getElementById("barGoods").style.width = pct(res.goods, maxSection) + "%";
+
+        // 对比徽章（outerHTML 替换）
+        document.getElementById("cmpYou").textContent = res.total.toFixed(2) + " t";
+        document.getElementById("diffChina").outerHTML = diffBadge(res.total, BENCHMARKS.china);
+        document.getElementById("diffWorld").outerHTML = diffBadge(res.total, BENCHMARKS.world);
+        document.getElementById("diffTarget").outerHTML = diffBadge(res.total, BENCHMARKS.target);
+
+        // 减排建议
+        var tips = buildTips(res);
+        var container = document.getElementById("tipsContainer");
+        container.innerHTML = "";
+        tips.forEach(function (tip) {
+          var div = document.createElement("div");
+          div.className = "cf-tip";
+          var iconSpan = document.createElement("span");
+          iconSpan.className = "cf-tip-icon";
+          iconSpan.textContent = tip.icon;
+          var textSpan = document.createElement("span");
+          textSpan.textContent = tip.text;
+          div.appendChild(iconSpan);
+          div.appendChild(textSpan);
+          container.appendChild(div);
+        });
+
+        // 状态栏
+        var vsWorld = res.total - BENCHMARKS.world;
+        statTotalEl.textContent = res.total.toFixed(2);
+        statVsWorldEl.textContent = (vsWorld >= 0 ? "+" : "") + vsWorld.toFixed(2) + " t";
+        statsEl.classList.add("show");
+
+        if (res.total <= BENCHMARKS.target) {
+          statusEl.textContent = "低于可持续目标，优秀！";
+          statusEl.className = "status success";
+        } else if (res.total <= BENCHMARKS.world) {
+          statusEl.textContent = "低于全球人均，保持下去！";
+          statusEl.className = "status success";
+        } else if (res.total <= BENCHMARKS.china) {
+          statusEl.textContent = "接近中国人均水平，还有减排空间。";
+          statusEl.className = "status";
+        } else {
+          statusEl.textContent = "高于中国人均，建议参考减排建议。";
+          statusEl.className = "status error";
+        }
+      }
+
+      document.getElementById("btnCalc").onclick = function () {
+        var res = calcCarbon();
+        renderResult(res);
+      };
+
+      document.getElementById("btnReset").onclick = function () {
+        [
+          "carKm",
+          "flightShort",
+          "flightLong",
+          "publicKm",
+          "electricity",
+          "naturalGas",
+          "clothingBuy",
+          "electronicsNew"
+        ].forEach(function (id) {
+          document.getElementById(id).value = "";
+        });
+        document.getElementById("carType").value = "petrol";
+        document.getElementById("householdSize").value = "2";
+        document.getElementById("dietType").value = "low_meat";
+        document.getElementById("foodWaste").value = "medium";
+
+        document.getElementById("cfPlaceholder").style.display = "flex";
+        document.getElementById("cfResult").style.display = "none";
+        statsEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      };
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

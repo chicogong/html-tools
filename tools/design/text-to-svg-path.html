@@ -1012,3 +1012,327 @@
         ]
       }
 </script>
+
+<script>
+/* global opentype */
+
+      var uploadedFont = null;
+      var lastSvgCode = "";
+
+      var textInputEl = document.getElementById("textInput");
+      var svgOutputEl = document.getElementById("svgOutput");
+      var svgPreviewEl = document.getElementById("svgPreview");
+      var statusEl = document.getElementById("status");
+      var statsEl = document.getElementById("stats");
+      var fontFileInputEl = document.getElementById("fontFileInput");
+      var fontUploadLabelEl = document.getElementById("fontUploadLabel");
+      var fontUploadTextEl = document.getElementById("fontUploadText");
+      var charCountEl = document.getElementById("charCount");
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function updateCharCount() {
+        var text = textInputEl.value;
+        charCountEl.textContent = text.length + " 字符";
+      }
+
+      function escapeXml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      /**
+       * Generate SVG using opentype.js when a font is uploaded.
+       */
+      function generateWithOpentype(text, fontSize, fillColor, strokeColor, strokeWidth, fillNone) {
+        var font = uploadedFont;
+        var x = 0;
+        var y = fontSize;
+        var pathData = font.getPath(text, x, y, fontSize);
+        var bbox = pathData.getBoundingBox();
+
+        var padX = strokeWidth + 4;
+        var padY = strokeWidth + 4;
+        var bboxW = bbox.x2 - bbox.x1;
+        var bboxH = bbox.y2 - bbox.y1;
+        var svgW = Math.ceil(bboxW > 0 ? bboxW + padX * 2 : fontSize * text.length);
+        var svgH = Math.ceil(bboxH > 0 ? bboxH + padY * 2 : fontSize * 1.4);
+
+        var dx = -bbox.x1 + padX;
+        var dy = -bbox.y1 + padY;
+
+        var adjusted = font.getPath(text, x + dx, y + dy, fontSize);
+        var pathStr = adjusted.toPathData(2);
+
+        var fill = fillNone ? "none" : fillColor;
+        var stroke = strokeWidth > 0 ? strokeColor : "none";
+        var swAttr = strokeWidth > 0 ? ' stroke-width="' + strokeWidth + '"' : "";
+
+        var svg =
+          '<svg xmlns="http://www.w3.org/2000/svg"' +
+          ' width="' +
+          svgW +
+          '" height="' +
+          svgH +
+          '"' +
+          ' viewBox="0 0 ' +
+          svgW +
+          " " +
+          svgH +
+          '">\n' +
+          '  <path d="' +
+          pathStr +
+          '"' +
+          ' fill="' +
+          fill +
+          '"' +
+          ' stroke="' +
+          stroke +
+          '"' +
+          swAttr +
+          "/>\n" +
+          "</svg>";
+
+        return {
+          svg: svg,
+          pathCount: (pathStr.match(/[MmZz]/g) || []).length
+        };
+      }
+
+      /**
+       * Fallback: SVG with <text> element when no font is uploaded.
+       */
+      function generateFallbackSvg(text, fontSize, fillColor, strokeColor, strokeWidth, fillNone) {
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
+        ctx.font = fontSize + "px sans-serif";
+        var metrics = ctx.measureText(text);
+
+        var textW = Math.ceil(metrics.width) || fontSize * text.length * 0.6;
+        var ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
+        var descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
+        var textH = Math.ceil(ascent + descent);
+
+        var pad = strokeWidth + 8;
+        var svgW = textW + pad * 2;
+        var svgH = textH + pad * 2;
+        var baseY = pad + ascent;
+
+        var fill = fillNone ? "none" : fillColor;
+        var stroke = strokeWidth > 0 ? strokeColor : "none";
+        var swAttr = strokeWidth > 0 ? ' stroke-width="' + strokeWidth + '"' : "";
+
+        var svg =
+          '<svg xmlns="http://www.w3.org/2000/svg"' +
+          ' width="' +
+          svgW +
+          '" height="' +
+          svgH +
+          '"' +
+          ' viewBox="0 0 ' +
+          svgW +
+          " " +
+          svgH +
+          '">\n' +
+          "  <!-- NOTE: Upload a TTF/OTF font to generate true <path> outlines -->\n" +
+          '  <text x="' +
+          pad +
+          '" y="' +
+          baseY.toFixed(1) +
+          '"' +
+          ' font-family="sans-serif"' +
+          ' font-size="' +
+          fontSize +
+          '"' +
+          ' fill="' +
+          fill +
+          '"' +
+          ' stroke="' +
+          stroke +
+          '"' +
+          swAttr +
+          ">" +
+          escapeXml(text) +
+          "</text>\n" +
+          "</svg>";
+
+        return { svg: svg, pathCount: 0 };
+      }
+
+      function doConvert() {
+        var text = textInputEl.value;
+        if (!text.trim()) {
+          showStatus("请先输入文字", "error");
+          return;
+        }
+
+        var fontSize = parseInt(document.getElementById("fontSize").value, 10) || 72;
+        var fillColor = document.getElementById("fillColor").value;
+        var strokeColor = document.getElementById("strokeColor").value;
+        var strokeWidth = parseFloat(document.getElementById("strokeWidth").value) || 0;
+        var fillNone = document.getElementById("fillNone").checked;
+
+        var result;
+        var modeText;
+
+        if (uploadedFont) {
+          try {
+            result = generateWithOpentype(
+              text,
+              fontSize,
+              fillColor,
+              strokeColor,
+              strokeWidth,
+              fillNone
+            );
+            modeText = "路径模式（TTF 字体）";
+          } catch (err) {
+            showStatus("路径生成失败: " + err.message, "error");
+            return;
+          }
+        } else {
+          result = generateFallbackSvg(
+            text,
+            fontSize,
+            fillColor,
+            strokeColor,
+            strokeWidth,
+            fillNone
+          );
+          modeText = "文本模式（上传 TTF 获取真实路径）";
+        }
+
+        lastSvgCode = result.svg;
+        svgOutputEl.value = result.svg;
+        svgPreviewEl.innerHTML = result.svg;
+        document.getElementById("previewMode").textContent = modeText;
+
+        document.getElementById("statChars").textContent = text.length;
+        document.getElementById("statPaths").textContent = result.pathCount;
+        document.getElementById("statSize").textContent = formatBytes(new Blob([result.svg]).size);
+        statsEl.classList.add("show");
+
+        if (uploadedFont) {
+          showStatus("SVG 路径生成成功", "success");
+        } else {
+          showStatus("已生成 SVG（上传 TTF 字体可获得真实轮廓路径）", "");
+        }
+      }
+
+      fontFileInputEl.addEventListener("change", function () {
+        var file = fontFileInputEl.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            var buffer = e.target.result;
+            uploadedFont = opentype.parse(buffer);
+            fontUploadTextEl.textContent = file.name;
+            fontUploadLabelEl.classList.add("has-font");
+            showStatus("字体已加载：" + file.name, "success");
+          } catch (err) {
+            uploadedFont = null;
+            fontUploadLabelEl.classList.remove("has-font");
+            fontUploadTextEl.textContent = "上传 TTF/OTF 字体";
+            showStatus("字体加载失败：" + err.message, "error");
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+
+      document.getElementById("btnConvert").onclick = doConvert;
+
+      document.getElementById("btnCopySvg").onclick = async function () {
+        if (!lastSvgCode) {
+          showStatus("请先生成 SVG", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(lastSvgCode);
+          showStatus("SVG 代码已复制", "success");
+        } catch (e) {
+          showStatus("复制失败，请手动复制", "error");
+        }
+      };
+
+      document.getElementById("btnDownload").onclick = function () {
+        if (!lastSvgCode) {
+          showStatus("请先生成 SVG", "error");
+          return;
+        }
+        var blob = new Blob([lastSvgCode], { type: "image/svg+xml" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        var rawText = textInputEl.value.trim().slice(0, 20).replace(/\s+/g, "_") || "text";
+        a.download = rawText + ".svg";
+        a.click();
+        URL.revokeObjectURL(url);
+        showStatus("已下载 " + a.download, "success");
+      };
+
+      document.getElementById("btnClear").onclick = function () {
+        textInputEl.value = "";
+        svgOutputEl.value = "";
+        svgPreviewEl.innerHTML =
+          '<div class="svg-preview-placeholder">输入文字后点击「生成路径」预览</div>';
+        lastSvgCode = "";
+        statsEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+        charCountEl.textContent = "";
+        document.getElementById("previewMode").textContent = "";
+      };
+
+      textInputEl.addEventListener("input", updateCharCount);
+
+      function autoConvertIfReady() {
+        if (textInputEl.value.trim() && lastSvgCode) doConvert();
+      }
+      document.getElementById("fontSize").addEventListener("change", autoConvertIfReady);
+      document.getElementById("fillColor").addEventListener("input", autoConvertIfReady);
+      document.getElementById("strokeColor").addEventListener("input", autoConvertIfReady);
+      document.getElementById("strokeWidth").addEventListener("change", autoConvertIfReady);
+      document.getElementById("fillNone").addEventListener("change", autoConvertIfReady);
+
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          doConvert();
+        }
+      });
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

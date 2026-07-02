@@ -891,3 +891,368 @@
         ]
       }
 </script>
+
+<script>
+/* global PDFLib */
+
+      var images = []; // { file, url, name, w, h }
+      var dragSrcIndex = -1;
+
+      var dropZoneEl = document.getElementById("dropZone");
+      var imageListEl = document.getElementById("imageList");
+      var emptyStateEl = document.getElementById("emptyState");
+      var statusEl = document.getElementById("status");
+      var btnGenerate = document.getElementById("btnGenerate");
+      var pageSizeEl = document.getElementById("pageSize");
+      var pageOrientationEl = document.getElementById("pageOrientation");
+      var pageMarginEl = document.getElementById("pageMargin");
+
+      // 隐藏 file input
+      var fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/jpeg,image/png";
+      fileInput.multiple = true;
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function updateUI() {
+        var hasImages = images.length > 0;
+        emptyStateEl.classList.toggle("show", !hasImages);
+        btnGenerate.disabled = !hasImages;
+        if (hasImages) {
+          dropZoneEl.style.display = "none";
+        } else {
+          dropZoneEl.style.display = "";
+        }
+      }
+
+      function formatName(name) {
+        return name.length > 18 ? name.slice(0, 15) + "..." : name;
+      }
+
+      function renderList() {
+        imageListEl.innerHTML = "";
+        images.forEach(function (img, idx) {
+          var item = document.createElement("div");
+          item.className = "image-item";
+          item.draggable = true;
+          item.dataset.index = idx;
+
+          var order = document.createElement("div");
+          order.className = "image-order";
+          order.textContent = idx + 1;
+
+          var thumb = document.createElement("img");
+          thumb.className = "image-thumb";
+          thumb.src = img.url;
+          thumb.alt = img.name;
+
+          var meta = document.createElement("div");
+          meta.className = "image-meta";
+          meta.textContent = formatName(img.name);
+
+          var controls = document.createElement("div");
+          controls.className = "image-controls";
+
+          var delBtn = document.createElement("button");
+          delBtn.className = "image-btn";
+          delBtn.title = "删除";
+          delBtn.textContent = "✕";
+
+          var upBtn = document.createElement("button");
+          upBtn.className = "image-btn move-btn";
+          upBtn.title = "上移";
+          upBtn.textContent = "↑";
+
+          var downBtn = document.createElement("button");
+          downBtn.className = "image-btn move-btn";
+          downBtn.title = "下移";
+          downBtn.textContent = "↓";
+
+          // button events via closure
+          (function (i) {
+            delBtn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              URL.revokeObjectURL(images[i].url);
+              images.splice(i, 1);
+              renderList();
+              updateUI();
+              showStatus("已删除第 " + (i + 1) + " 张图片", "");
+            });
+            upBtn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              if (i === 0) return;
+              var tmp = images[i];
+              images[i] = images[i - 1];
+              images[i - 1] = tmp;
+              renderList();
+            });
+            downBtn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              if (i === images.length - 1) return;
+              var tmp = images[i];
+              images[i] = images[i + 1];
+              images[i + 1] = tmp;
+              renderList();
+            });
+          })(idx);
+
+          // drag-and-drop reorder
+          item.addEventListener("dragstart", function () {
+            dragSrcIndex = idx;
+            setTimeout(function () {
+              item.classList.add("dragging");
+            }, 0);
+          });
+          item.addEventListener("dragend", function () {
+            item.classList.remove("dragging");
+            document.querySelectorAll(".image-item").forEach(function (el) {
+              el.classList.remove("drag-target");
+            });
+          });
+          item.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            document.querySelectorAll(".image-item").forEach(function (el) {
+              el.classList.remove("drag-target");
+            });
+            item.classList.add("drag-target");
+          });
+          item.addEventListener("drop", function (e) {
+            e.preventDefault();
+            item.classList.remove("drag-target");
+            if (dragSrcIndex === -1 || dragSrcIndex === idx) return;
+            var moved = images.splice(dragSrcIndex, 1)[0];
+            images.splice(idx, 0, moved);
+            dragSrcIndex = -1;
+            renderList();
+          });
+
+          controls.appendChild(delBtn);
+          controls.appendChild(upBtn);
+          controls.appendChild(downBtn);
+          item.appendChild(order);
+          item.appendChild(thumb);
+          item.appendChild(meta);
+          item.appendChild(controls);
+          imageListEl.appendChild(item);
+        });
+      }
+
+      function addFiles(files) {
+        var validFiles = Array.prototype.filter.call(files, function (f) {
+          return f.type === "image/jpeg" || f.type === "image/png";
+        });
+        if (validFiles.length === 0) {
+          showStatus("请选择 JPG 或 PNG 图片", "error");
+          return;
+        }
+        var loaded = 0;
+        validFiles.forEach(function (file) {
+          var url = URL.createObjectURL(file);
+          var imgEl = new Image();
+          imgEl.onload = function () {
+            images.push({
+              file: file,
+              url: url,
+              name: file.name,
+              w: imgEl.naturalWidth,
+              h: imgEl.naturalHeight
+            });
+            loaded++;
+            if (loaded === validFiles.length) {
+              renderList();
+              updateUI();
+              showStatus(
+                "已添加 " + validFiles.length + " 张图片，共 " + images.length + " 张",
+                "success"
+              );
+            }
+          };
+          imgEl.onerror = function () {
+            URL.revokeObjectURL(url);
+            loaded++;
+            if (loaded === validFiles.length) {
+              renderList();
+              updateUI();
+            }
+          };
+          imgEl.src = url;
+        });
+      }
+
+      // drop zone
+      dropZoneEl.addEventListener("click", function () {
+        fileInput.value = "";
+        fileInput.click();
+      });
+      dropZoneEl.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        dropZoneEl.classList.add("drag-over");
+      });
+      dropZoneEl.addEventListener("dragleave", function () {
+        dropZoneEl.classList.remove("drag-over");
+      });
+      dropZoneEl.addEventListener("drop", function (e) {
+        e.preventDefault();
+        dropZoneEl.classList.remove("drag-over");
+        addFiles(e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files && fileInput.files.length > 0) {
+          addFiles(fileInput.files);
+        }
+      });
+
+      document.getElementById("btnSelect").addEventListener("click", function () {
+        fileInput.value = "";
+        fileInput.click();
+      });
+
+      document.getElementById("btnClear").addEventListener("click", function () {
+        images.forEach(function (img) {
+          URL.revokeObjectURL(img.url);
+        });
+        images = [];
+        renderList();
+        updateUI();
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      });
+
+      // PDF generation
+      btnGenerate.addEventListener("click", async function () {
+        if (images.length === 0) {
+          showStatus("请先添加图片", "error");
+          return;
+        }
+        btnGenerate.disabled = true;
+        showStatus("正在生成 PDF…", "");
+
+        try {
+          var doc = await PDFLib.PDFDocument.create();
+          var sizeName = pageSizeEl.value;
+          var orientation = pageOrientationEl.value;
+          var margin = parseInt(pageMarginEl.value, 10);
+
+          // A4 in points: 595 x 842; Letter: 612 x 792
+          var A4 = [595.28, 841.89];
+          var LETTER = [612, 792];
+
+          for (var i = 0; i < images.length; i++) {
+            var imgData = images[i];
+
+            // read file as ArrayBuffer
+            var bytes = await new Promise(function (resolve, reject) {
+              var reader = new FileReader();
+              reader.onload = function (e) {
+                resolve(new Uint8Array(e.target.result));
+              };
+              reader.onerror = reject;
+              reader.readAsArrayBuffer(imgData.file);
+            });
+
+            var isJpg = imgData.file.type === "image/jpeg";
+            var embeddedImg = isJpg ? await doc.embedJpg(bytes) : await doc.embedPng(bytes);
+
+            var imgW = imgData.w;
+            var imgH = imgData.h;
+
+            var pageW, pageH;
+            if (sizeName === "fit") {
+              pageW = imgW;
+              pageH = imgH;
+            } else if (sizeName === "a4") {
+              pageW = A4[0];
+              pageH = A4[1];
+            } else {
+              pageW = LETTER[0];
+              pageH = LETTER[1];
+            }
+
+            // apply orientation
+            if (orientation === "landscape") {
+              if (pageH > pageW) {
+                var t = pageW;
+                pageW = pageH;
+                pageH = t;
+              }
+            } else if (orientation === "portrait") {
+              if (pageW > pageH) {
+                var t2 = pageW;
+                pageW = pageH;
+                pageH = t2;
+              }
+            } else if (orientation === "auto" && sizeName !== "fit") {
+              // match image orientation
+              if (imgW > imgH && pageH > pageW) {
+                var t3 = pageW;
+                pageW = pageH;
+                pageH = t3;
+              } else if (imgH > imgW && pageW > pageH) {
+                var t4 = pageW;
+                pageW = pageH;
+                pageH = t4;
+              }
+            }
+
+            var page = doc.addPage([pageW, pageH]);
+
+            var availW = pageW - margin * 2;
+            var availH = pageH - margin * 2;
+
+            // scale image to fit within available area, preserving aspect ratio
+            var scale = Math.min(availW / imgW, availH / imgH);
+            var drawW = imgW * scale;
+            var drawH = imgH * scale;
+            var drawX = margin + (availW - drawW) / 2;
+            var drawY = margin + (availH - drawH) / 2;
+
+            page.drawImage(embeddedImg, { x: drawX, y: drawY, width: drawW, height: drawH });
+          }
+
+          var pdfBytes = await doc.save();
+          var blob = new Blob([pdfBytes], { type: "application/pdf" });
+          var dlUrl = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = dlUrl;
+          a.download = "images-" + Date.now() + ".pdf";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () {
+            URL.revokeObjectURL(dlUrl);
+          }, 10000);
+          showStatus("PDF 已生成并下载（" + images.length + " 页）", "success");
+        } catch (err) {
+          showStatus("生成失败: " + err.message, "error");
+        }
+
+        btnGenerate.disabled = images.length === 0;
+      });
+
+      updateUI();
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

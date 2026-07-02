@@ -994,3 +994,271 @@
         ]
       }
 </script>
+
+<script>
+// ── DOM references ──────────────────────────────────────────────
+      const inputModeEl = document.getElementById("inputMode");
+      const algorithmEl = document.getElementById("algorithm");
+      const resourceTypeEl = document.getElementById("resourceType");
+      const urlSection = document.getElementById("urlSection");
+      const textSection = document.getElementById("textSection");
+      const urlInputEl = document.getElementById("urlInput");
+      const textInputEl = document.getElementById("textInput");
+      const outputSection = document.getElementById("outputSection");
+      const hashOutputEl = document.getElementById("hashOutput");
+      const tagOutputEl = document.getElementById("tagOutput");
+      const allHashTableEl = document.getElementById("allHashTable");
+      const statusEl = document.getElementById("status");
+      const statsEl = document.getElementById("stats");
+      const statSizeEl = document.getElementById("statSize");
+      const statAlgoEl = document.getElementById("statAlgo");
+
+      // ── Utilities ────────────────────────────────────────────────────
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function algoLabel(algo) {
+        return algo.toLowerCase().replace("-", "");
+      }
+
+      async function digestBuffer(algo, buffer) {
+        const hashBuf = await crypto.subtle.digest(algo, buffer);
+        const bytes = new Uint8Array(hashBuf);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+
+      function buildTag(resourceType, url, algo, hash, crossorigin) {
+        const integrity = algoLabel(algo) + "-" + hash;
+        if (resourceType === "script") {
+          return (
+            '<script src="' +
+            url +
+            '"\n  integrity="' +
+            integrity +
+            '"\n  crossorigin="' +
+            crossorigin +
+            '"><\/script>'
+          );
+        }
+        return (
+          '<link rel="stylesheet" href="' +
+          url +
+          '"\n  integrity="' +
+          integrity +
+          '"\n  crossorigin="' +
+          crossorigin +
+          '" />'
+        );
+      }
+
+      function renderAllHashes(allResults, url, resourceType) {
+        allHashTableEl.textContent = "";
+        allResults.forEach(function (item) {
+          const integrity = algoLabel(item.algo) + "-" + item.hash;
+          const row = document.createElement("div");
+          row.className = "sri-row";
+
+          const label = document.createElement("span");
+          label.className = "sri-algo-label";
+          label.textContent = item.algo;
+
+          const val = document.createElement("span");
+          val.className = "sri-hash-val";
+          val.textContent = integrity;
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "btn";
+          copyBtn.textContent = "复制";
+          copyBtn.onclick = async function () {
+            try {
+              await navigator.clipboard.writeText(integrity);
+              copyBtn.textContent = "已复制";
+              setTimeout(function () {
+                copyBtn.textContent = "复制";
+              }, 1500);
+            } catch (_e) {
+              showStatus("复制失败", "error");
+            }
+          };
+
+          row.appendChild(label);
+          row.appendChild(val);
+          row.appendChild(copyBtn);
+          allHashTableEl.appendChild(row);
+        });
+      }
+
+      async function processBuffer(buffer, url) {
+        const algo = algorithmEl.value;
+        const resourceType = resourceTypeEl.value;
+        const crossorigin = "anonymous";
+
+        const hash = await digestBuffer(algo, buffer);
+        const integrity = algoLabel(algo) + "-" + hash;
+        hashOutputEl.value = integrity;
+        tagOutputEl.value = buildTag(resourceType, url || "", algo, hash, crossorigin);
+
+        // Compute all three algorithms for comparison
+        const algos = ["SHA-256", "SHA-384", "SHA-512"];
+        const allResults = await Promise.all(
+          algos.map(async function (a) {
+            return { algo: a, hash: await digestBuffer(a, buffer) };
+          })
+        );
+        renderAllHashes(allResults, url || "", resourceType);
+
+        const bytes = buffer.byteLength;
+        statSizeEl.textContent = formatSize(bytes);
+        statAlgoEl.textContent = algo;
+        statsEl.classList.add("show");
+        outputSection.style.display = "";
+        showStatus("生成成功", "success");
+      }
+
+      // ── Input mode toggle ────────────────────────────────────────────
+      inputModeEl.onchange = function () {
+        if (inputModeEl.value === "url") {
+          urlSection.style.display = "";
+          textSection.style.display = "none";
+        } else {
+          urlSection.style.display = "none";
+          textSection.style.display = "";
+        }
+        outputSection.style.display = "none";
+        statsEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      };
+
+      // ── Fetch from URL ───────────────────────────────────────────────
+      document.getElementById("btnFetch").onclick = async function () {
+        const url = urlInputEl.value.trim();
+        if (!url) {
+          showStatus("请输入 URL", "error");
+          return;
+        }
+        try {
+          new URL(url);
+        } catch (_e) {
+          showStatus("URL 格式无效", "error");
+          return;
+        }
+        showStatus("正在获取资源…", "");
+        try {
+          const resp = await fetch(url, { mode: "cors" });
+          if (!resp.ok) {
+            showStatus("请求失败：HTTP " + resp.status, "error");
+            return;
+          }
+          const buffer = await resp.arrayBuffer();
+          await processBuffer(buffer, url);
+        } catch (err) {
+          showStatus("获取失败（CORS 限制？）：" + err.message, "error");
+        }
+      };
+
+      // ── Generate from pasted text ────────────────────────────────────
+      document.getElementById("btnGenFromText").onclick = async function () {
+        const text = textInputEl.value;
+        if (!text) {
+          showStatus("请粘贴资源内容", "error");
+          return;
+        }
+        const enc = new TextEncoder();
+        const buffer = enc.encode(text).buffer;
+        await processBuffer(buffer, "");
+      };
+
+      document.getElementById("btnClearText").onclick = function () {
+        textInputEl.value = "";
+        outputSection.style.display = "none";
+        statsEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      };
+
+      // ── Copy buttons ─────────────────────────────────────────────────
+      document.getElementById("btnCopyHash").onclick = async function () {
+        if (!hashOutputEl.value) {
+          showStatus("没有内容", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(hashOutputEl.value);
+          showStatus("integrity 值已复制", "success");
+        } catch (_e) {
+          showStatus("复制失败", "error");
+        }
+      };
+
+      document.getElementById("btnCopyTag").onclick = async function () {
+        if (!tagOutputEl.value) {
+          showStatus("没有内容", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(tagOutputEl.value);
+          showStatus("HTML 标签已复制", "success");
+        } catch (_e) {
+          showStatus("复制失败", "error");
+        }
+      };
+
+      // ── When algorithm or resource type changes, re-generate if we already have output ──
+      algorithmEl.onchange = async function () {
+        if (outputSection.style.display === "none") return;
+        if (inputModeEl.value === "url") {
+          document.getElementById("btnFetch").click();
+        } else {
+          document.getElementById("btnGenFromText").click();
+        }
+      };
+      resourceTypeEl.onchange = async function () {
+        if (outputSection.style.display === "none") return;
+        if (inputModeEl.value === "url") {
+          document.getElementById("btnFetch").click();
+        } else {
+          document.getElementById("btnGenFromText").click();
+        }
+      };
+
+      // ── Keyboard shortcut: Enter in URL input triggers fetch ─────────
+      urlInputEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          document.getElementById("btnFetch").click();
+        }
+      });
+
+      window.toggleTheme = function () {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

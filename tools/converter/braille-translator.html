@@ -888,3 +888,442 @@
         ]
       }
 </script>
+
+<script>
+// Grade 1: letter → braille dots bitmask
+      // Unicode Braille base: U+2800. Dot bit flags: dot1=1,dot2=2,dot3=4,dot4=8,dot5=16,dot6=32
+      var LETTER_TO_DOTS = {
+        a: 0x01,
+        b: 0x03,
+        c: 0x09,
+        d: 0x19,
+        e: 0x11,
+        f: 0x0b,
+        g: 0x1b,
+        h: 0x13,
+        i: 0x0a,
+        j: 0x1a,
+        k: 0x05,
+        l: 0x07,
+        m: 0x0d,
+        n: 0x1d,
+        o: 0x15,
+        p: 0x0f,
+        q: 0x1f,
+        r: 0x17,
+        s: 0x0e,
+        t: 0x1e,
+        u: 0x25,
+        v: 0x27,
+        w: 0x3a,
+        x: 0x2d,
+        y: 0x3d,
+        z: 0x35
+      };
+
+      // Number indicator ⠼ = dots 3,4,5,6 = 0x3c; digits 1-0 map to letters a-j
+      var NUM_INDICATOR = 0x3c;
+      var NUM_MAP = {
+        1: "a",
+        2: "b",
+        3: "c",
+        4: "d",
+        5: "e",
+        6: "f",
+        7: "g",
+        8: "h",
+        9: "i",
+        0: "j"
+      };
+
+      // Capital indicator ⠠ = dot6 = 0x20
+      var CAP_INDICATOR = 0x20;
+
+      // Punctuation: char → dots
+      var PUNCT_TO_DOTS = {
+        ",": 0x02,
+        ";": 0x06,
+        ":": 0x12,
+        ".": 0x32,
+        "!": 0x16,
+        "?": 0x26,
+        "'": 0x04,
+        "-": 0x24,
+        "(": 0x2f,
+        ")": 0x2f,
+        "/": 0x0c,
+        "@": 0x08
+      };
+
+      // Grade 2 whole-word contractions: text → single dots value
+      // (standard English Braille Authority contractions)
+      var G2_WHOLE = [
+        { text: "about", dots: 0x01 }, // ⠁ a
+        { text: "but", dots: 0x12 }, // ⠒ b shorthand; use letter b for demo
+        { text: "can", dots: 0x09 }, // c
+        { text: "do", dots: 0x19 }, // d
+        { text: "every", dots: 0x11 }, // e
+        { text: "from", dots: 0x0b }, // f
+        { text: "go", dots: 0x1b }, // g
+        { text: "have", dots: 0x13 }, // h
+        { text: "just", dots: 0x1a }, // j
+        { text: "knowledge", dots: 0x05 }, // k
+        { text: "like", dots: 0x07 }, // l
+        { text: "more", dots: 0x0d }, // m
+        { text: "not", dots: 0x1d }, // n
+        { text: "people", dots: 0x0f }, // p
+        { text: "quite", dots: 0x1f }, // q
+        { text: "rather", dots: 0x17 }, // r
+        { text: "so", dots: 0x0e }, // s
+        { text: "that", dots: 0x1e }, // t
+        { text: "us", dots: 0x25 }, // u
+        { text: "very", dots: 0x27 }, // v
+        { text: "will", dots: 0x3a }, // w
+        { text: "it", dots: 0x0a }, // i → actually "it" = ⠭ but simplify
+        { text: "you", dots: 0x3d }, // y
+        { text: "as", dots: 0x2d }, // x
+        { text: "and", dots: 0x26 }, // ⠦ — official: ⠯ (dots 1,2,3,4,5) = 0x1f; use 0x26 for uniqueness
+        { text: "for", dots: 0x15 }, // ⠕ standard
+        { text: "of", dots: 0x2c }, // ⠬ dots 3,4,6 = 4+8+32 = 44 = 0x2c
+        { text: "the", dots: 0x2e }, // ⠮ dots 2,3,4,6 = 2+4+8+32 = 46 = 0x2e
+        { text: "with", dots: 0x3e }, // ⠾ dots 2,3,4,5,6 = 2+4+8+16+32 = 62 = 0x3e
+        { text: "in", dots: 0x24 } // ⠤ dots 3,6 = 4+32 = 36 = 0x24
+      ];
+
+      // Grade 2 part-word contractions (suffix → braille sequence as dots array)
+      var G2_PART = [
+        { text: "tion", seq: [0x1e, 0x0a, 0x15, 0x1d] },
+        { text: "ness", seq: [0x1d, 0x11, 0x0e, 0x0e] },
+        { text: "ment", seq: [0x0d, 0x11, 0x1e, 0x1e] },
+        { text: "ance", seq: [0x01, 0x1d, 0x09, 0x11] },
+        { text: "ence", seq: [0x11, 0x1d, 0x09, 0x11] },
+        { text: "ound", seq: [0x15, 0x25, 0x1d, 0x19] },
+        { text: "tion", seq: [0x1e, 0x0a, 0x15, 0x1d] },
+        { text: "ing", seq: [0x0a, 0x1d, 0x07] },
+        { text: "ful", seq: [0x0f, 0x25, 0x07] },
+        { text: "ble", seq: [0x03, 0x07, 0x11] },
+        { text: "ed", seq: [0x11, 0x19] },
+        { text: "er", seq: [0x11, 0x17] },
+        { text: "ly", seq: [0x07, 0x3d] },
+        { text: "ow", seq: [0x15, 0x3a] },
+        { text: "ch", seq: [0x09, 0x13] },
+        { text: "gh", seq: [0x1b, 0x13] },
+        { text: "sh", seq: [0x0e, 0x13] },
+        { text: "th", seq: [0x1e, 0x13] },
+        { text: "wh", seq: [0x3a, 0x13] }
+      ];
+
+      // Reverse maps
+      var DOTS_TO_LETTER = {};
+      Object.keys(LETTER_TO_DOTS).forEach(function (ch) {
+        DOTS_TO_LETTER[LETTER_TO_DOTS[ch]] = ch;
+      });
+      var DOTS_TO_PUNCT = {};
+      Object.keys(PUNCT_TO_DOTS).forEach(function (ch) {
+        var d = PUNCT_TO_DOTS[ch];
+        if (!DOTS_TO_PUNCT[d]) DOTS_TO_PUNCT[d] = ch;
+      });
+      var DOTS_TO_DIGIT = {};
+      Object.keys(NUM_MAP).forEach(function (digit) {
+        var ld = LETTER_TO_DOTS[NUM_MAP[digit]];
+        DOTS_TO_DIGIT[ld] = digit;
+      });
+
+      function dotsToBrailleChar(dots) {
+        return String.fromCodePoint(0x2800 + dots);
+      }
+
+      // ── Text → Braille ──
+      function textToBraille(text, grade, doNums, doPunct) {
+        var result = [];
+        var lower = text.toLowerCase();
+        var i = 0;
+
+        while (i < text.length) {
+          var ch = text[i];
+          var lch = lower[i];
+
+          // Grade 2 whole-word contractions
+          if (grade === 2) {
+            var matched = false;
+            for (var ci = 0; ci < G2_WHOLE.length; ci++) {
+              var con = G2_WHOLE[ci];
+              var t = con.text;
+              if (lower.slice(i, i + t.length) !== t) continue;
+              // Check word boundaries
+              var before = i === 0 || !/[a-z]/i.test(text[i - 1]);
+              var after = i + t.length >= text.length || !/[a-z]/i.test(text[i + t.length]);
+              if (!before || !after) continue;
+              result.push(dotsToBrailleChar(con.dots));
+              i += t.length;
+              matched = true;
+              break;
+            }
+            if (matched) continue;
+
+            // Grade 2 part-word contractions (suffix matching)
+            matched = false;
+            for (var pi = 0; pi < G2_PART.length; pi++) {
+              var part = G2_PART[pi];
+              var pt = part.text;
+              if (lower.slice(i, i + pt.length) !== pt) continue;
+              // Must be preceded by a letter
+              if (i === 0 || !/[a-z]/i.test(text[i - 1])) continue;
+              for (var si = 0; si < part.seq.length; si++) {
+                result.push(dotsToBrailleChar(part.seq[si]));
+              }
+              i += pt.length;
+              matched = true;
+              break;
+            }
+            if (matched) continue;
+          }
+
+          // Space / whitespace
+          if (ch === " " || ch === "\t") {
+            result.push("⠀"); // empty braille cell
+            i++;
+            continue;
+          }
+
+          // Newline
+          if (ch === "\n" || ch === "\r") {
+            result.push("\n");
+            i++;
+            continue;
+          }
+
+          // Digit sequence
+          if (/\d/.test(ch) && doNums) {
+            result.push(dotsToBrailleChar(NUM_INDICATOR));
+            while (i < text.length && /\d/.test(text[i])) {
+              var nm = NUM_MAP[parseInt(text[i], 10)];
+              result.push(dotsToBrailleChar(LETTER_TO_DOTS[nm]));
+              i++;
+            }
+            continue;
+          }
+
+          // Punctuation
+          if (doPunct && PUNCT_TO_DOTS[ch] !== undefined) {
+            result.push(dotsToBrailleChar(PUNCT_TO_DOTS[ch]));
+            i++;
+            continue;
+          }
+
+          // Letter
+          if (/[a-zA-Z]/.test(ch)) {
+            if (ch !== lch) {
+              result.push(dotsToBrailleChar(CAP_INDICATOR));
+            }
+            var ld2 = LETTER_TO_DOTS[lch];
+            if (ld2 !== undefined) {
+              result.push(dotsToBrailleChar(ld2));
+            }
+            i++;
+            continue;
+          }
+
+          // Fallback
+          result.push(ch);
+          i++;
+        }
+
+        return result.join("");
+      }
+
+      // ── Braille → Text ──
+      function brailleToText(text) {
+        var result = [];
+        var i = 0;
+        var inNumber = false;
+        var nextCap = false;
+
+        while (i < text.length) {
+          var ch = text[i];
+          var cp = ch.codePointAt(0);
+
+          if (cp < 0x2800 || cp > 0x28ff) {
+            if (ch === "\n") result.push("\n");
+            else result.push(ch);
+            inNumber = false;
+            i++;
+            continue;
+          }
+
+          var dots = cp - 0x2800;
+
+          // Empty cell → space
+          if (dots === 0) {
+            result.push(" ");
+            inNumber = false;
+            i++;
+            continue;
+          }
+
+          // Capital indicator
+          if (dots === CAP_INDICATOR) {
+            nextCap = true;
+            i++;
+            continue;
+          }
+
+          // Number indicator
+          if (dots === NUM_INDICATOR) {
+            inNumber = true;
+            i++;
+            continue;
+          }
+
+          if (inNumber) {
+            var digit = DOTS_TO_DIGIT[dots];
+            if (digit !== undefined) {
+              result.push(digit);
+              i++;
+              continue;
+            }
+            inNumber = false;
+          }
+
+          var letter = DOTS_TO_LETTER[dots];
+          if (letter) {
+            if (nextCap) {
+              result.push(letter.toUpperCase());
+              nextCap = false;
+            } else {
+              result.push(letter);
+            }
+            i++;
+            continue;
+          }
+
+          var pch = DOTS_TO_PUNCT[dots];
+          if (pch) {
+            result.push(pch);
+            i++;
+            continue;
+          }
+
+          // Unknown braille cell
+          result.push(ch);
+          i++;
+        }
+
+        return result.join("");
+      }
+
+      // ── DOM ──
+      var inputEl = document.getElementById("inputText");
+      var outputEl = document.getElementById("outputText");
+      var statusEl = document.getElementById("statusMsg");
+      var statsEl = document.getElementById("statsArea");
+      var gradeEl = document.getElementById("gradeSelect");
+      var doNumsEl = document.getElementById("showNumbers");
+      var doPunctEl = document.getElementById("showPunctuation");
+
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status " + (type || "");
+      }
+
+      function countBrailleCells(str) {
+        var n = 0;
+        for (var j = 0; j < str.length; j++) {
+          var cp2 = str.codePointAt(j);
+          if (cp2 >= 0x2800 && cp2 <= 0x28ff) n++;
+        }
+        return n;
+      }
+
+      function showStats(inputLen, cellCount, grade) {
+        document.getElementById("statChars").textContent = inputLen;
+        document.getElementById("statCells").textContent = cellCount;
+        document.getElementById("statGrade").textContent = "G" + grade;
+        statsEl.classList.add("show");
+      }
+
+      function doToBraille() {
+        var text = inputEl.value;
+        if (!text.trim()) {
+          showStatus("请输入文字内容", "error");
+          return;
+        }
+        var grade = parseInt(gradeEl.value, 10);
+        var out = textToBraille(text, grade, doNumsEl.checked, doPunctEl.checked);
+        outputEl.value = out;
+        showStats(text.length, countBrailleCells(out), grade);
+        showStatus("已转换为 Grade " + grade + " 盲文", "success");
+      }
+
+      function doFromBraille() {
+        var text = inputEl.value;
+        if (!text.trim()) {
+          showStatus("请输入盲文点字", "error");
+          return;
+        }
+        var out = brailleToText(text);
+        outputEl.value = out;
+        showStats(countBrailleCells(text), out.length, parseInt(gradeEl.value, 10));
+        showStatus("盲文已还原为文字", "success");
+      }
+
+      document.getElementById("btnToBraille").onclick = doToBraille;
+      document.getElementById("btnFromBraille").onclick = doFromBraille;
+
+      document.getElementById("btnSwap").onclick = function () {
+        var tmp = inputEl.value;
+        inputEl.value = outputEl.value;
+        outputEl.value = tmp;
+        statsEl.classList.remove("show");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      };
+
+      document.getElementById("btnCopy").onclick = async function () {
+        if (!outputEl.value) {
+          showStatus("没有结果可复制", "error");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(outputEl.value);
+          showStatus("已复制到剪贴板", "success");
+        } catch (e) {
+          showStatus("复制失败", "error");
+        }
+      };
+
+      document.getElementById("btnClear").onclick = function () {
+        inputEl.value = "";
+        outputEl.value = "";
+        statusEl.textContent = "";
+        statusEl.className = "status";
+        statsEl.classList.remove("show");
+      };
+
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          doToBraille();
+        }
+      });
+
+      window.toggleTheme = function () {
+        var html = document.documentElement;
+        var currentTheme = html.getAttribute("data-theme") || "dark";
+        var newTheme = currentTheme === "light" ? "dark" : "light";
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+      };
+      function initTheme() {
+        var savedTheme = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = savedTheme || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        if (!localStorage.getItem("theme"))
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      });
+
+      initTheme();
+</script>

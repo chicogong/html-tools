@@ -30,12 +30,26 @@ for (const dir of copyDirs) {
 
 // PWA, Icons, and Deployment Configs
 const rootAssets = [
-  'sw.js', 'manifest.json', 'favicon.ico', 'favicon.svg', 'social-preview.png', 
-  'sitemap.xml', 'robots.txt', 'llms.txt', 'index.html', 'tools.json',
-  'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'offline.html',
-  '_headers', '_redirects',
-  'baidu_verify_codeva-L08oitvCVO.html', 'BingSiteAuth.xml',
-  'ByteDanceVerify.html', 'sogousiteverification.txt'
+  'sw.js',
+  'manifest.json',
+  'favicon.ico',
+  'favicon.svg',
+  'social-preview.png',
+  'sitemap.xml',
+  'robots.txt',
+  'llms.txt',
+  'index.html',
+  'tools.json',
+  'favicon-16x16.png',
+  'favicon-32x32.png',
+  'apple-touch-icon.png',
+  'offline.html',
+  '_headers',
+  '_redirects',
+  'baidu_verify_codeva-L08oitvCVO.html',
+  'BingSiteAuth.xml',
+  'ByteDanceVerify.html',
+  'sogousiteverification.txt'
 ];
 for (const asset of rootAssets) {
   const src = path.join(ROOT_DIR, asset);
@@ -64,10 +78,10 @@ for (const tool of tools) {
   }
 
   const fragmentHtml = fs.readFileSync(fragmentPath, 'utf8');
-  
+
   // Parse fragment
   const $ = cheerio.load(fragmentHtml, null, false);
-  
+
   let styles = '';
   $('link[rel="stylesheet"]').each((i, el) => {
     styles += $.html(el) + '\n';
@@ -89,13 +103,18 @@ for (const tool of tools) {
 
   // Prepare SEO Data
   const catName = categories[tool.category]?.name || tool.category;
-  
+
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: '首页', item: SITE_URL + '/' },
-      { '@type': 'ListItem', position: 2, name: catName, item: `${SITE_URL}/tools/${tool.category}/index.html` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: catName,
+        item: `${SITE_URL}/tools/${tool.category}/index.html`
+      },
       { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}/${tool.path}` }
     ]
   };

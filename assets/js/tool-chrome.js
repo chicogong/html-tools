@@ -16,8 +16,8 @@
   var THEME_KEY = 'theme';
 
   var ANALYTICS_ENABLED = true;
-  var UMAMI_SITE_ID     = '';
-  var UMAMI_SRC         = 'https://analytics.umami.is/script.js';
+  var UMAMI_SITE_ID = '';
+  var UMAMI_SRC = 'https://analytics.umami.is/script.js';
 
   /* ---------- 1. 尽早应用主题，避免首屏闪烁 ---------- */
   function readTheme() {
@@ -33,7 +33,8 @@
   if (initial) {
     root.setAttribute('data-theme', initial);
   } else {
-    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var prefersDark =
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
   }
 
@@ -53,11 +54,11 @@
   /* ---------- 2. 注册 Service Worker ---------- */
   function start() {
     injectAnalytics();
-    
+
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
+      window.addEventListener('load', function () {
         var swUrl = new URL('../../sw.js', scriptSrc).href;
-        navigator.serviceWorker.register(swUrl).catch(function(err) {
+        navigator.serviceWorker.register(swUrl).catch(function (err) {
           console.log('SW registration failed:', err);
         });
       });

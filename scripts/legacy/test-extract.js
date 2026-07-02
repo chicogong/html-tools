@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio';
 function extractTool(filePath) {
   const html = fs.readFileSync(filePath, 'utf8');
   const $ = cheerio.load(html);
-  
+
   // Extract specific styles (ignore tool-base.css or google fonts)
   let styles = '';
   $('style').each((i, el) => {
@@ -35,8 +35,12 @@ function extractTool(filePath) {
   let scripts = '';
   $('script:not([src])').each((i, el) => {
     let scriptContent = $(el).html();
-    if (!scriptContent.includes('application/ld+json') && !scriptContent.includes('const prefersDark') && !scriptContent.includes('umami.track')) {
-        scripts += scriptContent + '\n';
+    if (
+      !scriptContent.includes('application/ld+json') &&
+      !scriptContent.includes('const prefersDark') &&
+      !scriptContent.includes('umami.track')
+    ) {
+      scripts += scriptContent + '\n';
     }
   });
 

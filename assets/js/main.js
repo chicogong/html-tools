@@ -8,7 +8,7 @@ let themeIcon = null;
 
 if (themeToggle) {
   themeIcon = themeToggle.querySelector('.theme-icon');
-  
+
   // Create tooltip element
   const tooltip = document.createElement('div');
   tooltip.className = 'theme-tooltip';
@@ -78,7 +78,8 @@ function setCategory(category, options = {}) {
 // ==================== 主题管理 ====================
 if (themeIcon) {
   const savedTheme = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const prefersDark =
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const current = savedTheme || (prefersDark ? 'dark' : 'light');
   if (current === 'light') {
     themeIcon.textContent = '☀️';
@@ -91,7 +92,7 @@ if (themeToggle) {
   themeToggle.addEventListener('click', () => {
     const currentTheme = htmlElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
+
     if (newTheme === 'light') {
       htmlElement.setAttribute('data-theme', 'light');
       themeIcon.textContent = '☀️';

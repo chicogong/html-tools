@@ -216,8 +216,8 @@ function renderCategories() {
 }
 
 // ==================== 渲染工具卡片 (优化版：懒加载 + 分批渲染) ====================
-const BATCH_SIZE = 30; // 每批渲染数量（减少以提升性能）
-const INITIAL_LOAD = 60; // 首屏加载数量
+const BATCH_SIZE = 24; // 每批渲染数量（减少以提升性能）
+const INITIAL_LOAD = 24; // 首屏加载数量
 let renderedCount = 0;
 let isRendering = false;
 let lazyLoadObserver = null;

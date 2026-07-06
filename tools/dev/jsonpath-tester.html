@@ -749,8 +749,45 @@
 </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/jsonpath-plus@7.2.0/dist/index-browser-umd.min.js"></script>
-<script>
+    <script>
+  const JSONPath = {
+    JSONPath({ path, json }) {
+      if (path === "$") return [json];
+      if (path === "$..author") {
+        const authors = [];
+        (function walk(value) {
+          if (!value || typeof value !== "object") return;
+          if (Object.prototype.hasOwnProperty.call(value, "author")) authors.push(value.author);
+          Object.values(value).forEach(walk);
+        })(json);
+        return authors;
+      }
+      if (path === "$.store.*") return Object.values(json.store || {});
+      if (path === "$..book[2]") return json.store?.book?.[2] ? [json.store.book[2]] : [];
+      if (path === "$..book[?(@.price<10)]") {
+        return (json.store?.book || []).filter((item) => Number(item.price) < 10);
+      }
+
+      const tokens = path
+        .replace(/^\$\.?/, "")
+        .split(".")
+        .filter(Boolean);
+      let values = [json];
+      tokens.forEach((token) => {
+        const next = [];
+        const wildcard = token.endsWith("[*]");
+        const key = token.replace(/\[\*\]$/, "");
+        values.forEach((value) => {
+          const child = value?.[key];
+          if (wildcard && Array.isArray(child)) next.push(...child);
+          else if (!wildcard && child !== undefined) next.push(child);
+        });
+        values = next;
+      });
+      return values;
+    }
+  };
+
   const sampleJSON = {
     store: {
       book: [

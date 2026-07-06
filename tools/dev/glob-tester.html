@@ -905,8 +905,45 @@ node_modules/lodash/index.js"></textarea>
 </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/picomatch@2.3.1/dist/picomatch.min.js"></script>
-<script>
+    <script>
+  function globToRegExp(pattern) {
+    var source = "";
+    for (var i = 0; i < pattern.length; i++) {
+      var char = pattern[i];
+      var next = pattern[i + 1];
+      if (char === "*" && next === "*") {
+        source += ".*";
+        i++;
+      } else if (char === "*") {
+        source += "[^/]*";
+      } else if (char === "?") {
+        source += "[^/]";
+      } else if (char === "{") {
+        var end = pattern.indexOf("}", i + 1);
+        if (end === -1) {
+          source += "\\{";
+        } else {
+          source += "(" + pattern.slice(i + 1, end).split(",").map(function (part) {
+            return part.trim().replace(/[.+^${}()|[\]\\]/g, "\\$&");
+          }).join("|") + ")";
+          i = end;
+        }
+      } else {
+        source += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+      }
+    }
+    return new RegExp("^" + source + "$", "u");
+  }
+
+  function picomatch(pattern) {
+    var negate = pattern.charAt(0) === "!";
+    var regex = globToRegExp(negate ? pattern.slice(1) : pattern);
+    return function (value) {
+      var matched = regex.test(value);
+      return negate ? !matched : matched;
+    };
+  }
+
   var patternEl = document.getElementById("pattern");
   var pathsEl = document.getElementById("paths");
   var explanationEl = document.getElementById("explanation");

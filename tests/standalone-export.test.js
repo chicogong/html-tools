@@ -6,7 +6,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import { section, test, assert, ROOT } from './_harness.js';
 
 section('独立 HTML 导出');
@@ -33,6 +33,12 @@ function runExport(toolPath) {
     cwd: ROOT,
     stdio: 'pipe'
   });
+}
+
+function exportedInlineScriptBodies(html) {
+  return [
+    ...html.matchAll(/<script[^>]*data-standalone-inlined="[^"]+"[^>]*>([\s\S]*?)<\/script>/gi)
+  ].map((match) => match[1]);
 }
 
 test('可导出多个代表性已登记工具为 standalone HTML', () => {
@@ -74,4 +80,50 @@ test('standalone HTML 不保留本地共享资源引用', () => {
     }
   }
   assert(bad.length === 0, bad.join('\n'));
+});
+
+test('standalone HTML 转义内联脚本中的结束标签序列', () => {
+  const bad = [];
+  for (const toolPath of toolPaths) {
+    const html = exportedHtml(toolPath);
+    const scriptBodies = exportedInlineScriptBodies(html);
+    if (scriptBodies.some((body) => /<\/script/i.test(body))) {
+      bad.push(`${toolPath}: 内联脚本包含未转义 </script>`);
+    }
+  }
+  assert(bad.length === 0, bad.join('\n'));
+});
+
+test('standalone 导出拒绝内联仓库外本地依赖', () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'webutils-escape-fixture-'));
+  const fixturePath = path.join(fixtureDir, 'outside.css');
+  const toolPath = 'tools/dev/json-formatter.html';
+  const originalTool = fs.readFileSync(path.join(ROOT, toolPath), 'utf8');
+  const originalToolsJson = fs.readFileSync(path.join(ROOT, 'tools.json'), 'utf8');
+  const relativeOutside = path.relative(path.join(ROOT, 'tools/dev'), fixturePath);
+
+  fs.writeFileSync(fixturePath, 'body { color: red; }');
+
+  try {
+    const patchedTool = originalTool.replace(
+      '</head>',
+      `  <link rel="stylesheet" href="${relativeOutside}" />\n  </head>`
+    );
+    fs.writeFileSync(path.join(ROOT, toolPath), patchedTool);
+
+    const result = spawnSync('node', ['scripts/export-standalone.mjs', toolPath, outDir], {
+      cwd: ROOT,
+      encoding: 'utf8'
+    });
+
+    assert(result.status !== 0, '导出应拒绝仓库外依赖');
+    assert(
+      result.stderr.includes('outside repository'),
+      `错误信息应说明仓库外依赖，实际为: ${result.stderr}`
+    );
+  } finally {
+    fs.writeFileSync(path.join(ROOT, toolPath), originalTool);
+    fs.writeFileSync(path.join(ROOT, 'tools.json'), originalToolsJson);
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
 });

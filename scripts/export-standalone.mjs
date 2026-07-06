@@ -19,15 +19,40 @@ function isExternalUrl(value) {
   return /^(https?:)?\/\//i.test(value) || /^(data|mailto|tel):/i.test(value);
 }
 
+function relativeFromRoot(filePath) {
+  return toPosix(path.relative(ROOT, filePath));
+}
+
+function isInsideRoot(filePath) {
+  const relative = path.relative(ROOT, filePath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function assertInsideRoot(filePath, label) {
+  if (!isInsideRoot(filePath)) {
+    throw new Error(`Refusing to ${label} outside repository: ${filePath}`);
+  }
+}
+
+function escapeInlineScript(js) {
+  return js.replace(/<\/script/gi, '<\\/script');
+}
+
+function escapeInlineStyle(css) {
+  return css.replace(/<\/style/gi, '<\\/style');
+}
+
 function readFileIfExists(filePath) {
   if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-    throw new Error(`Missing local dependency: ${toPosix(path.relative(ROOT, filePath))}`);
+    throw new Error(`Missing local dependency: ${relativeFromRoot(filePath)}`);
   }
   return fs.readFileSync(filePath, 'utf8');
 }
 
 function resolveLocalDependency(htmlPath, ref) {
-  return path.resolve(path.dirname(htmlPath), ref);
+  const localPath = path.resolve(path.dirname(htmlPath), ref);
+  assertInsideRoot(localPath, 'inline dependency');
+  return localPath;
 }
 
 function stripLocalNonEssentialLinks(html, htmlPath) {
@@ -40,7 +65,7 @@ function stripLocalNonEssentialLinks(html, htmlPath) {
     if (!isIcon && !isManifest) return tag;
 
     const localPath = resolveLocalDependency(htmlPath, href);
-    const relPath = toPosix(path.relative(ROOT, localPath));
+    const relPath = relativeFromRoot(localPath);
     return `\n    <!-- Standalone export omitted local ${isManifest ? 'manifest' : 'icon'}: ${relPath} -->`;
   });
 }
@@ -52,8 +77,8 @@ function inlineLocalStylesheets(html, htmlPath) {
     if (!href || isExternalUrl(href) || !/\bstylesheet\b/i.test(rel)) return tag;
 
     const localPath = resolveLocalDependency(htmlPath, href);
-    const css = readFileIfExists(localPath);
-    const relPath = toPosix(path.relative(ROOT, localPath));
+    const css = escapeInlineStyle(readFileIfExists(localPath));
+    const relPath = relativeFromRoot(localPath);
     return `<style data-standalone-inlined="${relPath}">\n${css}\n</style>`;
   });
 }
@@ -65,8 +90,8 @@ function inlineLocalScripts(html, htmlPath) {
       if (isExternalUrl(src)) return tag;
 
       const localPath = resolveLocalDependency(htmlPath, src);
-      const js = readFileIfExists(localPath);
-      const relPath = toPosix(path.relative(ROOT, localPath));
+      const js = escapeInlineScript(readFileIfExists(localPath));
+      const relPath = relativeFromRoot(localPath);
       const attrs = `${before}${after}`
         .replace(/\s*defer\b/gi, '')
         .replace(/\s*async\b/gi, '')
@@ -110,6 +135,7 @@ const toolPath = toPosix(path.normalize(input));
 const htmlPath = path.resolve(ROOT, toolPath);
 
 try {
+  assertInsideRoot(htmlPath, 'read tool');
   assertRegisteredTool(toolPath);
   let html = readFileIfExists(htmlPath);
   html = stripLocalNonEssentialLinks(html, htmlPath);

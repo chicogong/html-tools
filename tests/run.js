@@ -14,7 +14,8 @@ const TEST_FILES = [
   'sync.test.js',
   'html-structure.test.js',
   'redirects.test.js',
-  'assets.test.js'
+  'assets.test.js',
+  'standalone-export.test.js'
 ];
 
 let crashed = 0;

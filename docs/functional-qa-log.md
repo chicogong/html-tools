@@ -119,3 +119,28 @@ This log tracks category-by-category functional validation for all tools. Page l
 - External map tile load failures are ignored as resource noise.
 - Verification after fixes:
 - Re-ran dev functional QA: 205 passed, 0 failed.
+
+### life
+
+- Scope: 67 tools in `tools/life/` plus registered life-category paths under `tools/social/`, `tools/gardening/`, `tools/lifestyle/`, `tools/music/`, `tools/astronomy/`, `tools/weather/`, `tools/parenting/`, `tools/diy/`, and `tools/shopping/`.
+- Automated functional pass: `node /var/folders/31/q_1h7glx59ddh7xk1yg35vr80000gn/T/opencode/functional-qa-runner-resilient.cjs life`.
+- Result file: `/var/folders/31/q_1h7glx59ddh7xk1yg35vr80000gn/T/opencode/functional-qa-life-safe.json`.
+- Supplemental no-action pass: `/var/folders/31/q_1h7glx59ddh7xk1yg35vr80000gn/T/opencode/life-supplemental.json`.
+- Result: 67 passed, 0 failed.
+- Runtime errors: 0 page errors, 0 console errors, 0 failed scripts.
+- Manual-style supplemental checks:
+- 6 no-action tools were exercised with targeted input/select/button flows or content assertions.
+- `tools/social/event-countdown.html`: verified countdown form path and page state.
+- `tools/gardening/plant-watering.html`: verified plant form options and reminder UI.
+- `tools/lifestyle/daily-affirmation.html`: verified generated affirmation content and category UI.
+- `tools/music/chord-finder.html`: verified chord lookup content.
+- `tools/gardening/plant-care-guide.html`: verified plant care entries.
+- `tools/astronomy/stargazing-tonight.html`: verified stargazing and moon-phase content.
+- Fixes made during QA:
+- `tools/life/color-picker.html`: split malformed JSON-LD/business script block so inline handlers execute, and guarded optional theme icon updates.
+- `tools/life/password-generator.html`: split malformed JSON-LD/business script block so generation handlers execute, and guarded optional theme icon updates.
+- `tools/life/word-counter.html`: split malformed JSON-LD/business script block so text analysis handlers execute, and guarded optional theme icon updates.
+- `tools/weather/uv-index-guide.html`: clamped/validated UV display input and added a level fallback for out-of-range values.
+- Verification after fixes:
+- Re-ran life functional QA: 67 passed, 0 failed.
+- Re-ran life supplemental QA: 6 passed, 0 failed.

@@ -5,24 +5,24 @@ const toolsJsonPath = 'tools.json';
 const toolsData = JSON.parse(fs.readFileSync(toolsJsonPath, 'utf8'));
 
 // Get all registered paths
-const registeredPaths = new Set(Object.values(toolsData.tools).map(t => t.path));
+const registeredPaths = new Set(Object.values(toolsData.tools).map((t) => t.path));
 
 // Category mapping based on directory
 const categoryMap = {
-  'data': 'data',
-  'office': 'office',
-  'travel': 'travel',
-  'design': 'design',
-  'math': 'math',
-  'dev': 'dev',
-  'converter': 'converter',
-  'calculator': 'calculator',
-  'generator': 'generator',
-  'game': 'game',
-  'life': 'life',
-  'text': 'text',
-  'network': 'network',
-  'fun': 'fun',
+  data: 'data',
+  office: 'office',
+  travel: 'travel',
+  design: 'design',
+  math: 'math',
+  dev: 'dev',
+  converter: 'converter',
+  calculator: 'calculator',
+  generator: 'generator',
+  game: 'game',
+  life: 'life',
+  text: 'text',
+  network: 'network',
+  fun: 'fun',
   'real-estate': 'realestate'
 };
 
@@ -38,21 +38,22 @@ let addedCount = 0;
 for (const dir of dirs) {
   const dirPath = path.join(toolsDir, dir);
   if (!fs.statSync(dirPath).isDirectory()) continue;
-  
-  const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.html'));
-  
+
+  const files = fs.readdirSync(dirPath).filter((f) => f.endsWith('.html'));
+
   for (const file of files) {
     const filePath = path.join(toolsDir, dir, file);
-    
+
     if (!registeredPaths.has(filePath)) {
       // Extract tool name from filename
-      const toolName = file.replace('.html', '')
+      const toolName = file
+        .replace('.html', '')
         .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      
+
       const category = categoryMap[dir] || dir;
-      
+
       maxId++;
       toolsData.tools[maxId] = {
         path: filePath,
@@ -62,7 +63,7 @@ for (const dir of dirs) {
         icon: '🔧',
         description: toolName
       };
-      
+
       addedCount++;
       console.log('Added: ' + filePath);
     }
@@ -71,8 +72,8 @@ for (const dir of dirs) {
 
 // Ensure categories exist
 const defaultCategories = {
-  'data': { name: '数据工具', icon: '📊', color: 'blue' },
-  'office': { name: '办公工具', icon: '📋', color: 'gray' }
+  data: { name: '数据工具', icon: '📊', color: 'blue' },
+  office: { name: '办公工具', icon: '📋', color: 'gray' }
 };
 
 for (const [cat, info] of Object.entries(defaultCategories)) {

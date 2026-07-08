@@ -4,7 +4,7 @@ const path = require('path');
 const filepath = path.join(__dirname, 'tools', 'ai', 'gpt5-guide.html');
 let content = fs.readFileSync(filepath, 'utf8');
 
-// The goal is to replace the huge <style> block from <style> to </style> 
+// The goal is to replace the huge <style> block from <style> to </style>
 // with a clean minimal <style> block or just linking the new article-base.css
 
 // 1. We inject `<link rel="stylesheet" href="../../assets/css/article-base.css" />` right after `tool-base.css`

@@ -14,12 +14,12 @@ for (const key of Object.keys(data.tools)) {
 const newId = (maxId + 1).toString();
 
 data.tools[newId] = {
-  path: "tools/ai/prompt-generator.html",
-  name: "结构化提示词生成器",
-  category: "ai",
-  keywords: "提示词生成 prompt generator create 框架 ai",
-  icon: "✨",
-  description: "根据 CREATE 框架结构化生成高质量 AI Prompt，提升大模型输出准确率",
+  path: 'tools/ai/prompt-generator.html',
+  name: '结构化提示词生成器',
+  category: 'ai',
+  keywords: '提示词生成 prompt generator create 框架 ai',
+  icon: '✨',
+  description: '根据 CREATE 框架结构化生成高质量 AI Prompt，提升大模型输出准确率',
   popularity: 100 // Give it a boost to show up at the top
 };
 

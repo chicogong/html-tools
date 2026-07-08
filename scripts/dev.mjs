@@ -68,10 +68,10 @@ function startServer() {
 // 3. Watch for changes
 function startWatcher() {
   let debounceTimer;
-  
+
   const triggerRebuild = (eventType, filename) => {
     if (!filename) return;
-    
+
     // Ignore dotfiles and temp files
     if (filename.startsWith('.') || filename.endsWith('~')) return;
 
@@ -79,7 +79,7 @@ function startWatcher() {
     debounceTimer = setTimeout(() => {
       console.log(`\n🔄 [Dev] Detected change in ${filename}. Rebuilding...`);
       const startTime = Date.now();
-      
+
       exec('npm run build', (err, stdout, stderr) => {
         if (err) {
           console.error(`❌ [Dev] Build failed:`);

@@ -26,7 +26,7 @@ for (const tool of tools) {
   }
 
   const html = fs.readFileSync(filePath, 'utf8');
-  
+
   // 如果已经包含 DOCTYPE，可能已经是完整 HTML 或者分类 index，跳过
   if (html.trim().toLowerCase().startsWith('<!doctype')) {
     console.log(`⏭️  Skipping already standalone: ${tool.path}`);
@@ -34,30 +34,41 @@ for (const tool of tools) {
   }
 
   const $ = cheerio.load(html, null, false);
-  
+
   // Extract pieces
   let styles = '';
-  $('link[rel="stylesheet"]').each((i, el) => { styles += $.html(el) + '\n'; });
+  $('link[rel="stylesheet"]').each((i, el) => {
+    styles += $.html(el) + '\n';
+  });
   $('link[rel="stylesheet"]').remove();
-  
-  $('style').each((i, el) => { styles += $.html(el) + '\n'; });
+
+  $('style').each((i, el) => {
+    styles += $.html(el) + '\n';
+  });
   $('style').remove();
-  
+
   let scripts = '';
-  $('script').each((i, el) => { scripts += $.html(el) + '\n'; });
+  $('script').each((i, el) => {
+    scripts += $.html(el) + '\n';
+  });
   $('script').remove();
-  
+
   const bodyContent = $.html();
-  
+
   // SEO Data
   const catName = categories[tool.category]?.name || tool.category;
-  
+
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: '首页', item: SITE_URL + '/' },
-      { '@type': 'ListItem', position: 2, name: catName, item: `${SITE_URL}/tools/${tool.category}/index.html` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: catName,
+        item: `${SITE_URL}/tools/${tool.category}/index.html`
+      },
       { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}/${tool.path}` }
     ]
   };
@@ -73,7 +84,7 @@ for (const tool of tools) {
 
   const depth = tool.path.split('/').length - 1;
   const relativeRoot = '../'.repeat(depth) || './';
-  
+
   const title = `${tool.name} - WebUtils`;
   const description = tool.description || tool.name;
   const keywords = tool.keywords || tool.name;

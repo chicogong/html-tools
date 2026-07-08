@@ -27,32 +27,50 @@ let recovered = 0;
 
 for (const filePath of allTools) {
   const relativePath = path.relative(ROOT_DIR, filePath);
-  
+
   let currentHtml = fs.readFileSync(filePath, 'utf8');
-  
+
   let originalHtml = '';
   try {
-    originalHtml = execSync(`git show ab338cbd:${relativePath}`, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    originalHtml = execSync(`git show ab338cbd:${relativePath}`, {
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024
+    });
   } catch (e) {
     console.error(`Failed to fetch original for ${relativePath}`);
     continue;
   }
-  
+
   const $ = cheerio.load(originalHtml, null, false);
   let logicScripts = '';
-  
+
   $('script:not([src]):not([type="application/ld+json"])').each((i, el) => {
     let scriptContent = $(el).html() || '';
-    
+
     // Strip theme init logic
-    scriptContent = scriptContent.replace(/window\.toggleTheme\s*=\s*function\s*\(\)\s*\{[\s\S]*?localStorage\.setItem\("theme",\s*newTheme\);\s*\};?/g, '');
-    scriptContent = scriptContent.replace(/function\s+initTheme\(\)\s*\{[\s\S]*?setAttribute\("data-theme",\s*theme\);\s*\}/g, '');
-    scriptContent = scriptContent.replace(/window\.matchMedia\("\(prefers-color-scheme:\s*dark\)"\)\.addEventListener\("change",\s*function\s*\([^\)]*\)\s*\{[\s\S]*?\}\);?/g, '');
+    scriptContent = scriptContent.replace(
+      /window\.toggleTheme\s*=\s*function\s*\(\)\s*\{[\s\S]*?localStorage\.setItem\("theme",\s*newTheme\);\s*\};?/g,
+      ''
+    );
+    scriptContent = scriptContent.replace(
+      /function\s+initTheme\(\)\s*\{[\s\S]*?setAttribute\("data-theme",\s*theme\);\s*\}/g,
+      ''
+    );
+    scriptContent = scriptContent.replace(
+      /window\.matchMedia\("\(prefers-color-scheme:\s*dark\)"\)\.addEventListener\("change",\s*function\s*\([^\)]*\)\s*\{[\s\S]*?\}\);?/g,
+      ''
+    );
     scriptContent = scriptContent.replace(/initTheme\(\);/g, '');
     scriptContent = scriptContent.replace(/umami\.track\([^)]*\);?/g, '');
-    scriptContent = scriptContent.replace(/const\s+prefersDark\s*=\s*window\.matchMedia[^;]+;/g, '');
+    scriptContent = scriptContent.replace(
+      /const\s+prefersDark\s*=\s*window\.matchMedia[^;]+;/g,
+      ''
+    );
     scriptContent = scriptContent.replace(/const\s+theme\s*=\s*savedTheme[^;]+;/g, '');
-    scriptContent = scriptContent.replace(/document\.documentElement\.setAttribute\("data-theme"[^;]+;/g, '');
+    scriptContent = scriptContent.replace(
+      /document\.documentElement\.setAttribute\("data-theme"[^;]+;/g,
+      ''
+    );
 
     scriptContent = scriptContent.trim();
     if (scriptContent) {

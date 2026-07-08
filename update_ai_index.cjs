@@ -14,10 +14,7 @@ const newCard = `
         </a>`;
 
 // Insert after the <section class="cat-grid">
-content = content.replace(
-  '<section class="cat-grid">',
-  '<section class="cat-grid">' + newCard
-);
+content = content.replace('<section class="cat-grid">', '<section class="cat-grid">' + newCard);
 
 fs.writeFileSync(filepath, content, 'utf8');
 console.log('Added to tools/ai/index.html');

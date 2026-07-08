@@ -33,11 +33,17 @@
 
   /** 安全读取 localStorage */
   function lsGet(k) {
-    try { return localStorage.getItem(k); } catch (e) { return null; }
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
   }
   /** 安全写入 localStorage */
   function lsSet(k, v) {
-    try { localStorage.setItem(k, v); } catch (e) {}
+    try {
+      localStorage.setItem(k, v);
+    } catch (e) {}
   }
 
   /* --------------------------------------------------------
@@ -45,9 +51,12 @@
    *    （此块在脚本解析时同步执行，不等 DOMContentLoaded）
    * ------------------------------------------------------ */
   var saved = lsGet(THEME_KEY);
-  var initTheme = (saved === 'light' || saved === 'dark')
-    ? saved
-    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  var initTheme =
+    saved === 'light' || saved === 'dark'
+      ? saved
+      : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
 
   root.setAttribute('data-theme', initTheme);
 
@@ -188,7 +197,7 @@
       /* 打印隐藏 */
       '@media print{#tcChrome{display:none}}',
       /* 切换主题时禁掉全页过渡 */
-      '.tc-anim-off,.tc-anim-off *,.tc-anim-off *::before,.tc-anim-off *::after{transition:none!important}',
+      '.tc-anim-off,.tc-anim-off *,.tc-anim-off *::before,.tc-anim-off *::after{transition:none!important}'
     ].join('\n');
 
     var style = doc.createElement('style');
@@ -200,11 +209,14 @@
   /* --------------------------------------------------------
    * 4. SVG 图标
    * ------------------------------------------------------ */
-  var SVG_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+  var SVG_BACK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
 
-  var SVG_MOON = '<svg class="tc-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+  var SVG_MOON =
+    '<svg class="tc-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
 
-  var SVG_SUN = '<svg class="tc-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+  var SVG_SUN =
+    '<svg class="tc-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
 
   /* --------------------------------------------------------
    * 5. 注入 FAB 外壳
@@ -278,11 +290,14 @@
    *   </script>
    *   <script src="tool-chrome.js"></script>
    * ------------------------------------------------------ */
-  window.ToolChrome = Object.assign({
-    version: '2.0',
-    getTheme: currentTheme,
-    setTheme: applyTheme,
-  }, window.ToolChrome || {});
+  window.ToolChrome = Object.assign(
+    {
+      version: '2.0',
+      getTheme: currentTheme,
+      setTheme: applyTheme
+    },
+    window.ToolChrome || {}
+  );
 
   /* --------------------------------------------------------
    * 启动
@@ -298,5 +313,4 @@
   } else {
     start();
   }
-
 })();

@@ -27,26 +27,29 @@ let recovered = 0;
 
 for (const filePath of allTools) {
   const relativePath = path.relative(ROOT_DIR, filePath);
-  
+
   let currentHtml = fs.readFileSync(filePath, 'utf8');
-  
+
   let originalHtml = '';
   try {
-    originalHtml = execSync(`git show ab338cbd:${relativePath}`, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    originalHtml = execSync(`git show ab338cbd:${relativePath}`, {
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024
+    });
   } catch (e) {
     console.error(`Failed to fetch original for ${relativePath}`);
     continue;
   }
-  
+
   const $ = cheerio.load(originalHtml, null, false);
   let logicScripts = '';
-  
+
   $('script:not([src]):not([type="application/ld+json"])').each((i, el) => {
     let scriptContent = $(el).html() || '';
-    
+
     // We only strip umami.track to prevent duplicate tracking
     scriptContent = scriptContent.replace(/umami\.track\([^)]*\);?/g, '');
-    
+
     // We leave initTheme and toggleTheme intact. They are harmless dead code.
 
     scriptContent = scriptContent.trim();
@@ -66,4 +69,6 @@ for (const filePath of allTools) {
   }
 }
 
-console.log(`✅ Successfully recovered logic scripts for ${recovered} tools without breaking syntax.`);
+console.log(
+  `✅ Successfully recovered logic scripts for ${recovered} tools without breaking syntax.`
+);

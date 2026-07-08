@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const dir = path.join(__dirname, 'tools', 'ai');
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.html'));
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.html'));
 
 let changedCount = 0;
 

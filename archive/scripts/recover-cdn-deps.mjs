@@ -27,17 +27,20 @@ let recoveredDeps = 0;
 
 for (const filePath of allTools) {
   const relativePath = path.relative(ROOT_DIR, filePath);
-  
+
   let currentHtml = fs.readFileSync(filePath, 'utf8');
-  
+
   let originalHtml = '';
   try {
-    originalHtml = execSync(`git show ab338cbd:${relativePath}`, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    originalHtml = execSync(`git show ab338cbd:${relativePath}`, {
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024
+    });
   } catch (e) {
     console.error(`Failed to fetch original for ${relativePath}`);
     continue;
   }
-  
+
   const $ = cheerio.load(originalHtml, null, false);
   let depsHtml = '';
 

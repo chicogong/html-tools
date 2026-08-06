@@ -59,7 +59,9 @@
       if (markerIndex < 0) return null;
 
       var toolPath = 'tools/' + pathname.slice(markerIndex + marker.length).replace(/^\/+/, '');
-      return /\.html$/i.test(toolPath) ? toolPath : null;
+      if (!toolPath || /\/$/.test(toolPath)) return null;
+      if (!/\.[a-z0-9]+$/i.test(toolPath)) toolPath += '.html';
+      return toolPath;
     } catch (e) {
       return null;
     }
@@ -313,7 +315,22 @@
   }
 
   /* --------------------------------------------------------
-   * 6. Service Worker 注册
+   * 6. 首页最近使用控制器
+   * ------------------------------------------------------ */
+  function loadHomepageRecentController() {
+    if (!_currentScript || !_currentScript.src) return;
+    if (!doc.getElementById('tools-grid') || doc.getElementById('recent-tools-script')) return;
+
+    try {
+      var script = doc.createElement('script');
+      script.id = 'recent-tools-script';
+      script.src = new URL('recent-tools.js', _currentScript.src).href;
+      doc.body.appendChild(script);
+    } catch (e) {}
+  }
+
+  /* --------------------------------------------------------
+   * 7. Service Worker 注册
    * ------------------------------------------------------ */
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
@@ -329,7 +346,7 @@
   }
 
   /* --------------------------------------------------------
-   * 7. 暴露全局扩展钩子  window.ToolChrome
+   * 8. 暴露全局扩展钩子  window.ToolChrome
    *
    * 使用方式（在 tool-chrome.js 引入之前设置）：
    *   <script>
@@ -357,6 +374,7 @@
     recordRecentTool();
     injectFallbackCSS();
     injectChrome();
+    loadHomepageRecentController();
     registerSW();
   }
 

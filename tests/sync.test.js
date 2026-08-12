@@ -2,7 +2,8 @@
  * 同步一致性校验：tools.json 与衍生文件是否保持同步。
  *
  * 对应 CLAUDE.md「常见陷阱 2」：改了 tools.json 忘记 `npm run sync:tools`。
- * 本测试为只读校验（不运行 sync），因此不受 sitemap.xml 每日 lastmod 变化影响。
+ * 本测试为只读校验（不运行 sync）。sitemap 不生成构建时钟驱动的 lastmod，
+ * 因而相同源码的同步结果保持稳定。
  */
 
 import { section, test, assert, loadToolsData, readText, SITE } from './_harness.js';
@@ -71,6 +72,10 @@ test(`sitemap.xml <loc> 数量为 工具数 + 首页 + 分类落地页 (${expect
 
 test('sitemap.xml 含首页 URL', () => {
   assert(sitemap.includes(`<loc>${SITE}/</loc>`), `未找到 <loc>${SITE}/</loc>`);
+});
+
+test('sitemap.xml 不包含构建时钟驱动的 lastmod', () => {
+  assert(!sitemap.includes('<lastmod>'), 'sitemap.xml 不应因构建日期变化而产生 diff');
 });
 
 test('每个工具 path 都出现在 sitemap.xml 中', () => {

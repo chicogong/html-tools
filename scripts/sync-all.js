@@ -780,6 +780,11 @@ WebUtils 提供开发者日常工作中常用的各类工具：JSON/YAML/XML 格
  * 更新 GitHub 仓库描述
  */
 function updateGitHubDescription(toolCount) {
+  if (process.env.SYNC_GITHUB_DESCRIPTION !== '1') {
+    console.log('⏭️  GitHub 描述: 默认不修改（需显式设置 SYNC_GITHUB_DESCRIPTION=1）');
+    return false;
+  }
+
   try {
     const result = execFileSync(
       'gh',

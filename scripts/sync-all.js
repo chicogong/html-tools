@@ -723,16 +723,16 @@ function updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories) {
 
     const header = `# WebUtils
 
-> WebUtils 是一个纯前端开发者工具集，包含 ${toolCount}+ 个实用工具。每个工具都是独立的 HTML 文件，内联 CSS/JS，无需构建，可离线使用。所有数据处理都在浏览器端完成，不上传服务器，保护用户隐私。
+> WebUtils 包含 ${toolCount}+ 个浏览器端工具。多数格式化、计算和生成工具在本地页面处理输入；HTTP、REST、WebSocket、DNS/IP 等网络工具会连接用户选择或页面标明的第三方服务。
 
 WebUtils 提供开发者日常工作中常用的各类工具：JSON/YAML/XML 格式化与转换、Base64/URL/Unicode 编解码、时间戳与时区转换、二维码生成、图片压缩、正则表达式测试、哈希计算等。
 
 技术特点：
 
-- 单文件架构：每个工具是独立 HTML 文件
-- 零构建：无需 npm、webpack，直接打开使用
-- 可离线：下载到本地即可断网使用
-- 隐私安全：所有数据处理在浏览器端完成
+- 静态优先：工具以独立 HTML 页面为入口，源码无需前端框架运行时
+- 本地优先：本地计算工具不把输入发送给 WebUtils 后端
+- 网络透明：网络工具和外部资源会连接第三方，不能承诺完全离线
+- 可移植：standalone 导出会内联仓库内共享资源，外部依赖仍保持外链
 `;
 
     const sections = [];

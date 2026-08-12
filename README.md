@@ -13,13 +13,12 @@
 [![GitHub forks](https://img.shields.io/github/forks/chicogong/html-tools?style=social)](https://github.com/chicogong/html-tools/network/members)
 [![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fchicogong%2Fhtml-tools&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
 ### 🚀 1088+ 纯前端在线工具集
 
-**单文件 · 零构建 · 可离线 · 隐私优先 · 数据不上传**
+**静态优先 · 本地优先 · 网络边界透明 · 可导出独立 HTML**
 
-一个完全开源、隐私至上的在线工具集。无需安装、无需注册、无广告、无追踪。
+一个完全开源的浏览器端工具集。站点无需注册、无广告，也不接入第一方分析脚本；具体工具是否访问网络、能否完全离线，取决于该工具的功能和依赖。
 
 [**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-1088-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
 
@@ -29,16 +28,18 @@
 
 ## ✨ 为什么选择 WebUtils？
 
-相比其他在线工具网站，WebUtils 的独特优势：
+WebUtils 以静态 HTML 为主，不要求用户账户或统一后端。多数格式化、计算和生成工具在浏览器内处理输入；需要联网的工具会把请求发送到页面标明或用户指定的目标。
 
-| 特性         | WebUtils                     | 其他工具站                |
-| ------------ | ---------------------------- | ------------------------- |
-| **隐私保护** | ✅ 100% 本地处理，数据不上传 | ❌ 大多需上传到服务器     |
-| **离线使用** | ✅ 下载 HTML 即可离线用      | ❌ 必须联网               |
-| **无需构建** | ✅ 单文件架构，直接打开      | ❌ 需要 npm/webpack 构建  |
-| **加载速度** | ✅ 极快（无框架开销）        | ⚠️ 较慢（React/Vue 加载） |
-| **工具数量** | ✅ 1088+ 个工具              | ⚠️ 通常 50-80 个          |
-| **开源免费** | ✅ MIT 协议，完全开源        | ⚠️ 部分闭源或有限制       |
+### 隐私、网络与离线边界
+
+| 工具类型           | 典型场景                                | 数据与网络边界                                                            | 离线能力                       |
+| ------------------ | --------------------------------------- | ------------------------------------------------------------------------- | ------------------------------ |
+| **本地计算**       | 格式化、编码、计算器、部分生成器        | 输入在当前浏览器页面处理；WebUtils 不接收其内容                           | 本地资源完整时可离线           |
+| **浏览器权限**     | 文件、摄像头、剪贴板、Web Crypto        | 数据由浏览器 API 处理；是否授权由用户和浏览器控制                         | 取决于浏览器能力和页面资源     |
+| **网络客户端**     | HTTP、REST、WebSocket、DNS/IP、Gravatar | 请求内容及网络元数据会发送给用户选择或工具标明的第三方服务                | 不能离线完成网络请求           |
+| **外部资源或数据** | CDN 脚本、字体、图片、公共 API          | 浏览器会连接相应第三方；对方可能收到 IP、User-Agent、Referer 等网络元数据 | 外部依赖未本地化时不能保证离线 |
+
+处理敏感内容前，请先确认目标页面属于“本地计算”，并在浏览器开发者工具或源码中核对网络请求。standalone 导出只会内联仓库内的共享 CSS/JS，外部 CDN 和 API 仍保持外链。
 
 ## 📸 预览
 
@@ -388,8 +389,8 @@
 
 ### 本地使用
 
-1. Clone 仓库或下载单个 HTML 文件
-2. 直接在浏览器中打开即可使用
+1. Clone 完整仓库后从首页打开工具；或使用下方命令导出指定工具
+2. 需要断网使用时，先确认该工具没有外部 CDN、字体、图片或 API 依赖
 
 ```bash
 git clone https://github.com/chicogong/html-tools.git

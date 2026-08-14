@@ -23,14 +23,13 @@
 git clone https://github.com/chicogong/html-tools.git
 cd html-tools
 
-# 安装依赖
-npm install
+# 按锁文件安装依赖
+npm ci
 
-# 运行 lint 检查
+# 运行与 CI 一致的完整检查
+npm run build
+npm test
 npm run lint
-
-# 同步工具列表
-npm run sync:tools
 ```
 
 #### 添加新工具
@@ -54,6 +53,8 @@ npm run sync:tools
 
 4. 运行 `npm run lint` 确保代码规范
 
+5. 运行 `npm run build && npm test`，并确认 `git status --short` 没有未提交的同步产物
+
 #### 代码规范
 
 - **单文件架构**：每个工具一个 HTML 文件，包含所有 CSS 和 JS
@@ -61,6 +62,14 @@ npm run sync:tools
 - **隐私优先**：所有数据在本地处理，不上传到服务器
 - **响应式设计**：支持移动端访问
 - **无障碍支持**：合理使用语义化标签和 ARIA 属性
+
+#### 批量修改与发布安全
+
+- 不要用跨标签的全局正则批量改写 HTML/JavaScript；优先使用结构化解析，或把作用域限制到明确的元素和属性。
+- 每个已登记工具页面应有且只有一个语义明确的 `<h1>`，以及一个与页面内容一致的 description；不要为满足字数而批量生成空洞文案。
+- 批量修改后必须运行 `npm run build && npm test && npm run lint`，并检查生成文件差异是否只包含预期内容。
+- 不得提交凭据、个人路径或私有数据；发布候选还需通过仓库的历史泄漏扫描和制品检查。
+- 合并代码不等于创建 Tag、GitHub Release 或启用新的生产部署渠道；这些动作分别走对应审批和工作流。
 
 #### 提交规范
 

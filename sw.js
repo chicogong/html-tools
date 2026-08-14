@@ -15,7 +15,8 @@ const PRECACHE_ASSETS = [
   './assets/css/main.css',
   './assets/js/main.js',
   './assets/css/tool-base.css',
-  './assets/js/tool-chrome.js'
+  './assets/js/tool-chrome.js',
+  './assets/js/recent-tools.js'
 ];
 
 // Install event - precache core assets

@@ -30,6 +30,8 @@
   // ⚠️ 必须在 IIFE 顶层同步捕获 —— DOMContentLoaded 回调里 currentScript 已是 null
   var _currentScript = doc.currentScript;
   var THEME_KEY = 'theme';
+  var RECENTS_KEY = 'html_tools_recents_v1';
+  var MAX_RECENTS = 20;
 
   /** 安全读取 localStorage */
   function lsGet(k) {
@@ -44,6 +46,57 @@
     try {
       localStorage.setItem(k, v);
     } catch (e) {}
+  }
+
+  /** 从完整 URL 中提取 tools/...html 注册路径 */
+  function toolPathFromUrl(value) {
+    if (!value) return null;
+
+    try {
+      var pathname = decodeURIComponent(new URL(value, window.location.href).pathname);
+      var marker = '/tools/';
+      var markerIndex = pathname.lastIndexOf(marker);
+      if (markerIndex < 0) return null;
+
+      var toolPath = 'tools/' + pathname.slice(markerIndex + marker.length).replace(/^\/+/, '');
+      if (!toolPath || /\/$/.test(toolPath)) return null;
+      if (!/\.[a-z0-9]+$/i.test(toolPath)) toolPath += '.html';
+      return toolPath;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** 优先使用 canonical，失败时回退到当前地址 */
+  function resolveCurrentToolPath() {
+    var canonical = doc.querySelector('link[rel="canonical"]');
+    return toolPathFromUrl(canonical && canonical.href) || toolPathFromUrl(window.location.href);
+  }
+
+  /** 记录最近访问工具：倒序、去重、最多 20 个 */
+  function recordRecentTool() {
+    // 分类落地页同样位于 /tools/ 下，但不属于可操作工具，不进入最近列表。
+    if (doc.querySelector('.cat-main')) return;
+
+    var toolPath = resolveCurrentToolPath();
+    if (!toolPath) return;
+
+    var recent = [];
+    var stored = lsGet(RECENTS_KEY);
+
+    if (stored) {
+      try {
+        var parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          recent = parsed.filter(function (item) {
+            return typeof item === 'string' && item !== toolPath;
+          });
+        }
+      } catch (e) {}
+    }
+
+    recent.unshift(toolPath);
+    lsSet(RECENTS_KEY, JSON.stringify(recent.slice(0, MAX_RECENTS)));
   }
 
   /* --------------------------------------------------------
@@ -262,7 +315,22 @@
   }
 
   /* --------------------------------------------------------
-   * 6. Service Worker 注册
+   * 6. 首页最近使用控制器
+   * ------------------------------------------------------ */
+  function loadHomepageRecentController() {
+    if (!_currentScript || !_currentScript.src) return;
+    if (!doc.getElementById('tools-grid') || doc.getElementById('recent-tools-script')) return;
+
+    try {
+      var script = doc.createElement('script');
+      script.id = 'recent-tools-script';
+      script.src = new URL('recent-tools.js', _currentScript.src).href;
+      doc.body.appendChild(script);
+    } catch (e) {}
+  }
+
+  /* --------------------------------------------------------
+   * 7. Service Worker 注册
    * ------------------------------------------------------ */
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
@@ -278,7 +346,7 @@
   }
 
   /* --------------------------------------------------------
-   * 7. 暴露全局扩展钩子  window.ToolChrome
+   * 8. 暴露全局扩展钩子  window.ToolChrome
    *
    * 使用方式（在 tool-chrome.js 引入之前设置）：
    *   <script>
@@ -303,8 +371,10 @@
    * 启动
    * ------------------------------------------------------ */
   function start() {
+    recordRecentTool();
     injectFallbackCSS();
     injectChrome();
+    loadHomepageRecentController();
     registerSW();
   }
 

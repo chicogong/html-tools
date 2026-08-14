@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
+import { load } from 'cheerio';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,7 +121,10 @@ function ensureToolPageHeadings(tools) {
     if (!fs.existsSync(abs)) continue;
 
     const html = fs.readFileSync(abs, 'utf8');
-    if (/<h1\b/i.test(html)) continue;
+    const $ = load(html);
+    $('script, style, template, noscript').remove();
+    const renderedHeadings = $('h1');
+    if (renderedHeadings.length > 0) continue;
 
     const body = /<body\b[^>]*>/i;
     if (!body.test(html)) {

@@ -6,6 +6,7 @@
  */
 
 import { section, test, assert, loadToolsData, readHead, readText, SITE } from './_harness.js';
+import { load } from 'cheerio';
 
 section('工具 HTML 结构');
 
@@ -56,13 +57,10 @@ test('每个工具页有且仅有一个非空 H1', () => {
   const bad = tools
     .map((t) => {
       const html = readText(t.path);
-      const headings = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi) || [];
-      const nonEmpty = headings.filter((heading) =>
-        heading
-          .replace(/<[^>]+>/g, '')
-          .replace(/&nbsp;/gi, ' ')
-          .trim()
-      );
+      const $ = load(html);
+      $('script, style, template, noscript').remove();
+      const headings = $('h1');
+      const nonEmpty = headings.filter((_index, heading) => $(heading).text().trim().length > 0);
       return headings.length === 1 && nonEmpty.length === 1
         ? null
         : `#${t.id} ${t.path}: H1=${headings.length}, 非空=${nonEmpty.length}`;
@@ -70,4 +68,20 @@ test('每个工具页有且仅有一个非空 H1', () => {
     .filter(Boolean);
 
   assert(bad.length === 0, `${bad.length} 个文件未通过:\n${bad.slice(0, 20).join('\n')}`);
+});
+
+test('H1 门禁忽略脚本、注释与惰性模板中的标签文本', () => {
+  const $ = load(`
+    <body>
+      <script>const example = '<h1>脚本示例</h1>';</script>
+      <!-- <h1>注释示例</h1> -->
+      <template><h1>模板示例</h1></template>
+      <h1>真实标题</h1>
+    </body>
+  `);
+  $('script, style, template, noscript').remove();
+  const headings = $('h1');
+
+  assert(headings.length === 1, `期望 1 个真实 H1，实际 ${headings.length}`);
+  assert(headings.first().text() === '真实标题', '错误地把非渲染上下文计为 H1');
 });

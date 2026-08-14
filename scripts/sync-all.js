@@ -106,6 +106,39 @@ function escapeAttr(str) {
   return escapeHtml(str).replace(/"/g, '&quot;');
 }
 
+/**
+ * 为缺少主标题的工具页补充一个可访问但不改变现有布局的 H1。
+ *
+ * 页面名称以 tools.json 为唯一事实源；已有 H1 的页面保持原样。这里使用
+ * 小范围字符串插入而不是 HTML 序列化，避免无关的脚本、样式和格式变化。
+ */
+function ensureToolPageHeadings(tools) {
+  const updated = [];
+
+  for (const tool of tools) {
+    const abs = path.join(ROOT_DIR, tool.path);
+    if (!fs.existsSync(abs)) continue;
+
+    const html = fs.readFileSync(abs, 'utf8');
+    if (/<h1\b/i.test(html)) continue;
+
+    const body = /<body\b[^>]*>/i;
+    if (!body.test(html)) {
+      throw new Error(`无法为 ${tool.path} 补充 H1：缺少 <body>`);
+    }
+
+    const heading = `<h1 class="tool-page-heading">${escapeHtml(tool.name)}</h1>`;
+    const next = html.replace(body, (tag) => `${tag}\n    ${heading}`);
+    fs.writeFileSync(abs, next);
+    updated.push(tool.path);
+  }
+
+  console.log(
+    updated.length > 0 ? `✅ 工具页 H1: 已补充 ${updated.length} 个` : '⏭️  工具页 H1: 无需更新'
+  );
+  return updated;
+}
+
 /** 把对象序列化为可安全内嵌 <script> 的 JSON-LD 文本 */
 function toJsonLd(obj) {
   return JSON.stringify(obj, null, 2).replace(/</g, '\\u003c');
@@ -448,6 +481,7 @@ function main() {
   // 生成分类落地页（须在 sitemap 之前，sitemap 要纳入这些页面的 URL）
   const registeredPaths = new Set(tools.map((t) => t.path));
   const categoryPages = generateCategoryPages(categories, groupedTools, registeredPaths);
+  const toolPageHeadings = ensureToolPageHeadings(tools);
 
   // 执行所有同步
   const results = {
@@ -457,7 +491,8 @@ function main() {
     manifest: updateManifest(toolCount),
     i18n: updateI18n(toolCount),
     llmsTxt: updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories),
-    github: updateGitHubDescription(toolCount)
+    github: updateGitHubDescription(toolCount),
+    toolPageHeadings
   };
 
   // 统计各分类数量
@@ -480,6 +515,9 @@ function main() {
   console.log(`   manifest.json: ${results.manifest ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   i18n:          ${results.i18n ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   llms.txt:      ${results.llmsTxt ? '✅ 已更新' : '⏭️  无变化'}`);
+  console.log(
+    `   工具页 H1:     ${results.toolPageHeadings.length > 0 ? `✅ ${results.toolPageHeadings.length} 个` : '⏭️  无变化'}`
+  );
   console.log(`   GitHub 描述:   ${results.github ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log('='.repeat(50));
 }

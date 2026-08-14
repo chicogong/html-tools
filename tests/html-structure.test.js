@@ -5,7 +5,7 @@
  * 每个检查项遍历全部工具，汇总失败文件后一次性断言，保持输出整洁。
  */
 
-import { section, test, assert, loadToolsData, readHead, SITE } from './_harness.js';
+import { section, test, assert, loadToolsData, readHead, readText, SITE } from './_harness.js';
 
 section('工具 HTML 结构');
 
@@ -51,3 +51,23 @@ checkAll('均含 <meta name="description">', (t) =>
 );
 checkAll('均含 <link rel="canonical">', (t) => canonicalHref(t.head) !== null);
 checkAll('canonical 链接与工具实际路径一致', (t) => canonicalHref(t.head) === `${SITE}/${t.path}`);
+
+test('每个工具页有且仅有一个非空 H1', () => {
+  const bad = tools
+    .map((t) => {
+      const html = readText(t.path);
+      const headings = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi) || [];
+      const nonEmpty = headings.filter((heading) =>
+        heading
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/gi, ' ')
+          .trim()
+      );
+      return headings.length === 1 && nonEmpty.length === 1
+        ? null
+        : `#${t.id} ${t.path}: H1=${headings.length}, 非空=${nonEmpty.length}`;
+    })
+    .filter(Boolean);
+
+  assert(bad.length === 0, `${bad.length} 个文件未通过:\n${bad.slice(0, 20).join('\n')}`);
+});

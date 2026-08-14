@@ -2,29 +2,63 @@ name: Lint
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   pull_request:
-    branches: [master, main]
+    branches: [master]
+
+permissions:
+  contents: read
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITLEAKS_VERSION: '8.30.1'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate release metadata
+        run: npm run check:version
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Install pinned Gitleaks
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          base_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl --retry 3 --retry-all-errors --fail --silent --show-error --location "$base_url/$archive" --output "/tmp/$archive"
+          curl --retry 3 --retry-all-errors --fail --silent --show-error --location "$base_url/gitleaks_${GITLEAKS_VERSION}_checksums.txt" --output /tmp/gitleaks-checksums.txt
+          (cd /tmp && grep " $archive$" gitleaks-checksums.txt | sha256sum --check --strict)
+          tar -xzf "/tmp/$archive" -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+
+      - name: Scan tracked history and personal paths
+        run: |
+          npm run audit:secrets
+          npm run audit:personal-paths
+
       - name: Build SSG
         run: npm run build
+
+      - name: Verify release artifact licenses
+        run: |
+          npm run check:artifact-license
+          npm run build:release
 
       - name: Run HTMLHint
         run: npm run lint:html
@@ -43,8 +77,8 @@ jobs:
       - name: Check tools sync
         run: |
           npm run sync:tools
-          if [ -n "$(git diff --name-only index.html)" ]; then
-            echo "❌ Error: index.html is out of sync with tools.json"
+          if [ -n "$(git diff --name-only -- index.html README.md sitemap.xml manifest.json llms.txt i18n tools)" ]; then
+            echo "❌ Error: generated sources are out of sync with tools.json"
             echo ""
             echo "Please run locally:"
             echo "  npm run sync:tools"
@@ -52,7 +86,7 @@ jobs:
             echo "  git push --force-with-lease"
             echo ""
             echo "Diff:"
-            git diff index.html | head -50
+            git diff -- index.html README.md sitemap.xml manifest.json llms.txt i18n tools | head -100
             exit 1
           fi
           echo "✅ Tools are in sync"

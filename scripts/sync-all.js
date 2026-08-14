@@ -601,14 +601,11 @@ function updateReadme(toolCount, categoryCount) {
  * 更新 sitemap.xml
  */
 function updateSitemap(tools, toolCount, categoryPages = []) {
-  const today = new Date().toISOString().split('T')[0];
-
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- 首页 -->
   <url>
     <loc>${SITE_URL}/</loc>
-    <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -619,7 +616,6 @@ function updateSitemap(tools, toolCount, categoryPages = []) {
     xml += `
   <url>
     <loc>${SITE_URL}/${page}</loc>
-    <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>`;
@@ -630,7 +626,6 @@ function updateSitemap(tools, toolCount, categoryPages = []) {
     xml += `
   <url>
     <loc>${SITE_URL}/${tool.path}</loc>
-    <lastmod>${today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>`;
@@ -723,16 +718,16 @@ function updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories) {
 
     const header = `# WebUtils
 
-> WebUtils 是一个纯前端开发者工具集，包含 ${toolCount}+ 个实用工具。每个工具都是独立的 HTML 文件，内联 CSS/JS，无需构建，可离线使用。所有数据处理都在浏览器端完成，不上传服务器，保护用户隐私。
+> WebUtils 包含 ${toolCount}+ 个浏览器端工具。多数格式化、计算和生成工具在本地页面处理输入；HTTP、REST、WebSocket、DNS/IP 等网络工具会连接用户选择或页面标明的第三方服务。
 
 WebUtils 提供开发者日常工作中常用的各类工具：JSON/YAML/XML 格式化与转换、Base64/URL/Unicode 编解码、时间戳与时区转换、二维码生成、图片压缩、正则表达式测试、哈希计算等。
 
 技术特点：
 
-- 单文件架构：每个工具是独立 HTML 文件
-- 零构建：无需 npm、webpack，直接打开使用
-- 可离线：下载到本地即可断网使用
-- 隐私安全：所有数据处理在浏览器端完成
+- 静态优先：工具以独立 HTML 页面为入口，源码无需前端框架运行时
+- 本地优先：本地计算工具不把输入发送给 WebUtils 后端
+- 网络透明：网络工具和外部资源会连接第三方，不能承诺完全离线
+- 可移植：standalone 导出会内联仓库内共享资源，外部依赖仍保持外链
 `;
 
     const sections = [];
@@ -780,6 +775,11 @@ WebUtils 提供开发者日常工作中常用的各类工具：JSON/YAML/XML 格
  * 更新 GitHub 仓库描述
  */
 function updateGitHubDescription(toolCount) {
+  if (process.env.SYNC_GITHUB_DESCRIPTION !== '1') {
+    console.log('⏭️  GitHub 描述: 默认不修改（需显式设置 SYNC_GITHUB_DESCRIPTION=1）');
+    return false;
+  }
+
   try {
     const result = execFileSync(
       'gh',

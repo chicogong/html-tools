@@ -2,16 +2,29 @@ name: Deploy to Render
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
   deploy:
+    # Render is optional. Enable only after the deploy hook has been revalidated.
+    if: github.ref == 'refs/heads/master' && vars.RENDER_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+    concurrency:
+      group: render-production
+      cancel-in-progress: false
 
     steps:
       - name: Trigger Render Deploy
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+          if [ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL is not configured"
+            exit 1
+          fi
+          curl --retry 3 --retry-all-errors --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"

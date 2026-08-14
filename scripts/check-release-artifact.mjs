@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifactDir = path.resolve(root, process.argv[2] || 'dist');
-const requiredFiles = ['LICENSE', 'NOTICE'];
+const requiredFiles = ['index.html', 'manifest.json', 'sitemap.xml', 'LICENSE', 'NOTICE'];
 
 const sha256 = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -21,4 +21,4 @@ for (const name of requiredFiles) {
   }
 }
 
-console.log(`release artifact license files valid: ${requiredFiles.join(', ')}`);
+console.log(`release artifact required files valid: ${requiredFiles.join(', ')}`);

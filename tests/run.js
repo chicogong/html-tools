@@ -16,7 +16,8 @@ const TEST_FILES = [
   'redirects.test.js',
   'assets.test.js',
   'standalone-export.test.js',
-  'recent-tools.test.js'
+  'recent-tools.test.js',
+  'release-notes.test.js'
 ];
 
 let crashed = 0;

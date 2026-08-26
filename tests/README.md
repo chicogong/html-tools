@@ -22,6 +22,7 @@ npm test          # 运行全部测试（node tests/run.js）
 | `html-structure.test.js` | 每个工具 HTML 的 `<head>`：doctype、lang、SEO 元数据、canonical                            |
 | `redirects.test.js`      | `_redirects` 与 `vercel.json` 重定向目标有效、两份配置一致                                 |
 | `assets.test.js`         | 静态资源与 i18n：sw 预缓存清单、manifest 图标/快捷方式、en/zh 翻译键一一对应               |
+| `release-notes.test.js`  | 发布说明：按当前版本提取 CHANGELOG 段落，拒绝缺失版本与跨版本内容                          |
 
 ## 新增测试
 

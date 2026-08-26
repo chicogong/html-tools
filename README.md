@@ -103,15 +103,17 @@ WebUtils 以静态 HTML 为主，不要求用户账户或统一后端。多数�
 
 ## 在线体验
 
-| 平台              | 链接                                    | 状态    |
-| ----------------- | --------------------------------------- | ------- |
-| **🌐 自定义域名** | https://tools.realtime-ai.chat          | ✅      |
-| GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅      |
-| Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅      |
-| Vercel            | https://html-tools-jade.vercel.app      | ✅      |
-| Render            | https://webutils-uj15.onrender.com      | ✅      |
-| Surge             | https://webutils.surge.sh               | ✅      |
-| Netlify           | https://localtools.netlify.app          | ⏸️ 暂停 |
+推荐使用自定义域名访问最新版本。GitHub Pages、Cloudflare Pages 和 Vercel 随主分支持续部署；历史镜像仅为兼容保留，内容可能滞后，不用于验收最新发布。
+
+| 平台              | 链接                                    | 维护状态      |
+| ----------------- | --------------------------------------- | ------------- |
+| **🌐 自定义域名** | https://tools.realtime-ai.chat          | ✅ 推荐入口   |
+| GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅ 持续部署   |
+| Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅ 持续部署   |
+| Vercel            | https://html-tools-jade.vercel.app      | ✅ 持续部署   |
+| Render            | https://webutils-uj15.onrender.com      | ⚠️ 历史镜像   |
+| Surge             | https://webutils.surge.sh               | ⚠️ 历史镜像   |
+| Netlify           | https://localtools.netlify.app          | ⏸️ 已暂停更新 |
 
 ## 工具列表 (1088 个)
 

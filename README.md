@@ -479,34 +479,29 @@ npm run export:standalone -- tools/dev/json-formatter.html /tmp/webutils-export
 git clone https://github.com/chicogong/html-tools.git
 cd html-tools
 
-# 安装依赖（仅用于 lint）
-npm install
+# 按锁文件安装开发、测试与构建依赖
+npm ci
 ```
 
 ### 本地预览
 
-无需任何构建步骤，直接用浏览器打开 HTML 文件即可：
+单个工具页可以直接用浏览器打开；完整站点建议使用开发服务器，以正确验证共享资源、PWA 和路由：
 
 ```bash
-# macOS
-open index.html
+npm run dev
 
-# Windows
-start index.html
-
-# Linux
-xdg-open index.html
-
-# 或使用任意静态服务器
-npx serve .
-python -m http.server 8000
+# 生成用于部署的 dist/
+npm run build
 ```
 
-### Lint 检查
+### 质量检查
 
 ```bash
-# 运行全部检查
+# 与 CI 对齐的本地检查
+npm run build
+npm test
 npm run lint
+npm run format:check
 
 # 单独检查
 npm run lint:html  # HTMLHint
@@ -570,9 +565,7 @@ CI 会自动检查同步状态，如果 `tools.json` 和 `index.html` 不一致�
 
       // URL 状态持久化
       function saveState() {
-        const state = {
-          /* 状态数据 */
-        };
+        const state = {/* 状态数据 */};
         history.replaceState(null, '', '#' + btoa(JSON.stringify(state)));
       }
 
@@ -595,7 +588,7 @@ CI 会自动检查同步状态，如果 `tools.json` 和 `index.html` 不一致�
 - **Standalone 导出**: 需要分发单文件时，使用 `npm run export:standalone -- <tool-path>` 内联本地共享资源
 - **CDN 依赖**: 如需第三方库，使用 CDN（推荐 cdnjs/unpkg/jsdelivr）
 - **URL 状态**: 支持通过 URL hash 保存和恢复状态
-- **纯前端**: 所有处理在浏览器完成，不上传数据
+- **本地优先**: 能在浏览器完成的处理不上传；网络工具明确说明第三方请求边界
 - **响应式**: 支持移动端和桌面端
 - **深色模式**: 支持明暗主题切换
 
@@ -623,6 +616,8 @@ git checkout -b feature/new-tool
 # ...
 
 # 运行检查
+npm run build         # 同步并生成 dist
+npm test              # 结构与行为测试
 npm run lint          # Lint 检查
 npm run format:check  # 格式检查
 
@@ -659,10 +654,10 @@ git push origin feature/new-tool
 
 ## CI/CD
 
-- **Lint**: 每次 PR 自动运行 HTMLHint + Stylelint + ESLint
+- **Quality**: 每次 PR 自动运行构建、测试、HTMLHint、Stylelint、ESLint 与 Prettier 检查
 - **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
-- **Deploy**: 每次推送到 master 自动部署到 GitHub Pages
-- **Release**: 推送 tag 自动创建 Release
+- **Deploy**: 推送到 master 会触发 GitHub Pages、Vercel 与 Cloudflare Pages；其他渠道受显式开关控制
+- **Release**: Release 使用手动工作流并校验既有 tag、版本、制品与安全门
 - **Dependabot**: 自动检查依赖更新
 
 ## 灵感来源

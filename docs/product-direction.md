@@ -55,7 +55,7 @@ This mode is optimized for completing one task.
 
 ### 3. Downloadable Tool
 
-Each tool should eventually be exportable as a single `.html` file that can be opened via `file://`.
+Registered tools can be exported as a single `.html` file with `npm run export:standalone -- <tool-path>` and opened via `file://`.
 
 The exported file should include:
 
@@ -103,11 +103,11 @@ Every registered tool should have:
 2. **Improve discovery**
    Search and category navigation matter more as the tool count grows. Improve ranking, synonyms, recently used tools, and related-tool suggestions.
 
-3. **Standalone export prototype**
-   Build a small export script for one or a few representative tools. The goal is to validate true single-file downloads without changing source architecture.
+3. **Harden standalone export**
+   Keep the existing exporter reliable across representative tools, and make external CDN/API boundaries visible in exported files.
 
-4. **Contribution template**
-   Create a standard new-tool template with SEO metadata, JSON-LD, shared base assets, privacy copy, and common interactions.
+4. **Contribution standards**
+   Keep `docs/design-system.md`, contributor guidance and representative tools aligned; add a generator only when it can preserve those standards.
 
 5. **High-value tool polish**
    Pick the highest-value tools and improve them deeply instead of adding many shallow tools.

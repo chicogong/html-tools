@@ -62,6 +62,21 @@ test('representative calculator works without browser errors', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('JSON formatter exposes labeled controls and formats input', async ({ page }) => {
+  const errors = collectPageErrors(page);
+
+  await page.goto('/tools/dev/json-formatter.html');
+  await page.getByLabel('输入').fill('{"name":"WebUtils","active":true}');
+  await page.getByLabel('缩进:').selectOption('4');
+  await page.getByRole('button', { name: '格式化' }).click();
+
+  await expect(page.getByLabel('输出')).toHaveValue(
+    '{\n    "name": "WebUtils",\n    "active": true\n}'
+  );
+  await expect(page.getByRole('status')).toHaveText('格式化成功');
+  expect(errors).toEqual([]);
+});
+
 test('homepage has no horizontal overflow on a mobile viewport', async ({ page }) => {
   const errors = collectPageErrors(page);
 

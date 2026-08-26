@@ -232,10 +232,10 @@
       '.tc-fab:active{transform:translateY(0)}',
       '.tc-fab:focus-visible{outline:2px solid var(--tc-accent);outline-offset:3px}',
       /* 返回主页胶囊 */
-      '#tcHome{position:fixed;bottom:max(20px,calc(env(safe-area-inset-bottom) + 10px));left:max(20px,calc(env(safe-area-inset-left) + 10px));padding:10px 16px 10px 13px;border-radius:var(--tc-radius-pill)}',
+      '#tcHome{position:fixed;bottom:20px;bottom:max(20px,calc(env(safe-area-inset-bottom) + 10px));left:20px;left:max(20px,calc(env(safe-area-inset-left) + 10px));padding:10px 16px 10px 13px;border-radius:var(--tc-radius-pill)}',
       '#tcHome svg{width:16px;height:16px;flex-shrink:0}',
       /* 主题切换圆钮 */
-      '#tcThemeBtn{position:fixed;bottom:max(20px,calc(env(safe-area-inset-bottom) + 10px));right:max(20px,calc(env(safe-area-inset-right) + 10px));width:46px;height:46px;padding:0;border-radius:var(--tc-radius-circle);background:none;border:1.5px solid var(--tc-border)}',
+      '#tcThemeBtn{position:fixed;bottom:20px;bottom:max(20px,calc(env(safe-area-inset-bottom) + 10px));right:20px;right:max(20px,calc(env(safe-area-inset-right) + 10px));width:46px;height:46px;padding:0;border-radius:var(--tc-radius-circle);background:none;border:1.5px solid var(--tc-border)}',
       '#tcThemeBtn svg{width:18px;height:18px}',
       /* 日/月图标切换 */
       '.tc-icon-sun{display:none}',
@@ -243,9 +243,9 @@
       '[data-theme="light"] .tc-icon-moon{display:none}',
       /* 移动端 */
       '@media(max-width:600px){',
-      '  #tcHome{left:max(14px,calc(env(safe-area-inset-left) + 8px));bottom:max(14px,calc(env(safe-area-inset-bottom) + 8px));width:46px;height:46px;padding:0;border-radius:var(--tc-radius-circle)}',
+      '  #tcHome{left:14px;left:max(14px,calc(env(safe-area-inset-left) + 8px));bottom:14px;bottom:max(14px,calc(env(safe-area-inset-bottom) + 8px));width:46px;height:46px;padding:0;border-radius:var(--tc-radius-circle)}',
       '  #tcHome .tc-label{display:none}',
-      '  #tcThemeBtn{right:max(14px,calc(env(safe-area-inset-right) + 8px));bottom:max(14px,calc(env(safe-area-inset-bottom) + 8px))}',
+      '  #tcThemeBtn{right:14px;right:max(14px,calc(env(safe-area-inset-right) + 8px));bottom:14px;bottom:max(14px,calc(env(safe-area-inset-bottom) + 8px))}',
       '}',
       /* 打印隐藏 */
       '@media print{#tcChrome{display:none}}',

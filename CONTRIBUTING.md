@@ -40,13 +40,17 @@ npm run format:check
 `tools` 是以连续数字字符串为 key 的对象。使用下一个可用数字注册完整信息：
 
 ```json
-"1089": {
-  "name": "工具名称",
-  "description": "说明工具解决什么任务",
-  "category": "dev",
-  "path": "tools/dev/tool-name.html",
-  "keywords": "关键词 keyword",
-  "icon": "🔧"
+{
+  "tools": {
+    "1089": {
+      "name": "工具名称",
+      "description": "说明工具解决什么任务",
+      "category": "dev",
+      "path": "tools/dev/tool-name.html",
+      "keywords": "关键词 keyword",
+      "icon": "🔧"
+    }
+  }
 }
 ```
 

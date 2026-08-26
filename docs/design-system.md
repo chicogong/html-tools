@@ -43,6 +43,7 @@ WebUtils 已有明确的暗色科技感、青色强调色与亮色主题。这�
     <p>说明用户能完成什么，以及数据是否离开浏览器。</p>
   </header>
   <section aria-labelledby="input-heading">
+    <h2 id="input-heading">输入</h2>
     <!-- 工具自己的输入、操作和结果 -->
   </section>
 </main>

@@ -24,6 +24,7 @@ const INCLUDE_FILES = [
   'social-preview.png',
   'offline.html',
   'README.md',
+  'README.en.md',
   'CHANGELOG.md',
   'LICENSE',
   'NOTICE',

@@ -5,10 +5,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifactDir = path.resolve(root, process.argv[2] || 'dist');
-const requiredFiles = ['index.html', 'manifest.json', 'sitemap.xml', 'LICENSE', 'NOTICE'];
+const requiredFiles = [
+  'index.html',
+  'manifest.json',
+  'sitemap.xml',
+  'README.md',
+  'README.en.md',
+  'LICENSE',
+  'NOTICE'
+];
 
-const sha256 = (file) =>
-  crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 for (const name of requiredFiles) {
   const source = path.join(root, name);

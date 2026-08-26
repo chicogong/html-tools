@@ -1,5 +1,7 @@
 # WebUtils
 
+[简体中文](README.md) | [English](README.en.md)
+
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

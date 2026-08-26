@@ -4,7 +4,7 @@
  *
  * 从 tools.json 同步到所有相关文件：
  * - index.html: CATEGORIES 数组、TOOLS 数组、SEO meta、统计数字
- * - README.md: 徽章、标题、工具数量
+ * - README.md / README.en.md: 徽章、标题、工具数量
  * - sitemap.xml: 所有工具 URL
  * - manifest.json: 描述中的工具数量
  * - GitHub 仓库描述
@@ -25,6 +25,7 @@ const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT_DIR, 'tools.json');
 const INDEX_HTML = path.join(ROOT_DIR, 'index.html');
 const README_MD = path.join(ROOT_DIR, 'README.md');
+const README_EN_MD = path.join(ROOT_DIR, 'README.en.md');
 const SITEMAP_XML = path.join(ROOT_DIR, 'sitemap.xml');
 const MANIFEST_JSON = path.join(ROOT_DIR, 'manifest.json');
 const LLMS_TXT = path.join(ROOT_DIR, 'llms.txt');
@@ -491,6 +492,7 @@ function main() {
   const results = {
     indexHtml: updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount),
     readme: updateReadme(toolCount, categoryCount),
+    readmeEn: updateEnglishReadme(toolCount),
     sitemap: updateSitemap(tools, toolCount, categoryPages),
     manifest: updateManifest(toolCount),
     i18n: updateI18n(toolCount),
@@ -515,6 +517,7 @@ function main() {
   console.log('📋 同步结果汇总:');
   console.log(`   index.html:    ${results.indexHtml ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   README.md:     ${results.readme ? '✅ 已更新' : '⏭️  无变化'}`);
+  console.log(`   README.en.md:  ${results.readmeEn ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   sitemap.xml:   ${results.sitemap ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   manifest.json: ${results.manifest ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   i18n:          ${results.i18n ? '✅ 已更新' : '⏭️  无变化'}`);
@@ -635,6 +638,44 @@ function updateReadme(toolCount, categoryCount) {
     return false;
   } catch (err) {
     console.log(`⚠️  README.md: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Update the tool count in README.en.md.
+ */
+function updateEnglishReadme(toolCount) {
+  try {
+    if (!fs.existsSync(README_EN_MD)) {
+      return false;
+    }
+
+    const original = fs.readFileSync(README_EN_MD, 'utf8');
+    const formattedCount = new Intl.NumberFormat('en-US').format(toolCount);
+    const readme = original.replace(
+      /[\d,]+\+ open-source browser tools/g,
+      `${formattedCount}+ open-source browser tools`
+    );
+
+    if (readme !== original) {
+      fs.writeFileSync(README_EN_MD, readme);
+      try {
+        execFileSync('npx', ['prettier', '--write', README_EN_MD], {
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      } catch {
+        // prettier 不可用时静默失败
+      }
+      console.log(`✅ README.en.md: ${formattedCount}+ tools`);
+      return true;
+    }
+
+    console.log('⏭️  README.en.md: no update needed');
+    return false;
+  } catch (err) {
+    console.log(`⚠️  README.en.md: ${err.message}`);
     return false;
   }
 }

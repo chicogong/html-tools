@@ -94,7 +94,7 @@ jobs:
         run: npm run build
 
       - name: Verify generated sources are committed
-        run: git diff --exit-code -- index.html README.md sitemap.xml manifest.json llms.txt i18n tools
+        run: git diff --exit-code -- index.html README.md README.en.md sitemap.xml manifest.json llms.txt i18n tools
 
       - name: Scan release tree and verify license files
         run: |
@@ -106,19 +106,15 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: npm run build:release
 
-      - name: Generate changelog
-        id: changelog
+      - name: Read curated release notes
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Get commits since last tag
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$LAST_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s" "$LAST_TAG"..HEAD)
-          else
-            CHANGELOG=$(git log --pretty=format:"- %s" -20)
-          fi
+          RELEASE_NOTES=$(node scripts/extract-release-notes.mjs "$VERSION")
           {
-            echo "CHANGELOG<<EOF"
-            echo "$CHANGELOG"
+            echo "RELEASE_NOTES<<EOF"
+            echo "$RELEASE_NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -133,14 +129,15 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           TOOL_COUNT: ${{ steps.tools.outputs.COUNT }}
-          CHANGELOG: ${{ steps.changelog.outputs.CHANGELOG }}
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: WebUtils ${{ steps.version.outputs.version }}
           body: |
             ## WebUtils ${{ steps.version.outputs.version }}
 
-            **${{ steps.tools.outputs.COUNT }}+ 纯前端在线工具集**
+            **${{ steps.tools.outputs.COUNT }}+ 本地优先的浏览器工具集**
+
+            Local-first browser utilities with standalone HTML export and transparent network boundaries.
 
             ### 特性
             - 静态 HTML 工具集，可导出独立页面
@@ -159,7 +156,7 @@ jobs:
             3. 按 README 的隐私与网络边界使用；外部资源或网络工具仍需联网
 
             ### 更新日志
-            ${{ steps.changelog.outputs.CHANGELOG }}
+            ${{ steps.notes.outputs.RELEASE_NOTES }}
 
             ---
 

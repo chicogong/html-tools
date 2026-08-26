@@ -85,6 +85,19 @@ test('JSON formatter exposes labeled controls and formats input', async ({ page 
   expect(errors).toEqual([]);
 });
 
+test('timestamp converter exposes labeled controls and converts Unix time', async ({ page }) => {
+  const errors = collectPageErrors(page);
+
+  await page.goto('/tools/time/timestamp.html');
+  await page.getByLabel('输入时间戳').fill('0');
+  await page.getByLabel('时间戳单位').selectOption('s');
+  await page.getByRole('button', { name: '转换', exact: true }).first().click();
+
+  await expect(page.locator('#resultIso')).toHaveText('1970-01-01T00:00:00.000Z');
+  await expect(page.locator('#tsStatus')).toHaveText('转换成功');
+  expect(errors).toEqual([]);
+});
+
 test('homepage has no horizontal overflow on a mobile viewport', async ({ page }) => {
   const errors = collectPageErrors(page);
 

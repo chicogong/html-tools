@@ -74,6 +74,14 @@ test('JSON formatter exposes labeled controls and formats input', async ({ page 
     '{\n    "name": "WebUtils",\n    "active": true\n}'
   );
   await expect(page.getByRole('status')).toHaveText('格式化成功');
+
+  await page.getByLabel('输入').fill('{"name":}');
+  await page.getByRole('button', { name: '校验' }).click();
+  const errorDetail = page.locator('#errorDetail');
+  await expect(errorDetail).toBeVisible();
+  const errorText = await errorDetail.textContent();
+  expect(errorText).toBeTruthy();
+  await expect(page.locator('#errorAnnouncement')).toHaveText(errorText);
   expect(errors).toEqual([]);
 });
 

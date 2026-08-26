@@ -25,6 +25,7 @@ const INCLUDE_FILES = [
   'offline.html',
   'README.md',
   'README.en.md',
+  'SECURITY.md',
   'CHANGELOG.md',
   'LICENSE',
   'NOTICE',

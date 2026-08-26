@@ -11,6 +11,7 @@ const requiredFiles = [
   'sitemap.xml',
   'README.md',
   'README.en.md',
+  'SECURITY.md',
   'LICENSE',
   'NOTICE'
 ];

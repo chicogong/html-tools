@@ -133,6 +133,7 @@ docs: 更新 README 工具列表
 
 - Issues: https://github.com/chicogong/html-tools/issues
 - Discussions: https://github.com/chicogong/html-tools/discussions
+- 安全漏洞：请阅读 [SECURITY.md](SECURITY.md) 并使用 GitHub 私密漏洞报告，不要创建公开 Issue
 
 ## 许可证
 

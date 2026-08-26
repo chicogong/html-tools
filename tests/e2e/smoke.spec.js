@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { expect, test } from '@playwright/test';
 
 function collectPageErrors(page) {
@@ -114,6 +115,30 @@ test('URL codec exposes semantic controls and encodes input', async ({ page }) =
   await page.getByRole('button', { name: '解析 URL' }).click();
   await expect(page.getByRole('table', { name: 'URL 解析结果' })).toBeVisible();
   await expect(page.locator('#urlHost')).toHaveText('example.com');
+  expect(errors).toEqual([]);
+});
+
+test('Base64 tool encodes Unicode text and local files', async ({ page }) => {
+  const errors = collectPageErrors(page);
+
+  await page.goto('/tools/dev/base64.html');
+  const input = page.getByLabel('输入');
+  await input.fill('你好，WebUtils');
+  await page.getByRole('button', { name: '编码 (Text → Base64)' }).click();
+  await expect(page.getByLabel('输出')).toHaveValue('5L2g5aW977yMV2ViVXRpbHM=');
+
+  await input.fill('5L2g5aW977yMV2ViVXRpbHM=');
+  await page.getByRole('button', { name: '解码 (Base64 → Text)' }).click();
+  await expect(page.getByLabel('输出')).toHaveValue('你好，WebUtils');
+
+  await page.getByLabel('选择文件').setInputFiles({
+    name: 'hello.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('hello')
+  });
+  await expect(page.getByLabel('输出')).toHaveValue('aGVsbG8=');
+  await expect(page.locator('#fileName')).toContainText('hello.txt');
+  await expect(page.locator('#status')).toContainText('文件编码成功');
   expect(errors).toEqual([]);
 });
 

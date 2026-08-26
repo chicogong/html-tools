@@ -10,6 +10,20 @@ export default [
   // Base config for all files
   js.configs.recommended,
 
+  // Playwright config and browser tests run as Node.js modules.
+  {
+    files: ['playwright.config.js', 'tests/e2e/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        process: 'readonly',
+        document: 'readonly',
+        localStorage: 'readonly'
+      }
+    }
+  },
+
   // HTML files + extracted assets/js (same project conventions)
   {
     files: ['**/*.html', 'assets/js/**/*.js'],

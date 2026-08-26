@@ -87,6 +87,7 @@ The current suite checks tool metadata, generated indexes, HTML structure, redir
 Bug fixes, accessibility improvements, documentation, translations, and carefully scoped new tools are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), use the shared design system, and keep network and privacy boundaries explicit.
 
 - [Report a bug](https://github.com/chicogong/html-tools/issues/new?template=bug_report.yml)
+- [Report a security vulnerability privately](https://github.com/chicogong/html-tools/security/advisories/new)
 - [Propose a tool](https://github.com/chicogong/html-tools/issues/new?template=new_tool.yml)
 - [Open a pull request](https://github.com/chicogong/html-tools/pulls)
 - [Join Discussions](https://github.com/chicogong/html-tools/discussions)

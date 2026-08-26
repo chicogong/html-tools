@@ -601,8 +601,9 @@ CI 会自动检查同步状态，如果 `tools.json` 和 `index.html` 不一致�
 ### 贡献方式
 
 1. **报告 Bug**: 在 [Issues](https://github.com/chicogong/html-tools/issues) 中描述问题
-2. **建议功能**: 在 Issues 中提出新工具或功能建议
-3. **提交代码**: Fork 仓库，创建分支，提交 PR
+2. **报告安全漏洞**: 使用 [GitHub 私密漏洞报告](https://github.com/chicogong/html-tools/security/advisories/new)，请勿公开未修复细节
+3. **建议功能**: 在 Issues 中提出新工具或功能建议
+4. **提交代码**: Fork 仓库，创建分支，提交 PR
 
 ### 提交 PR
 

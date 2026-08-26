@@ -164,3 +164,35 @@ test('homepage has no horizontal overflow on a mobile viewport', async ({ page }
   expect(widths.scroll).toBe(widths.client);
   expect(errors).toEqual([]);
 });
+
+test('Claude Skills keeps its presentation and filters usable on mobile', async ({ page }) => {
+  const errors = collectPageErrors(page);
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/tools/ai/claude-skills.html');
+
+  await expect(page.getByRole('heading', { name: 'Claude Skills 精选' })).toBeVisible();
+  await expect(page.locator('.skills-grid')).toHaveCSS('display', 'grid');
+  await expect(page.locator('.skill-card').first()).not.toHaveCSS(
+    'background-color',
+    'rgba(0, 0, 0, 0)'
+  );
+
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth
+  }));
+  expect(widths.scroll).toBe(widths.client);
+
+  const skipLink = page.getByRole('link', { name: '跳到主要内容' });
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+
+  const designFilter = page.getByRole('button', { name: '🎨 设计创意' });
+  await designFilter.click();
+  await expect(designFilter).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: '全部' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.skill-card:visible')).toHaveCount(5);
+
+  expect(errors).toEqual([]);
+});

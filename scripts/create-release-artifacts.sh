@@ -47,7 +47,7 @@ sha256sum --check SHA256SUMS
 
 zip_entries=$(unzip -Z1 "$zip_path" | sed 's#^\./##')
 tar_entries=$(tar -tzf "$tar_path" | sed 's#^\./##')
-for required_file in index.html manifest.json sitemap.xml LICENSE NOTICE; do
+for required_file in index.html manifest.json sitemap.xml README.md README.en.md LICENSE NOTICE; do
   if ! grep -Fqx "$required_file" <<<"$zip_entries"; then
     echo "$zip_path is missing $required_file" >&2
     exit 1

@@ -155,10 +155,7 @@ test('损坏的 localStorage 内容不会阻断记录', () => {
     stored: '{not-json'
   });
 
-  assert(
-    JSON.parse(stored)[0] === 'tools/dev/base64.html',
-    '损坏记录后仍应保存当前工具'
-  );
+  assert(JSON.parse(stored)[0] === 'tools/dev/base64.html', '损坏记录后仍应保存当前工具');
 });
 
 test('无 .html 的工具地址会归一化为登记路径', () => {
@@ -167,10 +164,7 @@ test('无 .html 的工具地址会归一化为登记路径', () => {
     canonicalHref: null
   });
 
-  assert(
-    JSON.parse(stored)[0] === 'tools/dev/json-formatter.html',
-    'clean URL 应补齐 .html'
-  );
+  assert(JSON.parse(stored)[0] === 'tools/dev/json-formatter.html', 'clean URL 应补齐 .html');
 });
 
 test('分类落地页不会进入最近使用', () => {

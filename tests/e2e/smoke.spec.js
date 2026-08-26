@@ -131,6 +131,14 @@ test('Base64 tool encodes Unicode text and local files', async ({ page }) => {
   await page.getByRole('button', { name: '解码 (Base64 → Text)' }).click();
   await expect(page.getByLabel('输出')).toHaveValue('你好，WebUtils');
 
+  const bomText = '\uFEFFhello';
+  await input.fill(bomText);
+  await page.getByRole('button', { name: '编码 (Text → Base64)' }).click();
+  await expect(page.getByLabel('输出')).toHaveValue('77u/aGVsbG8=');
+  await input.fill('77u/aGVsbG8=');
+  await page.getByRole('button', { name: '解码 (Base64 → Text)' }).click();
+  await expect(page.getByLabel('输出')).toHaveValue(bomText);
+
   await page.getByLabel('选择文件').setInputFiles({
     name: 'hello.txt',
     mimeType: 'text/plain',

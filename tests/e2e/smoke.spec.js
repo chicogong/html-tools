@@ -98,6 +98,25 @@ test('timestamp converter exposes labeled controls and converts Unix time', asyn
   expect(errors).toEqual([]);
 });
 
+test('URL codec exposes semantic controls and encodes input', async ({ page }) => {
+  const errors = collectPageErrors(page);
+
+  await page.goto('/tools/dev/url-codec.html');
+  await expect(page.getByRole('group', { name: '编码模式' })).toBeVisible();
+  await page.getByLabel('输入').fill('https://example.com/路径?q=你好');
+  await page.getByRole('button', { name: '编码', exact: true }).click();
+
+  await expect(page.getByLabel('输出')).toHaveValue(
+    'https%3A%2F%2Fexample.com%2F%E8%B7%AF%E5%BE%84%3Fq%3D%E4%BD%A0%E5%A5%BD'
+  );
+  await expect(page.locator('#status')).toHaveText('编码成功');
+
+  await page.getByRole('button', { name: '解析 URL' }).click();
+  await expect(page.getByRole('table', { name: 'URL 解析结果' })).toBeVisible();
+  await expect(page.locator('#urlHost')).toHaveText('example.com');
+  expect(errors).toEqual([]);
+});
+
 test('homepage has no horizontal overflow on a mobile viewport', async ({ page }) => {
   const errors = collectPageErrors(page);
 

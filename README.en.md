@@ -32,6 +32,20 @@ The project is designed around four practical promises:
 
 Explore all 35 categories through [the live tool index](https://tools.realtime-ai.chat).
 
+## Hosted versions
+
+Use the custom domain for the latest recommended version. GitHub Pages, Cloudflare Pages, and Vercel are continuously deployed from the default branch. Historical mirrors remain available for compatibility, but they may lag behind and should not be used to verify the latest release.
+
+| Platform          | URL                                     | Maintenance status         |
+| ----------------- | --------------------------------------- | -------------------------- |
+| **Custom domain** | https://tools.realtime-ai.chat          | ✅ Recommended entry point |
+| GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅ Continuous deployment   |
+| Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅ Continuous deployment   |
+| Vercel            | https://html-tools-jade.vercel.app      | ✅ Continuous deployment   |
+| Render            | https://webutils-uj15.onrender.com      | ⚠️ Historical mirror       |
+| Surge             | https://webutils.surge.sh               | ⚠️ Historical mirror       |
+| Netlify           | https://localtools.netlify.app          | ⏸️ Updates paused          |
+
 ## Privacy and network boundaries
 
 “Browser-based” does not automatically mean “never connects to the network.” WebUtils documents the distinction:

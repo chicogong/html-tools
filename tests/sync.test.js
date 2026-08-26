@@ -104,6 +104,15 @@ test(`README.md 徽章为 Tools-${toolCount}+`, () => {
   );
 });
 
+test(`README.en.md tool count is "${toolCount.toLocaleString('en-US')}+"`, () => {
+  const readme = readText('README.en.md');
+  const formattedCount = toolCount.toLocaleString('en-US');
+  assert(
+    readme.includes(`${formattedCount}+ open-source browser tools`),
+    `README.en.md tool count is not ${formattedCount}+ —— 请运行 npm run sync:tools`
+  );
+});
+
 test(`i18n 副标题工具数为 "${toolCount}+"`, () => {
   for (const file of ['i18n/en.json', 'i18n/zh-CN.json']) {
     const json = readText(file);

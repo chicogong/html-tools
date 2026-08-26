@@ -39,6 +39,20 @@ test('MCP guide preserves card/code presentation and config disclosure at 390px 
     await expect(page.locator('.code-block').first()).toBeVisible();
     await expect(page.locator('.server-install').first()).toBeVisible();
 
+    if (viewport.width === 390) {
+      const titleAreaGeometry = await page.locator('.title-area').evaluate((titleArea) => {
+        const lastContent = titleArea.lastElementChild;
+        if (!lastContent) return { hasContent: false, extraHeight: 0 };
+        return {
+          hasContent: true,
+          extraHeight:
+            titleArea.getBoundingClientRect().bottom - lastContent.getBoundingClientRect().bottom
+        };
+      });
+      expect(titleAreaGeometry.hasContent).toBe(true);
+      expect(titleAreaGeometry.extraHeight).toBeLessThanOrEqual(1);
+    }
+
     const copyStatus = page.getByRole('status');
     await expect(copyStatus).toHaveAttribute('aria-live', 'polite');
     await page.locator('.code-header button').first().click();

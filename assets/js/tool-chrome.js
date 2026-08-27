@@ -200,7 +200,7 @@
    * 静态主机（例如 github.io）必须保留物理 .html 路径，否则站内链接会 404。
    */
   function hostSupportsCleanUrls() {
-    var hostname = window.location.hostname.toLowerCase();
+    var hostname = (window.location.hostname || '').toLowerCase();
     return (
       hostname === 'tools.realtime-ai.chat' ||
       hostname === 'localhost' ||

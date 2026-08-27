@@ -222,7 +222,7 @@ const CLEAN_URL_HOSTS = new Set(['tools.realtime-ai.chat', 'localhost', '127.0.0
 const CLEAN_URL_HOST_SUFFIXES = ['.vercel.app', '.netlify.app', '.pages.dev'];
 
 function hostSupportsCleanUrls() {
-  const hostname = window.location.hostname.toLowerCase();
+  const hostname = (window.location.hostname || '').toLowerCase();
   return (
     CLEAN_URL_HOSTS.has(hostname) ||
     CLEAN_URL_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix))

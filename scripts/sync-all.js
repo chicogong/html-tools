@@ -17,6 +17,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import { load } from 'cheerio';
+import { SITE_URL, publicPath, publicUrl, publicRelativePath } from './public-url.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,9 +32,6 @@ const MANIFEST_JSON = path.join(ROOT_DIR, 'manifest.json');
 const LLMS_TXT = path.join(ROOT_DIR, 'llms.txt');
 const EN_JSON = path.join(ROOT_DIR, 'i18n', 'en.json');
 const ZH_JSON = path.join(ROOT_DIR, 'i18n', 'zh-CN.json');
-
-// 网站域名 (不带尾部斜杠)
-const SITE_URL = 'https://tools.realtime-ai.chat';
 
 // 优先显示的分类顺序
 const PRIORITY_CATEGORIES = [
@@ -63,6 +61,8 @@ function escapeString(str) {
  * 生成工具的 JS 对象字符串
  */
 function toolToJsLine(tool) {
+  // 保留物理文件路径作为收藏/最近使用的稳定 identity；浏览器在 http(s)
+  // 环境渲染卡片时再转换为 clean URL，file:// 下仍可直接打开 HTML 文件。
   const url = escapeString(tool.path);
   const category = escapeString(tool.category);
   const name = escapeString(tool.name);
@@ -140,6 +140,63 @@ function ensureToolPageHeadings(tools) {
 
   console.log(
     updated.length > 0 ? `✅ 工具页 H1: 已补充 ${updated.length} 个` : '⏭️  工具页 H1: 无需更新'
+  );
+  return updated;
+}
+
+/**
+ * 统一工具页内的同站绝对 HTML URL（canonical、Open Graph、JSON-LD 等）。
+ * 仅处理本站 URL，正文示例和外部链接保持不变。
+ */
+function ensureToolPagePublicUrls(tools) {
+  const updated = [];
+
+  for (const tool of tools) {
+    const abs = path.join(ROOT_DIR, tool.path);
+    if (!fs.existsSync(abs)) continue;
+
+    const html = fs.readFileSync(abs, 'utf8');
+    let next = html.replace(/https:\/\/tools\.realtime-ai\.chat\/[^"'<>\s]+\.html/g, (url) =>
+      publicUrl(url.slice(SITE_URL.length))
+    );
+
+    next = next.replace(
+      /<a\b([^>]*?)\bhref=(["'])([^"']+\.html(?:[?#][^"']*)?)\2([^>]*)>/gi,
+      (anchor, beforeHref, quote, href, afterHref) => {
+        if (/\bdata-file-href\s*=/i.test(anchor) || /^(?:[a-z]+:|\/\/|\/)/i.test(href)) {
+          return anchor;
+        }
+
+        const suffixIndex = href.search(/[?#]/);
+        const fileHref = suffixIndex === -1 ? href : href.slice(0, suffixIndex);
+        const suffix = suffixIndex === -1 ? '' : href.slice(suffixIndex);
+        const targetPath = path.posix.normalize(
+          path.posix.join(path.posix.dirname(tool.path), fileHref)
+        );
+        if (targetPath.startsWith('../') || !targetPath.endsWith('.html')) return anchor;
+
+        const cleanTarget = publicRelativePath(targetPath);
+        const cleanHref = path.posix.relative(path.posix.dirname(tool.path), cleanTarget) || './';
+        return `<a${beforeHref}href=${quote}${cleanHref}${suffix}${quote} data-file-href=${quote}${href}${quote}${afterHref}>`;
+      }
+    );
+
+    if (!/<meta\b(?=[^>]*\bproperty=["']og:url["'])[^>]*>/i.test(next)) {
+      next = next.replace(
+        /(<link\b(?=[^>]*\brel=["']canonical["'])[^>]*>)/i,
+        `$1\n    <meta property="og:url" content="${publicUrl(tool.path)}" />`
+      );
+    }
+    if (next === html) continue;
+
+    fs.writeFileSync(abs, next);
+    updated.push(tool.path);
+  }
+
+  console.log(
+    updated.length > 0
+      ? `✅ 工具页公开 URL: 已更新 ${updated.length} 个`
+      : '⏭️  工具页公开 URL: 无需更新'
   );
   return updated;
 }
@@ -265,7 +322,7 @@ function categoryPageHtml(catId, cat, catTools) {
   const intro = cat.intro || `${name}相关的在线工具集合。`;
   const icon = cat.icon || '📦';
   const count = catTools.length;
-  const canonical = `${SITE_URL}/tools/${catId}/index.html`;
+  const canonical = publicUrl(`tools/${catId}/index.html`);
   const title = `${name} - 在线工具合集（${count}个）| WebUtils`;
 
   const breadcrumb = {
@@ -289,15 +346,16 @@ function categoryPageHtml(catId, cat, catTools) {
         '@type': 'ListItem',
         position: i + 1,
         name: t.name,
-        url: `${SITE_URL}/${t.path}`
+        url: publicUrl(t.path)
       }))
     }
   };
 
   const cards = catTools
     .map((t) => {
-      const href = escapeAttr(relToolHref(catId, t.path));
-      return `        <a class="cat-card" href="${href}">
+      const href = escapeAttr(relToolHref(catId, publicRelativePath(t.path)));
+      const fileHref = escapeAttr(relToolHref(catId, t.path));
+      return `        <a class="cat-card" href="${href}" data-file-href="${fileHref}">
           <span class="cat-card-icon">${escapeHtml(t.icon || '🔧')}</span>
           <span class="cat-card-body">
             <span class="cat-card-name">${escapeHtml(t.name)}</span>
@@ -365,7 +423,7 @@ ${toJsonLd(collection)}
 ${cards}
       </section>
       <footer class="cat-footer">
-        <a href="../../index.html">← 返回 WebUtils 全部工具</a>
+        <a href="../../" data-file-href="../../index.html">← 返回 WebUtils 全部工具</a>
       </footer>
     </main>
   </body>
@@ -486,6 +544,7 @@ function main() {
   // 生成分类落地页（须在 sitemap 之前，sitemap 要纳入这些页面的 URL）
   const registeredPaths = new Set(tools.map((t) => t.path));
   const categoryPages = generateCategoryPages(categories, groupedTools, registeredPaths);
+  const toolPagePublicUrls = ensureToolPagePublicUrls(tools);
   const toolPageHeadings = ensureToolPageHeadings(tools);
 
   // 执行所有同步
@@ -498,6 +557,7 @@ function main() {
     i18n: updateI18n(toolCount),
     llmsTxt: updateLlmsTxt(toolCount, categories, groupedTools, sortedCategories),
     github: updateGitHubDescription(toolCount),
+    toolPagePublicUrls,
     toolPageHeadings
   };
 
@@ -522,6 +582,9 @@ function main() {
   console.log(`   manifest.json: ${results.manifest ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   i18n:          ${results.i18n ? '✅ 已更新' : '⏭️  无变化'}`);
   console.log(`   llms.txt:      ${results.llmsTxt ? '✅ 已更新' : '⏭️  无变化'}`);
+  console.log(
+    `   工具页 URL:    ${results.toolPagePublicUrls.length > 0 ? `✅ ${results.toolPagePublicUrls.length} 个` : '⏭️  无变化'}`
+  );
   console.log(
     `   工具页 H1:     ${results.toolPageHeadings.length > 0 ? `✅ ${results.toolPageHeadings.length} 个` : '⏭️  无变化'}`
   );
@@ -698,7 +761,7 @@ function updateSitemap(tools, toolCount, categoryPages = []) {
   for (const page of categoryPages) {
     xml += `
   <url>
-    <loc>${SITE_URL}/${page}</loc>
+    <loc>${publicUrl(page)}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>`;
@@ -708,7 +771,7 @@ function updateSitemap(tools, toolCount, categoryPages = []) {
   for (const tool of tools) {
     xml += `
   <url>
-    <loc>${SITE_URL}/${tool.path}</loc>
+    <loc>${publicUrl(tool.path)}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>`;
@@ -825,7 +888,7 @@ WebUtils 提供开发者日常工作中常用的各类工具：JSON/YAML/XML 格
 
       const lines = top.map((t) => {
         const desc = (t.description || t.name).replace(/\s+/g, ' ').trim();
-        return `- [${t.name}](${SITE_URL}/${t.path}): ${desc}`;
+        return `- [${t.name}](${publicUrl(t.path)}): ${desc}`;
       });
 
       sections.push(`## ${catInfo.name}\n\n${lines.join('\n')}`);

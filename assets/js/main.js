@@ -218,9 +218,17 @@ function renderCategories() {
 // ==================== 渲染工具卡片 ====================
 let renderedCount = 0;
 
+function publicToolUrl(filePath) {
+  if (window.location.protocol === 'file:') return filePath;
+  if (filePath === 'index.html') return './';
+  if (filePath.endsWith('/index.html')) return filePath.slice(0, -'index.html'.length);
+  if (filePath.endsWith('.html')) return filePath.slice(0, -'.html'.length);
+  return filePath;
+}
+
 function createToolCard(tool, index) {
   const card = document.createElement('a');
-  card.href = tool.url;
+  card.href = publicToolUrl(tool.url);
   card.className = 'tool-card';
   card.dataset.category = tool.category;
   card.dataset.keywords = tool.keywords;

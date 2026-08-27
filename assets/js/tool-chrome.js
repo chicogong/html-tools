@@ -15,7 +15,7 @@
  *   <script src="../../assets/js/tool-chrome.js"></script>
  *
  * 覆盖主页地址（可选）：
- *   <meta name="home-url" content="/index.html">
+ *   <meta name="home-url" content="/">
  *
  * ========================================================== */
 
@@ -146,7 +146,7 @@
    *    优先级：
    *    a. <meta name="home-url" content="...">  （显式覆盖，最高优先）
    *    b. 根据 <script src="..."> 路径逆推        （自动计算）
-   *    c. 兜底 '/index.html'
+   *    c. 兜底 '/'
    * ------------------------------------------------------ */
   function resolveHomeUrl() {
     // a. meta 显式指定（最高优先）
@@ -161,15 +161,15 @@
         var assetIdx = parts.lastIndexOf('assets');
         if (assetIdx > 0) {
           var rootPath = parts.slice(0, assetIdx).join('/') || '';
-          return rootPath + '/index.html';
+          return rootPath + (scriptUrl.protocol === 'file:' ? '/index.html' : '/');
         }
       } catch (e) {}
     }
 
     // c. 兜底：从 window.location.pathname 的目录层级计算相对路径
     //    正确算法：找到 'tools' 目录，计算从当前文件到 tools 父目录的 .. 层数
-    //    tools/dev/base64.html      -> ../../index.html      (afterTools=['dev'], depth=2)
-    //    tools/ai/wiki/page.html    -> ../../../index.html   (afterTools=['ai','wiki'], depth=3)
+    //    tools/dev/base64.html      -> ../../      (afterTools=['dev'], depth=2)
+    //    tools/ai/wiki/page.html    -> ../../../   (afterTools=['ai','wiki'], depth=3)
     try {
       var segs = window.location.pathname.split('/').filter(Boolean);
       var toolsIdx = segs.indexOf('tools');
@@ -177,11 +177,46 @@
         // afterTools：tools 后面的路径段，去掉最后一段（文件名）
         var afterTools = segs.slice(toolsIdx + 1, -1);
         var depth = afterTools.length + 1; // +1 for 'tools' itself
-        return Array(depth).fill('..').join('/') + '/index.html';
+        return (
+          Array(depth).fill('..').join('/') +
+          (window.location.protocol === 'file:' ? '/index.html' : '/')
+        );
       }
     } catch (e) {}
 
-    return '/index.html';
+    return window.location.protocol === 'file:' ? '/index.html' : '/';
+  }
+
+  /** 分类页保留物理文件回退，确保直接双击 HTML 时仍可离线导航。 */
+  function restoreFileLinks() {
+    if (window.location.protocol !== 'file:') return;
+    doc.querySelectorAll('[data-file-href]').forEach(function (link) {
+      link.setAttribute('href', link.getAttribute('data-file-href'));
+    });
+  }
+
+  /** http(s) 下把同源 HTML 链接改成生产环境最终 URL，避免站内跳转触发 308。 */
+  function normalizeHttpLinks() {
+    if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') return;
+
+    doc.querySelectorAll('a[href]').forEach(function (link) {
+      try {
+        var url = new URL(link.getAttribute('href'), window.location.href);
+        if (url.origin !== window.location.origin) return;
+
+        if (url.pathname === '/index.html') {
+          url.pathname = '/';
+        } else if (url.pathname.endsWith('/index.html')) {
+          url.pathname = url.pathname.slice(0, -'index.html'.length);
+        } else if (url.pathname.endsWith('.html')) {
+          url.pathname = url.pathname.slice(0, -'.html'.length);
+        } else {
+          return;
+        }
+
+        link.href = url.pathname + url.search + url.hash;
+      } catch (e) {}
+    });
   }
 
   /* --------------------------------------------------------
@@ -373,6 +408,8 @@
    * ------------------------------------------------------ */
   function start() {
     recordRecentTool();
+    restoreFileLinks();
+    normalizeHttpLinks();
     injectFallbackCSS();
     injectChrome();
     loadHomepageRecentController();

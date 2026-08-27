@@ -5,8 +5,9 @@
  * 每个检查项遍历全部工具，汇总失败文件后一次性断言，保持输出整洁。
  */
 
-import { section, test, assert, loadToolsData, readHead, readText, SITE } from './_harness.js';
+import { section, test, assert, loadToolsData, readHead, readText } from './_harness.js';
 import { load } from 'cheerio';
+import { publicUrl } from '../scripts/public-url.mjs';
 
 section('工具 HTML 结构');
 
@@ -32,6 +33,16 @@ function canonicalHref(head) {
   return null;
 }
 
+function openGraphUrl(head) {
+  for (const meta of head.match(/<meta\b[^>]*>/gi) || []) {
+    if (/\bproperty=["']og:url["']/i.test(meta)) {
+      const content = meta.match(/\bcontent=["']([^"']+)["']/i);
+      return content ? content[1] : null;
+    }
+  }
+  return null;
+}
+
 /** 对全部工具运行同一个谓词，汇总不通过的文件 */
 function checkAll(label, predicate) {
   test(label, () => {
@@ -51,7 +62,31 @@ checkAll('均含 <meta name="description">', (t) =>
   /<meta[^>]+name=["']description["']/i.test(t.head)
 );
 checkAll('均含 <link rel="canonical">', (t) => canonicalHref(t.head) !== null);
-checkAll('canonical 链接与工具实际路径一致', (t) => canonicalHref(t.head) === `${SITE}/${t.path}`);
+checkAll(
+  'canonical 链接与生产环境最终 URL 一致',
+  (t) => canonicalHref(t.head) === publicUrl(t.path)
+);
+checkAll(
+  'Open Graph URL 与生产环境最终 URL 一致',
+  (t) => openGraphUrl(t.head) === publicUrl(t.path)
+);
+
+test('工具页源代码中的站内链接使用最终 clean URL', () => {
+  const bad = [];
+  for (const tool of tools) {
+    const $ = load(readText(tool.path));
+    $('a[href]').each((_index, anchor) => {
+      const href = $(anchor).attr('href');
+      const isInternal =
+        !/^(?:[a-z]+:|\/\/)/i.test(href) || href.startsWith('https://tools.realtime-ai.chat/');
+      if (isInternal && /(?:^|\/)index\.html(?:[?#]|$)|\.html(?:[?#]|$)/i.test(href)) {
+        bad.push(`#${tool.id} ${tool.path}: ${href}`);
+      }
+    });
+  }
+
+  assert(bad.length === 0, `${bad.length} 个站内链接仍暴露 .html:\n${bad.slice(0, 20).join('\n')}`);
+});
 
 test('每个工具页有且仅有一个非空 H1', () => {
   const bad = tools

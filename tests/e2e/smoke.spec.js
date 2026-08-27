@@ -27,13 +27,13 @@ test('homepage discovery, favorites, and recent tools work', async ({ page }) =>
   const search = page.locator('#search');
   await search.fill('JSON');
   await expect(page.locator('.tool-card', { hasText: 'JSON 格式化' })).toBeVisible();
-  await expect(page.locator('.tool-card[href="tools/time/timestamp.html"]')).toBeHidden();
+  await expect(page.locator('.tool-card[href="tools/time/timestamp"]')).toBeHidden();
   await search.fill('');
 
   await page.locator('.category-btn[data-category="dev"]').click();
   await expect(page).toHaveURL(/\?category=dev$/);
 
-  const jsonCard = page.locator('.tool-card[href="tools/dev/json-formatter.html"]');
+  const jsonCard = page.locator('.tool-card[href="tools/dev/json-formatter"]');
   const favoriteButton = jsonCard.locator('.favorite-btn');
   await favoriteButton.focus();
   await page.keyboard.press('Enter');
@@ -43,7 +43,7 @@ test('homepage discovery, favorites, and recent tools work', async ({ page }) =>
     .toContain('tools/dev/json-formatter.html');
 
   await jsonCard.click({ position: { x: 32, y: 72 } });
-  await expect(page).toHaveURL(/tools\/dev\/json-formatter\.html$/);
+  await expect(page).toHaveURL(/tools\/dev\/json-formatter$/);
   await expect
     .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('html_tools_recents_v1'))?.[0]))
     .toBe('tools/dev/json-formatter.html');

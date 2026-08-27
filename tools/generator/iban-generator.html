@@ -101,10 +101,6 @@
     />
     <link rel="stylesheet" href="../../assets/css/tool-base.css" />
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap"
-      rel="stylesheet"
-    />
     <style>
       /* CSS 变量兼容垫片 (修复 d03c9548 改名遗留) */
       :root {
@@ -501,51 +497,84 @@
         text-decoration: none;
       }
     </style>
+    <link rel="stylesheet" href="../../assets/css/iban-generator.css" />
   </head>
   <body>
-    <div class="tool-main" role="main">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <main class="tool-main" id="main-content" tabindex="-1">
       <div class="container">
         <a href="../../index.html" class="back-link">← 返回工具列表</a>
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="☀️">☀️</button>
+        <button
+          class="theme-toggle"
+          type="button"
+          onclick="toggleTheme()"
+          aria-label="切换明暗主题"
+        >
+          <span data-theme-icon aria-hidden="true">☀️</span>
+        </button>
         <h1>IBAN 生成器</h1>
         <p class="desc">生成测试用国际银行账号</p>
 
-        <div class="card">
+        <form
+          class="card"
+          aria-label="IBAN 生成设置"
+          onsubmit="
+            event.preventDefault();
+            generate();
+          "
+        >
           <div class="input-group">
-            <label>国家/地区</label>
-            <select id="country" onchange="updateFormat()">
-              <option value="DE">🇩🇪 德国 (DE)</option>
-              <option value="FR">🇫🇷 法国 (FR)</option>
-              <option value="GB">🇬🇧 英国 (GB)</option>
-              <option value="ES">🇪🇸 西班牙 (ES)</option>
-              <option value="IT">🇮🇹 意大利 (IT)</option>
-              <option value="NL">🇳🇱 荷兰 (NL)</option>
-              <option value="BE">🇧🇪 比利时 (BE)</option>
-              <option value="CH">🇨🇭 瑞士 (CH)</option>
-              <option value="AT">🇦🇹 奥地利 (AT)</option>
-              <option value="PL">🇵🇱 波兰 (PL)</option>
+            <label for="country">国家/地区</label>
+            <select id="country" name="country" autocomplete="country" onchange="updateFormat()">
+              <option value="DE">德国 (DE)</option>
+              <option value="FR">法国 (FR)</option>
+              <option value="GB">英国 (GB)</option>
+              <option value="ES">西班牙 (ES)</option>
+              <option value="IT">意大利 (IT)</option>
+              <option value="NL">荷兰 (NL)</option>
+              <option value="BE">比利时 (BE)</option>
+              <option value="CH">瑞士 (CH)</option>
+              <option value="AT">奥地利 (AT)</option>
+              <option value="PL">波兰 (PL)</option>
             </select>
           </div>
 
           <div class="input-group">
-            <label for="input-----">生成数量</label>
+            <label for="count">生成数量</label>
             <input
               type="number"
               id="count"
+              name="count"
               value="1"
               min="1"
               max="10"
-              aria-label="数字输入框"
-              placeholder="请输入数字输入框"
+              inputmode="numeric"
+              autocomplete="off"
             />
           </div>
 
           <div class="btn-row">
-            <button class="btn primary" onclick="generate()" aria-label="生成 IBAN">
+            <button class="btn primary" type="button" onclick="generate()" aria-label="生成 IBAN">
               生成 IBAN
             </button>
-            <button class="btn" onclick="copyIban()" aria-label="复制">复制</button>
+            <button
+              class="btn"
+              id="copy-iban"
+              type="button"
+              onclick="copyIban()"
+              aria-label="复制当前 IBAN"
+              data-original-label="复制"
+            >
+              复制
+            </button>
           </div>
+          <p
+            id="copy-status"
+            class="copy-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></p>
 
           <div class="result">
             <div class="iban" id="ibanResult">-</div>
@@ -555,21 +584,22 @@
           <div class="details" id="details"></div>
 
           <div class="warning">
-            ⚠️ 生成的 IBAN 仅供测试使用，不是真实的银行账号。请勿用于任何实际金融交易。
+            <span aria-hidden="true">⚠️</span>
+            生成的 IBAN 仅供测试使用，不是真实的银行账号。请勿用于任何实际金融交易。
           </div>
 
-          <div class="history">
-            <h4>生成历史</h4>
+          <section class="history" aria-labelledby="history-title">
+            <h2 id="history-title">生成历史</h2>
             <div id="historyList"></div>
-          </div>
-        </div>
+          </section>
+        </form>
 
         <footer>
           纯前端工具 · 无服务器 ·
           <a href="../../index.html">WebUtils</a>
         </footer>
       </div>
-    </div>
+    </main>
 
     <script>
       const ibanFormats = {
@@ -599,12 +629,30 @@
         return String.fromCharCode(65 + Math.floor(Math.random() * 26));
       }
 
-      function mod97(str) {
+      function mod97(value) {
         let remainder = 0;
-        for (let i = 0; i < str.length; i++) {
-          remainder = (remainder * 10 + parseInt(str[i])) % 97;
+        for (const character of String(value).toUpperCase()) {
+          const code = character.charCodeAt(0);
+          const numericValue =
+            code >= 65 && code <= 90 ? code - 55 : code >= 48 && code <= 57 ? code - 48 : -1;
+
+          if (numericValue < 0) {
+            throw new Error("IBAN contains an invalid character");
+          }
+
+          for (const digit of String(numericValue)) {
+            remainder = (remainder * 10 + Number(digit)) % 97;
+          }
         }
         return remainder;
+      }
+
+      function clampCount(value) {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed)) {
+          return 1;
+        }
+        return Math.min(10, Math.max(1, parsed));
       }
 
       function calculateCheckDigits(country, bban) {
@@ -645,10 +693,12 @@
 
       function generate() {
         const country = document.getElementById("country").value;
-        const count = parseInt(document.getElementById("count").value) || 1;
+        const countInput = document.getElementById("count");
+        const count = clampCount(countInput.value);
+        countInput.value = String(count);
 
         const ibans = [];
-        for (let i = 0; i < Math.min(count, 10); i++) {
+        for (let i = 0; i < count; i++) {
           ibans.push(generateIBAN(country));
         }
 
@@ -690,28 +740,82 @@
       function renderHistory() {
         const container = document.getElementById("historyList");
         if (history.length === 0) {
-          container.innerHTML =
-            '<div style="color: var(--text-muted); text-align: center; padding: 20px;">暂无历史</div>';
+          container.innerHTML = '<p class="history-empty">暂无历史</p>';
           return;
         }
 
         container.innerHTML = history
           .map(
             (iban) =>
-              `<div class="history-item" onclick="copyText('${iban}')">${formatIBAN(iban)}</div>`
+              `<button class="history-item" type="button" data-iban="${iban}" aria-label="复制历史 IBAN ${formatIBAN(iban)}" onclick="copyText(this.dataset.iban, this)">${formatIBAN(iban)}</button>`
           )
           .join("");
       }
 
-      function copyIban() {
-        const iban = document.getElementById("ibanResult").textContent;
-        if (iban && iban !== "-") {
-          navigator.clipboard.writeText(iban);
+      const copyTimers = new WeakMap();
+      const copyRequests = new WeakMap();
+
+      function setCopyStatus(message, state = "") {
+        const status = document.getElementById("copy-status");
+        if (!status) {
+          return;
         }
+        status.textContent = message;
+        status.className = `copy-status${state ? ` ${state}` : ""}`;
       }
 
-      function copyText(text) {
-        navigator.clipboard.writeText(text);
+      async function copyToClipboard(text, button, label = "IBAN") {
+        if (!text || text === "-" || !button) {
+          return;
+        }
+
+        const originalLabel = button.dataset.originalLabel || button.textContent.trim();
+        button.dataset.originalLabel = originalLabel;
+        const requestId = (copyRequests.get(button) || 0) + 1;
+        copyRequests.set(button, requestId);
+        const previousTimer = copyTimers.get(button);
+        if (previousTimer) {
+          clearTimeout(previousTimer);
+        }
+
+        try {
+          await navigator.clipboard.writeText(text);
+          if (copyRequests.get(button) !== requestId) {
+            return;
+          }
+          button.textContent = "已复制";
+          button.classList.add("is-copied");
+          button.classList.remove("copy-error");
+          setCopyStatus(`${label}已复制`, "success");
+        } catch {
+          if (copyRequests.get(button) !== requestId) {
+            return;
+          }
+          button.textContent = "重试";
+          button.classList.remove("is-copied");
+          button.classList.add("copy-error");
+          setCopyStatus(`${label}复制失败，请重试`, "error");
+        }
+
+        copyTimers.set(
+          button,
+          setTimeout(() => {
+            if (copyRequests.get(button) !== requestId) {
+              return;
+            }
+            button.textContent = originalLabel;
+            button.classList.remove("is-copied", "copy-error");
+          }, 2000)
+        );
+      }
+
+      function copyIban() {
+        const iban = document.getElementById("ibanResult").textContent;
+        copyToClipboard(iban, document.getElementById("copy-iban"));
+      }
+
+      function copyText(text, button) {
+        copyToClipboard(text, button);
       }
 
       function updateFormat() {
@@ -725,15 +829,38 @@
         const html = document.documentElement;
         const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
         html.setAttribute("data-theme", next);
-        document.querySelector(".theme-toggle").textContent = next === "dark" ? "🌙" : "☀️";
+        const themeIcon = document.querySelector("[data-theme-icon]");
+        if (themeIcon) {
+          themeIcon.textContent = next === "dark" ? "🌙" : "☀️";
+        }
         localStorage.setItem("theme", next);
       }
       (function () {
         const saved = localStorage.getItem("theme");
         if (saved) {
           document.documentElement.setAttribute("data-theme", saved);
-          document.querySelector(".theme-toggle").textContent = saved === "dark" ? "🌙" : "☀️";
+          const themeIcon = document.querySelector("[data-theme-icon]");
+          if (themeIcon) {
+            themeIcon.textContent = saved === "dark" ? "🌙" : "☀️";
+          }
         }
+      })();
+
+      // Keep browser chrome in sync with the shared theme toggle.
+      (function () {
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        if (!themeColor) {
+          return;
+        }
+        const syncThemeColor = () => {
+          themeColor.content =
+            document.documentElement.getAttribute("data-theme") === "light" ? "#fafafa" : "#0a0a0f";
+        };
+        syncThemeColor();
+        new MutationObserver(syncThemeColor).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme"]
+        });
       })();
     </script>
 

@@ -51,9 +51,11 @@ function startServer() {
       res.end('Forbidden');
       return;
     }
-    if (!path.extname(filePath)) {
-      const htmlFile = filePath + '.html';
-      filePath = fs.existsSync(htmlFile) ? htmlFile : path.join(filePath, 'index.html');
+    const htmlFile = filePath + '.html';
+    if (fs.existsSync(htmlFile)) {
+      filePath = htmlFile;
+    } else if (!path.extname(filePath)) {
+      filePath = path.join(filePath, 'index.html');
     }
 
     const extname = String(path.extname(filePath)).toLowerCase();

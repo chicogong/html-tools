@@ -21,6 +21,18 @@ test('homepage and category cards use clean URLs over HTTP', async ({ page }) =>
   await expect(page.getByRole('heading', { level: 1, name: categoryCardName })).toBeVisible();
 });
 
+test('development server resolves clean URLs whose slugs contain dots', async ({ page }) => {
+  for (const pathname of [
+    '/tools/ai/doubao-1.8-guide',
+    '/tools/ai/gemini-2.5-pro-guide',
+    '/tools/ai/wanxiang-2.6-guide'
+  ]) {
+    const response = await page.goto(pathname);
+    expect(response.status()).toBe(200);
+    await expect(page.locator('h1')).toBeVisible();
+  }
+});
+
 test('direct file mode keeps physical HTML navigation', async ({ page }) => {
   const homepageFile = pathToFileURL(path.resolve('index.html')).href;
   await page.goto(homepageFile);

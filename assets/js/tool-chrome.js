@@ -195,9 +195,25 @@
     });
   }
 
-  /** http(s) 下把同源 HTML 链接改成生产环境最终 URL，避免站内跳转触发 308。 */
+  /**
+   * 仅在已知提供 HTML rewrite 的主机上启用 clean URL。
+   * 静态主机（例如 github.io）必须保留物理 .html 路径，否则站内链接会 404。
+   */
+  function hostSupportsCleanUrls() {
+    var hostname = window.location.hostname.toLowerCase();
+    return (
+      hostname === 'tools.realtime-ai.chat' ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.endsWith('.vercel.app') ||
+      hostname.endsWith('.netlify.app') ||
+      hostname.endsWith('.pages.dev')
+    );
+  }
+
+  /** 在支持 rewrite 的主机上规范化同源 HTML 链接，避免站内跳转触发 308。 */
   function normalizeHttpLinks() {
-    if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') return;
+    if (!hostSupportsCleanUrls()) return;
 
     doc.querySelectorAll('a[href]').forEach(function (link) {
       try {

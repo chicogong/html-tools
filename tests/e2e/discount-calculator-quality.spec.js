@@ -63,3 +63,14 @@ test('discount calculator uses Chinese discount notation and calculates the fina
   }));
   expect(widths.scroll - widths.client).toBeLessThanOrEqual(1);
 });
+
+test('discount calculator keeps keyboard focus visible', async ({ page }) => {
+  await page.goto('/tools/calculator/discount-calculator');
+
+  await page.getByLabel('原价').focus();
+  await expect(page.getByLabel('原价')).toHaveCSS('outline-style', 'solid');
+
+  const discountButton = page.getByRole('button', { name: '9.5折' });
+  await discountButton.focus();
+  await expect(discountButton).toHaveCSS('outline-style', 'solid');
+});

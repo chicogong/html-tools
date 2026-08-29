@@ -49,3 +49,19 @@ test('distance calculator stays usable with keyboard at 320px', async ({ page })
   await calculateButton.click();
   await expect(status).toContainText('请为起点和终点输入有效坐标');
 });
+
+test('distance calculator exposes browser-friendly form metadata and focus', async ({ page }) => {
+  await page.goto('/tools/travel/distance-calculator');
+
+  const startLatitude = page.getByLabel('起点纬度');
+  await expect(startLatitude).toHaveAttribute('name', 'start-latitude');
+  await expect(startLatitude).toHaveAttribute('inputmode', 'decimal');
+  await expect(startLatitude).toHaveAttribute('autocomplete', 'off');
+
+  await startLatitude.focus();
+  await expect(startLatitude).toHaveCSS('outline-style', 'solid');
+
+  const calculateButton = page.getByRole('button', { name: '计算距离' });
+  await calculateButton.focus();
+  await expect(calculateButton).toHaveCSS('outline-style', 'solid');
+});

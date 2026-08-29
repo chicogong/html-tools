@@ -218,9 +218,28 @@ function renderCategories() {
 // ==================== 渲染工具卡片 ====================
 let renderedCount = 0;
 
+const CLEAN_URL_HOSTS = new Set(['tools.realtime-ai.chat', 'localhost', '127.0.0.1']);
+const CLEAN_URL_HOST_SUFFIXES = ['.vercel.app', '.netlify.app', '.pages.dev'];
+
+function hostSupportsCleanUrls() {
+  const hostname = (window.location.hostname || '').toLowerCase();
+  return (
+    CLEAN_URL_HOSTS.has(hostname) ||
+    CLEAN_URL_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+  );
+}
+
+function publicToolUrl(filePath) {
+  if (!hostSupportsCleanUrls()) return filePath;
+  if (filePath === 'index.html') return './';
+  if (filePath.endsWith('/index.html')) return filePath.slice(0, -'index.html'.length);
+  if (filePath.endsWith('.html')) return filePath.slice(0, -'.html'.length);
+  return filePath;
+}
+
 function createToolCard(tool, index) {
   const card = document.createElement('a');
-  card.href = tool.url;
+  card.href = publicToolUrl(tool.url);
   card.className = 'tool-card';
   card.dataset.category = tool.category;
   card.dataset.keywords = tool.keywords;

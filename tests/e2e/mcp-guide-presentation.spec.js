@@ -65,10 +65,13 @@ test('MCP guide preserves card/code presentation and config disclosure at 390px 
       const body = grid.ownerDocument.body;
       const cards = Array.from(grid.querySelectorAll('.server-card'), (card) => {
         const rect = card.getBoundingClientRect();
-        return { top: rect.top, left: rect.left, right: rect.right };
+        return { left: rect.left, right: rect.right };
       });
       return {
         cards,
+        columnCount: grid.ownerDocument.defaultView
+          .getComputedStyle(grid)
+          .gridTemplateColumns.split(/\s+/).length,
         gridWidth: grid.getBoundingClientRect().width,
         viewportWidth: documentElement.clientWidth,
         documentWidth: Math.max(documentElement.scrollWidth, body.scrollWidth)
@@ -77,9 +80,10 @@ test('MCP guide preserves card/code presentation and config disclosure at 390px 
 
     expect(layout.documentWidth - layout.viewportWidth).toBeLessThanOrEqual(1);
     expect(layout.gridWidth).toBeLessThanOrEqual(layout.viewportWidth);
-    const firstRowTop = layout.cards[0].top;
-    const firstRowCards = layout.cards.filter((card) => Math.abs(card.top - firstRowTop) < 1);
-    expect(firstRowCards).toHaveLength(viewport.width === 390 ? 1 : 3);
+    expect(layout.columnCount).toBe(viewport.width === 390 ? 1 : 3);
+    expect(layout.cards.every((card) => card.left >= 0 && card.right <= layout.viewportWidth)).toBe(
+      true
+    );
 
     const toggle = page.locator('.config-toggle').first();
     const panel = page.locator('#config-filesystem');

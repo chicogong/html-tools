@@ -7,6 +7,7 @@
  */
 
 import { section, test, assert, loadToolsData, readText, SITE } from './_harness.js';
+import { publicPath } from '../scripts/public-url.mjs';
 
 section('同步一致性');
 
@@ -18,6 +19,12 @@ const activeCategoryCount = new Set(entries.map(([, t]) => t.category)).size;
 
 const indexHtml = readText('index.html');
 const sitemap = readText('sitemap.xml');
+
+test('公开 URL 规则覆盖工具、分类和首页', () => {
+  assert(publicPath('tools/dev/json-formatter.html') === '/tools/dev/json-formatter');
+  assert(publicPath('tools/dev/index.html') === '/tools/dev/');
+  assert(publicPath('index.html') === '/');
+});
 
 // 从 index.html 内联的 TOOLS 数组提取 url 列表
 const toolsArrMatch = indexHtml.match(/const TOOLS = \[([\s\S]*?)\n\s*\];/);
@@ -79,13 +86,20 @@ test('sitemap.xml 不包含构建时钟驱动的 lastmod', () => {
 });
 
 test('每个工具 path 都出现在 sitemap.xml 中', () => {
-  const missing = toolPaths.filter((p) => !sitemap.includes(`<loc>${SITE}/${p}</loc>`));
+  const missing = toolPaths.filter((p) => !sitemap.includes(`<loc>${SITE}${publicPath(p)}</loc>`));
   assert(missing.length === 0, `sitemap.xml 缺少:\n${missing.slice(0, 20).join('\n')}`);
 });
 
 test('每个分类落地页都出现在 sitemap.xml 中', () => {
-  const missing = categoryPagePaths.filter((p) => !sitemap.includes(`<loc>${SITE}/${p}</loc>`));
+  const missing = categoryPagePaths.filter(
+    (p) => !sitemap.includes(`<loc>${SITE}${publicPath(p)}</loc>`)
+  );
   assert(missing.length === 0, `sitemap.xml 缺少分类落地页:\n${missing.join('\n')}`);
+});
+
+test('sitemap.xml 不提交会发生 cleanUrls 重定向的 HTML 地址', () => {
+  assert(!/<loc>[^<]+\.html<\/loc>/.test(sitemap), 'sitemap.xml 不应包含 .html URL');
+  assert(!/<loc>[^<]+\/index\.html<\/loc>/.test(sitemap), 'sitemap.xml 不应包含 index.html URL');
 });
 
 test(`manifest.json 描述含工具数 "${toolCount}+"`, () => {

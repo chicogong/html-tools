@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.join(__dirname, '..');
 const TOOLS_DIR = path.join(ROOT_DIR, 'tools');
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 // 1. Initial Build
 console.log('🚀 [Dev] Running initial sync...');
@@ -36,8 +36,25 @@ function startServer() {
   };
 
   const server = http.createServer((req, res) => {
-    let filePath = path.join(ROOT_DIR, req.url === '/' ? 'index.html' : req.url);
-    if (!path.extname(filePath)) {
+    let pathname;
+    try {
+      pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Bad Request');
+      return;
+    }
+    const requestedPath = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+    let filePath = path.resolve(ROOT_DIR, requestedPath);
+    if (filePath !== ROOT_DIR && !filePath.startsWith(ROOT_DIR + path.sep)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Forbidden');
+      return;
+    }
+    const htmlFile = filePath + '.html';
+    if (fs.existsSync(htmlFile)) {
+      filePath = htmlFile;
+    } else if (!path.extname(filePath)) {
       filePath = path.join(filePath, 'index.html');
     }
 
@@ -60,7 +77,7 @@ function startServer() {
     });
   });
 
-  server.listen(PORT, () => {
+  server.listen(PORT, '127.0.0.1', () => {
     console.log(`🌐 [Dev] Local development server running at http://localhost:${PORT}`);
   });
 }

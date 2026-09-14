@@ -103,17 +103,13 @@ WebUtils 以静态 HTML 为主，不要求用户账户或统一后端。多数�
 
 ## 在线体验
 
-推荐使用自定义域名访问最新版本。GitHub Pages、Cloudflare Pages 和 Vercel 随主分支持续部署；历史镜像仅为兼容保留，内容可能滞后，不用于验收最新发布。
+推荐使用自定义域名访问最新版本。GitHub Pages 和 Cloudflare Pages 随主分支持续部署；其他平台配置仅用于按需部署，不作为持续维护或发布验收渠道。
 
-| 平台              | 链接                                    | 维护状态      |
-| ----------------- | --------------------------------------- | ------------- |
-| **🌐 自定义域名** | https://tools.realtime-ai.chat          | ✅ 推荐入口   |
-| GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅ 持续部署   |
-| Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅ 持续部署   |
-| Vercel            | https://html-tools-jade.vercel.app      | ✅ 持续部署   |
-| Render            | https://webutils-uj15.onrender.com      | ⚠️ 历史镜像   |
-| Surge             | https://webutils.surge.sh               | ⚠️ 历史镜像   |
-| Netlify           | https://localtools.netlify.app          | ⏸️ 已暂停更新 |
+| 平台              | 链接                                    | 维护状态    |
+| ----------------- | --------------------------------------- | ----------- |
+| **🌐 自定义域名** | https://tools.realtime-ai.chat          | ✅ 推荐入口 |
+| GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅ 持续部署 |
+| Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅ 持续部署 |
 
 ## 工具列表 (1088 个)
 
@@ -435,7 +431,7 @@ npm run export:standalone -- tools/dev/json-formatter.html /tmp/webutils-export
 
 ### 部署到其他平台
 
-本项目已配置支持多平台部署：
+本项目保留以下平台的按需部署配置：
 
 - **Vercel**: 直接导入 GitHub 仓库即可
 - **Netlify**: 直接导入 GitHub 仓库即可
@@ -661,7 +657,7 @@ git push origin feature/new-tool
 
 - **Quality**: 每次 PR 自动运行构建、测试、HTMLHint、Stylelint、ESLint 与 Prettier 检查
 - **Tools Sync Check**: CI 检查 tools.json 与 index.html 是否同步
-- **Deploy**: 推送到 master 会触发 GitHub Pages、Vercel 与 Cloudflare Pages；其他渠道受显式开关控制
+- **Deploy**: 推送到 master 会触发 GitHub Pages 与 Cloudflare Pages
 - **Release**: Release 使用手动工作流并校验既有 tag、版本、制品与安全门
 - **Dependabot**: 自动检查依赖更新
 

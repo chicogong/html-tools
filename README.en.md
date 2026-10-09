@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | [English](README.en.md)
 
-> 1,088+ open-source browser tools. Static-first, privacy-conscious, offline-ready, and portable as standalone HTML.
+> 1,089+ open-source browser tools. Static-first, privacy-conscious, offline-ready, and portable as standalone HTML.
 
 [Use WebUtils online](https://tools.realtime-ai.chat) · [Browse all tools](https://tools.realtime-ai.chat) · [Contribute](CONTRIBUTING.md)
 

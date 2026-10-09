@@ -619,10 +619,10 @@ function updateIndexHtml(categoriesJs, toolsJs, toolCount, categoryCount) {
   }
 
   // 更新 SEO meta / OG / Twitter / JSON-LD 中所有 "X+ 个 [修饰词] 工具(集)?" 表述
-  // 覆盖：包含 1001+ 个实用工具 / 1001+ 个纯前端实用工具 / 1001+ 个纯前端开发者工具集 / 1001+ 个工具
+  // 覆盖：包含 1001+ 个浏览器端实用工具 / 1001+ 个纯前端实用工具 / 1001+ 个纯前端开发者工具集 / 1001+ 个工具
   // 长修饰词放前以便 alternation 优先匹配
   html = html.replace(
-    /\d+\+?\s*个(纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
+    /\d+\+?\s*个(浏览器端实用|纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
     (_m, modifier, suffix) => `${toolCount}+ 个${modifier || ''}工具${suffix || ''}`
   );
   // 同步类别数（如 "等 35 个类别"、"覆盖 35 个类别"）
@@ -678,7 +678,7 @@ function updateReadme(toolCount, categoryCount) {
 
     // 更新正文中所有 "X+ 个 [修饰词] 工具(集)?" 表述（如 "查看全部 1001+ 个工具"）
     readme = readme.replace(
-      /\d+\+?\s*个(纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
+      /\d+\+?\s*个(浏览器端实用|纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
       (_m, modifier, suffix) => `${toolCount}+ 个${modifier || ''}工具${suffix || ''}`
     );
 
@@ -809,7 +809,7 @@ function updateManifest(toolCount) {
 
     // 更新描述中的工具数量 (覆盖所有 "X+ 个 [修饰词] 工具(集)?" 表述)
     manifest = manifest.replace(
-      /\d+\+?\s*个(纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
+      /\d+\+?\s*个(浏览器端实用|纯前端实用|纯前端开发者|纯前端|实用|开发者)?\s*工具(集)?/g,
       (_m, modifier, suffix) => `${toolCount}+ 个${modifier || ''}工具${suffix || ''}`
     );
 

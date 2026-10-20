@@ -5,7 +5,7 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tools](https://img.shields.io/badge/Tools-1088+-blue.svg)](https://tools.realtime-ai.chat)
+[![Tools](https://img.shields.io/badge/Tools-1089+-blue.svg)](https://tools.realtime-ai.chat)
 [![Lint](https://github.com/chicogong/html-tools/actions/workflows/lint.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/lint.yml)
 [![Deploy](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/chicogong/html-tools/actions/workflows/deploy.yml)
 [![Vercel](https://img.shields.io/badge/Vercel-deployed-black?logo=vercel)](https://html-tools-jade.vercel.app)
@@ -16,13 +16,13 @@
 [![GitHub issues](https://img.shields.io/github/issues/chicogong/html-tools)](https://github.com/chicogong/html-tools/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/chicogong/html-tools/pulls)
 
-### 🚀 1088+ 纯前端在线工具集
+### 🚀 1089+ 纯前端在线工具集
 
 **静态优先 · 本地优先 · 网络边界透明 · 可导出独立 HTML**
 
 一个完全开源的浏览器端工具集。站点无需注册、无广告，也不接入第一方分析脚本；具体工具是否访问网络、能否完全离线，取决于该工具的功能和依赖。
 
-[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-1088-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
+[**🌐 立即体验**](https://tools.realtime-ai.chat) | [工具列表](#工具列表-1089-个) | [贡献指南](#贡献指南) | [添加新工具](#添加新工具)
 
 </div>
 
@@ -97,7 +97,7 @@ WebUtils 以静态 HTML 为主，不要求用户账户或统一后端。多数�
 </tr>
 </table>
 
-[**查看全部 1088+ 个工具 ↓**](#工具列表-1088-个)
+[**查看全部 1089+ 个工具 ↓**](#工具列表-1089-个)
 
 ---
 
@@ -111,7 +111,7 @@ WebUtils 以静态 HTML 为主，不要求用户账户或统一后端。多数�
 | GitHub Pages      | https://chicogong.github.io/html-tools/ | ✅ 持续部署 |
 | Cloudflare Pages  | https://htmltools-bkt.pages.dev         | ✅ 持续部署 |
 
-## 工具列表 (1088 个)
+## 工具列表 (1089 个)
 
 ### 开发工具 (61 个)
 

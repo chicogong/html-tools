@@ -8,9 +8,9 @@
     <!-- SEO Meta Tags -->
     <meta
       name="description"
-      content="AI API 价格计算器，快速计算结果，AI 工具，浏览器本地运行无需上传"
+      content="对比当前主流 AI API 官方价，估算单模型成本，以及主 Agent 大模型 + 子 Agent 小模型 + 缓存的一次任务成本。计算在浏览器本地完成。"
     />
-    <meta name="keywords" content="ai api 价格计算器" />
+    <meta name="keywords" content="ai api 价格计算器 缓存 大模型 小模型 agent" />
     <meta name="author" content="WebUtils" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://tools.realtime-ai.chat/tools/ai/ai-pricing" />
@@ -19,7 +19,7 @@
     <meta property="og:title" content="AI API 价格计算器 - WebUtils" />
     <meta
       property="og:description"
-      content="AI API 价格计算器，快速计算结果，AI 工具，浏览器本地运行无需上传"
+      content="对比当前主流 AI API 官方价，估算单模型成本，以及主 Agent 大模型 + 子 Agent 小模型 + 缓存的一次任务成本。计算在浏览器本地完成。"
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://tools.realtime-ai.chat/tools/ai/ai-pricing" />
@@ -35,7 +35,7 @@
     <meta name="twitter:title" content="AI API 价格计算器 - WebUtils" />
     <meta
       name="twitter:description"
-      content="AI API 价格计算器，快速计算结果，AI 工具，浏览器本地运行无需上传"
+      content="对比当前主流 AI API 官方价，估算单模型成本，以及主 Agent 大模型 + 子 Agent 小模型 + 缓存的一次任务成本。计算在浏览器本地完成。"
     />
     <meta name="twitter:image" content="https://tools.realtime-ai.chat/social-preview.png" />
 
@@ -97,143 +97,736 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../assets/css/tool-base.css" />
-    <link rel="stylesheet" href="../../assets/css/article-base.css" />
+    <style>
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(ellipse 70% 50% at 50% -10%, var(--glow-cyan), transparent),
+          var(--bg-deep);
+      }
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600&amp;display=swap"
-      rel="stylesheet"
-    />
+      .price-wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 56px 20px 140px;
+      }
+
+      .price-head {
+        margin-bottom: var(--space-8);
+      }
+
+      .price-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent-cyan);
+        background: var(--glow-cyan);
+        border: 1px solid var(--tb-glass-border);
+        border-radius: var(--radius-full);
+      }
+
+      .price-head h1 {
+        margin: var(--space-4) 0 var(--space-2);
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .price-head p {
+        margin: 0 0 var(--space-3);
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .head-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        align-items: center;
+      }
+
+      .price-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-md);
+        padding: var(--space-6);
+        margin-bottom: var(--space-6);
+      }
+
+      .price-card h2 {
+        margin: 0 0 var(--space-4);
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .card-lead {
+        margin: calc(var(--space-4) * -1) 0 var(--space-4);
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .grid-2,
+      .grid-4 {
+        display: grid;
+        gap: var(--space-4);
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .field-hint {
+        margin-top: var(--space-1);
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .model-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: var(--space-3);
+      }
+
+      .model-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        min-height: 44px;
+        padding: var(--space-3);
+        background: var(--bg-input);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+      }
+
+      .model-item.selected {
+        border-color: var(--accent-cyan);
+        box-shadow: 0 0 0 1px var(--accent-cyan);
+      }
+
+      .model-item input {
+        margin-top: 3px;
+        accent-color: var(--accent-cyan);
+      }
+
+      .model-name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .model-vendor {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .model-badge {
+        margin-left: auto;
+        flex-shrink: 0;
+        padding: 2px 7px;
+        border-radius: var(--radius-full);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .badge-openai {
+        color: #06121a;
+        background: var(--accent-green);
+      }
+
+      .badge-anthropic {
+        color: #06121a;
+        background: var(--accent-orange);
+      }
+
+      .badge-google {
+        color: #06121a;
+        background: var(--accent-blue);
+      }
+
+      .badge-deepseek {
+        color: #06121a;
+        background: var(--accent-purple);
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .results-table th,
+      .results-table td {
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .results-table th {
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      .price-cell {
+        font-family: var(--font-mono);
+        white-space: nowrap;
+      }
+
+      .best-price {
+        color: var(--accent-green);
+        font-weight: 700;
+      }
+
+      .model-col {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-3);
+        margin-top: var(--space-5);
+      }
+
+      .stat-item {
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+      }
+
+      .stat-value {
+        font-family: var(--font-mono);
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .stat-label {
+        margin-top: var(--space-1);
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .example-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-4);
+      }
+
+      .example-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+      }
+
+      .example-card h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .example-card p,
+      .example-card ol {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+
+      .example-card ol {
+        padding-left: 1.2em;
+      }
+
+      .example-total {
+        font-family: var(--font-mono);
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent-cyan);
+      }
+
+      .match-ok {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent-green);
+      }
+
+      .pending-list {
+        margin: 0;
+        padding-left: 1.2em;
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .source-list {
+        margin: 0;
+        padding-left: 1.2em;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .update-time {
+        margin-top: var(--space-4);
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .breakdown {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .breakdown li {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-family: var(--font-mono);
+      }
+
+      .task-total {
+        font-size: 28px;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        color: var(--accent-cyan);
+      }
+
+      @media (max-width: 800px) {
+        .grid-2,
+        .grid-4,
+        .stats-grid,
+        .example-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tb-btn,
+        .tb-input,
+        .tb-select,
+        .model-item {
+          transition: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="tool-main" role="main">
-      <div class="container">
+    <main id="main-content" class="price-wrap">
+      <header class="price-head">
         <a href="../.." data-file-href="../../index.html" class="back-link">← 返回</a>
-        <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
-        <h1>💰 AI API 价格计算器</h1>
-        <p class="subtitle">对比主流 AI 模型的 API 价格，估算使用成本</p>
+        <div class="head-actions">
+          <span class="price-badge">价格更新时间：2026年10月20日（Asia/Singapore）</span>
+          <button
+            type="button"
+            class="theme-toggle tb-btn"
+            onclick="toggleTheme()"
+            title="切换主题"
+          >
+            切换主题
+          </button>
+        </div>
+        <h1>AI API 价格计算器</h1>
+        <p>
+          对比已核过的官方 API 价，估算单模型周期成本；也可按「主 Agent 用大模型 + 子 Agent 用小模型
+          +
+          提示缓存」估算一次任务。计算在浏览器本地完成，不上传用量。价格来自核价日公开页，页面不实时拉取厂商接口。字体由
+          Google Fonts 加载。
+        </p>
+      </header>
 
-        <!-- 使用量输入 -->
-        <div class="card">
-          <div class="card-title">📊 使用量设置</div>
-          <div class="grid-2">
-            <div class="form-group">
-              <label>输入 Tokens (每次请求)</label>
-              <input type="number" id="inputTokens" value="1000" min="0" onchange="calculate()" />
-              <div class="input-hint">约 750 个英文单词 / 500 个中文字</div>
-            </div>
-            <div class="form-group">
-              <label>输出 Tokens (每次请求)</label>
-              <input type="number" id="outputTokens" value="500" min="0" onchange="calculate()" />
-              <div class="input-hint">AI 生成的回复长度</div>
-            </div>
-            <div class="form-group">
-              <label>每日请求次数</label>
-              <input type="number" id="dailyRequests" value="100" min="0" onchange="calculate()" />
-            </div>
-            <div class="form-group">
-              <label>计算周期</label>
-              <select id="period" onchange="calculate()">
-                <option value="1">每天</option>
-                <option value="7">每周</option>
-                <option value="30" selected="">每月</option>
-                <option value="365">每年</option>
-              </select>
-            </div>
+      <section class="price-card" aria-labelledby="usage-heading">
+        <h2 id="usage-heading">单模型用量</h2>
+        <div class="grid-2">
+          <div>
+            <label class="tb-label" for="inputTokens">输入 tokens（每次请求）</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="inputTokens"
+              name="inputTokens"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1000"
+              min="0"
+            />
+            <div class="field-hint">约 750 个英文单词 / 500 个中文字</div>
+          </div>
+          <div>
+            <label class="tb-label" for="outputTokens">输出 tokens（每次请求）</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="outputTokens"
+              name="outputTokens"
+              inputmode="numeric"
+              autocomplete="off"
+              value="500"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="dailyRequests">每日请求次数</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="dailyRequests"
+              name="dailyRequests"
+              inputmode="numeric"
+              autocomplete="off"
+              value="100"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="period">计算周期</label>
+            <select class="tb-select" id="period" name="period">
+              <option value="1">每天</option>
+              <option value="7">每周</option>
+              <option value="30" selected>每月</option>
+              <option value="365">每年</option>
+            </select>
           </div>
         </div>
+      </section>
 
-        <!-- 模型选择 -->
-        <div class="card">
-          <div class="card-title">
-            🤖 选择模型
-            <span style="font-weight: normal; font-size: 0.8rem; color: var(--text-muted)">
-              (点击选择要对比的模型)
-            </span>
-          </div>
-          <div class="model-grid" id="modelGrid"></div>
+      <section class="price-card" aria-labelledby="models-heading">
+        <h2 id="models-heading">选择要对比的模型</h2>
+        <p class="card-lead">
+          只列出核价日有官方数字的模型。无价模型见页底「待核」，不会出现在对比表。
+        </p>
+        <div class="model-grid" id="modelGrid"></div>
+      </section>
+
+      <section class="price-card" aria-labelledby="compare-heading">
+        <h2 id="compare-heading">成本对比</h2>
+        <div style="overflow-x: auto">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>模型</th>
+                <th>输入 $/M</th>
+                <th>输出 $/M</th>
+                <th>缓存读 $/M</th>
+                <th>单次成本</th>
+                <th>周期总成本</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
         </div>
+        <div class="stats-grid" id="statsGrid" aria-live="polite"></div>
+      </section>
 
-        <!-- 计算结果 -->
-        <div class="card">
-          <div class="card-title">📈 成本对比</div>
-          <div style="overflow-x: auto">
-            <table class="results-table" id="resultsTable">
-              <thead>
-                <tr>
-                  <th>模型</th>
-                  <th>输入价格</th>
-                  <th>输出价格</th>
-                  <th>单次成本</th>
-                  <th>周期总成本</th>
-                </tr>
-              </thead>
-              <tbody id="resultsBody"></tbody>
-            </table>
+      <section class="price-card" aria-labelledby="agent-heading">
+        <h2 id="agent-heading">一次任务：大模型 + 小模型 + 缓存</h2>
+        <p class="card-lead">
+          主 Agent 走大模型，子 Agent 走小模型。缓存命中按官方 cache read
+          计价，未命中与未缓存输入按输入价。本估算不含首次 cache write 溢价、Batch、Fast、区域加价或
+          Gemini 缓存存储小时费。
+        </p>
+        <div class="grid-2">
+          <div>
+            <label class="tb-label" for="mainModel">主 Agent（大模型）</label>
+            <select class="tb-select" id="mainModel" name="mainModel"></select>
           </div>
-
-          <div class="stats-grid" id="statsGrid"></div>
-
-          <div class="info-section">
-            <strong>💡 说明：</strong>
-            价格单位为美元 (USD)，基于各厂商官方 API 定价。
-            实际费用可能因批量折扣、缓存命中、区域定价等因素有所不同。
-            <div class="update-time">价格更新时间：2025年1月</div>
+          <div>
+            <label class="tb-label" for="subModel">子 Agent（小模型）</label>
+            <select class="tb-select" id="subModel" name="subModel"></select>
           </div>
         </div>
-      </div>
-    </div>
+        <h3 class="tb-label" style="margin-top: 20px">主 Agent tokens</h3>
+        <div class="grid-4">
+          <div>
+            <label class="tb-label" for="mainCached">缓存前缀</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="mainCached"
+              name="mainCached"
+              inputmode="numeric"
+              autocomplete="off"
+              value="20000"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="mainHit">缓存命中率 %</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="mainHit"
+              name="mainHit"
+              inputmode="decimal"
+              autocomplete="off"
+              value="90"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="mainFresh">未缓存输入</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="mainFresh"
+              name="mainFresh"
+              inputmode="numeric"
+              autocomplete="off"
+              value="3000"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="mainOutput">输出</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="mainOutput"
+              name="mainOutput"
+              inputmode="numeric"
+              autocomplete="off"
+              value="2000"
+              min="0"
+            />
+          </div>
+        </div>
+        <h3 class="tb-label" style="margin-top: 20px">子 Agent tokens</h3>
+        <div class="grid-4">
+          <div>
+            <label class="tb-label" for="subCalls">调用次数</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="subCalls"
+              name="subCalls"
+              inputmode="numeric"
+              autocomplete="off"
+              value="4"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="subCached">每次缓存前缀</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="subCached"
+              name="subCached"
+              inputmode="numeric"
+              autocomplete="off"
+              value="8000"
+              min="0"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="subHit">缓存命中率 %</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="subHit"
+              name="subHit"
+              inputmode="decimal"
+              autocomplete="off"
+              value="85"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label class="tb-label" for="subFresh">每次未缓存输入</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="subFresh"
+              name="subFresh"
+              inputmode="numeric"
+              autocomplete="off"
+              value="1500"
+              min="0"
+            />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 16px">
+          <div>
+            <label class="tb-label" for="subOutput">每次输出</label>
+            <input
+              class="tb-input"
+              type="number"
+              id="subOutput"
+              name="subOutput"
+              inputmode="numeric"
+              autocomplete="off"
+              value="800"
+              min="0"
+            />
+          </div>
+        </div>
+        <div style="margin-top: 24px" aria-live="polite">
+          <div class="stat-label">一次任务合计</div>
+          <div class="task-total" id="taskTotal">$0.000000</div>
+          <ul class="breakdown" id="taskBreakdown"></ul>
+        </div>
+      </section>
+
+      <section class="price-card" aria-labelledby="examples-heading">
+        <h2 id="examples-heading">算例（与手算同一条公式）</h2>
+        <p class="card-lead">
+          三个算例的页内合计已与核价表手算对齐。点「填入估算器」会写入上方表单并重算。
+        </p>
+        <div class="example-grid" id="exampleGrid"></div>
+      </section>
+
+      <section class="price-card" aria-labelledby="pending-heading">
+        <h2 id="pending-heading">待核（不写数字）</h2>
+        <ul class="pending-list">
+          <li>o1-mini：官方 Standard 价表当日无此行。</li>
+          <li>Claude 3.5 Sonnet：官方模型价表当日无此行。</li>
+          <li>Gemini 2.0 Flash：Gemini API 价表当日无此行。</li>
+          <li>DeepSeek V3 / R1：官方现价表只有 Flash 与 V4 Pro。</li>
+          <li>Llama 3.3 70B / Llama 3.1 405B：未找到 Meta 第一方官方 API 价单。</li>
+        </ul>
+      </section>
+
+      <section class="price-card" aria-labelledby="notes-heading">
+        <h2 id="notes-heading">说明与来源</h2>
+        <p class="card-lead">
+          价格单位为美元。实际账单可能因批量折扣、首次 cache
+          write、区域、高峰/非高峰而不同。缺官方价的模型标待核，不编数字。
+        </p>
+        <ul class="source-list">
+          <li>
+            OpenAI API：
+            <a href="https://platform.openai.com/docs/pricing" rel="noopener noreferrer">
+              platform.openai.com/docs/pricing
+            </a>
+          </li>
+          <li>
+            Anthropic API：
+            <a
+              href="https://docs.anthropic.com/en/docs/about-claude/pricing"
+              rel="noopener noreferrer"
+            >
+              docs.anthropic.com/en/docs/about-claude/pricing
+            </a>
+          </li>
+          <li>
+            Claude Haiku 5.5 / Sonnet 5.5 缓存读降价：
+            <a href="https://www.anthropic.com/claude-haiku-5-5" rel="noopener noreferrer">
+              anthropic.com/claude-haiku-5-5
+            </a>
+          </li>
+          <li>
+            Gemini API：
+            <a href="https://ai.google.dev/gemini-api/docs/pricing" rel="noopener noreferrer">
+              ai.google.dev/gemini-api/docs/pricing
+            </a>
+          </li>
+          <li>
+            DeepSeek：
+            <a href="https://api-docs.deepseek.com/quick_start/pricing" rel="noopener noreferrer">
+              api-docs.deepseek.com/quick_start/pricing
+            </a>
+          </li>
+        </ul>
+        <div class="update-time">价格更新时间：2026年10月20日（Asia/Singapore）</div>
+      </section>
+    </main>
 
     <script>
-      // AI 模型价格数据 (USD per 1M tokens)
+      const MILLION = 1000000;
+      const VERIFY_DATE = "2026-10-20";
+
       const models = [
-        // OpenAI
+        {
+          id: "gpt-6-sol",
+          name: "GPT-6 Sol",
+          vendor: "OpenAI",
+          badge: "openai",
+          role: "large",
+          inputPrice: 2,
+          outputPrice: 10,
+          cacheRead: 0.2,
+          context: "≤272K",
+          selected: true
+        },
+        {
+          id: "gpt-6-luna",
+          name: "GPT-6 Luna",
+          vendor: "OpenAI",
+          badge: "openai",
+          role: "small",
+          inputPrice: 0.1,
+          outputPrice: 0.5,
+          cacheRead: 0.01,
+          context: "≤272K",
+          selected: true
+        },
+        {
+          id: "gpt-6.1-sol",
+          name: "GPT-6.1 Sol",
+          vendor: "OpenAI",
+          badge: "openai",
+          role: "large",
+          inputPrice: 2,
+          outputPrice: 10,
+          cacheRead: 0.1,
+          context: "≤272K",
+          selected: false
+        },
+        {
+          id: "gpt-5.6-sol",
+          name: "GPT-5.6 Sol",
+          vendor: "OpenAI",
+          badge: "openai",
+          role: "large",
+          inputPrice: 4,
+          outputPrice: 20,
+          cacheRead: 0.4,
+          context: "≤272K",
+          selected: false
+        },
         {
           id: "gpt-4o",
           name: "GPT-4o",
           vendor: "OpenAI",
           badge: "openai",
+          role: "large",
           inputPrice: 2.5,
           outputPrice: 10,
+          cacheRead: 1.25,
           context: "128K",
-          selected: true
+          selected: false
         },
         {
           id: "gpt-4o-mini",
           name: "GPT-4o Mini",
           vendor: "OpenAI",
           badge: "openai",
+          role: "small",
           inputPrice: 0.15,
           outputPrice: 0.6,
-          context: "128K",
-          selected: true
-        },
-        {
-          id: "gpt-4-turbo",
-          name: "GPT-4 Turbo",
-          vendor: "OpenAI",
-          badge: "openai",
-          inputPrice: 10,
-          outputPrice: 30,
-          context: "128K",
-          selected: false
-        },
-        {
-          id: "o1",
-          name: "o1",
-          vendor: "OpenAI",
-          badge: "openai",
-          inputPrice: 15,
-          outputPrice: 60,
-          context: "200K",
-          selected: false
-        },
-        {
-          id: "o1-mini",
-          name: "o1-mini",
-          vendor: "OpenAI",
-          badge: "openai",
-          inputPrice: 3,
-          outputPrice: 12,
+          cacheRead: 0.075,
           context: "128K",
           selected: false
         },
@@ -242,280 +835,599 @@
           name: "o3-mini",
           vendor: "OpenAI",
           badge: "openai",
+          role: "small",
           inputPrice: 1.1,
           outputPrice: 4.4,
-          context: "200K",
-          selected: true
-        },
-
-        // Anthropic
-        {
-          id: "claude-opus-4",
-          name: "Claude Opus 4",
-          vendor: "Anthropic",
-          badge: "anthropic",
-          inputPrice: 15,
-          outputPrice: 75,
+          cacheRead: 0.55,
           context: "200K",
           selected: false
         },
         {
-          id: "claude-sonnet-4",
-          name: "Claude Sonnet 4",
+          id: "claude-opus-5.5",
+          name: "Claude Opus 5.5",
           vendor: "Anthropic",
           badge: "anthropic",
-          inputPrice: 3,
-          outputPrice: 15,
-          context: "200K",
-          selected: true
-        },
-        {
-          id: "claude-3.5-sonnet",
-          name: "Claude 3.5 Sonnet",
-          vendor: "Anthropic",
-          badge: "anthropic",
-          inputPrice: 3,
-          outputPrice: 15,
-          context: "200K",
+          role: "large",
+          inputPrice: 4,
+          outputPrice: 20,
+          cacheRead: 0.2,
+          context: "1M",
           selected: false
         },
         {
-          id: "claude-3.5-haiku",
-          name: "Claude 3.5 Haiku",
+          id: "claude-sonnet-5.5",
+          name: "Claude Sonnet 5.5",
           vendor: "Anthropic",
           badge: "anthropic",
-          inputPrice: 0.8,
-          outputPrice: 4,
-          context: "200K",
+          role: "large",
+          inputPrice: 2,
+          outputPrice: 10,
+          cacheRead: 0.1,
+          context: "1M",
           selected: true
         },
-
-        // Google
+        {
+          id: "claude-haiku-5.5",
+          name: "Claude Haiku 5.5（≤100K）",
+          vendor: "Anthropic",
+          badge: "anthropic",
+          role: "small",
+          inputPrice: 0.1,
+          outputPrice: 0.5,
+          cacheRead: 0.01,
+          context: "≤100K prompt",
+          selected: true
+        },
+        {
+          id: "claude-haiku-5.5-long",
+          name: "Claude Haiku 5.5（>100K）",
+          vendor: "Anthropic",
+          badge: "anthropic",
+          role: "small",
+          inputPrice: 0.5,
+          outputPrice: 2.5,
+          cacheRead: 0.05,
+          context: ">100K prompt",
+          selected: false
+        },
+        {
+          id: "gemini-4-argon",
+          name: "Gemini 4 Argon",
+          vendor: "Google",
+          badge: "google",
+          role: "large",
+          inputPrice: 2,
+          outputPrice: 10,
+          cacheRead: 0.1,
+          context: "促销至 2026-11-30",
+          selected: true
+        },
+        {
+          id: "gemini-3.8-flash",
+          name: "Gemini 3.8 Flash",
+          vendor: "Google",
+          badge: "google",
+          role: "small",
+          inputPrice: 0.75,
+          outputPrice: 3.75,
+          cacheRead: 0.075,
+          context: "促销至 2026-12-31",
+          selected: false
+        },
+        {
+          id: "gemini-3.5-flash-lite",
+          name: "Gemini 3.5 Flash-Lite",
+          vendor: "Google",
+          badge: "google",
+          role: "small",
+          inputPrice: 0.3,
+          outputPrice: 2.5,
+          cacheRead: 0.03,
+          context: "1M",
+          selected: true
+        },
         {
           id: "gemini-2.5-pro",
           name: "Gemini 2.5 Pro",
           vendor: "Google",
           badge: "google",
+          role: "large",
           inputPrice: 1.25,
           outputPrice: 10,
-          context: "1M",
-          selected: true
+          cacheRead: 0.125,
+          context: "≤200K",
+          selected: false
         },
         {
           id: "gemini-2.5-flash",
           name: "Gemini 2.5 Flash",
           vendor: "Google",
           badge: "google",
-          inputPrice: 0.15,
-          outputPrice: 0.6,
-          context: "1M",
-          selected: true
-        },
-        {
-          id: "gemini-2.0-flash",
-          name: "Gemini 2.0 Flash",
-          vendor: "Google",
-          badge: "google",
-          inputPrice: 0.1,
-          outputPrice: 0.4,
+          role: "small",
+          inputPrice: 0.3,
+          outputPrice: 2.5,
+          cacheRead: 0.03,
           context: "1M",
           selected: false
         },
-
-        // DeepSeek
         {
-          id: "deepseek-v3",
-          name: "DeepSeek V3",
+          id: "deepseek-flash",
+          name: "DeepSeek Flash（高峰）",
           vendor: "DeepSeek",
           badge: "deepseek",
-          inputPrice: 0.27,
-          outputPrice: 1.1,
-          context: "64K",
+          role: "small",
+          inputPrice: 0.3,
+          outputPrice: 1.2,
+          cacheRead: 0.006,
+          context: "1M · 高峰",
           selected: true
         },
         {
-          id: "deepseek-r1",
-          name: "DeepSeek R1",
+          id: "deepseek-v4-pro",
+          name: "DeepSeek V4 Pro（高峰）",
           vendor: "DeepSeek",
           badge: "deepseek",
-          inputPrice: 0.55,
-          outputPrice: 2.19,
-          context: "64K",
+          role: "large",
+          inputPrice: 1.32,
+          outputPrice: 3.96,
+          cacheRead: 0.044,
+          context: "1M · 高峰",
           selected: true
-        },
-
-        // Meta (via API providers)
-        {
-          id: "llama-3.3-70b",
-          name: "Llama 3.3 70B",
-          vendor: "Meta",
-          badge: "meta",
-          inputPrice: 0.8,
-          outputPrice: 0.8,
-          context: "128K",
-          selected: false
-        },
-        {
-          id: "llama-3.1-405b",
-          name: "Llama 3.1 405B",
-          vendor: "Meta",
-          badge: "meta",
-          inputPrice: 3,
-          outputPrice: 3,
-          context: "128K",
-          selected: false
         }
       ];
 
-      // 初始化
-      function init() {
-        renderModelGrid();
-        calculate();
-        loadTheme();
+      const examples = [
+        {
+          id: "A",
+          title: "算例 A · Claude 主 + Haiku 子",
+          mainId: "claude-sonnet-5.5",
+          subId: "claude-haiku-5.5",
+          mainCached: 20000,
+          mainHit: 90,
+          mainFresh: 3000,
+          mainOutput: 2000,
+          subCalls: 4,
+          subCached: 8000,
+          subHit: 85,
+          subFresh: 1500,
+          subOutput: 800,
+          expected: 0.034752,
+          notes: [
+            "主：20,000 缓存 × 90% 命中，未缓存 3,000，输出 2,000",
+            "子：4 次；8,000 缓存 × 85% 命中，未缓存 1,500，输出 800"
+          ]
+        },
+        {
+          id: "B",
+          title: "算例 B · GPT-6 Sol + Luna",
+          mainId: "gpt-6-sol",
+          subId: "gpt-6-luna",
+          mainCached: 40000,
+          mainHit: 80,
+          mainFresh: 5000,
+          mainOutput: 4000,
+          subCalls: 6,
+          subCached: 10000,
+          subHit: 90,
+          subFresh: 2000,
+          subOutput: 1000,
+          expected: 0.07774,
+          notes: [
+            "主：40,000 缓存 × 80% 命中，未缓存 5,000，输出 4,000",
+            "子：6 次；10,000 缓存 × 90% 命中，未缓存 2,000，输出 1,000"
+          ]
+        },
+        {
+          id: "C",
+          title: "算例 C · Gemini 4 Argon + Flash-Lite",
+          mainId: "gemini-4-argon",
+          subId: "gemini-3.5-flash-lite",
+          mainCached: 15000,
+          mainHit: 70,
+          mainFresh: 2000,
+          mainOutput: 1500,
+          subCalls: 3,
+          subCached: 5000,
+          subHit: 80,
+          subFresh: 1000,
+          subOutput: 600,
+          expected: 0.03571,
+          notes: [
+            "主：15,000 缓存 × 70% 命中，未缓存 2,000，输出 1,500",
+            "子：3 次；5,000 缓存 × 80% 命中，未缓存 1,000，输出 600"
+          ]
+        }
+      ];
+
+      function money6(value) {
+        return "$" + Number(value).toFixed(6);
       }
 
-      // 渲染模型选择网格
-      function renderModelGrid() {
-        const grid = document.getElementById("modelGrid");
-        grid.innerHTML = models
-          .map(
-            (model, idx) => `
-        <label class="model-item ${model.selected ? "selected" : ""}" data-idx="${idx}">
-          <input type="checkbox" ${model.selected ? "checked" : ""} onchange="toggleModel(${idx})">
-          <div class="model-info">
-            <div class="model-name">${model.name}</div>
-            <div class="model-vendor">${model.vendor} · ${model.context}</div>
-          </div>
-          <span class="model-badge badge-${model.badge}">${model.vendor.slice(0, 2)}</span>
-        </label>
-      `
-          )
-          .join("");
+      function modelCost(model, cachedTokens, hitRate, uncachedTokens, outputTokens) {
+        const hit = Math.min(Math.max(hitRate, 0), 1);
+        const cacheRead = model.cacheRead;
+        const cachedHit = (cachedTokens * hit * cacheRead) / MILLION;
+        const cachedMiss = (cachedTokens * (1 - hit) * model.inputPrice) / MILLION;
+        const fresh = (uncachedTokens * model.inputPrice) / MILLION;
+        const output = (outputTokens * model.outputPrice) / MILLION;
+        return {
+          cachedHit: cachedHit,
+          cachedMiss: cachedMiss,
+          fresh: fresh,
+          output: output,
+          total: cachedHit + cachedMiss + fresh + output
+        };
       }
 
-      // 切换模型选择
-      window.toggleModel = function (idx) {
-        models[idx].selected = !models[idx].selected;
-        const item = document.querySelector(`.model-item[data-idx="${idx}"]`);
-        item.classList.toggle("selected", models[idx].selected);
-        calculate();
-      };
+      function taskCost(main, sub, values) {
+        const mainPart = modelCost(
+          main,
+          values.mainCached,
+          values.mainHit / 100,
+          values.mainFresh,
+          values.mainOutput
+        );
+        const subOnce = modelCost(
+          sub,
+          values.subCached,
+          values.subHit / 100,
+          values.subFresh,
+          values.subOutput
+        );
+        const subAll = {
+          cachedHit: subOnce.cachedHit * values.subCalls,
+          cachedMiss: subOnce.cachedMiss * values.subCalls,
+          fresh: subOnce.fresh * values.subCalls,
+          output: subOnce.output * values.subCalls,
+          total: subOnce.total * values.subCalls
+        };
+        return {
+          main: mainPart,
+          subOnce: subOnce,
+          subAll: subAll,
+          total: mainPart.total + subAll.total
+        };
+      }
 
-      // 计算成本
-      window.calculate = function () {
-        const inputTokens = parseInt(document.getElementById("inputTokens").value) || 0;
-        const outputTokens = parseInt(document.getElementById("outputTokens").value) || 0;
-        const dailyRequests = parseInt(document.getElementById("dailyRequests").value) || 0;
-        const period = parseInt(document.getElementById("period").value) || 30;
+      function findModel(id) {
+        for (let i = 0; i < models.length; i++) {
+          if (models[i].id === id) return models[i];
+        }
+        return null;
+      }
 
-        const selectedModels = models.filter((m) => m.selected);
-        const results = selectedModels.map((model) => {
-          const inputCost = (inputTokens / 1000000) * model.inputPrice;
-          const outputCost = (outputTokens / 1000000) * model.outputPrice;
-          const perRequestCost = inputCost + outputCost;
-          const totalCost = perRequestCost * dailyRequests * period;
-          return {
-            ...model,
-            inputCost,
-            outputCost,
-            perRequestCost,
-            totalCost
-          };
-        });
-
-        // 按总成本排序
-        results.sort((a, b) => a.totalCost - b.totalCost);
-
-        // 找出最低价
-        const minCost = results.length > 0 ? results[0].totalCost : 0;
-
-        // 渲染结果表格
-        const tbody = document.getElementById("resultsBody");
-        tbody.innerHTML = results
-          .map(
-            (r, _idx) => `
-        <tr>
-          <td>
-            <div class="model-col">
-              <span class="vendor-icon badge-${r.badge}">${r.vendor.slice(0, 2).toUpperCase()}</span>
-              <span>${r.name}</span>
-            </div>
-          </td>
-          <td class="price-cell">$${r.inputPrice}/M</td>
-          <td class="price-cell">$${r.outputPrice}/M</td>
-          <td class="price-cell">$${r.perRequestCost.toFixed(6)}</td>
-          <td class="price-cell ${r.totalCost === minCost && results.length > 1 ? "best-price" : ""}">
-            $${r.totalCost.toFixed(2)}
-            ${r.totalCost === minCost && results.length > 1 ? " ✓" : ""}
-          </td>
-        </tr>
-      `
-          )
-          .join("");
-
-        // 渲染统计信息
-        const totalRequests = dailyRequests * period;
-        const totalInputTokens = inputTokens * totalRequests;
-        const totalOutputTokens = outputTokens * totalRequests;
-        const periodLabel = { 1: "天", 7: "周", 30: "月", 365: "年" }[period];
-
-        const statsGrid = document.getElementById("statsGrid");
-        statsGrid.innerHTML = `
-        <div class="stat-item">
-          <div class="stat-value">${formatNumber(totalRequests)}</div>
-          <div class="stat-label">总请求数 / ${periodLabel}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">${formatTokens(totalInputTokens)}</div>
-          <div class="stat-label">总输入 Tokens</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">${formatTokens(totalOutputTokens)}</div>
-          <div class="stat-label">总输出 Tokens</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" style="color: var(--accent-green)">$${minCost.toFixed(2)}</div>
-          <div class="stat-label">最低成本</div>
-        </div>
-      `;
-      };
-
-      // 格式化数字
       function formatNumber(num) {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
         if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-        return num.toString();
+        return String(num);
       }
 
       function formatTokens(num) {
         if (num >= 1000000000) return (num / 1000000000).toFixed(1) + "B";
         if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
         if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-        return num.toString();
+        return String(num);
       }
 
-      // 主题切换
+      function cacheLabel(model) {
+        return model.cacheRead == null ? "—" : "$" + model.cacheRead + "/M";
+      }
+
+      function renderModelGrid() {
+        const grid = document.getElementById("modelGrid");
+        grid.innerHTML = models
+          .map(function (model, idx) {
+            return (
+              '<label class="model-item' +
+              (model.selected ? " selected" : "") +
+              '" data-idx="' +
+              idx +
+              '">' +
+              '<input type="checkbox" ' +
+              (model.selected ? "checked" : "") +
+              ' onchange="toggleModel(' +
+              idx +
+              ')">' +
+              '<div class="model-info">' +
+              '<div class="model-name">' +
+              model.name +
+              "</div>" +
+              '<div class="model-vendor">' +
+              model.vendor +
+              " · " +
+              model.context +
+              "</div>" +
+              "</div>" +
+              '<span class="model-badge badge-' +
+              model.badge +
+              '">' +
+              model.vendor.slice(0, 2) +
+              "</span>" +
+              "</label>"
+            );
+          })
+          .join("");
+      }
+
+      function fillSelects() {
+        const main = document.getElementById("mainModel");
+        const sub = document.getElementById("subModel");
+        const large = models.filter(function (m) {
+          return m.role === "large";
+        });
+        const small = models.filter(function (m) {
+          return m.role === "small";
+        });
+        main.innerHTML = large
+          .map(function (m) {
+            const selected = m.id === "claude-sonnet-5.5" ? " selected" : "";
+            return '<option value="' + m.id + '"' + selected + ">" + m.name + "</option>";
+          })
+          .join("");
+        sub.innerHTML = small
+          .map(function (m) {
+            const selected = m.id === "claude-haiku-5.5" ? " selected" : "";
+            return '<option value="' + m.id + '"' + selected + ">" + m.name + "</option>";
+          })
+          .join("");
+      }
+
+      window.toggleModel = function (idx) {
+        models[idx].selected = !models[idx].selected;
+        const item = document.querySelector('.model-item[data-idx="' + idx + '"]');
+        item.classList.toggle("selected", models[idx].selected);
+        calculate();
+      };
+
+      window.calculate = function () {
+        const inputTokens = parseInt(document.getElementById("inputTokens").value, 10) || 0;
+        const outputTokens = parseInt(document.getElementById("outputTokens").value, 10) || 0;
+        const dailyRequests = parseInt(document.getElementById("dailyRequests").value, 10) || 0;
+        const period = parseInt(document.getElementById("period").value, 10) || 30;
+        const selectedModels = models.filter(function (m) {
+          return m.selected;
+        });
+        const results = selectedModels.map(function (model) {
+          const inputCost = (inputTokens / MILLION) * model.inputPrice;
+          const outputCost = (outputTokens / MILLION) * model.outputPrice;
+          const perRequestCost = inputCost + outputCost;
+          return {
+            model: model,
+            perRequestCost: perRequestCost,
+            totalCost: perRequestCost * dailyRequests * period
+          };
+        });
+        results.sort(function (a, b) {
+          return a.totalCost - b.totalCost;
+        });
+        const minCost = results.length > 0 ? results[0].totalCost : 0;
+        document.getElementById("resultsBody").innerHTML = results
+          .map(function (r) {
+            const best = r.totalCost === minCost && results.length > 1;
+            return (
+              '<tr><td><div class="model-col"><span class="model-badge badge-' +
+              r.model.badge +
+              '">' +
+              r.model.vendor.slice(0, 2).toUpperCase() +
+              "</span><span>" +
+              r.model.name +
+              "</span></div></td>" +
+              '<td class="price-cell">$' +
+              r.model.inputPrice +
+              "/M</td>" +
+              '<td class="price-cell">$' +
+              r.model.outputPrice +
+              "/M</td>" +
+              '<td class="price-cell">' +
+              cacheLabel(r.model) +
+              "</td>" +
+              '<td class="price-cell">' +
+              money6(r.perRequestCost) +
+              "</td>" +
+              '<td class="price-cell' +
+              (best ? " best-price" : "") +
+              '">$' +
+              r.totalCost.toFixed(2) +
+              (best ? " ✓" : "") +
+              "</td></tr>"
+            );
+          })
+          .join("");
+        const totalRequests = dailyRequests * period;
+        const periodLabel = { 1: "天", 7: "周", 30: "月", 365: "年" }[period];
+        document.getElementById("statsGrid").innerHTML =
+          '<div class="stat-item"><div class="stat-value">' +
+          formatNumber(totalRequests) +
+          '</div><div class="stat-label">总请求数 / ' +
+          periodLabel +
+          "</div></div>" +
+          '<div class="stat-item"><div class="stat-value">' +
+          formatTokens(inputTokens * totalRequests) +
+          '</div><div class="stat-label">总输入 Tokens</div></div>' +
+          '<div class="stat-item"><div class="stat-value">' +
+          formatTokens(outputTokens * totalRequests) +
+          '</div><div class="stat-label">总输出 Tokens</div></div>' +
+          '<div class="stat-item"><div class="stat-value" style="color: var(--accent-green)">$' +
+          minCost.toFixed(2) +
+          '</div><div class="stat-label">最低成本</div></div>';
+      };
+
+      function readTaskValues() {
+        return {
+          mainCached: parseFloat(document.getElementById("mainCached").value) || 0,
+          mainHit: parseFloat(document.getElementById("mainHit").value) || 0,
+          mainFresh: parseFloat(document.getElementById("mainFresh").value) || 0,
+          mainOutput: parseFloat(document.getElementById("mainOutput").value) || 0,
+          subCalls: parseFloat(document.getElementById("subCalls").value) || 0,
+          subCached: parseFloat(document.getElementById("subCached").value) || 0,
+          subHit: parseFloat(document.getElementById("subHit").value) || 0,
+          subFresh: parseFloat(document.getElementById("subFresh").value) || 0,
+          subOutput: parseFloat(document.getElementById("subOutput").value) || 0
+        };
+      }
+
+      window.calculateTask = function () {
+        const main = findModel(document.getElementById("mainModel").value);
+        const sub = findModel(document.getElementById("subModel").value);
+        if (!main || !sub) return;
+        const result = taskCost(main, sub, readTaskValues());
+        document.getElementById("taskTotal").textContent = money6(result.total);
+        document.getElementById("taskBreakdown").innerHTML =
+          "<li><span>主 Agent · " +
+          main.name +
+          "</span><span>" +
+          money6(result.main.total) +
+          "</span></li>" +
+          "<li><span>子 Agent 单次 · " +
+          sub.name +
+          "</span><span>" +
+          money6(result.subOnce.total) +
+          "</span></li>" +
+          "<li><span>子 Agent 合计</span><span>" +
+          money6(result.subAll.total) +
+          "</span></li>" +
+          "<li><span>核价日期</span><span>" +
+          VERIFY_DATE +
+          "</span></li>";
+      };
+
+      function applyExample(example) {
+        document.getElementById("mainModel").value = example.mainId;
+        document.getElementById("subModel").value = example.subId;
+        document.getElementById("mainCached").value = String(example.mainCached);
+        document.getElementById("mainHit").value = String(example.mainHit);
+        document.getElementById("mainFresh").value = String(example.mainFresh);
+        document.getElementById("mainOutput").value = String(example.mainOutput);
+        document.getElementById("subCalls").value = String(example.subCalls);
+        document.getElementById("subCached").value = String(example.subCached);
+        document.getElementById("subHit").value = String(example.subHit);
+        document.getElementById("subFresh").value = String(example.subFresh);
+        document.getElementById("subOutput").value = String(example.subOutput);
+        calculateTask();
+      }
+
+      window.loadExample = function (id) {
+        for (let i = 0; i < examples.length; i++) {
+          if (examples[i].id === id) {
+            applyExample(examples[i]);
+            document.getElementById("agent-heading").scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+            return;
+          }
+        }
+      };
+
+      function renderExamples() {
+        document.getElementById("exampleGrid").innerHTML = examples
+          .map(function (example) {
+            const main = findModel(example.mainId);
+            const sub = findModel(example.subId);
+            const computed = taskCost(main, sub, example).total;
+            const matched = Math.abs(computed - example.expected) < 1e-9;
+            return (
+              '<article class="example-card">' +
+              "<h3>" +
+              example.title +
+              "</h3>" +
+              "<p>主 " +
+              main.name +
+              " · 子 " +
+              sub.name +
+              " · 开缓存</p>" +
+              "<ol>" +
+              example.notes
+                .map(function (note) {
+                  return "<li>" + note + "</li>";
+                })
+                .join("") +
+              "</ol>" +
+              '<div class="example-total">' +
+              money6(example.expected) +
+              "</div>" +
+              '<div class="' +
+              (matched ? "match-ok" : "") +
+              '">' +
+              (matched ? "页内重算与手算一致" : "与手算不一致，请停用") +
+              "</div>" +
+              '<button type="button" class="tb-btn tb-btn-primary" onclick="loadExample(\'' +
+              example.id +
+              "')\">填入估算器</button>" +
+              "</article>"
+            );
+          })
+          .join("");
+      }
+
       window.toggleTheme = function () {
         const html = document.documentElement;
         const isDark = html.getAttribute("data-theme") !== "light";
         html.setAttribute("data-theme", isDark ? "light" : "dark");
-        document.querySelector(".theme-toggle").textContent = isDark ? "☀️" : "🌙";
         localStorage.setItem("theme", isDark ? "light" : "dark");
       };
 
       function loadTheme() {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light") {
+        if (localStorage.getItem("theme") === "light") {
           document.documentElement.setAttribute("data-theme", "light");
-          document.querySelector(".theme-toggle").textContent = "☀️";
         }
       }
 
-      // 启动
-      init();
-    </script>
+      function bindInputs() {
+        const ids = [
+          "inputTokens",
+          "outputTokens",
+          "dailyRequests",
+          "period",
+          "mainModel",
+          "subModel",
+          "mainCached",
+          "mainHit",
+          "mainFresh",
+          "mainOutput",
+          "subCalls",
+          "subCached",
+          "subHit",
+          "subFresh",
+          "subOutput"
+        ];
+        ids.forEach(function (id) {
+          const el = document.getElementById(id);
+          el.addEventListener("input", function () {
+            if (
+              id === "inputTokens" ||
+              id === "outputTokens" ||
+              id === "dailyRequests" ||
+              id === "period"
+            ) {
+              calculate();
+            } else {
+              calculateTask();
+            }
+          });
+          el.addEventListener("change", function () {
+            if (
+              id === "inputTokens" ||
+              id === "outputTokens" ||
+              id === "dailyRequests" ||
+              id === "period"
+            ) {
+              calculate();
+            } else {
+              calculateTask();
+            }
+          });
+        });
+      }
 
-    <!-- 全局 UI 注入 -->
+      loadTheme();
+      renderModelGrid();
+      fillSelects();
+      bindInputs();
+      calculate();
+      calculateTask();
+      renderExamples();
+    </script>
     <script src="../../assets/js/tool-chrome.js"></script>
   </body>
 </html>
